@@ -13,6 +13,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/supplie
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 
 class SupplierPaymentSheet extends StatefulWidget {
   final SupplierCreditEntity account;
@@ -30,38 +31,22 @@ class SupplierPaymentSheet extends StatefulWidget {
     required SupplierCreditEntity account,
     required VoidCallback onPaymentSaved,
   }) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
     final cubit = context.read<SupplierCreditsCubit>();
 
-    if (isMobile) {
-      return showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (_) => BlocProvider.value(
-              value: cubit,
-              child: SupplierPaymentSheet(
-                account: account,
-                isDialog: false,
-                onPaymentSaved: onPaymentSaved,
-              ),
+    return AdaptiveSideSheet.show<bool>(
+      context: context,
+      desktopWidth: 540.0,
+      barrierLabel: 'Cerrar registro de pago',
+      builder:
+          (ctx, isSlideOver) => BlocProvider.value(
+            value: cubit,
+            child: SupplierPaymentSheet(
+              account: account,
+              isDialog: isSlideOver,
+              onPaymentSaved: onPaymentSaved,
             ),
-      );
-    } else {
-      return showDialog<bool>(
-        context: context,
-        builder:
-            (_) => BlocProvider.value(
-              value: cubit,
-              child: SupplierPaymentSheet(
-                account: account,
-                isDialog: true,
-                onPaymentSaved: onPaymentSaved,
-              ),
-            ),
-      );
-    }
+          ),
+    );
   }
 
   @override
@@ -811,27 +796,12 @@ class _SupplierPaymentSheetState extends State<SupplierPaymentSheet> {
     );
 
     if (widget.isDialog) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        child: Container(
-          width: 500,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-          ),
-          padding: const EdgeInsets.all(24),
-          child: sheetContent,
-        ),
-      );
+      return Padding(padding: const EdgeInsets.all(24), child: sheetContent);
     }
 
-    return Material(
-      color: Colors.white,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
-        child: sheetContent,
-      ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
+      child: sheetContent,
     );
   }
 

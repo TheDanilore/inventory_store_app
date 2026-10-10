@@ -14,6 +14,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
@@ -258,61 +259,29 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   Future<void> _openDesktopDetailSheet(InventoryExitEntity exit) async {
     if (!mounted || _isSideSheetOpen) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     _isSideSheetOpen = true;
     _selectExit(exit, updateUrl: true);
 
-    await showGeneralDialog(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar detalle',
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: drawerWidth,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 24,
-                    offset: Offset(-4, 0),
-                  ),
-                ],
-              ),
-              child: InventoryExitDetailSheet(
-                exitData: exit,
-                isBottomSheet: false,
-                loadItems: () => _loadItems(exit),
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, anim, secAnim, child) {
-        final curvedAnim = CurvedAnimation(
-          parent: anim,
-          curve: Curves.easeOutCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(curvedAnim),
-          child: child,
+    await AdaptiveSideSheet.show<void>(
+      context: context,
+      desktopWidth: drawerWidth,
+      barrierLabel: 'Cerrar detalle de salida',
+      builder: (dialogContext, isSlideOver) {
+        return InventoryExitDetailSheet(
+          exitData: exit,
+          isBottomSheet: !isSlideOver,
+          loadItems: () => _loadItems(exit),
         );
       },
     );
     _isSideSheetOpen = false;
+    if (mounted && _isTableView) {
+      _selectExit(null, updateUrl: true);
+    }
   }
 
   Future<List<InventoryExitItemModel>> _loadItems(
@@ -377,17 +346,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     BuildContext context,
     InventoryExitEntity exitData,
   ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => InventoryExitDetailSheet(
-            exitData: exitData,
-            isBottomSheet: true,
-            loadItems: () => _loadItems(exitData),
-          ),
-    );
+    _openDesktopDetailSheet(exitData);
   }
 
   @override
@@ -531,10 +490,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                       vertical: 6,
                                     ),
                                     visualDensity: VisualDensity.compact,
-                                    backgroundColor:
-                                        AppColors.warning.withValues(
-                                      alpha: 0.2,
-                                    ),
+                                    backgroundColor: AppColors.warning
+                                        .withValues(alpha: 0.2),
                                     foregroundColor: AppColors.warning,
                                   ),
                                   child: const Text('Continuar'),
@@ -719,13 +676,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   }) {
     if (state.isLoading && state.exits.isEmpty) {
       if (_isTableView && isTablet) {
-        return const SliverToBoxAdapter(
-          child: AppTableShimmer(),
-        );
+        return const SliverToBoxAdapter(child: AppTableShimmer());
       }
-      return const SliverToBoxAdapter(
-        child: KardexSkeleton(),
-      );
+      return const SliverToBoxAdapter(child: KardexSkeleton());
     }
 
     if (state.exits.isEmpty) {
@@ -764,35 +717,29 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final exit = state.exits[i];
-            return _ExitCard(
-              exitData: exit,
-              isSelected: _selectedExit?.id == exit.id,
-              onTap: () => _openDesktopDetailSheet(exit),
-            );
-          },
-          childCount: state.exits.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final exit = state.exits[i];
+          return _ExitCard(
+            exitData: exit,
+            isSelected: _selectedExit?.id == exit.id,
+            onTap: () => _openDesktopDetailSheet(exit),
+          );
+        }, childCount: state.exits.length),
       );
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, i) {
-          final exit = state.exits[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _ExitCard(
-              exitData: exit,
-              isSelected: false,
-              onTap: () => _showDetailBottomSheet(context, exit),
-            ),
-          );
-        },
-        childCount: state.exits.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, i) {
+        final exit = state.exits[i];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _ExitCard(
+            exitData: exit,
+            isSelected: false,
+            onTap: () => _showDetailBottomSheet(context, exit),
+          ),
+        );
+      }, childCount: state.exits.length),
     );
   }
 
@@ -1024,14 +971,16 @@ class _ExitCardState extends State<_ExitCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: widget.isSelected
-              ? AppColors.danger.withValues(alpha: 0.05)
-              : AppColors.surface,
+          color:
+              widget.isSelected
+                  ? AppColors.danger.withValues(alpha: 0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.danger.withValues(alpha: 0.5)
-                : _isHovered
+            color:
+                widget.isSelected
+                    ? AppColors.danger.withValues(alpha: 0.5)
+                    : _isHovered
                     ? AppColors.teal.withValues(alpha: 0.35)
                     : const Color(0xFFE2E8F0),
             width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,

@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/supp
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class SuppliersScreen extends StatefulWidget {
@@ -175,41 +176,21 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   }
 
   void _openSupplierModal(BuildContext context, [SupplierEntity? supplier]) {
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
     final cubit = context.read<SuppliersCubit>();
-    final modal = BlocProvider.value(
-      value: cubit,
-      child: SupplierFormModal(
-        supplierToEdit: supplier,
-        isDialog: isDesktop,
-        onSaved: () {},
-      ),
-    );
-
-    if (isDesktop) {
-      showDialog(
-        context: context,
-        builder:
-            (_) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 24,
-              ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: modal,
-              ),
+    AdaptiveSideSheet.show<void>(
+      context: context,
+      desktopWidth: 540.0,
+      barrierLabel: 'Cerrar proveedor',
+      builder:
+          (ctx, isSlideOver) => BlocProvider.value(
+            value: cubit,
+            child: SupplierFormModal(
+              supplierToEdit: supplier,
+              isDialog: isSlideOver,
+              onSaved: () {},
             ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => modal,
-      );
-    }
+          ),
+    );
   }
 
   @override
@@ -244,7 +225,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       icon: const Icon(Icons.refresh_rounded),
                       tooltip: 'Actualizar proveedores',
                       onPressed: () {
-                        context.read<SuppliersCubit>().loadSuppliers(page: 0, refresh: true);
+                        context.read<SuppliersCubit>().loadSuppliers(
+                          page: 0,
+                          refresh: true,
+                        );
                       },
                     ),
                   ],
@@ -305,8 +289,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       .length;
 
               return RefreshIndicator(
-                onRefresh: () async =>
-                    context.read<SuppliersCubit>().loadSuppliers(refresh: true),
+                onRefresh:
+                    () async => context.read<SuppliersCubit>().loadSuppliers(
+                      refresh: true,
+                    ),
                 child: CustomScrollView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -341,9 +327,10 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                           onToggleTableView:
                               (val) => setState(() => _isTableView = val),
                         ),
-                        onRefresh: () => context
-                            .read<SuppliersCubit>()
-                            .loadSuppliers(refresh: true),
+                        onRefresh:
+                            () => context.read<SuppliersCubit>().loadSuppliers(
+                              refresh: true,
+                            ),
                         refreshTooltip: 'Refrescar proveedores [R]',
                         primaryAction: AdminProToolbarAction(
                           label: 'Nuevo Proveedor',
@@ -510,8 +497,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                 _openSupplierModal(context, s);
               },
               onToggleStatus:
-                  (s) =>
-                      context.read<SuppliersCubit>().toggleSupplierStatus(s),
+                  (s) => context.read<SuppliersCubit>().toggleSupplierStatus(s),
             ),
           ),
         ),
@@ -617,7 +603,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       ),
     );
   }
-
 
   Widget _buildSkeletonsSliver(bool isDesktop) {
     if (isDesktop && _isTableView) {

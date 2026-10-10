@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
@@ -12,7 +13,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 
 class InventoryProductQuickViewSheet {
   /// Abre la Ficha Rápida:
-  /// - En Desktop (>= 900px): Slide-Over Panel lateral de 480px estilo Linear / Stripe.
+  /// - En Desktop (>= 900px): Slide-Over Panel lateral estilo Linear / Stripe.
   /// - En Móvil (< 900px): Modal Bottom Sheet estilo Apple HIG con drag handle.
   static Future<void> show(
     BuildContext context, {
@@ -20,76 +21,17 @@ class InventoryProductQuickViewSheet {
     String? selectedWarehouseId,
     String? selectedWarehouseName,
   }) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-
-    if (isDesktop) {
-      return showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'QuickViewInventory',
-        barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 240),
-        pageBuilder: (dialogContext, animation, secondaryAnimation) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 500,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 36,
-                      offset: const Offset(-10, 0),
-                    ),
-                  ],
-                ),
-                child: _InventoryProductQuickViewContent(
-                  item: item,
-                  selectedWarehouseId: selectedWarehouseId,
-                  selectedWarehouseName: selectedWarehouseName,
-                  isSideSheet: true,
-                ),
-              ),
-            ),
-          );
-        },
-        transitionBuilder: (context, anim, secondaryAnim, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1.0, 0.0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          );
-        },
-      );
-    }
-
-    return showModalBottomSheet(
+    return AdaptiveSideSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.90,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: _InventoryProductQuickViewContent(
-            item: item,
-            selectedWarehouseId: selectedWarehouseId,
-            selectedWarehouseName: selectedWarehouseName,
-            isSideSheet: false,
-          ),
+      desktopWidth: 520.0,
+      breakpoint: 900.0,
+      barrierLabel: 'Cerrar detalle de producto',
+      builder: (dialogContext, isSlideOver) {
+        return _InventoryProductQuickViewContent(
+          item: item,
+          selectedWarehouseId: selectedWarehouseId,
+          selectedWarehouseName: selectedWarehouseName,
+          isSideSheet: isSlideOver,
         );
       },
     );

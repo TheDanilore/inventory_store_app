@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/export_inventory_excel_usecase.dart';
 
@@ -32,34 +33,19 @@ class InventoryExportSheet extends StatefulWidget {
     String? selectedWarehouseName,
     List<WarehouseEntity> warehouses = const [],
   }) async {
-    final isDesktop = MediaQuery.of(context).size.width >= 640;
-
-    if (isDesktop) {
-      await showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder:
-            (ctx) => InventoryExportSheet(
-              selectedWarehouseId: selectedWarehouseId,
-              selectedWarehouseName: selectedWarehouseName,
-              warehouses: warehouses,
-              isDialog: true,
-            ),
-      );
-    } else {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (ctx) => InventoryExportSheet(
-              selectedWarehouseId: selectedWarehouseId,
-              selectedWarehouseName: selectedWarehouseName,
-              warehouses: warehouses,
-              isDialog: false,
-            ),
-      );
-    }
+    await AdaptiveSideSheet.show<void>(
+      context: context,
+      desktopWidth: 460.0,
+      breakpoint: 640.0,
+      barrierLabel: 'Cerrar exportación',
+      builder:
+          (ctx, isSlideOver) => InventoryExportSheet(
+            selectedWarehouseId: selectedWarehouseId,
+            selectedWarehouseName: selectedWarehouseName,
+            warehouses: warehouses,
+            isDialog: isSlideOver,
+          ),
+    );
   }
 
   @override

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 class KardexMovementInspectorDrawer extends StatelessWidget {
@@ -21,44 +22,16 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
     BuildContext context,
     KardexMovementEntity item,
   ) {
-    return showModalBottomSheet(
+    return AdaptiveSideSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Pull handle iOS
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: KardexMovementInspectorDrawer(
-                    item: item,
-                    onClose: () => Navigator.of(ctx).pop(),
-                  ),
-                ),
-              ),
-            ],
+      desktopWidth: 440.0,
+      barrierLabel: 'Cerrar detalle de movimiento',
+      builder: (ctx, isSlideOver) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: KardexMovementInspectorDrawer(
+            item: item,
+            onClose: () => Navigator.of(ctx).pop(),
           ),
         );
       },
@@ -126,14 +99,17 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
     final isReturn = upperType.contains('DEVOLUCIÓN');
     final isSale = upperType.contains('VENTA');
 
-    final Color deltaColor = isEntry
-        ? (isReturn ? Colors.purple.shade700 : Colors.green.shade700)
-        : (isSale ? Colors.blue.shade700 : Colors.red.shade700);
+    final Color deltaColor =
+        isEntry
+            ? (isReturn ? Colors.purple.shade700 : Colors.green.shade700)
+            : (isSale ? Colors.blue.shade700 : Colors.red.shade700);
 
     final String deltaSign = isEntry ? '+' : '-';
     final double quantityAbs = item.quantity.abs();
     final double totalValue = quantityAbs * item.unitCost;
-    final String formattedDate = DateFormat('dd/MM/yyyy · HH:mm').format(item.date);
+    final String formattedDate = DateFormat(
+      'dd/MM/yyyy · HH:mm',
+    ).format(item.date);
 
     final String displayName =
         (item.productName != null && item.productName!.isNotEmpty)
@@ -190,22 +166,23 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
                   width: 54,
                   height: 54,
                   color: AppColors.surface,
-                  child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                      ? CachedNetworkImage(
-                        imageUrl: item.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget:
-                            (context, url, error) => const Icon(
-                              Icons.inventory_2_outlined,
-                              color: AppColors.textSecondary,
-                              size: 24,
-                            ),
-                      )
-                      : const Icon(
-                        Icons.inventory_2_outlined,
-                        color: AppColors.textSecondary,
-                        size: 24,
-                      ),
+                  child:
+                      item.imageUrl != null && item.imageUrl!.isNotEmpty
+                          ? CachedNetworkImage(
+                            imageUrl: item.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorWidget:
+                                (context, url, error) => const Icon(
+                                  Icons.inventory_2_outlined,
+                                  color: AppColors.textSecondary,
+                                  size: 24,
+                                ),
+                          )
+                          : const Icon(
+                            Icons.inventory_2_outlined,
+                            color: AppColors.textSecondary,
+                            size: 24,
+                          ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -256,7 +233,9 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
                           ),
                         if (item.sku != null && item.sku!.isNotEmpty)
                           InkWell(
-                            onTap: () => _copyToClipboard(context, item.sku!, 'SKU'),
+                            onTap:
+                                () =>
+                                    _copyToClipboard(context, item.sku!, 'SKU'),
                             borderRadius: BorderRadius.circular(6),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -423,11 +402,12 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
                     ],
                   ),
                   InkWell(
-                    onTap: () => _copyToClipboard(
-                      context,
-                      item.reference,
-                      'Referencia',
-                    ),
+                    onTap:
+                        () => _copyToClipboard(
+                          context,
+                          item.reference,
+                          'Referencia',
+                        ),
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(

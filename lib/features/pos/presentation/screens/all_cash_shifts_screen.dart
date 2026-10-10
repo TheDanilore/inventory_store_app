@@ -31,18 +31,12 @@ class AllCashShiftsScreen extends StatelessWidget {
     if (cubit != null) {
       return BlocProvider.value(
         value: cubit!,
-        child: _AllCashShiftsBody(
-          isEmbedded: isEmbedded,
-          onBack: onBack,
-        ),
+        child: _AllCashShiftsBody(isEmbedded: isEmbedded, onBack: onBack),
       );
     }
     return BlocProvider<CashShiftsCubit>(
       create: (_) => sl<CashShiftsCubit>(),
-      child: _AllCashShiftsBody(
-        isEmbedded: isEmbedded,
-        onBack: onBack,
-      ),
+      child: _AllCashShiftsBody(isEmbedded: isEmbedded, onBack: onBack),
     );
   }
 }
@@ -51,10 +45,7 @@ class _AllCashShiftsBody extends StatefulWidget {
   final bool isEmbedded;
   final VoidCallback? onBack;
 
-  const _AllCashShiftsBody({
-    this.isEmbedded = false,
-    this.onBack,
-  });
+  const _AllCashShiftsBody({this.isEmbedded = false, this.onBack});
 
   @override
   State<_AllCashShiftsBody> createState() => _AllCashShiftsBodyState();
@@ -104,26 +95,34 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     if (isDesktop) {
       showDialog(
         context: context,
-        builder: (dialogCtx) => _ShiftDetailDialog(
-          shift: shift,
-          onCloseShift: shift.isOpen ? () {
-            Navigator.pop(dialogCtx);
-            _handleCloseShift(shift);
-          } : null,
-        ),
+        builder:
+            (dialogCtx) => _ShiftDetailDialog(
+              shift: shift,
+              onCloseShift:
+                  shift.isOpen
+                      ? () {
+                        Navigator.pop(dialogCtx);
+                        _handleCloseShift(shift);
+                      }
+                      : null,
+            ),
       );
     } else {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetCtx) => _ShiftDetailSheet(
-          shift: shift,
-          onCloseShift: shift.isOpen ? () {
-            Navigator.pop(sheetCtx);
-            _handleCloseShift(shift);
-          } : null,
-        ),
+        builder:
+            (sheetCtx) => _ShiftDetailSheet(
+              shift: shift,
+              onCloseShift:
+                  shift.isOpen
+                      ? () {
+                        Navigator.pop(sheetCtx);
+                        _handleCloseShift(shift);
+                      }
+                      : null,
+            ),
       );
     }
   }
@@ -135,67 +134,79 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     if (isDesktop) {
       showDialog(
         context: context,
-        builder: (dialogCtx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.group_rounded, color: AppColors.primary, size: 20),
+        builder:
+            (dialogCtx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 12),
-              const Text(
-                'Filtrar por Usuario',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: 380,
-            height: 320,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              children: [
-                _buildUserOption(
-                  cubit,
-                  state,
-                  title: 'Todos los usuarios',
-                  value: null,
-                  icon: Icons.group_rounded,
-                ),
-                const Divider(height: 16),
-                ...state.profiles.map(
-                  (p) => _buildUserOption(
-                    cubit,
-                    state,
-                    title: (p['full_name'] as String?)?.trim().isNotEmpty == true
-                        ? p['full_name'] as String
-                        : 'Usuario sin nombre',
-                    value: p['id'] as String,
-                    icon: Icons.person_rounded,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.group_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Filtrar por Usuario',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 380,
+                height: 320,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  children: [
+                    _buildUserOption(
+                      cubit,
+                      state,
+                      title: 'Todos los usuarios',
+                      value: null,
+                      icon: Icons.group_rounded,
+                    ),
+                    const Divider(height: 16),
+                    ...state.profiles.map(
+                      (p) => _buildUserOption(
+                        cubit,
+                        state,
+                        title:
+                            (p['full_name'] as String?)?.trim().isNotEmpty ==
+                                    true
+                                ? p['full_name'] as String
+                                : 'Usuario sin nombre',
+                        value: p['id'] as String,
+                        icon: Icons.person_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text('Cerrar'),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        ),
       );
     } else {
       _showUserPickerBottomSheet(cubit, state);
     }
   }
 
-  void _showUserPickerBottomSheet(CashShiftsCubit cubit, CashShiftsState state) {
+  void _showUserPickerBottomSheet(
+    CashShiftsCubit cubit,
+    CashShiftsState state,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -208,7 +219,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           builder: (context, scrollController) {
             return Material(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
               child: Column(
                 children: [
                   const SizedBox(height: 12),
@@ -216,7 +229,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -231,7 +246,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                   Expanded(
                     child: ListView(
                       controller: scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       children: [
                         _buildUserOption(
                           cubit,
@@ -245,9 +263,13 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                           (p) => _buildUserOption(
                             cubit,
                             state,
-                            title: (p['full_name'] as String?)?.trim().isNotEmpty == true
-                                ? p['full_name'] as String
-                                : 'Usuario sin nombre',
+                            title:
+                                (p['full_name'] as String?)
+                                            ?.trim()
+                                            .isNotEmpty ==
+                                        true
+                                    ? p['full_name'] as String
+                                    : 'Usuario sin nombre',
                             value: p['id'] as String,
                             icon: Icons.person_rounded,
                           ),
@@ -281,9 +303,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       },
       leading: CircleAvatar(
         radius: 18,
-        backgroundColor: isSelected
-            ? AppColors.primary.withValues(alpha: 0.12)
-            : colorScheme.surfaceContainerHighest,
+        backgroundColor:
+            isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : colorScheme.surfaceContainerHighest,
         child: Icon(
           icon,
           size: 18,
@@ -298,9 +321,14 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           color: isSelected ? AppColors.primary : colorScheme.onSurface,
         ),
       ),
-      trailing: isSelected
-          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
-          : null,
+      trailing:
+          isSelected
+              ? const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primary,
+                size: 20,
+              )
+              : null,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       tileColor: isSelected ? AppColors.primary.withValues(alpha: 0.05) : null,
     );
@@ -344,9 +372,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                   style: TextStyle(
                     fontSize: 12,
                     color:
-                        Theme.of(context).textTheme.bodySmall?.color?.withValues(
-                          alpha: 0.7,
-                        ) ??
+                        Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withValues(alpha: 0.7) ??
                         AppColors.textSecondary,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -456,9 +484,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     if (widget.isEmbedded) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: shiftContent,
-        ),
+        body: SafeArea(child: shiftContent),
       );
     }
 
@@ -479,12 +505,18 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
   // ── 1. KPI Cards Bar ────────────────────────────────────────────────────────
   Widget _buildKpiBar(BuildContext context, CashShiftsState state) {
     final total = state.totalCount > 0 ? state.totalCount : state.shifts.length;
-    final openCount = state.totalOpenCount > 0
-        ? state.totalOpenCount
-        : state.shifts.where((s) => s.status == CashShiftStatus.open).length;
-    final closedCount = state.totalClosedCount > 0
-        ? state.totalClosedCount
-        : state.shifts.where((s) => s.status == CashShiftStatus.closed).length;
+    final openCount =
+        state.totalOpenCount > 0
+            ? state.totalOpenCount
+            : state.shifts
+                .where((s) => s.status == CashShiftStatus.open)
+                .length;
+    final closedCount =
+        state.totalClosedCount > 0
+            ? state.totalClosedCount
+            : state.shifts
+                .where((s) => s.status == CashShiftStatus.closed)
+                .length;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -573,20 +605,23 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
 
     String selectedUserName = 'Todos los usuarios';
     if (state.profileFilter != null) {
-      final p = state.profiles
-          .where((p) => p['id'] == state.profileFilter)
-          .firstOrNull;
+      final p =
+          state.profiles
+              .where((p) => p['id'] == state.profileFilter)
+              .firstOrNull;
       if (p != null) {
-        selectedUserName = (p['full_name'] as String?)?.trim().isNotEmpty == true
-            ? p['full_name'] as String
-            : 'Usuario sin nombre';
+        selectedUserName =
+            (p['full_name'] as String?)?.trim().isNotEmpty == true
+                ? p['full_name'] as String
+                : 'Usuario sin nombre';
       }
     }
 
     final hasDateFilter = state.dateFrom != null || state.dateTo != null;
-    final dateLabel = hasDateFilter
-        ? '${state.dateFrom != null ? dateFormat.format(state.dateFrom!) : '…'} — ${state.dateTo != null ? dateFormat.format(state.dateTo!) : '…'}'
-        : 'Fecha';
+    final dateLabel =
+        hasDateFilter
+            ? '${state.dateFrom != null ? dateFormat.format(state.dateFrom!) : '…'} — ${state.dateTo != null ? dateFormat.format(state.dateTo!) : '…'}'
+            : 'Fecha';
 
     Future<void> pickDateRange() async {
       final now = DateTime.now();
@@ -596,14 +631,16 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
         context,
         firstDate: DateTime(2020),
         lastDate: maxDate,
-        initialStartDate: (state.dateFrom != null)
-            ? (state.dateFrom!.isBefore(DateTime(2020))
-                ? DateTime(2020)
-                : state.dateFrom!)
-            : now.subtract(const Duration(days: 30)),
-        initialEndDate: (state.dateTo != null)
-            ? (state.dateTo!.isAfter(maxDate) ? maxDate : state.dateTo!)
-            : todayEnd,
+        initialStartDate:
+            (state.dateFrom != null)
+                ? (state.dateFrom!.isBefore(DateTime(2020))
+                    ? DateTime(2020)
+                    : state.dateFrom!)
+                : now.subtract(const Duration(days: 30)),
+        initialEndDate:
+            (state.dateTo != null)
+                ? (state.dateTo!.isAfter(maxDate) ? maxDate : state.dateTo!)
+                : todayEnd,
       );
       if (picked != null) {
         cubit.setDateRange(picked.start, picked.end);
@@ -617,7 +654,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4), width: 0.5),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: 0.4),
+            width: 0.5,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -636,7 +676,11 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             _buildStatusChip(cubit, state, 'CLOSED', 'Cerrados'),
 
             const SizedBox(width: 14),
-            Container(width: 1, height: 24, color: theme.dividerColor.withValues(alpha: 0.4)),
+            Container(
+              width: 1,
+              height: 24,
+              color: theme.dividerColor.withValues(alpha: 0.4),
+            ),
             const SizedBox(width: 14),
 
             // ── Compact Date Range Selector ──────────────────────────────
@@ -645,16 +689,22 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               borderRadius: BorderRadius.circular(10),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: hasDateFilter
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color:
+                      hasDateFilter
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: hasDateFilter
-                        ? AppColors.primary.withValues(alpha: 0.3)
-                        : theme.dividerColor.withValues(alpha: 0.4),
+                    color:
+                        hasDateFilter
+                            ? AppColors.primary.withValues(alpha: 0.3)
+                            : theme.dividerColor.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Row(
@@ -663,22 +713,32 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     Icon(
                       Icons.calendar_month_rounded,
                       size: 15,
-                      color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                      color:
+                          hasDateFilter
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       dateLabel,
                       style: TextStyle(
                         fontSize: 12.5,
-                        fontWeight: hasDateFilter ? FontWeight.w700 : FontWeight.w500,
-                        color: hasDateFilter ? AppColors.primary : theme.colorScheme.onSurface,
+                        fontWeight:
+                            hasDateFilter ? FontWeight.w700 : FontWeight.w500,
+                        color:
+                            hasDateFilter
+                                ? AppColors.primary
+                                : theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(width: 5),
                     Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 15,
-                      color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                      color:
+                          hasDateFilter
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                   ],
                 ),
@@ -695,7 +755,11 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             ],
 
             const SizedBox(width: 12),
-            Container(width: 1, height: 24, color: theme.dividerColor.withValues(alpha: 0.4)),
+            Container(
+              width: 1,
+              height: 24,
+              color: theme.dividerColor.withValues(alpha: 0.4),
+            ),
             const SizedBox(width: 12),
 
             // Compact User Selector
@@ -703,37 +767,56 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               onTap: () => _showUserPickerAdaptive(cubit, state),
               borderRadius: BorderRadius.circular(10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: state.profileFilter != null
-                      ? AppColors.primary.withValues(alpha: 0.08)
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color:
+                      state.profileFilter != null
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: state.profileFilter != null
-                        ? AppColors.primary.withValues(alpha: 0.3)
-                        : theme.dividerColor.withValues(alpha: 0.4),
+                    color:
+                        state.profileFilter != null
+                            ? AppColors.primary.withValues(alpha: 0.3)
+                            : theme.dividerColor.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      state.profileFilter == null ? Icons.group_rounded : Icons.person_rounded,
+                      state.profileFilter == null
+                          ? Icons.group_rounded
+                          : Icons.person_rounded,
                       size: 16,
-                      color: state.profileFilter != null ? AppColors.primary : AppColors.textSecondary,
+                      color:
+                          state.profileFilter != null
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 8),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 160),
                       child: Text(
-                        state.isLoadingProfiles ? 'Cargando...' : selectedUserName,
+                        state.isLoadingProfiles
+                            ? 'Cargando...'
+                            : selectedUserName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: state.profileFilter != null ? FontWeight.w700 : FontWeight.w500,
-                          color: state.profileFilter != null ? AppColors.primary : theme.colorScheme.onSurface,
+                          fontWeight:
+                              state.profileFilter != null
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                          color:
+                              state.profileFilter != null
+                                  ? AppColors.primary
+                                  : theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -741,7 +824,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                     Icon(
                       Icons.keyboard_arrow_down_rounded,
                       size: 16,
-                      color: state.profileFilter != null ? AppColors.primary : AppColors.textSecondary,
+                      color:
+                          state.profileFilter != null
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                   ],
                 ),
@@ -764,7 +850,9 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -787,7 +875,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4), width: 0.5),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -815,21 +906,28 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
               duration: const Duration(milliseconds: 160),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: hasDateFilter
-                    ? AppColors.primary.withValues(alpha: 0.07)
-                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color:
+                    hasDateFilter
+                        ? AppColors.primary.withValues(alpha: 0.07)
+                        : theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.3,
+                        ),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: hasDateFilter
-                      ? AppColors.primary.withValues(alpha: 0.3)
-                      : theme.dividerColor.withValues(alpha: 0.4),
+                  color:
+                      hasDateFilter
+                          ? AppColors.primary.withValues(alpha: 0.3)
+                          : theme.dividerColor.withValues(alpha: 0.4),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.calendar_month_rounded,
-                    color: hasDateFilter ? AppColors.primary : AppColors.textSecondary,
+                    color:
+                        hasDateFilter
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
                     size: 17,
                   ),
                   const SizedBox(width: 10),
@@ -838,8 +936,12 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                       hasDateFilter ? dateLabel : 'Filtrar por fecha',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: hasDateFilter ? FontWeight.w700 : FontWeight.w600,
-                        color: hasDateFilter ? AppColors.primary : theme.colorScheme.onSurface,
+                        fontWeight:
+                            hasDateFilter ? FontWeight.w700 : FontWeight.w600,
+                        color:
+                            hasDateFilter
+                                ? AppColors.primary
+                                : theme.colorScheme.onSurface,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -868,22 +970,33 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: theme.dividerColor.withValues(alpha: 0.4),
+                ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    state.profileFilter == null ? Icons.group_rounded : Icons.person_rounded,
+                    state.profileFilter == null
+                        ? Icons.group_rounded
+                        : Icons.person_rounded,
                     color: AppColors.primary,
                     size: 18,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      state.isLoadingProfiles ? 'Cargando usuarios...' : selectedUserName,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      state.isLoadingProfiles
+                          ? 'Cargando usuarios...'
+                          : selectedUserName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -914,7 +1027,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           color: isSelected ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Theme.of(context).dividerColor.withValues(alpha: 0.4),
+            color:
+                isSelected
+                    ? AppColors.primary
+                    : Theme.of(context).dividerColor.withValues(alpha: 0.4),
             width: 0.5,
           ),
         ),
@@ -923,7 +1039,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
           style: TextStyle(
             fontSize: 12.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+            color:
+                isSelected
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ),
@@ -940,7 +1059,10 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4), width: 0.5),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: 0.4),
+            width: 0.5,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -956,17 +1078,47 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             children: [
               // Header Row
               Container(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
                 child: const Row(
                   children: [
-                    SizedBox(width: 110, child: Text('ESTADO', style: _tableHeaderStyle)),
-                    Expanded(flex: 3, child: Text('CAJA / CUENTA', style: _tableHeaderStyle)),
-                    Expanded(flex: 2, child: Text('RESPONSABLE', style: _tableHeaderStyle)),
-                    Expanded(flex: 2, child: Text('APERTURA', style: _tableHeaderStyle)),
-                    Expanded(flex: 2, child: Text('CIERRE', style: _tableHeaderStyle)),
-                    Expanded(flex: 2, child: Text('DIFERENCIA', style: _tableHeaderStyle)),
-                    SizedBox(width: 140, child: Text('ACCIONES', style: _tableHeaderStyle, textAlign: TextAlign.right)),
+                    SizedBox(
+                      width: 110,
+                      child: Text('ESTADO', style: _tableHeaderStyle),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text('CAJA / CUENTA', style: _tableHeaderStyle),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('RESPONSABLE', style: _tableHeaderStyle),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('APERTURA', style: _tableHeaderStyle),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('CIERRE', style: _tableHeaderStyle),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text('DIFERENCIA', style: _tableHeaderStyle),
+                    ),
+                    SizedBox(
+                      width: 140,
+                      child: Text(
+                        'ACCIONES',
+                        style: _tableHeaderStyle,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -984,8 +1136,13 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
                   child: _DesktopTableRow(
                     key: ValueKey(state.shifts[i].id),
                     shift: state.shifts[i],
-                    onTap: () => _showShiftDetailAdaptive(context, state.shifts[i]),
-                    onClose: state.shifts[i].isOpen ? () => _handleCloseShift(state.shifts[i]) : null,
+                    onTap:
+                        () =>
+                            _showShiftDetailAdaptive(context, state.shifts[i]),
+                    onClose:
+                        state.shifts[i].isOpen
+                            ? () => _handleCloseShift(state.shifts[i])
+                            : null,
                   ),
                 ),
               ],
@@ -1027,13 +1184,17 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.point_of_sale_rounded,
                 size: 48,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.6,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1103,9 +1264,10 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
       child: InkWell(
         onTap: widget.onTap,
         child: Container(
-          color: _isHovered
-              ? theme.colorScheme.primary.withValues(alpha: 0.03)
-              : Colors.transparent,
+          color:
+              _isHovered
+                  ? theme.colorScheme.primary.withValues(alpha: 0.03)
+                  : Colors.transparent,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: Row(
             children: [
@@ -1126,14 +1288,19 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: (isOpen ? AppColors.success : AppColors.textSecondary)
+                        color: (isOpen
+                                ? AppColors.success
+                                : AppColors.textSecondary)
                             .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.point_of_sale_rounded,
                         size: 16,
-                        color: isOpen ? AppColors.success : AppColors.textSecondary,
+                        color:
+                            isOpen
+                                ? AppColors.success
+                                : AppColors.textSecondary,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1173,7 +1340,8 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                   children: [
                     CircleAvatar(
                       radius: 12,
-                      backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                       child: Text(
                         (shift.openedByName?.isNotEmpty == true)
                             ? shift.openedByName![0].toUpperCase()
@@ -1189,7 +1357,10 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                     Expanded(
                       child: Text(
                         shift.openedByName ?? 'Desconocido',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1226,78 +1397,97 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
               // Cierre
               Expanded(
                 flex: 2,
-                child: isOpen
-                    ? Text(
-                        'En curso...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                          color: AppColors.success.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'S/ ${(shift.actualAmount ?? 0.0).toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              fontFeatures: [FontFeature.tabularFigures()],
-                            ),
+                child:
+                    isOpen
+                        ? Text(
+                          'En curso...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.success.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w600,
                           ),
-                          if (shift.closedAt != null)
+                        )
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              DateFormat('dd/MM HH:mm').format(shift.closedAt!),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
+                              'S/ ${(shift.actualAmount ?? 0.0).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: [FontFeature.tabularFigures()],
                               ),
                             ),
-                        ],
-                      ),
+                            if (shift.closedAt != null)
+                              Text(
+                                DateFormat(
+                                  'dd/MM HH:mm',
+                                ).format(shift.closedAt!),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
               ),
 
               // Diferencia
               Expanded(
                 flex: 2,
-                child: !isOpen && hasDiff
-                    ? Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: diff == 0
-                                  ? AppColors.slateLight
-                                  : (diff > 0
-                                      ? AppColors.success.withValues(alpha: 0.12)
-                                      : AppColors.danger.withValues(alpha: 0.12)),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              diff == 0
-                                  ? 'S/ 0.00'
-                                  : (diff > 0
-                                      ? '+S/ ${diff.toStringAsFixed(2)}'
-                                      : '-S/ ${diff.abs().toStringAsFixed(2)}'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                                color: diff == 0
-                                    ? AppColors.textSecondary
-                                    : (diff > 0 ? AppColors.success : AppColors.danger),
+                child:
+                    !isOpen && hasDiff
+                        ? Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    diff == 0
+                                        ? AppColors.slateLight
+                                        : (diff > 0
+                                            ? AppColors.success.withValues(
+                                              alpha: 0.12,
+                                            )
+                                            : AppColors.danger.withValues(
+                                              alpha: 0.12,
+                                            )),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                diff == 0
+                                    ? 'S/ 0.00'
+                                    : (diff > 0
+                                        ? '+S/ ${diff.toStringAsFixed(2)}'
+                                        : '-S/ ${diff.abs().toStringAsFixed(2)}'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                  color:
+                                      diff == 0
+                                          ? AppColors.textSecondary
+                                          : (diff > 0
+                                              ? AppColors.success
+                                              : AppColors.danger),
+                                ),
                               ),
                             ),
+                          ],
+                        )
+                        : Text(
+                          '-',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                        ],
-                      )
-                    : Text(
-                        '-',
-                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                        ),
               ),
 
               // Acciones
@@ -1308,30 +1498,48 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                   children: [
                     if (isOpen && widget.onClose != null)
                       FilledButton.icon(
-                        onPressed: _isClosing
-                            ? null
-                            : () async {
-                                setState(() => _isClosing = true);
-                                widget.onClose!();
-                                if (mounted) setState(() => _isClosing = false);
-                              },
+                        onPressed:
+                            _isClosing
+                                ? null
+                                : () async {
+                                  setState(() => _isClosing = true);
+                                  widget.onClose!();
+                                  if (mounted) {
+                                    setState(() => _isClosing = false);
+                                  }
+                                },
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.amberDark,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 0,
+                          ),
                           visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        icon: _isClosing
-                            ? const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.lock_clock_rounded, size: 14),
+                        icon:
+                            _isClosing
+                                ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(
+                                  Icons.lock_clock_rounded,
+                                  size: 14,
+                                ),
                         label: const Text(
                           'Cerrar',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       )
                     else
@@ -1410,14 +1618,17 @@ class _MobileShiftCardState extends State<_MobileShiftCard> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (isOpen ? AppColors.success : AppColors.textSecondary)
+                      color: (isOpen
+                              ? AppColors.success
+                              : AppColors.textSecondary)
                           .withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.point_of_sale_rounded,
                       size: 18,
-                      color: isOpen ? AppColors.success : AppColors.textSecondary,
+                      color:
+                          isOpen ? AppColors.success : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1443,7 +1654,9 @@ class _MobileShiftCardState extends State<_MobileShiftCard> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              DateFormat('dd MMM, HH:mm').format(shift.openedAt),
+                              DateFormat(
+                                'dd MMM, HH:mm',
+                              ).format(shift.openedAt),
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: theme.colorScheme.onSurfaceVariant,
@@ -1469,7 +1682,11 @@ class _MobileShiftCardState extends State<_MobileShiftCard> {
               ),
 
               const SizedBox(height: 12),
-              Divider(height: 1, thickness: 0.5, color: theme.dividerColor.withValues(alpha: 0.3)),
+              Divider(
+                height: 1,
+                thickness: 0.5,
+                color: theme.dividerColor.withValues(alpha: 0.3),
+              ),
               const SizedBox(height: 12),
 
               // Financial Values Row
@@ -1546,10 +1763,15 @@ class _MobileShiftCardState extends State<_MobileShiftCard> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                              color: diff == 0
-                                  ? AppColors.textSecondary
-                                  : (diff > 0 ? AppColors.success : AppColors.danger),
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                              color:
+                                  diff == 0
+                                      ? AppColors.textSecondary
+                                      : (diff > 0
+                                          ? AppColors.success
+                                          : AppColors.danger),
                             ),
                           ),
                         ],
@@ -1563,26 +1785,33 @@ class _MobileShiftCardState extends State<_MobileShiftCard> {
               if (isOpen && widget.onClose != null) ...[
                 const SizedBox(height: 14),
                 FilledButton.icon(
-                  onPressed: _isClosing
-                      ? null
-                      : () async {
-                          setState(() => _isClosing = true);
-                          widget.onClose!();
-                          if (mounted) setState(() => _isClosing = false);
-                        },
+                  onPressed:
+                      _isClosing
+                          ? null
+                          : () async {
+                            setState(() => _isClosing = true);
+                            widget.onClose!();
+                            if (mounted) setState(() => _isClosing = false);
+                          },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.amberDark,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(42),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  icon: _isClosing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.lock_clock_rounded, size: 16),
+                  icon:
+                      _isClosing
+                          ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.lock_clock_rounded, size: 16),
                   label: const Text(
                     'Cerrar Turno de Caja',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
@@ -1608,14 +1837,16 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isOpen
-            ? AppColors.success.withValues(alpha: 0.12)
-            : AppColors.slateLight.withValues(alpha: 0.8),
+        color:
+            isOpen
+                ? AppColors.success.withValues(alpha: 0.12)
+                : AppColors.slateLight.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isOpen
-              ? AppColors.success.withValues(alpha: 0.3)
-              : AppColors.border,
+          color:
+              isOpen
+                  ? AppColors.success.withValues(alpha: 0.3)
+                  : AppColors.border,
           width: 0.5,
         ),
       ),
@@ -1670,7 +1901,10 @@ class _KpiCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4), width: 0.5),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -1754,7 +1988,9 @@ class _ShiftDetailDialog extends StatelessWidget {
                   if (onCloseShift != null) ...[
                     const SizedBox(width: 8),
                     FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.amberDark),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.amberDark,
+                      ),
                       onPressed: onCloseShift,
                       icon: const Icon(Icons.lock_clock_rounded, size: 16),
                       label: const Text('Cerrar Turno Ahora'),
@@ -1796,7 +2032,9 @@ class _ShiftDetailSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1809,11 +2047,16 @@ class _ShiftDetailSheet extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.amberDark,
                     minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: onCloseShift,
                   icon: const Icon(Icons.lock_clock_rounded, size: 18),
-                  label: const Text('Cerrar Turno Ahora', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Cerrar Turno Ahora',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
             ],
           ),
@@ -1844,7 +2087,8 @@ class _ShiftDetailContent extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (isOpen ? AppColors.success : AppColors.textSecondary).withValues(alpha: 0.1),
+                color: (isOpen ? AppColors.success : AppColors.textSecondary)
+                    .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -1860,11 +2104,17 @@ class _ShiftDetailContent extends StatelessWidget {
                 children: [
                   Text(
                     shift.accountName ?? 'Caja General',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   Text(
                     'ID: ${shift.id.substring(0, shift.id.length > 8 ? 8 : shift.id.length)}...',
-                    style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -1878,9 +2128,13 @@ class _ShiftDetailContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.3,
+            ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.3),
+            ),
           ),
           child: Column(
             children: [
@@ -1912,7 +2166,9 @@ class _ShiftDetailContent extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.5),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1933,14 +2189,20 @@ class _ShiftDetailContent extends StatelessWidget {
                 if (shift.expectedAmount != null)
                   _buildAmountRow('Monto Esperado', shift.expectedAmount!),
                 const SizedBox(height: 8),
-                _buildAmountRow('Monto Real al Cierre', shift.actualAmount ?? 0.0),
+                _buildAmountRow(
+                  'Monto Real al Cierre',
+                  shift.actualAmount ?? 0.0,
+                ),
                 const Divider(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'Diferencia de Caja:',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     Text(
                       diff == 0
@@ -1951,9 +2213,12 @@ class _ShiftDetailContent extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: diff == 0
-                            ? AppColors.textSecondary
-                            : (diff > 0 ? AppColors.success : AppColors.danger),
+                        color:
+                            diff == 0
+                                ? AppColors.textSecondary
+                                : (diff > 0
+                                    ? AppColors.success
+                                    : AppColors.danger),
                       ),
                     ),
                   ],
@@ -1974,7 +2239,11 @@ class _ShiftDetailContent extends StatelessWidget {
           width: 80,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
           ),
         ),
         Expanded(
@@ -1991,7 +2260,10 @@ class _ShiftDetailContent extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
         Text(
           'S/ ${amount.toStringAsFixed(2)}',
           style: const TextStyle(

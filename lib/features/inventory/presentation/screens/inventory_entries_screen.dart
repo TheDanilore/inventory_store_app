@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
@@ -329,61 +330,29 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   Future<void> _openDesktopDetailSheet(InventoryEntryEntity entry) async {
     if (!mounted || _isSideSheetOpen) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     _isSideSheetOpen = true;
     _selectEntry(entry, updateUrl: true);
 
-    await showGeneralDialog(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar detalle',
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: drawerWidth,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 24,
-                    offset: Offset(-4, 0),
-                  ),
-                ],
-              ),
-              child: InventoryEntryDetailSheet(
-                entry: entry,
-                isBottomSheet: false,
-                loadItems: () => _loadEntryItems(entry.id, null),
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, anim, secAnim, child) {
-        final curvedAnim = CurvedAnimation(
-          parent: anim,
-          curve: Curves.easeOutCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(curvedAnim),
-          child: child,
+    await AdaptiveSideSheet.show<void>(
+      context: context,
+      desktopWidth: drawerWidth,
+      barrierLabel: 'Cerrar detalle de entrada',
+      builder: (dialogContext, isSlideOver) {
+        return InventoryEntryDetailSheet(
+          entry: entry,
+          isBottomSheet: !isSlideOver,
+          loadItems: () => _loadEntryItems(entry.id, null),
         );
       },
     );
     _isSideSheetOpen = false;
+    if (mounted && _isTableView) {
+      _selectEntry(null, updateUrl: true);
+    }
   }
 
   Future<List<InventoryEntryItemModel>> _loadEntryItems(
@@ -492,17 +461,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     BuildContext context,
     InventoryEntryEntity entry,
   ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => InventoryEntryDetailSheet(
-            entry: entry,
-            isBottomSheet: true,
-            loadItems: () => _loadEntryItems(entry.id, null),
-          ),
-    );
+    _openDesktopDetailSheet(entry);
   }
 
   @override
@@ -539,8 +498,10 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                 title: 'Error al cargar entradas',
                 message: state.message,
                 action: ElevatedButton.icon(
-                  onPressed: () =>
-                      context.read<InventoryEntriesCubit>().loadEntries(page: 0),
+                  onPressed:
+                      () => context.read<InventoryEntriesCubit>().loadEntries(
+                        page: 0,
+                      ),
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Reintentar'),
                 ),
@@ -610,7 +571,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                       icon: const Icon(Icons.refresh_rounded),
                       tooltip: 'Actualizar entradas',
                       onPressed: () {
-                        context.read<InventoryEntriesCubit>().loadEntries(page: 0);
+                        context.read<InventoryEntriesCubit>().loadEntries(
+                          page: 0,
+                        );
                       },
                     ),
                   ],
@@ -689,9 +652,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                       vertical: 6,
                                     ),
                                     visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.warning.withValues(
-                                      alpha: 0.2,
-                                    ),
+                                    backgroundColor: AppColors.warning
+                                        .withValues(alpha: 0.2),
                                     foregroundColor: AppColors.warning,
                                   ),
                                   child: const Text('Continuar'),
@@ -737,9 +699,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                           onClearSearch: () {
                             _searchDebounce?.cancel();
                             _searchCtrl.clear();
-                            context.read<InventoryEntriesCubit>().setSearchQuery(
-                              '',
-                            );
+                            context
+                                .read<InventoryEntriesCubit>()
+                                .setSearchQuery('');
                           },
                           filterWidgets: [
                             _buildWarehouseDropdown(context, currentState),
@@ -748,9 +710,13 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                               borderRadius: BorderRadius.circular(10),
                               dateRange: currentState.dateRange,
                               onDateRangeSelected:
-                                  context.read<InventoryEntriesCubit>().setDateRange,
-                              onClear: () =>
-                                  context.read<InventoryEntriesCubit>().setDateRange(null),
+                                  context
+                                      .read<InventoryEntriesCubit>()
+                                      .setDateRange,
+                              onClear:
+                                  () => context
+                                      .read<InventoryEntriesCubit>()
+                                      .setDateRange(null),
                             ),
                           ],
                           viewToggleConfig: AdminProViewToggleConfig(
@@ -764,10 +730,14 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                             );
                           },
                           primaryAction: AdminProToolbarAction(
-                            label: _hasDraft ? 'Continuar Borrador' : 'Nueva Entrada',
-                            icon: _hasDraft
-                                ? Icons.edit_note_rounded
-                                : Icons.add_box_rounded,
+                            label:
+                                _hasDraft
+                                    ? 'Continuar Borrador'
+                                    : 'Nueva Entrada',
+                            icon:
+                                _hasDraft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.add_box_rounded,
                             onPressed: _onNewEntry,
                             keyHint: 'N',
                             isHighlighted: _hasDraft,
@@ -957,13 +927,9 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
   }) {
     if (isLoading) {
       if (_isTableView && isTablet) {
-        return const SliverToBoxAdapter(
-          child: AppTableShimmer(),
-        );
+        return const SliverToBoxAdapter(child: AppTableShimmer());
       }
-      return const SliverToBoxAdapter(
-        child: _EntriesSkeleton(),
-      );
+      return const SliverToBoxAdapter(child: _EntriesSkeleton());
     }
 
     if (state.entries.isEmpty) {
@@ -999,35 +965,29 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        delegate: SliverChildBuilderDelegate(
-          (context, i) {
-            final entry = displayEntries[i];
-            return _EntryCard(
-              entry: entry,
-              isSelected: _selectedEntry?.id == entry.id,
-              onTap: () => _openDesktopDetailSheet(entry),
-            );
-          },
-          childCount: displayEntries.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final entry = displayEntries[i];
+          return _EntryCard(
+            entry: entry,
+            isSelected: _selectedEntry?.id == entry.id,
+            onTap: () => _openDesktopDetailSheet(entry),
+          );
+        }, childCount: displayEntries.length),
       );
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, i) {
-          final entry = displayEntries[i];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _EntryCard(
-              entry: entry,
-              isSelected: false,
-              onTap: () => _onEntryTapped(context, entry, false),
-            ),
-          );
-        },
-        childCount: displayEntries.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, i) {
+        final entry = displayEntries[i];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _EntryCard(
+            entry: entry,
+            isSelected: false,
+            onTap: () => _onEntryTapped(context, entry, false),
+          ),
+        );
+      }, childCount: displayEntries.length),
     );
   }
 
@@ -1224,8 +1184,6 @@ class _BentoEntryKpiCard extends StatelessWidget {
     );
   }
 }
-
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ENTRY CARD

@@ -99,8 +99,7 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
                   label: 'Nombre o Razón Social *',
                   icon: Icons.business_rounded,
                   validator:
-                      (v) =>
-                          v == null || v.trim().isEmpty ? 'Requerido' : null,
+                      (v) => v == null || v.trim().isEmpty ? 'Requerido' : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -339,20 +338,10 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
       },
     );
 
-    // --- DISEÑO DESKTOP (Diálogo Corporativo Elegante) ---
+    // --- DISEÑO DESKTOP (Side-Sheet Corporativo Elegante) ---
     if (isDesktop) {
       return Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 28,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+        color: AppColors.surface,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -26,6 +26,7 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   final String? targetOrderId;
@@ -337,31 +338,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return KeyEventResult.ignored;
   }
 
-  void _showDetail(BuildContext context, PurchaseOrderModel po) async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final cubit = context.read<PurchaseOrdersCubit>();
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => BlocProvider.value(
-            value: cubit,
-            child: PODetailSheet(
-              po: po,
-              onPaymentSuccess: () {
-                _itemsCache.remove(po.id);
-                // Zero-Egress: El Cubit ya muta la orden en memoria RAM.
-                // No se fuerza loadOrders(refresh: true) para evitar peticiones redundantes.
-              },
-              loadItems: () => _loadOrderItems(po.id),
-              onReceive: () => _handleReceiveOrder(context, po),
-              onUpdateStatus: (status) async {
-                await viewModel.updateOrderStatus(po.id, status);
-              },
-            ),
-          ),
-    );
+  void _showDetail(BuildContext context, PurchaseOrderModel po) {
+    _openDesktopDetailSheet(po);
   }
 
   bool _isSideSheetOpen = false;
@@ -373,64 +351,28 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _selectOrder(po, updateUrl: true);
 
     final cubit = context.read<PurchaseOrdersCubit>();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    await showGeneralDialog(
+    await AdaptiveSideSheet.show<void>(
       context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar detalle',
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
-
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: drawerWidth,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 24,
-                    offset: Offset(-4, 0),
-                  ),
-                ],
-              ),
-              child: BlocProvider.value(
-                value: cubit,
-                child: PODetailSheet(
-                  po: po,
-                  isDialog: true,
-                  onPaymentSuccess: () {
-                    _itemsCache.remove(po.id);
-                    // Zero-Egress: El Cubit ya muta la orden en memoria RAM.
-                  },
-                  loadItems: () => _loadOrderItems(po.id),
-                  onReceive: () => _handleReceiveOrder(dialogContext, po),
-                  onUpdateStatus: (status) async {
-                    await viewModel.updateOrderStatus(po.id, status);
-                  },
-                ),
-              ),
-            ),
+      desktopWidth: drawerWidth,
+      barrierLabel: 'Cerrar detalle de compra',
+      builder: (dialogCtx, isSlideOver) {
+        return BlocProvider.value(
+          value: cubit,
+          child: PODetailSheet(
+            po: po,
+            isDialog: isSlideOver,
+            onPaymentSuccess: () {
+              _itemsCache.remove(po.id);
+            },
+            loadItems: () => _loadOrderItems(po.id),
+            onReceive: () => _handleReceiveOrder(dialogCtx, po),
+            onUpdateStatus: (status) async {
+              await viewModel.updateOrderStatus(po.id, status);
+            },
           ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-          ),
-          child: child,
         );
       },
     );
@@ -1046,254 +988,263 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   minHeight: 2,
                                 ),
                               ),
-                          // ── Borrador ──────────────────────────────────────────────
-                          if (_hasDraft)
-                            SliverToBoxAdapter(
-                              child: Container(
-                                margin: const EdgeInsets.fromLTRB(
-                                  16,
-                                  14,
-                                  16,
-                                  0,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(
-                                    alpha: 0.1,
+                            // ── Borrador ──────────────────────────────────────────────
+                            if (_hasDraft)
+                              SliverToBoxAdapter(
+                                child: Container(
+                                  margin: const EdgeInsets.fromLTRB(
+                                    16,
+                                    14,
+                                    16,
+                                    0,
                                   ),
-                                  border: Border.all(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color: AppColors.warning.withValues(
-                                      alpha: 0.3,
+                                      alpha: 0.1,
                                     ),
+                                    border: Border.all(
+                                      color: AppColors.warning.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.edit_document,
-                                      color: AppColors.warning,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Expanded(
-                                      child: Text(
-                                        'Tienes un borrador de compra en progreso.',
-                                        style: TextStyle(
-                                          color: AppColors.warning,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.edit_document,
+                                        color: AppColors.warning,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Expanded(
+                                        child: Text(
+                                          'Tienes un borrador de compra en progreso.',
+                                          style: TextStyle(
+                                            color: AppColors.warning,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    FilledButton.tonal(
-                                      onPressed: () {
-                                        context.go('/purchase-orders/form');
-                                      },
-                                      style: FilledButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
+                                      FilledButton.tonal(
+                                        onPressed: () {
+                                          context.go('/purchase-orders/form');
+                                        },
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                          backgroundColor: AppColors.warning
+                                              .withValues(alpha: 0.2),
+                                          foregroundColor: AppColors.warning,
                                         ),
-                                        visualDensity: VisualDensity.compact,
-                                        backgroundColor: AppColors.warning
-                                            .withValues(alpha: 0.2),
-                                        foregroundColor: AppColors.warning,
+                                        child: const Text('Continuar'),
                                       ),
-                                      child: const Text('Continuar'),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
 
-                          // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                              child: _PurchaseOrdersBentoKpiBar(
-                                orderCount: viewModel.orders.length,
-                                totalRecords: viewModel.totalCount,
-                                totalAmount: totalAmount,
-                                pendingCount: pendingCount,
-                                totalDebt: totalDebt,
-                                isDesktop: isTablet,
-                              ),
-                            ),
-                          ),
-
-                          // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
-                          SliverToBoxAdapter(
-                            child: AdminProToolbar(
-                              isDesktop: isTablet,
-                              searchController: _searchCtrl,
-                              searchFocusNode: _searchFocusNode,
-                              searchHint:
-                                  'Buscar por proveedor, documento o ID...',
-                              onSearchChanged: (v) {
-                                _debounce?.cancel();
-                                _debounce = Timer(
-                                  const Duration(milliseconds: 300),
-                                  () => viewModel.setSearchText(v),
-                                );
-                              },
-                              onClearSearch: () {
-                                _searchCtrl.clear();
-                                viewModel.setSearchText('');
-                              },
-                              filterWidgets: [
-                                _buildStatusDropdown(context, viewModel),
-                                DateFilterCalendar(
-                                  height: 40,
-                                  borderRadius: BorderRadius.circular(10),
-                                  dateRange: viewModel.dateRange,
-                                  onDateRangeSelected: (picked) {
-                                    viewModel.setDateRange(picked);
-                                  },
-                                  onClear: () {
-                                    viewModel.setDateRange(null);
-                                  },
-                                ),
-                              ],
-                              viewToggleConfig: AdminProViewToggleConfig(
-                                isTableView: _isTableView,
-                                onToggleTableView:
-                                    (val) => setState(() => _isTableView = val),
-                              ),
-                              onRefresh: () {
-                                _itemsCache.clear();
-                                cubit.refresh();
-                              },
-                              primaryAction: AdminProToolbarAction(
-                                label:
-                                    _hasDraft
-                                        ? 'Continuar Borrador'
-                                        : 'Nueva Orden',
-                                icon:
-                                    _hasDraft
-                                        ? Icons.edit_note_rounded
-                                        : Icons.add_shopping_cart_rounded,
-                                onPressed:
-                                    () => context.go('/purchase-orders/form'),
-                                keyHint: 'N',
-                                isHighlighted: _hasDraft,
-                              ),
-                            ),
-                          ),
-
-                          // ── Encabezado de Navegación y Contador (Estilo Pedidos) ────
-                          if (!viewModel.isLoading && filtered.isNotEmpty)
+                            // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
-                                  4,
+                                  12,
                                   16,
-                                  10,
+                                  0,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      '${filtered.length} ${filtered.length == 1 ? "orden" : "órdenes"} en esta página',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                child: _PurchaseOrdersBentoKpiBar(
+                                  orderCount: viewModel.orders.length,
+                                  totalRecords: viewModel.totalCount,
+                                  totalAmount: totalAmount,
+                                  pendingCount: pendingCount,
+                                  totalDebt: totalDebt,
+                                  isDesktop: isTablet,
+                                ),
+                              ),
+                            ),
+
+                            // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
+                            SliverToBoxAdapter(
+                              child: AdminProToolbar(
+                                isDesktop: isTablet,
+                                searchController: _searchCtrl,
+                                searchFocusNode: _searchFocusNode,
+                                searchHint:
+                                    'Buscar por proveedor, documento o ID...',
+                                onSearchChanged: (v) {
+                                  _debounce?.cancel();
+                                  _debounce = Timer(
+                                    const Duration(milliseconds: 300),
+                                    () => viewModel.setSearchText(v),
+                                  );
+                                },
+                                onClearSearch: () {
+                                  _searchCtrl.clear();
+                                  viewModel.setSearchText('');
+                                },
+                                filterWidgets: [
+                                  _buildStatusDropdown(context, viewModel),
+                                  DateFilterCalendar(
+                                    height: 40,
+                                    borderRadius: BorderRadius.circular(10),
+                                    dateRange: viewModel.dateRange,
+                                    onDateRangeSelected: (picked) {
+                                      viewModel.setDateRange(picked);
+                                    },
+                                    onClear: () {
+                                      viewModel.setDateRange(null);
+                                    },
+                                  ),
+                                ],
+                                viewToggleConfig: AdminProViewToggleConfig(
+                                  isTableView: _isTableView,
+                                  onToggleTableView:
+                                      (val) =>
+                                          setState(() => _isTableView = val),
+                                ),
+                                onRefresh: () {
+                                  _itemsCache.clear();
+                                  cubit.refresh();
+                                },
+                                primaryAction: AdminProToolbarAction(
+                                  label:
+                                      _hasDraft
+                                          ? 'Continuar Borrador'
+                                          : 'Nueva Orden',
+                                  icon:
+                                      _hasDraft
+                                          ? Icons.edit_note_rounded
+                                          : Icons.add_shopping_cart_rounded,
+                                  onPressed:
+                                      () => context.go('/purchase-orders/form'),
+                                  keyHint: 'N',
+                                  isHighlighted: _hasDraft,
+                                ),
+                              ),
+                            ),
+
+                            // ── Encabezado de Navegación y Contador (Estilo Pedidos) ────
+                            if (!viewModel.isLoading && filtered.isNotEmpty)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    4,
+                                    16,
+                                    10,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '${filtered.length} ${filtered.length == 1 ? "orden" : "órdenes"} en esta página',
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    if (isTablet) ...[
-                                      const SizedBox(width: 8),
+                                      if (isTablet) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surface,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFE2E8F0),
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.keyboard_arrow_up_rounded,
+                                                size: 13,
+                                                color: AppColors.textMuted,
+                                              ),
+                                              Icon(
+                                                Icons
+                                                    .keyboard_arrow_down_rounded,
+                                                size: 13,
+                                                color: AppColors.textMuted,
+                                              ),
+                                              SizedBox(width: 2),
+                                              Text(
+                                                'navegar',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.textMuted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      const Spacer(),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
+                                          horizontal: 8,
+                                          vertical: 3,
                                         ),
                                         decoration: BoxDecoration(
                                           color: AppColors.surface,
                                           borderRadius: BorderRadius.circular(
-                                            4,
+                                            6,
                                           ),
                                           border: Border.all(
                                             color: const Color(0xFFE2E8F0),
                                           ),
                                         ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.keyboard_arrow_up_rounded,
-                                              size: 13,
-                                              color: AppColors.textMuted,
-                                            ),
-                                            Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              size: 13,
-                                              color: AppColors.textMuted,
-                                            ),
-                                            SizedBox(width: 2),
-                                            Text(
-                                              'navegar',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.textMuted,
-                                              ),
-                                            ),
-                                          ],
+                                        child: Text(
+                                          'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                     ],
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surface,
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: const Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Pág. ${viewModel.currentPage + 1} / ${viewModel.totalPages}',
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
+                              ),
+
+                            // ── Lista / Tabla de Órdenes en Slivers ─────────────────
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              sliver: _buildListOrTableSliver(
+                                viewModel: viewModel,
+                                displayOrders: displayOrders,
+                                filtered: filtered,
+                                isTablet: isTablet,
+                                context: context,
+                                cubit: cubit,
                               ),
                             ),
 
-                          // ── Lista / Tabla de Órdenes en Slivers ─────────────────
-                          SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                            sliver: _buildListOrTableSliver(
-                              viewModel: viewModel,
-                              displayOrders: displayOrders,
-                              filtered: filtered,
-                              isTablet: isTablet,
-                              context: context,
-                              cubit: cubit,
-                            ),
-                          ),
-
-                          // ── Paginación Fluida al Pie del Scroll ──────────────────
-                          _buildPaginationSliver(viewModel, context),
-                        ],
+                            // ── Paginación Fluida al Pie del Scroll ──────────────────
+                            _buildPaginationSliver(viewModel, context),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              );
+                  ],
+                );
 
                 return listContent;
               },

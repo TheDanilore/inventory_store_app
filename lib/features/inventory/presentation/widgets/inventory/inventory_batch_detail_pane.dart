@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 
 class InventoryBatchDetailPane extends StatelessWidget {
@@ -17,16 +18,22 @@ class InventoryBatchDetailPane extends StatelessWidget {
     this.isEmbedded = true,
   });
 
-  /// Muestra el detalle del lote como un Apple-style Modal BottomSheet en Móvil
+  /// Muestra el detalle del lote de forma adaptativa (Side-Sheet en Desktop, Bottom Sheet en Móvil)
   static Future<void> showAsBottomSheet(
     BuildContext context,
     InventoryBatchItem batch,
   ) {
-    return showModalBottomSheet(
+    return AdaptiveSideSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _BatchDetailBottomSheet(batch: batch),
+      desktopWidth: 460.0,
+      barrierLabel: 'Cerrar detalle de lote',
+      builder: (ctx, isSlideOver) {
+        return InventoryBatchDetailPane(
+          batch: batch,
+          isEmbedded: false,
+          onClose: () => Navigator.of(ctx).pop(),
+        );
+      },
     );
   }
 
@@ -186,10 +193,10 @@ class InventoryBatchDetailPane extends StatelessWidget {
             child:
                 batch.imageUrl != null && batch.imageUrl!.isNotEmpty
                     ? CachedNetworkImage(
-                        imageUrl: batch.imageUrl!,
-                        memCacheWidth: 150,
-                        memCacheHeight: 150,
-                        fit: BoxFit.cover,
+                      imageUrl: batch.imageUrl!,
+                      memCacheWidth: 150,
+                      memCacheHeight: 150,
+                      fit: BoxFit.cover,
                       placeholder:
                           (context, url) => Container(
                             color: AppColors.background,
@@ -694,49 +701,6 @@ class _DataRow extends StatelessWidget {
         ),
         if (trailing != null) ...[const SizedBox(width: 4), trailing!],
       ],
-    );
-  }
-}
-
-class _BatchDetailBottomSheet extends StatelessWidget {
-  final InventoryBatchItem batch;
-
-  const _BatchDetailBottomSheet({required this.batch});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag Handle Apple HIG
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 6),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: InventoryBatchDetailPane(
-                batch: batch,
-                isEmbedded: false,
-                onClose: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

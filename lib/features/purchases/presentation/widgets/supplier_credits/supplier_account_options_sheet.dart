@@ -5,12 +5,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum SupplierAccountAction {
-  viewHistory,
-  pay,
-  edit,
-  toggleStatus,
-}
+enum SupplierAccountAction { viewHistory, pay, edit, toggleStatus }
 
 class SupplierAccountOptionsSheet extends StatelessWidget {
   final SupplierCreditEntity account;
@@ -145,17 +140,17 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
 
         if (account.isActive && account.currentDebt > 0)
           ListTile(
-            leading: const Icon(
-              Icons.payments_rounded,
-              color: AppColors.teal,
-            ),
+            leading: const Icon(Icons.payments_rounded, color: AppColors.teal),
             title: const Text('Pagar al proveedor (Amortizar)'),
             onTap: () {
               Navigator.pop(context, SupplierAccountAction.pay);
             },
           ),
         ListTile(
-          leading: const Icon(Icons.edit_rounded, color: AppColors.textSecondary),
+          leading: const Icon(
+            Icons.edit_rounded,
+            color: AppColors.textSecondary,
+          ),
           title: const Text('Editar línea de crédito'),
           onTap: () {
             Navigator.pop(context, SupplierAccountAction.edit);
@@ -177,17 +172,9 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
     );
 
     if (isDialog) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        child: Container(
-          width: 420,
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [contentList],
-          ),
-        ),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [contentList]),
       );
     }
 
@@ -219,4 +206,3 @@ class SupplierAccountOptionsSheet extends StatelessWidget {
     );
   }
 }
-
