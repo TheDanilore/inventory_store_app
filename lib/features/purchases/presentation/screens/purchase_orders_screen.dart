@@ -23,6 +23,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
@@ -1278,164 +1279,72 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _BentoPOKpiCard(
-        title: 'Total Órdenes',
-        value: totalRecords > 0 ? '$totalRecords' : '$orderCount',
-        subtitle: 'Órdenes registradas',
-        icon: Icons.receipt_long_rounded,
-        iconColor: AppColors.tealDark,
-        iconBgColor: AppColors.tealLight,
-      ),
-      _BentoPOKpiCard(
-        title: 'Monto Compras',
-        value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Total compras',
-        icon: Icons.payments_rounded,
-        iconColor: AppColors.successDark,
-        iconBgColor: AppColors.successLight,
-      ),
-      _BentoPOKpiCard(
-        title: 'Por Recibir / Pend.',
-        value: '$pendingCount',
-        subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
-        icon:
-            pendingCount > 0
-                ? Icons.pending_actions_rounded
-                : Icons.check_circle_outline_rounded,
-        iconColor:
-            pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
-        iconBgColor:
-            pendingCount > 0 ? AppColors.warningLight : AppColors.successLight,
-      ),
-      _BentoPOKpiCard(
-        title: 'Saldo por Pagar',
-        value: 'S/ ${totalDebt.toStringAsFixed(2)}',
-        subtitle: totalDebt > 0 ? 'Cuentas pendientes' : 'Sin deudas',
-        icon: Icons.account_balance_wallet_rounded,
-        iconColor: totalDebt > 0 ? AppColors.accent : AppColors.tealDark,
-        iconBgColor:
-            totalDebt > 0
-                ? AppColors.accent.withValues(alpha: 0.12)
-                : AppColors.tealLight,
-      ),
-    ];
-
-    if (isDesktop) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[2]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[3]),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: cards.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
-      ),
+    return AdminKpiMetricsBar(
+      isDesktop: isDesktop,
+      padding: EdgeInsets.zero,
+      items: [
+        AdminKpiItem(
+          title: 'Total Órdenes',
+          value: totalRecords > 0 ? '$totalRecords' : '$orderCount',
+          subtitle: 'Órdenes registradas',
+          icon: Icons.receipt_long_rounded,
+          accentColor: AppColors.tealDark,
+          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: const Color(0xFF99F6E4),
+          glowColor: const Color(0x2E0D9488),
+        ),
+        AdminKpiItem(
+          title: 'Monto Compras',
+          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+          subtitle: 'Total compras',
+          icon: Icons.payments_rounded,
+          accentColor: AppColors.successDark,
+          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: const Color(0xFFA7F3D0),
+          glowColor: const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: 'Por Recibir / Pend.',
+          value: '$pendingCount',
+          subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
+          icon: pendingCount > 0
+              ? Icons.pending_actions_rounded
+              : Icons.check_circle_outline_rounded,
+          accentColor: pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
+          gradientColors: [
+            Colors.white,
+            pendingCount > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5),
+          ],
+          iconGradient: pendingCount > 0
+              ? const [Color(0xFFF59E0B), Color(0xFFD97706)]
+              : const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: pendingCount > 0 ? const Color(0xFFFDE68A) : const Color(0xFFA7F3D0),
+          glowColor: pendingCount > 0 ? const Color(0x2EF59E0B) : const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: 'Saldo por Pagar',
+          value: 'S/ ${totalDebt.toStringAsFixed(2)}',
+          subtitle: totalDebt > 0 ? 'Cuentas pendientes' : 'Sin deudas',
+          icon: Icons.account_balance_wallet_rounded,
+          accentColor: totalDebt > 0 ? AppColors.accent : AppColors.tealDark,
+          gradientColors: [
+            Colors.white,
+            totalDebt > 0 ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDFA),
+          ],
+          iconGradient: totalDebt > 0
+              ? const [Color(0xFFF43F5E), Color(0xFFE11D48)]
+              : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: totalDebt > 0 ? const Color(0xFFFECDD3) : const Color(0xFF99F6E4),
+          glowColor: totalDebt > 0 ? const Color(0x2EF43F5E) : const Color(0x2E0D9488),
+          valueColor: totalDebt > 0 ? AppColors.accent : AppColors.textPrimary,
+        ),
+      ],
     );
   }
 }
 
-class _BentoPOKpiCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBgColor;
-
-  const _BentoPOKpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBgColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _PurchaseOrdersViewModel {
   final PurchaseOrdersCubit cubit;

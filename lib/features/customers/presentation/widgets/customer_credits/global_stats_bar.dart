@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 
 class GlobalStatsBar extends StatelessWidget {
   final double totalDebt;
@@ -24,168 +25,77 @@ class GlobalStatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 800;
-
-    final cards = [
-      _BentoMetricCard(
-        title: 'Cuentas Activas',
-        value: '$activeAccounts',
-        subtitle:
-            suspendedAccounts > 0
-                ? '$suspendedAccounts suspendidas'
-                : '100% habilitadas',
-        icon: Icons.people_alt_rounded,
-        iconBgColor: AppColors.tealLight,
-        iconColor: AppColors.tealDark,
-      ),
-      _BentoMetricCard(
-        title: 'Al Límite (Riesgo)',
-        value: '$maxedOutAccounts',
-        subtitle:
-            maxedOutAccounts > 0 ? 'Requiere atención' : 'Líneas saludables',
-        icon: Icons.warning_amber_rounded,
-        iconBgColor:
-            maxedOutAccounts > 0 ? AppColors.dangerLight : AppColors.successLight,
-        iconColor:
-            maxedOutAccounts > 0 ? AppColors.danger : AppColors.successDark,
-        valueColor:
-            maxedOutAccounts > 0 ? AppColors.danger : AppColors.textPrimary,
-      ),
-      _BentoMetricCard(
-        title: 'Total por Cobrar',
-        value: _compact(totalDebt),
-        subtitle:
-            totalDebt > 0
-                ? (accountsWithDebt > 0
-                    ? '$accountsWithDebt clientes con saldo'
-                    : 'Deuda total por cobrar')
-                : 'Cuentas al día',
-        icon: Icons.account_balance_wallet_rounded,
-        iconBgColor: AppColors.primaryLight,
-        iconColor: AppColors.primary,
-        valueColor:
-            totalDebt > 0 ? AppColors.textPrimary : AppColors.successDark,
-      ),
-    ];
-
-    if (isDesktop) {
-      return Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Row(
-          children: [
-            Expanded(child: cards[0]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[1]),
-            const SizedBox(width: 12),
-            Expanded(child: cards[2]),
-          ],
+    return AdminKpiMetricsBar(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      items: [
+        AdminKpiItem(
+          title: 'Cuentas Activas',
+          value: '$activeAccounts',
+          subtitle: suspendedAccounts > 0
+              ? '$suspendedAccounts suspendidas'
+              : '100% habilitadas',
+          icon: Icons.people_alt_rounded,
+          accentColor: AppColors.tealDark,
+          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: const Color(0xFF99F6E4),
+          glowColor: const Color(0x2E0D9488),
         ),
-      );
-    }
-
-    // Móvil / Tablet: Scroll horizontal sutil
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: cards.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
-      ),
-    );
-  }
-}
-
-class _BentoMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
-  final Color? valueColor;
-
-  const _BentoMetricCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: valueColor ?? AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        AdminKpiItem(
+          title: 'Al Límite (Riesgo)',
+          value: '$maxedOutAccounts',
+          subtitle:
+              maxedOutAccounts > 0 ? 'Requiere atención' : 'Líneas saludables',
+          icon: Icons.warning_amber_rounded,
+          accentColor:
+              maxedOutAccounts > 0 ? AppColors.danger : AppColors.successDark,
+          gradientColors: [
+            Colors.white,
+            maxedOutAccounts > 0
+                ? const Color(0xFFFEF2F2)
+                : const Color(0xFFECFDF5),
+          ],
+          iconGradient: maxedOutAccounts > 0
+              ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+              : const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: maxedOutAccounts > 0
+              ? const Color(0xFFFECACA)
+              : const Color(0xFFA7F3D0),
+          glowColor: maxedOutAccounts > 0
+              ? const Color(0x2EEF4444)
+              : const Color(0x2E10B981),
+          valueColor:
+              maxedOutAccounts > 0 ? AppColors.danger : AppColors.textPrimary,
+          isAlert: maxedOutAccounts > 0,
+        ),
+        AdminKpiItem(
+          title: 'Total por Cobrar',
+          value: _compact(totalDebt),
+          subtitle: totalDebt > 0
+              ? (accountsWithDebt > 0
+                  ? '$accountsWithDebt clientes con saldo'
+                  : 'Deuda total por cobrar')
+              : 'Cuentas al día',
+          icon: Icons.account_balance_wallet_rounded,
+          accentColor:
+              totalDebt > 0 ? AppColors.primary : AppColors.successDark,
+          gradientColors: [
+            Colors.white,
+            totalDebt > 0
+                ? const Color(0xFFF8FAFC)
+                : const Color(0xFFECFDF5),
+          ],
+          iconGradient: totalDebt > 0
+              ? const [Color(0xFF334155), Color(0xFF1E293B)]
+              : const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor:
+              totalDebt > 0 ? const Color(0xFFE2E8F0) : const Color(0xFFA7F3D0),
+          glowColor:
+              totalDebt > 0 ? const Color(0x1F0F172A) : const Color(0x2E10B981),
+          valueColor:
+              totalDebt > 0 ? AppColors.textPrimary : AppColors.successDark,
+        ),
+      ],
     );
   }
 }

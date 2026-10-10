@@ -11,6 +11,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
@@ -1240,203 +1241,51 @@ class _OrdersBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _BentoOrderKpiCard(
-        title: 'Total Pedidos',
-        value: '$totalRecords',
-        subtitle: 'Pedidos registrados',
-        icon: Icons.receipt_long_rounded,
-        gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
-        iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
-        borderColor: const Color(0xFF99F6E4),
-        accentColor: const Color(0xFF0D9488),
-        glowColor: const Color(0x2E0D9488),
-      ),
-      _BentoOrderKpiCard(
-        title: 'Total Facturado',
-        value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-        subtitle: 'Total facturado en pág.',
-        icon: Icons.payments_rounded,
-        gradientColors: const [Colors.white, Color(0xFFECFDF5)],
-        iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
-        borderColor: const Color(0xFFA7F3D0),
-        accentColor: const Color(0xFF059669),
-        glowColor: const Color(0x2E10B981),
-      ),
-      _BentoOrderKpiCard(
-        title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
-        value: pendingDebt > 0
-            ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
-            : '$pendingCount',
-        subtitle: pendingDebt > 0
-            ? 'Créditos pendientes'
-            : 'Borradores por completar',
-        icon: pendingDebt > 0
-            ? Icons.credit_card_rounded
-            : Icons.pending_actions_rounded,
-        gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
-        iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
-        borderColor: const Color(0xFFFDE68A),
-        accentColor: const Color(0xFFD97706),
-        glowColor: const Color(0x2EF59E0B),
-      ),
-    ];
-
-    if (isWide) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 14),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 14),
-          Expanded(child: cards[2]),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 90,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: cards.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 240, child: cards[index]),
-      ),
+    return AdminKpiMetricsBar(
+      isDesktop: isWide,
+      padding: EdgeInsets.zero,
+      items: [
+        AdminKpiItem(
+          title: 'Total Pedidos',
+          value: '$totalRecords',
+          subtitle: 'Pedidos registrados',
+          icon: Icons.receipt_long_rounded,
+          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: const Color(0xFF99F6E4),
+          accentColor: const Color(0xFF0D9488),
+          glowColor: const Color(0x2E0D9488),
+        ),
+        AdminKpiItem(
+          title: 'Total Facturado',
+          value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
+          subtitle: 'Total facturado en pág.',
+          icon: Icons.payments_rounded,
+          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: const Color(0xFFA7F3D0),
+          accentColor: const Color(0xFF059669),
+          glowColor: const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
+          value: pendingDebt > 0
+              ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
+              : '$pendingCount',
+          subtitle: pendingDebt > 0
+              ? 'Créditos pendientes'
+              : 'Borradores por completar',
+          icon: pendingDebt > 0
+              ? Icons.credit_card_rounded
+              : Icons.pending_actions_rounded,
+          gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
+          iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+          borderColor: const Color(0xFFFDE68A),
+          accentColor: const Color(0xFFD97706),
+          glowColor: const Color(0x2EF59E0B),
+        ),
+      ],
     );
   }
 }
 
-class _BentoOrderKpiCard extends StatefulWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final List<Color> gradientColors;
-  final List<Color> iconGradient;
-  final Color borderColor;
-  final Color accentColor;
-  final Color glowColor;
-
-  const _BentoOrderKpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.gradientColors,
-    required this.iconGradient,
-    required this.borderColor,
-    required this.accentColor,
-    required this.glowColor,
-  });
-
-  @override
-  State<_BentoOrderKpiCard> createState() => _BentoOrderKpiCardState();
-}
-
-class _BentoOrderKpiCardState extends State<_BentoOrderKpiCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        transform: Matrix4.translationValues(0, _isHovered ? -2.0 : 0, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: widget.gradientColors,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _isHovered
-                ? widget.accentColor.withValues(alpha: 0.6)
-                : widget.borderColor,
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _isHovered ? widget.glowColor : const Color(0x060F172A),
-              blurRadius: _isHovered ? 14 : 6,
-              offset: Offset(0, _isHovered ? 4 : 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: widget.iconGradient,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.glowColor,
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Icon(widget.icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    widget.title.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: widget.accentColor,
-                      letterSpacing: 0.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.value,
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.4,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    widget.subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

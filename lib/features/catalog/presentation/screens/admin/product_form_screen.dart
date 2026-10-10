@@ -200,20 +200,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     _handleExit();
   }
 
-  Future<void> _navigateWithConfirm(String route) async {
-    final cubit = context.read<ProductFormCubit>();
-    if (cubit.hasUnsavedChanges) {
-      final shouldLeave = await _onWillPop();
-      if (!shouldLeave || !mounted) return;
-    }
-    if (mounted) {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      } else {
-        context.go(route);
-      }
-    }
-  }
 
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
@@ -451,7 +437,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Título Principal y Miga de Pan Interactiva integrada en el Canvas
+        // Título Principal y Subtítulo Ejecutivo (Las migas de pan ya viven en la barra superior persistente)
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,64 +452,16 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () => _navigateWithConfirm('/catalog'),
-                    borderRadius: BorderRadius.circular(4),
-                    child: const Text(
-                      'Catálogo',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                      '›',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () => _navigateWithConfirm('/products'),
-                    borderRadius: BorderRadius.circular(4),
-                    child: const Text(
-                      'Productos',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                      '›',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    isEdit ? 'Editar' : 'Nuevo Producto',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                isEdit
+                    ? 'Actualiza los datos técnicos, inventario, precios y variantes'
+                    : 'Registra un nuevo producto, configura precios, lotes y galería multimedia',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -1084,72 +1022,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       children: [
         CustomScrollView(
           slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        InkWell(
-                          onTap: () => _navigateWithConfirm('/products'),
-                          borderRadius: BorderRadius.circular(4),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                size: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Productos',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          '›',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          isEdit ? 'Editar' : 'Nuevo Producto',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isEdit ? 'Editar Producto' : 'Nuevo Producto',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            ),
             SliverPadding(
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(

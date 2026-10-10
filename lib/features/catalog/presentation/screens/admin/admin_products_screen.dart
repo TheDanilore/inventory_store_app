@@ -9,6 +9,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -597,89 +598,75 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         state.products.fold<int>(0, (sum, p) => sum + p.totalStock);
     final isMultiPage = state.totalPages > 1;
 
-    final cards = [
-      _ProductMetricCard(
-        title: 'TOTAL CATÁLOGO',
-        value: '$totalCount',
-        subtitle: '${state.categories.length} categorías registradas',
-        icon: Icons.inventory_2_rounded,
-        iconColor: AppColors.primary,
-        iconBg: AppColors.primaryLight,
+    return AdminKpiMetricsBar(
+      isDesktop: !isMobile,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 16 : 24,
+        isMobile ? 12 : 14,
+        isMobile ? 16 : 24,
+        4,
       ),
-      _ProductMetricCard(
-        title: isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
-        value: '$inStockCount',
-        subtitle: isMultiPage
-            ? '$inStockCount en pág. actual'
-            : (totalCount > 0
-                ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
-                : 'Listo para despacho'),
-        icon: Icons.check_circle_outline_rounded,
-        iconColor: AppColors.successDark,
-        iconBg: AppColors.successLight,
-      ),
-      _ProductMetricCard(
-        title: isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
-        value: '$outOfStockCount',
-        subtitle: isMultiPage
-            ? '$outOfStockCount en pág. actual'
-            : (outOfStockCount > 0
-                ? 'Requieren reposición'
-                : 'Sin quiebres de inventario'),
-        icon: Icons.warning_amber_rounded,
-        iconColor: outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
-        iconBg:
-            outOfStockCount > 0 ? AppColors.dangerLight : AppColors.tealLight,
-        isAlert: outOfStockCount > 0,
-      ),
-      _ProductMetricCard(
-        title: 'UNIDADES EN ALMACÉN',
-        value: '$totalUnits unid.',
-        subtitle: isMultiPage ? 'En pág. actual' : 'Existencias consolidadas',
-        icon: Icons.all_inbox_rounded,
-        iconColor: AppColors.info,
-        iconBg: AppColors.infoLight,
-      ),
-    ];
-
-    if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(child: cards[0]),
-                const SizedBox(width: 8),
-                Expanded(child: cards[1]),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: cards[2]),
-                const SizedBox(width: 8),
-                Expanded(child: cards[3]),
-              ],
-            ),
-          ],
+      isMobileGrid: true,
+      items: [
+        AdminKpiItem(
+          title: 'TOTAL CATÁLOGO',
+          value: '$totalCount',
+          subtitle: '${state.categories.length} categorías registradas',
+          icon: Icons.inventory_2_rounded,
+          accentColor: AppColors.primary,
+          gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
+          iconGradient: const [Color(0xFF334155), Color(0xFF1E293B)],
+          borderColor: const Color(0xFFE2E8F0),
+          glowColor: const Color(0x1F0F172A),
         ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 4),
-      child: Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 10),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 10),
-          Expanded(child: cards[2]),
-          const SizedBox(width: 10),
-          Expanded(child: cards[3]),
-        ],
-      ),
+        AdminKpiItem(
+          title: isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
+          value: '$inStockCount',
+          subtitle: isMultiPage
+              ? '$inStockCount en pág. actual'
+              : (totalCount > 0
+                  ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
+                  : 'Listo para despacho'),
+          icon: Icons.check_circle_outline_rounded,
+          accentColor: AppColors.successDark,
+          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: const Color(0xFFA7F3D0),
+          glowColor: const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
+          value: '$outOfStockCount',
+          subtitle: isMultiPage
+              ? '$outOfStockCount en pág. actual'
+              : (outOfStockCount > 0
+                  ? 'Requieren reposición'
+                  : 'Sin quiebres de inventario'),
+          icon: Icons.warning_amber_rounded,
+          accentColor: outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
+          gradientColors: [
+            Colors.white,
+            outOfStockCount > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDFA),
+          ],
+          iconGradient: outOfStockCount > 0
+              ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+              : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: outOfStockCount > 0 ? const Color(0xFFFECACA) : const Color(0xFF99F6E4),
+          glowColor: outOfStockCount > 0 ? const Color(0x2EEF4444) : const Color(0x2E0D9488),
+          isAlert: outOfStockCount > 0,
+        ),
+        AdminKpiItem(
+          title: 'UNIDADES EN ALMACÉN',
+          value: '$totalUnits unid.',
+          subtitle: isMultiPage ? 'En pág. actual' : 'Existencias consolidadas',
+          icon: Icons.all_inbox_rounded,
+          accentColor: AppColors.info,
+          gradientColors: const [Colors.white, Color(0xFFF0F9FF)],
+          iconGradient: const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+          borderColor: const Color(0xFFBAE6FD),
+          glowColor: const Color(0x2E0EA5E9),
+        ),
+      ],
     );
   }
 
@@ -878,95 +865,3 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 }
 
-// ── BENTO METRIC MINI CARD ──────────────────────────────────────────────────
-
-class _ProductMetricCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final bool isAlert;
-
-  const _ProductMetricCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    this.isAlert = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isAlert
-              ? AppColors.danger.withValues(alpha: 0.3)
-              : AppColors.border,
-        ),
-        boxShadow: AppColors.cardShadow(opacity: 0.02),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 19, color: iconColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w800,
-                    color: isAlert ? AppColors.danger : AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: isAlert ? AppColors.danger : AppColors.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

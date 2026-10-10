@@ -15,6 +15,7 @@ import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/inventory_entry_detail_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/inventory_entries_table_view.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -1042,146 +1043,48 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      _BentoEntryKpiCard(
-        title: 'Total Entradas',
-        value: totalCount > 0 ? '$totalCount' : '$count',
-        subtitle: 'Entradas registradas',
-        icon: Icons.move_to_inbox_rounded,
-        iconBgColor: AppColors.tealLight,
-        iconColor: AppColors.tealDark,
-      ),
-      _BentoEntryKpiCard(
-        title: 'Inversión Total',
-        value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-        subtitle: 'Inversión acumulada',
-        icon: Icons.payments_rounded,
-        iconBgColor: AppColors.successLight,
-        iconColor: AppColors.successDark,
-      ),
-      _BentoEntryKpiCard(
-        title: 'Almacén Destino',
-        value: warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
-        subtitle: 'Filtro aplicado',
-        icon: Icons.storefront_rounded,
-        iconBgColor: AppColors.warningLight,
-        iconColor: AppColors.warningDark,
-      ),
-    ];
-
-    if (isDesktop) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[2]),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: cards.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
-      ),
+    return AdminKpiMetricsBar(
+      isDesktop: isDesktop,
+      padding: EdgeInsets.zero,
+      items: [
+        AdminKpiItem(
+          title: 'Total Entradas',
+          value: totalCount > 0 ? '$totalCount' : '$count',
+          subtitle: 'Entradas registradas',
+          icon: Icons.move_to_inbox_rounded,
+          accentColor: AppColors.tealDark,
+          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: const Color(0xFF99F6E4),
+          glowColor: const Color(0x2E0D9488),
+        ),
+        AdminKpiItem(
+          title: 'Inversión Total',
+          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
+          subtitle: 'Inversión acumulada',
+          icon: Icons.payments_rounded,
+          accentColor: AppColors.successDark,
+          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: const Color(0xFFA7F3D0),
+          glowColor: const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: 'Almacén Destino',
+          value: warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
+          subtitle: 'Filtro aplicado',
+          icon: Icons.storefront_rounded,
+          accentColor: AppColors.warningDark,
+          gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
+          iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+          borderColor: const Color(0xFFFDE68A),
+          glowColor: const Color(0x2EF59E0B),
+        ),
+      ],
     );
   }
 }
 
-class _BentoEntryKpiCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
-
-  const _BentoEntryKpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ENTRY CARD

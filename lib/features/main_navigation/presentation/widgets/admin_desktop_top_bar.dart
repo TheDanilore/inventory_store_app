@@ -50,6 +50,31 @@ class AdminDesktopTopBar extends StatelessWidget {
               tooltip: 'Volver atrás',
               onTap: onBack,
             ),
+            const SizedBox(width: 12),
+          ],
+
+          // ── Contextual Breadcrumbs (Linear / Stripe style) ────────
+          if (breadcrumbText.isNotEmpty) ...[
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 340),
+              child: Text(
+                breadcrumbText,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF475569),
+                  letterSpacing: -0.2,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(
+              width: 1,
+              height: 20,
+              color: const Color(0xFFE2E8F0),
+            ),
             const SizedBox(width: 14),
           ],
 

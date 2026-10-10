@@ -151,377 +151,220 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _isDragging
-                          ? Icons.file_download_rounded
-                          : Icons.photo_library_outlined,
-                      size: 20,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _isDragging ? 'Suelta las imágenes aquí' : 'Multimedia del Producto',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                BlocBuilder<ProductFormCubit, ProductFormState>(
-                  buildWhen: (p, c) => p.formImages.length != c.formImages.length,
-                  builder: (context, state) {
-                    final count = state.formImages.length;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: count >= 8
-                            ? AppColors.warning.withValues(alpha: 0.1)
-                            : AppColors.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$count / 8 fotos',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: count >= 8 ? AppColors.warning : AppColors.primary,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
             BlocBuilder<ProductFormCubit, ProductFormState>(
               buildWhen: (p, c) =>
-                  p.isSaving != c.isSaving || p.formImages != c.formImages,
+                  p.isSaving != c.isSaving ||
+                  p.formImages.length != c.formImages.length ||
+                  p.formImages != c.formImages,
               builder: (context, state) {
-                if (state.formImages.isEmpty) {
-                  return _buildEmptyDropZone(context, cubit, state);
-                }
+                final count = state.formImages.length;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    // Header con título, contador y botones rápidos
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Arrastra desde tu equipo o reordena. La primera foto es la portada principal.',
-                            style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
-                          ),
-                        ),
-                        if (_isDragging)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isDragging
+                                  ? Icons.file_download_rounded
+                                  : Icons.photo_library_outlined,
+                              size: 20,
                               color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Soltar para añadir',
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(width: 8),
+                            Text(
+                              _isDragging
+                                  ? 'Suelta las imágenes aquí'
+                                  : 'Multimedia del Producto',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: count >= 8
+                                    ? AppColors.warning.withValues(alpha: 0.1)
+                                    : AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '$count / 8 fotos',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: count >= 8
+                                      ? AppColors.warning
+                                      : AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (state.formImages.isNotEmpty)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: (state.isSaving || count >= 8)
+                                    ? null
+                                    : () => cubit.pickImages(),
+                                icon: const Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  size: 15,
+                                ),
+                                label: const Text('Subir foto'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  foregroundColor: AppColors.primary,
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: (state.isSaving || count >= 8)
+                                    ? null
+                                    : () => _promptForImageUrl(context, cubit),
+                                icon: const Icon(Icons.link_rounded, size: 15),
+                                label: const Text('Por URL'),
+                                style: OutlinedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  foregroundColor: AppColors.textSecondary,
+                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 124,
-                      child: Row(
+                    const SizedBox(height: 14),
+
+                    if (state.formImages.isEmpty)
+                      _buildEmptyDropZone(context, cubit, state)
+                    else ...[
+                      // Nota informativa de orden
+                      Row(
                         children: [
-                          // Botón Subir Archivo
-                          Tooltip(
-                            message: 'Seleccionar archivos de imagen',
-                            waitDuration: const Duration(milliseconds: 300),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: state.isSaving ? null : () => cubit.pickImages(),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  width: 74,
-                                  height: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.05),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.add_photo_alternate_rounded,
-                                        color: AppColors.primary,
-                                        size: 24,
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        'Subir',
-                                        style: TextStyle(
-                                          color: AppColors.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          const Expanded(
+                            child: Text(
+                              'La primera foto es la portada principal. Haz clic en "Portada" para promocionar cualquier foto.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textMuted,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-
-                          // Botón Pegar URL
-                          Tooltip(
-                            message: 'Añadir imagen por enlace web (URL)',
-                            waitDuration: const Duration(milliseconds: 300),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: state.isSaving
-                                    ? null
-                                    : () => _promptForImageUrl(context, cubit),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  width: 74,
-                                  height: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueGrey.withValues(alpha: 0.05),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.blueGrey.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.link_rounded,
-                                        color: Colors.blueGrey,
-                                        size: 24,
-                                      ),
-                                      SizedBox(height: 6),
-                                      Text(
-                                        'URL',
-                                        style: TextStyle(
-                                          color: Colors.blueGrey,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                          if (_isDragging)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Soltar para añadir',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-
-                          // Lista horizontal interactiva y reordenable
-                          Expanded(
-                            child: ReorderableListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              buildDefaultDragHandles: false,
-                              proxyDecorator: (child, index, animation) {
-                                return Material(
-                                  color: Colors.transparent,
-                                  elevation: 12,
-                                  shadowColor: Colors.black.withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: child,
-                                );
-                              },
-                              itemCount: state.formImages.length,
-                              onReorderItem: (oldIndex, newIndex) {
-                                if (state.isSaving) return;
-                                cubit.reorderImages(oldIndex, newIndex);
-                              },
-                              itemBuilder: (context, index) {
-                                final item = state.formImages[index];
-                                final isMain = index == 0;
-                                final isHovered = _hoveredIndex == index;
-
-                                return MouseRegion(
-                                  key: ValueKey(item.id),
-                                  onEnter: (_) => setState(() => _hoveredIndex = index),
-                                  onExit: (_) => setState(() => _hoveredIndex = null),
-                                  cursor: SystemMouseCursors.click,
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    width: 104,
-                                    margin: const EdgeInsets.only(right: 12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: isMain
-                                            ? AppColors.primary
-                                            : isHovered
-                                                ? AppColors.primary.withValues(alpha: 0.5)
-                                                : Colors.grey.shade300,
-                                        width: isMain ? 2.5 : 1,
-                                      ),
-                                      boxShadow: isHovered
-                                          ? [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.08),
-                                                blurRadius: 8,
-                                                offset: const Offset(0, 3),
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                    child: ReorderableDelayedDragStartListener(
-                                      index: index,
-                                      child: Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(10),
-                                            child: GestureDetector(
-                                              onTap: () => _showImagePreview(context, item),
-                                              child: _buildImageThumbnail(item),
-                                            ),
-                                          ),
-
-                                          // Gradiente superior para contraste de botones
-                                          Positioned(
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            child: Container(
-                                              height: 36,
-                                              decoration: BoxDecoration(
-                                                borderRadius: const BorderRadius.vertical(
-                                                  top: Radius.circular(10),
-                                                ),
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                  colors: [
-                                                    Colors.black.withValues(alpha: 0.45),
-                                                    Colors.transparent,
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-
-                                          // Drag Handle superior izquierdo
-                                          Positioned(
-                                            top: 4,
-                                            left: 4,
-                                            child: ReorderableDragStartListener(
-                                              index: index,
-                                              child: Tooltip(
-                                                message: 'Arrastrar para reordenar',
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(4),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.black.withValues(alpha: 0.4),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.drag_indicator_rounded,
-                                                    size: 14,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-
-                                          // Indicador Portada Inferior
-                                          if (isMain)
-                                            Positioned(
-                                              bottom: 0,
-                                              left: 0,
-                                              right: 0,
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primary.withValues(
-                                                    alpha: 0.92,
-                                                  ),
-                                                  borderRadius: const BorderRadius.only(
-                                                    bottomLeft: Radius.circular(9),
-                                                    bottomRight: Radius.circular(9),
-                                                  ),
-                                                ),
-                                                child: const Text(
-                                                  'PORTADA',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                    letterSpacing: 0.4,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-
-                                          // Botón eliminar superior derecho
-                                          Positioned(
-                                            top: 4,
-                                            right: 4,
-                                            child: Tooltip(
-                                              message: 'Eliminar imagen',
-                                              child: GestureDetector(
-                                                onTap: state.isSaving
-                                                    ? null
-                                                    : () => cubit.removeImage(index),
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(3.5),
-                                                  decoration: BoxDecoration(
-                                                    color: AppColors.error,
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: Colors.white,
-                                                      width: 1.5,
-                                                    ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.close_rounded,
-                                                    size: 13,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 14),
+
+                      // Bento Media Studio Grid
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isDesktop = constraints.maxWidth >= 540;
+                          final hero = state.formImages.first;
+                          final secondaries = state.formImages.skip(1).toList();
+
+                          final heroWidget = _buildHeroCoverCard(
+                            context,
+                            cubit,
+                            hero,
+                            state.isSaving,
+                            isDesktop: isDesktop,
+                          );
+
+                          final galleryGrid = _buildSecondaryGallery(
+                            context,
+                            cubit,
+                            secondaries,
+                            state.isSaving,
+                            count: count,
+                          );
+
+                          if (isDesktop) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                heroWidget,
+                                const SizedBox(width: 18),
+                                Expanded(child: galleryGrid),
+                              ],
+                            );
+                          } else {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                heroWidget,
+                                const SizedBox(height: 16),
+                                galleryGrid,
+                              ],
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ],
                 );
               },
@@ -713,52 +556,584 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     );
   }
 
+  Widget _buildHeroCoverCard(
+    BuildContext context,
+    ProductFormCubit cubit,
+    FormImageItem item,
+    bool isSaving, {
+    required bool isDesktop,
+  }) {
+    final size = isDesktop ? 170.0 : 160.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.primary,
+              width: 2.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.14),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Imagen con Clip
+              ClipRRect(
+                borderRadius: BorderRadius.circular(11.8),
+                child: GestureDetector(
+                  onTap: () => _showImagePreview(context, item),
+                  child: _buildImageThumbnail(item),
+                ),
+              ),
+
+              // Gradiente superior para botones
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(11.8),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.55),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Badge Portada Principal (Top Left)
+              Positioned(
+                top: 7,
+                left: 7,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, size: 12, color: Colors.white),
+                      SizedBox(width: 3),
+                      Text(
+                        'PORTADA',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Botón Eliminar (Top Right)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Tooltip(
+                  message: 'Eliminar portada',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isSaving ? null : () => cubit.removeImage(0),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Botón Zoom / Previsualizar (Bottom Right)
+              Positioned(
+                bottom: 6,
+                right: 6,
+                child: Tooltip(
+                  message: 'Ver en pantalla completa',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showImagePreview(context, item),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.all(4.5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.fullscreen_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: size,
+          child: const Text(
+            'Foto principal visible en tienda y catálogos',
+            style: TextStyle(
+              fontSize: 10.5,
+              color: AppColors.textMuted,
+              height: 1.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecondaryGallery(
+    BuildContext context,
+    ProductFormCubit cubit,
+    List<FormImageItem> secondaries,
+    bool isSaving, {
+    required int count,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (int i = 0; i < secondaries.length; i++)
+              _buildSecondaryCard(
+                context,
+                cubit,
+                secondaries[i],
+                actualIndex: i + 1,
+                isSaving: isSaving,
+              ),
+            if (count < 8)
+              _buildAddMoreTile(context, cubit, isSaving),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecondaryCard(
+    BuildContext context,
+    ProductFormCubit cubit,
+    FormImageItem item, {
+    required int actualIndex,
+    required bool isSaving,
+  }) {
+    const cardSize = 82.0;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredIndex = actualIndex),
+      onExit: (_) => setState(() => _hoveredIndex = null),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: cardSize,
+        height: cardSize,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: _hoveredIndex == actualIndex
+                ? AppColors.primary
+                : const Color(0xFFE2E8F0),
+            width: _hoveredIndex == actualIndex ? 1.8 : 1.0,
+          ),
+          boxShadow: _hoveredIndex == actualIndex
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9.5),
+              child: GestureDetector(
+                onTap: () => _showImagePreview(context, item),
+                child: _buildImageThumbnail(item),
+              ),
+            ),
+
+            // Gradiente superior
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(9.5),
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Badge número de foto (Top Left)
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '#${actualIndex + 1}',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            // Botón Eliminar (Top Right)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Tooltip(
+                message: 'Eliminar',
+                child: GestureDetector(
+                  onTap: isSaving ? null : () => cubit.removeImage(actualIndex),
+                  child: Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.2),
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Botón Hacer Portada (Bottom Bar)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Tooltip(
+                message: 'Hacer portada principal',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: isSaving
+                        ? null
+                        : () => cubit.reorderImages(actualIndex, 0),
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(9.5),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.68),
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(9.5),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
+                            size: 11,
+                            color: Color(0xFFFFC107),
+                          ),
+                          SizedBox(width: 2),
+                          Text(
+                            'Portada',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddMoreTile(
+    BuildContext context,
+    ProductFormCubit cubit,
+    bool isSaving,
+  ) {
+    const cardSize = 82.0;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isSaving ? null : () => cubit.pickImages(),
+        borderRadius: BorderRadius.circular(11),
+        child: Container(
+          width: cardSize,
+          height: cardSize,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.35),
+              style: BorderStyle.solid,
+              width: 1.2,
+            ),
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_photo_alternate_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              SizedBox(height: 4),
+              Text(
+                '+ Añadir',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _promptForImageUrl(
     BuildContext context,
     ProductFormCubit cubit,
   ) async {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     String? url;
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        final ctrl = TextEditingController();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.link_rounded, color: AppColors.primary, size: 22),
-              SizedBox(width: 8),
-              Text(
-                'Pegar URL de Imagen',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+
+    if (isMobile) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final ctrl = TextEditingController();
+          return Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Row(
+                  children: [
+                    Icon(Icons.link_rounded, color: AppColors.primary, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Añadir imagen por URL',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'https://ejemplo.com/producto.jpg',
+                    labelText: 'Enlace web directo',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onSubmitted: (val) {
+                    url = val.trim();
+                    Navigator.pop(ctx);
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        url = ctrl.text.trim();
+                        Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Agregar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          final ctrl = TextEditingController();
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.link_rounded, color: AppColors.primary, size: 22),
+                SizedBox(width: 8),
+                Text(
+                  'Pegar URL de Imagen',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 440,
+              child: TextField(
+                controller: ctrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'https://ejemplo.com/producto.jpg',
+                  labelText: 'Enlace web directo',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (val) {
+                  url = val.trim();
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  url = ctrl.text.trim();
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Agregar'),
               ),
             ],
-          ),
-          content: TextField(
-            controller: ctrl,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'https://ejemplo.com/producto.jpg',
-              labelText: 'Enlace web directo',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                url = ctrl.text.trim();
-                Navigator.pop(ctx);
-              },
-              child: const Text('Agregar'),
-            ),
-          ],
-        );
-      },
-    );
+          );
+        },
+      );
+    }
+
     if (url != null && url!.isNotEmpty) {
       cubit.addImageUrl(url!);
     }

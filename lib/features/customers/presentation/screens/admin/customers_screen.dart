@@ -20,6 +20,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 
 class CustomersScreen extends StatelessWidget {
@@ -1028,107 +1029,77 @@ class _CustomersBentoMetrics extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
       builder: (context, state) {
-        if (state is CustomersStatsLoading) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-            child: Row(
-              children: List.generate(
-                isMobile ? 2 : 4,
-                (_) => const Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
-                    child: AppShimmer(width: double.infinity, height: 74, borderRadius: 14),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        final total = state is CustomersStatsLoaded ? state.totalCustomersCount : 0;
-        final active = state is CustomersStatsLoaded ? state.activeCustomersCount : 0;
-        final revenue = state is CustomersStatsLoaded ? state.totalRevenue : 0.0;
+        final isLoading = state is CustomersStatsLoading;
+        final total =
+            state is CustomersStatsLoaded ? state.totalCustomersCount : 0;
+        final active =
+            state is CustomersStatsLoaded ? state.activeCustomersCount : 0;
+        final revenue =
+            state is CustomersStatsLoaded ? state.totalRevenue : 0.0;
         final debt = state is CustomersStatsLoaded ? state.totalDebt : 0.0;
-        final activePct = total > 0 ? ((active / total) * 100).toStringAsFixed(0) : '0';
+        final activePct =
+            total > 0 ? ((active / total) * 100).toStringAsFixed(0) : '0';
 
-        final cards = [
-          _MetricBentoCard(
-            title: 'TOTAL CLIENTES',
-            value: '$total',
-            subtitle: 'Directorio activo',
-            icon: Icons.people_alt_rounded,
-            iconColor: AppColors.primary,
-            iconBg: AppColors.primaryLight,
-          ),
-          _MetricBentoCard(
-            title: 'CLIENTES ACTIVOS',
-            value: '$active',
-            subtitle: '$activePct% de cartera',
-            icon: Icons.verified_user_rounded,
-            iconColor: AppColors.successDark,
-            iconBg: AppColors.successLight,
-          ),
-          _MetricBentoCard(
-            title: 'FACTURACIÓN',
-            value: _formatCompactMoney(revenue),
-            subtitle: 'Ingresos históricos',
-            icon: Icons.trending_up_rounded,
-            iconColor: AppColors.info,
-            iconBg: AppColors.infoLight,
-            isMonospace: true,
-          ),
-          _MetricBentoCard(
-            title: 'CUENTAS POR COBRAR',
-            value: _formatCompactMoney(debt),
-            subtitle: debt > 0 ? 'Saldos pendientes' : 'Al día',
-            icon: Icons.account_balance_wallet_rounded,
-            iconColor: debt > 0 ? AppColors.danger : AppColors.tealDark,
-            iconBg: debt > 0 ? AppColors.dangerLight : AppColors.tealLight,
-            isAlert: debt > 0,
-            isMonospace: true,
-          ),
-        ];
-
-        if (isMobile) {
-          // En móvil: 2x2 grid compacto
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: cards[0]),
-                    const SizedBox(width: 8),
-                    Expanded(child: cards[1]),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: cards[2]),
-                    const SizedBox(width: 8),
-                    Expanded(child: cards[3]),
-                  ],
-                ),
-              ],
+        return AdminKpiMetricsBar(
+          isLoading: isLoading,
+          isDesktop: !isMobile,
+          isMobileGrid: true,
+          padding: EdgeInsets.fromLTRB(16, isMobile ? 10 : 12, 16, 6),
+          items: [
+            AdminKpiItem(
+              title: 'TOTAL CLIENTES',
+              value: '$total',
+              subtitle: 'Directorio activo',
+              icon: Icons.people_alt_rounded,
+              accentColor: AppColors.primary,
+              gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
+              iconGradient: const [Color(0xFF334155), Color(0xFF1E293B)],
+              borderColor: const Color(0xFFE2E8F0),
+              glowColor: const Color(0x1F0F172A),
             ),
-          );
-        }
-
-        // En Desktop y Tablet: Fila horizontal de 4 tarjetas
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-          child: Row(
-            children: [
-              Expanded(child: cards[0]),
-              const SizedBox(width: 10),
-              Expanded(child: cards[1]),
-              const SizedBox(width: 10),
-              Expanded(child: cards[2]),
-              const SizedBox(width: 10),
-              Expanded(child: cards[3]),
-            ],
-          ),
+            AdminKpiItem(
+              title: 'CLIENTES ACTIVOS',
+              value: '$active',
+              subtitle: '$activePct% de cartera',
+              icon: Icons.verified_user_rounded,
+              accentColor: AppColors.successDark,
+              gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+              iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+              borderColor: const Color(0xFFA7F3D0),
+              glowColor: const Color(0x2E10B981),
+            ),
+            AdminKpiItem(
+              title: 'FACTURACIÓN',
+              value: _formatCompactMoney(revenue),
+              subtitle: 'Ingresos históricos',
+              icon: Icons.trending_up_rounded,
+              accentColor: AppColors.info,
+              gradientColors: const [Colors.white, Color(0xFFF0F9FF)],
+              iconGradient: const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+              borderColor: const Color(0xFFBAE6FD),
+              glowColor: const Color(0x2E0EA5E9),
+            ),
+            AdminKpiItem(
+              title: 'CUENTAS POR COBRAR',
+              value: _formatCompactMoney(debt),
+              subtitle: debt > 0 ? 'Saldos pendientes' : 'Al día',
+              icon: Icons.account_balance_wallet_rounded,
+              accentColor: debt > 0 ? AppColors.danger : AppColors.tealDark,
+              gradientColors: [
+                Colors.white,
+                debt > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDFA),
+              ],
+              iconGradient: debt > 0
+                  ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+                  : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+              borderColor:
+                  debt > 0 ? const Color(0xFFFECACA) : const Color(0xFF99F6E4),
+              glowColor:
+                  debt > 0 ? const Color(0x2EEF4444) : const Color(0x2E0D9488),
+              valueColor: debt > 0 ? AppColors.danger : AppColors.textPrimary,
+              isAlert: debt > 0,
+            ),
+          ],
         );
       },
     );
@@ -1145,99 +1116,6 @@ class _CustomersBentoMetrics extends StatelessWidget {
   }
 }
 
-class _MetricBentoCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final bool isAlert;
-  final bool isMonospace;
-
-  const _MetricBentoCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    this.isAlert = false,
-    this.isMonospace = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isAlert ? AppColors.danger.withValues(alpha: 0.3) : AppColors.border,
-        ),
-        boxShadow: AppColors.cardShadow(opacity: 0.02),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 20, color: iconColor),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: isAlert ? AppColors.danger : AppColors.textPrimary,
-                    fontFeatures: isMonospace
-                        ? const [FontFeature.tabularFigures()]
-                        : null,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: isAlert ? AppColors.danger : AppColors.textMuted,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── DESKTOP DATA TABLE PRO ───────────────────────────────────────────────────
 

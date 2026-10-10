@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/purchases/domain/entities/supplier_
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
@@ -671,143 +672,45 @@ class _SuppliersKpiBar extends StatelessWidget {
             ? ((activeCount / totalCount) * 100).toStringAsFixed(0)
             : '100';
 
-    final cards = [
-      _BentoSupplierKpiCard(
-        title: 'Total Proveedores',
-        value: '$totalCount',
-        subtitle: 'Empresas registradas',
-        icon: Icons.storefront_rounded,
-        iconBgColor: AppColors.primaryLight,
-        iconColor: AppColors.primary,
-      ),
-      _BentoSupplierKpiCard(
-        title: 'Proveedores Activos',
-        value: '$activeCount',
-        subtitle: '$activePct% habilitados',
-        icon: Icons.check_circle_outline_rounded,
-        iconBgColor: AppColors.successLight,
-        iconColor: AppColors.successDark,
-      ),
-      _BentoSupplierKpiCard(
-        title: 'Facturación / RUC',
-        value: '$withRucCount',
-        subtitle: 'Identificaciones cargadas',
-        icon: Icons.receipt_long_rounded,
-        iconBgColor: AppColors.tealLight,
-        iconColor: AppColors.tealDark,
-      ),
-    ];
-
-    if (isDesktop) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[1]),
-          const SizedBox(width: 12),
-          Expanded(child: cards[2]),
-        ],
-      );
-    }
-
-    return SizedBox(
-      height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: cards.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, index) => SizedBox(width: 220, child: cards[index]),
-      ),
+    return AdminKpiMetricsBar(
+      isDesktop: isDesktop,
+      padding: EdgeInsets.zero,
+      items: [
+        AdminKpiItem(
+          title: 'Total Proveedores',
+          value: '$totalCount',
+          subtitle: 'Empresas registradas',
+          icon: Icons.storefront_rounded,
+          accentColor: AppColors.primary,
+          gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
+          iconGradient: const [Color(0xFF334155), Color(0xFF1E293B)],
+          borderColor: const Color(0xFFE2E8F0),
+          glowColor: const Color(0x1F0F172A),
+        ),
+        AdminKpiItem(
+          title: 'Proveedores Activos',
+          value: '$activeCount',
+          subtitle: '$activePct% habilitados',
+          icon: Icons.check_circle_outline_rounded,
+          accentColor: AppColors.successDark,
+          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
+          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor: const Color(0xFFA7F3D0),
+          glowColor: const Color(0x2E10B981),
+        ),
+        AdminKpiItem(
+          title: 'Facturación / RUC',
+          value: '$withRucCount',
+          subtitle: 'Identificaciones cargadas',
+          icon: Icons.receipt_long_rounded,
+          accentColor: AppColors.tealDark,
+          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
+          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor: const Color(0xFF99F6E4),
+          glowColor: const Color(0x2E0D9488),
+        ),
+      ],
     );
   }
 }
 
-class _BentoSupplierKpiCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
-
-  const _BentoSupplierKpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x050F172A),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
