@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex/
 import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex/kardex_state.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/core/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_kpi_strip.dart';
@@ -149,27 +150,12 @@ class _KardexScreenState extends State<KardexScreen> {
     final startDate = state is KardexLoaded ? state.startDate : null;
     final endDate = state is KardexLoaded ? state.endDate : null;
 
-    final picked = await showDateRangePicker(
-      context: context,
+    final picked = await AppDateRangePickerModal.show(
+      context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2035),
-      initialDateRange:
-          startDate != null && endDate != null
-              ? DateTimeRange(start: startDate, end: endDate)
-              : null,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              surface: AppColors.surface,
-              onSurface: AppColors.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      initialStartDate: startDate,
+      initialEndDate: endDate,
     );
 
     if (picked != null) {

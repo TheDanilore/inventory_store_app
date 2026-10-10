@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
@@ -591,32 +592,18 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
       final now = DateTime.now();
       final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
       final maxDate = DateTime(now.year + 1, 12, 31);
-      final picked = await showDateRangePicker(
-        context: context,
+      final picked = await AppDateRangePickerModal.show(
+        context,
         firstDate: DateTime(2020),
         lastDate: maxDate,
-        initialDateRange: (state.dateFrom != null && state.dateTo != null)
-            ? DateTimeRange(
-                start: state.dateFrom!.isBefore(DateTime(2020))
-                    ? DateTime(2020)
-                    : state.dateFrom!,
-                end: state.dateTo!.isAfter(maxDate)
-                    ? maxDate
-                    : state.dateTo!,
-              )
-            : DateTimeRange(
-                start: now.subtract(const Duration(days: 30)),
-                end: todayEnd,
-              ),
-        locale: const Locale('es'),
-        builder: (ctx, child) => Theme(
-          data: Theme.of(ctx).copyWith(
-            colorScheme: Theme.of(ctx).colorScheme.copyWith(
-              primary: AppColors.primary,
-            ),
-          ),
-          child: child!,
-        ),
+        initialStartDate: (state.dateFrom != null)
+            ? (state.dateFrom!.isBefore(DateTime(2020))
+                ? DateTime(2020)
+                : state.dateFrom!)
+            : now.subtract(const Duration(days: 30)),
+        initialEndDate: (state.dateTo != null)
+            ? (state.dateTo!.isAfter(maxDate) ? maxDate : state.dateTo!)
+            : todayEnd,
       );
       if (picked != null) {
         cubit.setDateRange(picked.start, picked.end);
