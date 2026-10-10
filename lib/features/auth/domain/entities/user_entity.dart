@@ -42,4 +42,30 @@ class UserEntity extends Equatable {
     avatarUrl,
     isActive,
   ];
+
+  UserEntity copyWith({
+    String? id,
+    String? authUserId,
+    String? email,
+    String? role,
+    String? fullName,
+    String? phone,
+    String? documentType,
+    String? documentNumber,
+    String? avatarUrl,
+    bool? isActive,
+  }) {
+    return UserEntity(
+      id: id ?? this.id,
+      authUserId: authUserId ?? this.authUserId,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      fullName: fullName ?? this.fullName,
+      phone: phone ?? this.phone,
+      documentType: documentType ?? this.documentType,
+      documentNumber: documentNumber ?? this.documentNumber,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      isActive: isActive ?? this.isActive,
+    );
+  }
 }

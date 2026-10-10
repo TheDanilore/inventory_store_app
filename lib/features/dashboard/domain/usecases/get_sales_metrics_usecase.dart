@@ -15,11 +15,13 @@ class GetSalesMetricsUseCase {
     required SalesTimeFilter filter,
     DateTime? customStartDate,
     DateTime? customEndDate,
+    bool forceRefresh = false,
   }) async {
     return await repository.getSalesMetrics(
       filter: filter,
       customStartDate: customStartDate,
       customEndDate: customEndDate,
+      forceRefresh: forceRefresh,
     );
   }
 }

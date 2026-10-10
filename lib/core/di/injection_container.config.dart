@@ -510,6 +510,7 @@ import '../../features/users/presentation/bloc/user_detail/user_detail_cubit.dar
 import '../../features/users/presentation/bloc/user_form/user_form_cubit.dart'
     as _i833;
 import '../../features/users/presentation/bloc/users/users_cubit.dart' as _i451;
+import '../localization/bloc/locale_cubit.dart' as _i119;
 import '../network/network_cubit.dart' as _i11;
 import '../services/logger_service.dart' as _i141;
 import 'register_module.dart' as _i291;
@@ -530,6 +531,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i895.SendWhatsAppOrderUc>(() => _i895.SendWhatsAppOrderUc());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
+    gh.lazySingleton<_i119.LocaleCubit>(() => _i119.LocaleCubit());
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
     gh.lazySingleton<_i141.LoggerService>(() => const _i141.LoggerService());
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
@@ -1499,7 +1501,7 @@ extension GetItInjectableX on _i174.GetIt {
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
       ),
     );
-    gh.factory<_i58.DashboardCubit>(
+    gh.lazySingleton<_i58.DashboardCubit>(
       () => _i58.DashboardCubit(
         getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
         getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),

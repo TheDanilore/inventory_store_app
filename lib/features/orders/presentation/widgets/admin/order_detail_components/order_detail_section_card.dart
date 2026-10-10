@@ -17,21 +17,16 @@ class OrderDetailSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Color(0x060F172A),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),

@@ -8,14 +8,35 @@ import 'package:inventory_store_app/features/dashboard/domain/entities/sales_met
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/domain/repositories/dashboard_repository.dart';
 
+class _DashboardCacheEntry<T> {
+  final T data;
+  final DateTime timestamp;
+
+  _DashboardCacheEntry({required this.data, required this.timestamp});
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 3);
+}
+
 @LazySingleton(as: DashboardRepository)
 class DashboardRepositoryImpl implements DashboardRepository {
   final SupabaseClient _supabase;
 
+  _DashboardCacheEntry<InventoryMetricsEntity>? _inventoryCache;
+  final Map<String, _DashboardCacheEntry<SalesMetricsEntity>> _salesCache = {};
+  final Map<String, _DashboardCacheEntry<List<Map<String, dynamic>>>> _batchesCache =
+      {};
+
   DashboardRepositoryImpl(this._supabase);
 
   @override
-  Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics() async {
+  Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _inventoryCache != null && !_inventoryCache!.isExpired) {
+      return right(_inventoryCache!.data);
+    }
+
     try {
       final response = await _supabase
           .from('products')
@@ -121,19 +142,24 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final grossMargin =
           totalInvestment > 0 ? (grossProfit / retailValue) * 100 : 0.0;
 
-      return right(
-        InventoryMetricsEntity(
-          totalStock: totalStock,
-          lowStockProducts: lowStockProducts,
-          totalInvestment: totalInvestment,
-          retailValue: retailValue,
-          grossProfit: grossProfit,
-          expectedMaxProfit: expectedMaxProfit,
-          expectedMinProfit: expectedMinProfit,
-          grossMargin: grossMargin,
-          totalProducts: totalProducts,
-        ),
+      final inventoryEntity = InventoryMetricsEntity(
+        totalStock: totalStock,
+        lowStockProducts: lowStockProducts,
+        totalInvestment: totalInvestment,
+        retailValue: retailValue,
+        grossProfit: grossProfit,
+        expectedMaxProfit: expectedMaxProfit,
+        expectedMinProfit: expectedMinProfit,
+        grossMargin: grossMargin,
+        totalProducts: totalProducts,
       );
+
+      _inventoryCache = _DashboardCacheEntry(
+        data: inventoryEntity,
+        timestamp: DateTime.now(),
+      );
+
+      return right(inventoryEntity);
     } catch (e, stackTrace) {
       LoggerService.e(
         'Error al obtener métricas de inventario',
@@ -152,7 +178,17 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required SalesTimeFilter filter,
     DateTime? customStartDate,
     DateTime? customEndDate,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey =
+        '${filter.name}_${customStartDate?.millisecondsSinceEpoch}_${customEndDate?.millisecondsSinceEpoch}';
+
+    if (!forceRefresh &&
+        _salesCache.containsKey(cacheKey) &&
+        !_salesCache[cacheKey]!.isExpired) {
+      return right(_salesCache[cacheKey]!.data);
+    }
+
     try {
       var query = _supabase
           .from('orders')
@@ -166,8 +202,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
           final startOfDay = DateTime(now.year, now.month, now.day);
           final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
           query = query
-              .gte('created_at', startOfDay.toIso8601String())
-              .lte('created_at', endOfDay.toIso8601String());
+              .gte('created_at', startOfDay.toUtc().toIso8601String())
+              .lte('created_at', endOfDay.toUtc().toIso8601String());
           break;
         case SalesTimeFilter.thisWeek:
           final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
@@ -180,8 +216,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
             const Duration(days: 6, hours: 23, minutes: 59, seconds: 59, milliseconds: 999),
           );
           query = query
-              .gte('created_at', startOfWeekDay.toIso8601String())
-              .lte('created_at', endOfWeekDay.toIso8601String());
+              .gte('created_at', startOfWeekDay.toUtc().toIso8601String())
+              .lte('created_at', endOfWeekDay.toUtc().toIso8601String());
           break;
         case SalesTimeFilter.thisMonth:
           final startOfMonth = DateTime(now.year, now.month, 1);
@@ -190,8 +226,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
               : DateTime(now.year, now.month + 1, 1);
           final endOfMonth = nextMonth.subtract(const Duration(milliseconds: 1));
           query = query
-              .gte('created_at', startOfMonth.toIso8601String())
-              .lte('created_at', endOfMonth.toIso8601String());
+              .gte('created_at', startOfMonth.toUtc().toIso8601String())
+              .lte('created_at', endOfMonth.toUtc().toIso8601String());
           break;
         case SalesTimeFilter.custom:
           if (customStartDate != null) {
@@ -200,7 +236,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
               customStartDate.month,
               customStartDate.day,
             );
-            query = query.gte('created_at', start.toIso8601String());
+            query = query.gte('created_at', start.toUtc().toIso8601String());
           }
           if (customEndDate != null) {
             final end = DateTime(
@@ -212,7 +248,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
               59,
               999,
             );
-            query = query.lte('created_at', end.toIso8601String());
+            query = query.lte('created_at', end.toUtc().toIso8601String());
           }
           break;
         case SalesTimeFilter.allTime:
@@ -350,20 +386,25 @@ class DashboardRepositoryImpl implements DashboardRepository {
         }
       }
 
-      return right(
-        SalesMetricsEntity(
-          totalSales: totalSales,
-          totalRevenue: totalRevenue,
-          totalProfit: totalProfit,
-          replacementFund: replacementFund,
-          averageTicket: averageTicket,
-          salesMargin: salesMargin,
-          bestSellers: bestSellers,
-          weeklyActivity: weeklyActivity,
-          peakDayLabel: peakDayLabel,
-          revenueTrendPoints: revenueTrendPoints,
-        ),
+      final salesEntity = SalesMetricsEntity(
+        totalSales: totalSales,
+        totalRevenue: totalRevenue,
+        totalProfit: totalProfit,
+        replacementFund: replacementFund,
+        averageTicket: averageTicket,
+        salesMargin: salesMargin,
+        bestSellers: bestSellers,
+        weeklyActivity: weeklyActivity,
+        peakDayLabel: peakDayLabel,
+        revenueTrendPoints: revenueTrendPoints,
       );
+
+      _salesCache[cacheKey] = _DashboardCacheEntry(
+        data: salesEntity,
+        timestamp: DateTime.now(),
+      );
+
+      return right(salesEntity);
     } catch (e, stackTrace) {
       LoggerService.e(
         'Error al obtener métricas de ventas',
@@ -381,7 +422,16 @@ class DashboardRepositoryImpl implements DashboardRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
     int daysThreshold = 30,
     int limit = 15,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = '${daysThreshold}_$limit';
+
+    if (!forceRefresh &&
+        _batchesCache.containsKey(cacheKey) &&
+        !_batchesCache[cacheKey]!.isExpired) {
+      return right(_batchesCache[cacheKey]!.data);
+    }
+
     try {
       final now = DateTime.now();
       final thresholdDate = now.add(Duration(days: daysThreshold));
@@ -406,7 +456,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .order('expiry_date')
           .limit(limit);
 
-      return right(List<Map<String, dynamic>>.from(response));
+      final result = List<Map<String, dynamic>>.from(response);
+      _batchesCache[cacheKey] = _DashboardCacheEntry(
+        data: result,
+        timestamp: DateTime.now(),
+      );
+
+      return right(result);
     } catch (e, stackTrace) {
       LoggerService.e(
         'Error al obtener lotes por vencer',

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
+import 'package:inventory_store_app/core/localization/app_localizations.dart';
 
 /// Banner Ejecutivo de Bienvenida Agronómica con saludo horario inteligente,
 /// avatar dinámico del usuario, fecha en tiempo real y contexto operativo de campo.
@@ -23,12 +24,14 @@ class AgronomicGreetingBanner extends StatelessWidget {
 
         final hour = DateTime.now().hour;
         final ({String greeting, IconData icon, String timeLabel}) periodInfo =
-            _getTimePeriodInfo(hour);
+            _getTimePeriodInfo(context, hour);
 
         final now = DateTime.now();
         String formattedDate;
         try {
-          formattedDate = DateFormat('EEEE, d \'de\' MMMM · yyyy', 'es').format(now);
+          final localeCode = Localizations.localeOf(context).languageCode;
+          final dateLocale = localeCode == 'qu' ? 'es' : localeCode;
+          formattedDate = DateFormat('EEEE, d \'de\' MMMM · yyyy', dateLocale).format(now);
           if (formattedDate.isNotEmpty) {
             formattedDate = formattedDate[0].toUpperCase() + formattedDate.substring(1);
           }
@@ -205,7 +208,7 @@ class AgronomicGreetingBanner extends StatelessWidget {
 
                               // Subtítulo con contexto agronómico
                               Text(
-                                'Monitoreo fitosanitario activo · Control de inventarios y rotación FEFO en almacén.',
+                                context.tr('greeting_agro_desc'),
                                 style: TextStyle(
                                   fontSize: isMobile ? 12 : 13,
                                   fontWeight: FontWeight.w400,
@@ -363,24 +366,27 @@ class AgronomicGreetingBanner extends StatelessWidget {
     );
   }
 
-  ({String greeting, IconData icon, String timeLabel}) _getTimePeriodInfo(int hour) {
+  ({String greeting, IconData icon, String timeLabel}) _getTimePeriodInfo(
+    BuildContext context,
+    int hour,
+  ) {
     if (hour >= 5 && hour < 12) {
       return (
-        greeting: 'Buenos días',
+        greeting: context.tr('greeting_morning'),
         icon: Icons.wb_sunny_rounded,
-        timeLabel: 'Jornada Matutina · Riego & Despacho',
+        timeLabel: context.tr('greeting_sub_morning'),
       );
     } else if (hour >= 12 && hour < 19) {
       return (
-        greeting: 'Buenas tardes',
+        greeting: context.tr('greeting_afternoon'),
         icon: Icons.wb_twilight_rounded,
-        timeLabel: 'Jornada Vespertina · Control & Ventas',
+        timeLabel: context.tr('greeting_sub_afternoon'),
       );
     } else {
       return (
-        greeting: 'Buenas noches',
+        greeting: context.tr('greeting_evening'),
         icon: Icons.bedtime_rounded,
-        timeLabel: 'Cierre de Almacén · Inventario Seguro',
+        timeLabel: context.tr('greeting_sub_evening'),
       );
     }
   }

@@ -63,46 +63,47 @@ class ProfileHeaderSection extends StatelessWidget {
                   children: [
                     // Avatar
                     GestureDetector(
-                      onTap: isEditing ? onPickImage : null,
-                      child: Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                width: 2,
+                      onTap: onPickImage,
+                      child: Tooltip(
+                        message: 'Personalizar avatar agrícola o foto',
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 38,
+                                backgroundColor: AppColors.primary,
+                                backgroundImage:
+                                    imageBytes != null
+                                        ? MemoryImage(imageBytes!)
+                                            as ImageProvider
+                                        : (avatarUrl != null && avatarUrl!.isNotEmpty
+                                            ? CachedNetworkImageProvider(
+                                              avatarUrl!,
+                                            )
+                                            : null),
+                                child:
+                                    (imageBytes == null && (avatarUrl == null || avatarUrl!.isEmpty))
+                                        ? Text(
+                                          displayName.isNotEmpty
+                                              ? displayName[0].toUpperCase()
+                                              : 'U',
+                                          style: const TextStyle(
+                                            fontSize: 30,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                        : null,
                               ),
                             ),
-                            child: CircleAvatar(
-                              radius: 38,
-                              backgroundColor: AppColors.primary,
-                              backgroundImage:
-                                  imageBytes != null
-                                      ? MemoryImage(imageBytes!)
-                                          as ImageProvider
-                                      : (avatarUrl != null
-                                          ? CachedNetworkImageProvider(
-                                            avatarUrl!,
-                                          )
-                                          : null),
-                              child:
-                                  (imageBytes == null && avatarUrl == null)
-                                      ? Text(
-                                        displayName.isNotEmpty
-                                            ? displayName[0].toUpperCase()
-                                            : 'U',
-                                        style: const TextStyle(
-                                          fontSize: 30,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                      : null,
-                            ),
-                          ),
-                          if (isEditing)
                             Positioned(
                               bottom: 0,
                               right: 0,
@@ -110,21 +111,33 @@ class ProfileHeaderSection extends StatelessWidget {
                                 width: 26,
                                 height: 26,
                                 decoration: BoxDecoration(
-                                  color: AppColors.accent,
+                                  color: isEditing
+                                      ? AppColors.accent
+                                      : const Color(0xFF059669),
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: Colors.white,
                                     width: 2,
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                child: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  size: 12,
+                                child: Icon(
+                                  isEditing
+                                      ? Icons.camera_alt_rounded
+                                      : Icons.face_retouching_natural_rounded,
+                                  size: 13,
                                   color: Colors.white,
                                 ),
                               ),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),

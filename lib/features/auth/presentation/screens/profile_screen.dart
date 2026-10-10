@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
@@ -17,6 +16,8 @@ import 'package:inventory_store_app/features/auth/presentation/widgets/profile/p
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_read_only_info_section.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_shimmer.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/agronomic_avatar_picker_dialog.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/profile/system_language_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
@@ -65,85 +66,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    ImageSource? source;
+  Future<void> _openAvatarPicker() async {
+    final user = context.read<AuthCubit>().state.currentUser;
+    final initial = (user != null && user.fullName.isNotEmpty)
+        ? user.fullName[0].toUpperCase()
+        : 'U';
 
-    if (isMobile) {
-      source = await showModalBottomSheet<ImageSource>(
-        context: context,
-        backgroundColor: AppColors.surface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (ctx) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Foto de Perfil',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.camera_alt_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: const Text('Tomar Foto'),
-                    onTap: () => Navigator.pop(ctx, ImageSource.camera),
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.photo_library_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: const Text('Seleccionar de Galería'),
-                    onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-                  ),
-                ],
-              ),
-            ),
+    await AgronomicAvatarPickerDialog.show(
+      context,
+      currentAvatarUrl: user?.avatarUrl,
+      userInitial: initial,
+      onAvatarSelected: (newAvatarUrl, imageBytes) async {
+        final cubit = context.read<AuthCubit>();
+        final currentUser = cubit.state.currentUser;
+        if (currentUser == null) return;
+
+        if (imageBytes != null) {
+          if (_isEditing) {
+            setState(() {
+              _selectedImageBytes = imageBytes;
+            });
+          } else {
+            final success = await cubit.updateProfile(
+              currentUser,
+              imageBytes: imageBytes,
+            );
+            if (success && mounted) {
+              AppSnackbar.show(
+                context,
+                message: 'Foto de perfil actualizada exitosamente',
+                type: SnackbarType.success,
+              );
+            }
+          }
+        } else if (newAvatarUrl != null) {
+          final updatedUser = currentUser.copyWith(
+            avatarUrl: newAvatarUrl.isEmpty ? '' : newAvatarUrl,
           );
-        },
-      );
-    } else {
-      source = ImageSource.gallery;
-    }
-
-    if (source == null) return;
-
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: source,
-      maxWidth: 500,
-      maxHeight: 500,
-      imageQuality: 85,
+          if (_isEditing) {
+            final success = await cubit.updateProfile(updatedUser);
+            if (success && mounted) {
+              setState(() {
+                _selectedImageBytes = null;
+              });
+              AppSnackbar.show(
+                context,
+                message: newAvatarUrl.isEmpty
+                    ? 'Avatar restablecido a iniciales'
+                    : 'Avatar agrícola actualizado',
+                type: SnackbarType.success,
+              );
+            }
+          } else {
+            final success = await cubit.updateProfile(updatedUser);
+            if (success && mounted) {
+              AppSnackbar.show(
+                context,
+                message: newAvatarUrl.isEmpty
+                    ? 'Avatar restablecido a iniciales'
+                    : 'Avatar agrícola actualizado',
+                type: SnackbarType.success,
+              );
+            }
+          }
+        }
+      },
     );
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      if (mounted) {
-        setState(() {
-          _selectedImageBytes = bytes;
-        });
-      }
-    }
   }
 
   void _saveProfile() async {
@@ -391,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       imageBytes: _selectedImageBytes,
                       isEditing: _isEditing,
                       isLoyaltyEnabled: isLoyaltyEnabled,
-                      onPickImage: _pickImage,
+                      onPickImage: _openAvatarPicker,
                       onEditToggle: () {
                         if (_isEditing) {
                           setState(() {
@@ -503,6 +491,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                     ),
+                    const SizedBox(height: 24),
+                    const SystemLanguageCard(),
                   ],
                 ),
               ),
@@ -547,7 +537,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   imageBytes: _selectedImageBytes,
                   isEditing: _isEditing,
                   isLoyaltyEnabled: isLoyaltyEnabled,
-                  onPickImage: _pickImage,
+                  onPickImage: _openAvatarPicker,
                   onEditToggle: () {
                     if (_isEditing) {
                       setState(() {
@@ -645,6 +635,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
                   ),
+                ),
+                const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: SystemLanguageCard(),
                 ),
                 const SizedBox(height: 20),
                 ProfileActionButtonsSection(

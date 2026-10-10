@@ -13,12 +13,14 @@ import 'package:inventory_store_app/features/dashboard/domain/usecases/get_inven
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_sales_metrics_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
 
-@injectable
+@lazySingleton
 class DashboardCubit extends Cubit<DashboardState> {
   final GetInventoryMetricsUseCase getInventoryMetrics;
   final GetSalesMetricsUseCase getSalesMetrics;
   final GetCriticalBatchesUseCase getCriticalBatches;
   final GetTopCustomersUseCase getTopCustomers;
+
+  int _currentFilterLoadId = 0;
 
   DashboardCubit({
     required this.getInventoryMetrics,
@@ -27,15 +29,33 @@ class DashboardCubit extends Cubit<DashboardState> {
     required this.getTopCustomers,
   }) : super(DashboardInitial());
 
-  Future<void> loadDashboardData() async {
-    emit(DashboardLoading());
+  Future<void> loadDashboardData({
+    bool forceRefresh = false,
+    bool background = false,
+  }) async {
+    final currentState = state;
+    if (!background || currentState is! DashboardLoaded) {
+      emit(DashboardLoading());
+    }
+
+    final activeFilter =
+        currentState is DashboardLoaded ? currentState.salesFilter : SalesTimeFilter.today;
+    final activeStartDate =
+        currentState is DashboardLoaded ? currentState.customStartDate : null;
+    final activeEndDate =
+        currentState is DashboardLoaded ? currentState.customEndDate : null;
 
     try {
-      // Carga paralela de alto rendimiento (erradica cascada secuencial)
+      // Carga paralela de alto rendimiento
       final results = await Future.wait([
-        getInventoryMetrics(),
-        getSalesMetrics(filter: SalesTimeFilter.today),
-        getCriticalBatches(daysThreshold: 30),
+        getInventoryMetrics(forceRefresh: forceRefresh),
+        getSalesMetrics(
+          filter: activeFilter,
+          customStartDate: activeStartDate,
+          customEndDate: activeEndDate,
+          forceRefresh: forceRefresh,
+        ),
+        getCriticalBatches(daysThreshold: 30, forceRefresh: forceRefresh),
         _fetchTopCustomers(limit: 5),
       ]);
 
@@ -61,7 +81,10 @@ class DashboardCubit extends Cubit<DashboardState> {
                   sales: sales,
                   criticalBatches: batches,
                   topCustomers: topCustomers,
-                  salesFilter: SalesTimeFilter.today,
+                  salesFilter: activeFilter,
+                  customStartDate: activeStartDate,
+                  customEndDate: activeEndDate,
+                  isSalesLoading: false,
                 ),
               );
             },
@@ -97,9 +120,12 @@ class DashboardCubit extends Cubit<DashboardState> {
     SalesTimeFilter filter, {
     DateTime? customStartDate,
     DateTime? customEndDate,
+    bool forceRefresh = false,
   }) async {
     final currentState = state;
     if (currentState is DashboardLoaded) {
+      final loadId = ++_currentFilterLoadId;
+
       emit(
         currentState.copyWith(
           isSalesLoading: true,
@@ -113,7 +139,11 @@ class DashboardCubit extends Cubit<DashboardState> {
         filter: filter,
         customStartDate: customStartDate,
         customEndDate: customEndDate,
+        forceRefresh: forceRefresh,
       );
+
+      // Mutex anti-race-conditions: descartar si hay una petición más reciente
+      if (loadId != _currentFilterLoadId) return;
 
       salesResult.fold(
         (failure) {
@@ -121,20 +151,28 @@ class DashboardCubit extends Cubit<DashboardState> {
             'Error al actualizar filtro de ventas en dashboard: ${failure.message}',
             tag: 'DASHBOARD_CUBIT',
           );
-          emit(currentState.copyWith(isSalesLoading: false));
+          if (loadId == _currentFilterLoadId) {
+            emit(currentState.copyWith(isSalesLoading: false));
+          }
         },
         (sales) {
-          emit(
-            currentState.copyWith(
-              sales: sales,
-              salesFilter: filter,
-              customStartDate: customStartDate,
-              customEndDate: customEndDate,
-              isSalesLoading: false,
-            ),
-          );
+          if (loadId == _currentFilterLoadId) {
+            emit(
+              currentState.copyWith(
+                sales: sales,
+                salesFilter: filter,
+                customStartDate: customStartDate,
+                customEndDate: customEndDate,
+                isSalesLoading: false,
+              ),
+            );
+          }
         },
       );
     }
+  }
+
+  Future<void> refresh() async {
+    await loadDashboardData(forceRefresh: true);
   }
 }

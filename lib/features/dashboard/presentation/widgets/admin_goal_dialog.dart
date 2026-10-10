@@ -48,7 +48,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   String? _targetError;
 
   static final _decimalFormatter = FilteringTextInputFormatter.allow(
-    RegExp(r'^\d*\.?\d{0,2}'),
+    RegExp(r'[0-9.,]'),
   );
 
   @override
@@ -87,7 +87,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
     final text = _addCtrl.text.trim();
     String? error;
     if (text.isNotEmpty) {
-      final value = double.tryParse(text);
+      final value = double.tryParse(text.replaceAll(',', '.'));
       if (value == null) {
         error = 'Monto inválido';
       } else if (value < 0) {
@@ -102,7 +102,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   void _validateCurrent() {
     final text = _currentCtrl.text.trim();
     String? error;
-    final value = double.tryParse(text);
+    final value = double.tryParse(text.replaceAll(',', '.'));
     if (text.isEmpty || value == null) {
       error = 'Ingresa un número válido';
     } else if (value < 0) {
@@ -116,7 +116,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   void _validateTarget() {
     final text = _targetCtrl.text.trim();
     String? error;
-    final value = double.tryParse(text);
+    final value = double.tryParse(text.replaceAll(',', '.'));
     if (text.isEmpty || value == null) {
       error = 'Ingresa un número válido';
     } else if (value <= 0) {
@@ -128,7 +128,8 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   }
 
   void _applyQuickAdd(double amount) {
-    final current = double.tryParse(_addCtrl.text.trim()) ?? 0.0;
+    final current =
+        double.tryParse(_addCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
     final newValue = current + amount;
     _addCtrl.text =
         newValue == newValue.roundToDouble()
@@ -155,11 +156,14 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
       return;
     }
 
-    final added = double.tryParse(_addCtrl.text.trim()) ?? 0.0;
+    final added =
+        double.tryParse(_addCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
     final baseCurrent =
-        double.tryParse(_currentCtrl.text.trim()) ?? widget.currentAmount;
+        double.tryParse(_currentCtrl.text.trim().replaceAll(',', '.')) ??
+        widget.currentAmount;
     final newTarget =
-        double.tryParse(_targetCtrl.text.trim()) ?? widget.targetAmount;
+        double.tryParse(_targetCtrl.text.trim().replaceAll(',', '.')) ??
+        widget.targetAmount;
     final newCurrent = baseCurrent + added;
 
     setState(() => _isLoading = true);

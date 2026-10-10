@@ -5,15 +5,19 @@ import 'package:inventory_store_app/features/dashboard/domain/entities/sales_met
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 
 abstract class DashboardRepository {
-  Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics();
+  Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics({
+    bool forceRefresh = false,
+  });
   Future<Either<Failure, SalesMetricsEntity>> getSalesMetrics({
     required SalesTimeFilter filter,
     DateTime? customStartDate,
     DateTime? customEndDate,
+    bool forceRefresh = false,
   });
   Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
     int daysThreshold = 30,
     int limit = 15,
+    bool forceRefresh = false,
   });
 }
 

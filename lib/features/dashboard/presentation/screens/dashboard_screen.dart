@@ -19,6 +19,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/admi
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -27,8 +28,15 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<DashboardCubit>()..loadDashboardData(),
+    final cubit = sl<DashboardCubit>();
+    if (cubit.state is DashboardInitial) {
+      cubit.loadDashboardData();
+    } else {
+      cubit.loadDashboardData(background: true);
+    }
+
+    return BlocProvider.value(
+      value: cubit,
       child: const _DashboardScreenContent(),
     );
   }
@@ -195,7 +203,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         // Atajo R: Recargar Dashboard
         const SingleActivator(LogicalKeyboardKey.keyR): () {
           if (_isTextFieldFocused()) return;
-          context.read<DashboardCubit>().loadDashboardData();
+          context.read<DashboardCubit>().refresh();
         },
         // Atajo W: Abrir panel Add Widget (Shopeers Style)
         const SingleActivator(LogicalKeyboardKey.keyW): () {
@@ -265,7 +273,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               if (!kIsWeb) {
                 Vibration.vibrate(duration: 50, amplitude: 128);
               }
-              await context.read<DashboardCubit>().loadDashboardData();
+              await context.read<DashboardCubit>().refresh();
             },
             child: BlocBuilder<DashboardCubit, DashboardState>(
               builder: (context, state) {
@@ -559,7 +567,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     if (!kIsWeb) {
                       Vibration.vibrate(duration: 30, amplitude: 60);
                     }
-                    context.read<DashboardCubit>().loadDashboardData();
+                    context.read<DashboardCubit>().refresh();
                   },
                   style: OutlinedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -1177,35 +1185,13 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     DashboardLoaded state,
   ) async {
     final now = DateTime.now();
-    final initialRange = (state.customStartDate != null && state.customEndDate != null)
-        ? DateTimeRange(start: state.customStartDate!, end: state.customEndDate!)
-        : DateTimeRange(
-            start: now.subtract(const Duration(days: 7)),
-            end: now,
-          );
-
-    final picked = await showDateRangePicker(
-      context: context,
-      initialDateRange: initialRange,
+    final picked = await AppDateRangePickerModal.show(
+      context,
+      initialStartDate:
+          state.customStartDate ?? now.subtract(const Duration(days: 7)),
+      initialEndDate: state.customEndDate ?? now,
       firstDate: DateTime(2022),
       lastDate: now.add(const Duration(days: 365)),
-      helpText: 'SELECCIONAR RANGO DE FECHAS',
-      cancelText: 'CANCELAR',
-      confirmText: 'APLICAR',
-      saveText: 'APLICAR',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: const Color(0xFF2563EB),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: const Color(0xFF0F172A),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
@@ -1297,11 +1283,23 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 13,
-                      color: Color(0xFF64748B),
-                    ),
+                    if (state.isSalesLoading)
+                      const SizedBox(
+                        width: 13,
+                        height: 13,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF2563EB),
+                          ),
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 13,
+                        color: Color(0xFF64748B),
+                      ),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(

@@ -26,6 +26,7 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_confirm_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_table_view.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -415,7 +416,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   bool _isSideSheetOpen = false;
 
-  Future<void> _openDesktopDetailSheet(OrderEntity order) async {
+  Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!mounted || _isSideSheetOpen) return;
     _isSideSheetOpen = true;
@@ -423,71 +424,33 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     final cubit = context.read<OrdersCubit>();
     final configCubit = context.read<AppConfigCubit>();
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    await showGeneralDialog(
+    final result = await AdaptiveSideSheet.show<bool>(
       context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
+      desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar detalle',
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      transitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final drawerWidth = screenWidth >= 1440 ? 640.0 : 580.0;
-
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: drawerWidth,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x26000000),
-                    blurRadius: 24,
-                    offset: Offset(-4, 0),
-                  ),
-                ],
-              ),
-              child: MultiBlocProvider(
-                providers: [
-                  BlocProvider.value(value: cubit),
-                  BlocProvider.value(value: configCubit),
-                ],
-                child: OrderDetailSheet(
-                  key: ValueKey(order.id),
-                  order: order,
-                  isEmbedded: false,
-                  onOrderUpdated: (updated) {
-                    if (mounted) {
-                      cubit.updateOrderInList(updated);
-                      if (cubit.state.statusFilter != 'ALL' &&
-                          updated.status != cubit.state.statusFilter) {
-                        cubit.loadOrders(background: true);
-                      }
-                    }
-                  },
-                ),
-              ),
-            ),
+      builder: (dialogCtx, isSlideOver) {
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: cubit),
+            BlocProvider.value(value: configCubit),
+          ],
+          child: OrderDetailSheet(
+            key: ValueKey(order.id),
+            order: order,
+            isEmbedded: false,
+            onOrderUpdated: (updated) {
+              if (mounted) {
+                cubit.updateOrderInList(updated);
+                if (cubit.state.statusFilter != 'ALL' &&
+                    updated.status != cubit.state.statusFilter) {
+                  cubit.loadOrders(background: true);
+                }
+              }
+            },
           ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(
-            CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            ),
-          ),
-          child: child,
         );
       },
     );
@@ -495,52 +458,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _isSideSheetOpen = false;
     if (mounted) {
       _selectOrder(null, updateUrl: true);
-    }
-  }
-
-  Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
-    if (isWide) {
-      await _openDesktopDetailSheet(order);
-      return;
-    }
-
-    FocusManager.instance.primaryFocus?.unfocus();
-    final cubit = context.read<OrdersCubit>();
-    final configCubit = context.read<AppConfigCubit>();
-
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (sheetCtx) => MultiBlocProvider(
-            providers: [
-              BlocProvider.value(value: cubit),
-              BlocProvider.value(value: configCubit),
-            ],
-            child: Container(
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: OrderDetailSheet(
-                order: order,
-                onOrderUpdated: (updated) {
-                  if (mounted) {
-                    cubit.updateOrderInList(updated);
-                    if (cubit.state.statusFilter != 'ALL' &&
-                        updated.status != cubit.state.statusFilter) {
-                      cubit.loadOrders(background: true);
-                    }
-                  }
-                },
-              ),
-            ),
-          ),
-    );
-
-    if (result == true && mounted) {
-      if (cubit.state.statusFilter != 'ALL') {
+      if (result == true && cubit.state.statusFilter != 'ALL') {
         cubit.loadOrders(background: true);
       }
     }

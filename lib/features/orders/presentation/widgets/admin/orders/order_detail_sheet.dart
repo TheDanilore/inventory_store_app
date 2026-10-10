@@ -435,21 +435,16 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
+            color: Color(0x060F172A),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -634,7 +629,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     return BlocBuilder<OrderDetailCubit, OrderDetailState>(
       buildWhen:
-          (p, c) => p.isLoading != c.isLoading || p.hasError != c.hasError,
+          (p, c) =>
+              p.isLoading != c.isLoading ||
+              p.isBackgroundLoading != c.isBackgroundLoading ||
+              p.hasError != c.hasError ||
+              p.items != c.items ||
+              p.order != c.order,
       builder: (context, rootState) {
         // We use widget.order as fallback for the initial render, before state.order is populated.
         final displayOrder = rootState.order ?? widget.order;
@@ -648,28 +648,13 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   : (isDesktopOrDialog
                       ? double.infinity
                       : MediaQuery.of(context).size.height * 0.9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius:
-                widget.isEmbedded || isDesktopOrDialog
-                    ? BorderRadius.zero
-                    : const BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
           ),
           child: SafeArea(
+            top: false,
             child: Column(
               children: [
-                if (!widget.isEmbedded && !isDesktopOrDialog)
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
                 Expanded(
                   child:
                       (rootState.isLoading && rootState.order == null)
@@ -702,11 +687,15 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                             children: [
                               if (rootState.isBackgroundLoading)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 8.0),
-                                  child: LinearProgressIndicator(
-                                    color: AppColors.teal,
-                                    minHeight: 2,
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const LinearProgressIndicator(
+                                      color: AppColors.teal,
+                                      backgroundColor: Color(0xFFE2E8F0),
+                                      minHeight: 2.5,
+                                    ),
                                   ),
                                 ),
                               // HEADER
