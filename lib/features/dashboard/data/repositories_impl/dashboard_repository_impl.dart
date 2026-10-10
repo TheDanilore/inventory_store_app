@@ -333,6 +333,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
           bestSellers = sorted.take(5).map((e) {
             return {
               'id': '#${e.key.length > 5 ? e.key.substring(0, 5) : e.key}',
+              'productId': e.key,
               'name': e.value.name,
               'category': 'Ventas',
               'sold': '${e.value.qty} unid.',
@@ -389,7 +390,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .from('warehouse_stock_batches')
           .select('''
             id, batch_number, expiry_date, available_quantity,
-            products(name),
+            products(id, name),
             product_variants(
               sku, 
               variant_attribute_values(

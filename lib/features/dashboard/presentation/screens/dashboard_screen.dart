@@ -18,6 +18,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/dash
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -764,6 +765,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 1. Banner Ejecutivo de Bienvenida Agronómica
+                const AgronomicGreetingBanner(),
+                const SizedBox(height: 20),
+
                 if (state.inventory.lowStockProducts > 0 ||
                     state.criticalBatches.isNotEmpty) ...[
                   _HealthSummaryBar(
@@ -803,81 +808,173 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             state.topCustomers.isNotEmpty) ||
         _visibleWidgets.contains('weekly_activity') ||
         _visibleWidgets.contains('radial_goal') ||
-        (_visibleWidgets.contains('expiring_batches') &&
-            state.criticalBatches.isNotEmpty);
+        _visibleWidgets.contains('expiring_batches');
   }
 
   Widget _buildDesktopBentoGrid(BuildContext context, DashboardLoaded state) {
-    final leftWidgets = <Widget>[
-      if (_visibleWidgets.contains('profit_spline'))
-        DashboardSplineChartCard(
-          sales: state.sales,
-          inventory: state.inventory,
-        ),
-      if (_visibleWidgets.contains('best_sellers'))
+    // ── NIVEL 1: GRÁFICOS ANALÍTICOS Y METAS ──────────────────────────────
+    final hasSpline = _visibleWidgets.contains('profit_spline');
+    final hasWeekly = _visibleWidgets.contains('weekly_activity');
+    final hasGoal = _visibleWidgets.contains('radial_goal');
+
+    Widget? level1Widget;
+    if (hasSpline && (hasWeekly || hasGoal)) {
+      level1Widget = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 7,
+            child: DashboardSplineChartCard(
+              sales: state.sales,
+              inventory: state.inventory,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasWeekly) DashboardWeeklyActivityCard(sales: state.sales),
+                if (hasWeekly && hasGoal) const SizedBox(height: 20),
+                if (hasGoal) const _DashboardAdminGoalCard(),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (hasSpline) {
+      level1Widget = DashboardSplineChartCard(
+        sales: state.sales,
+        inventory: state.inventory,
+      );
+    } else if (hasWeekly || hasGoal) {
+      level1Widget = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasWeekly)
+            Expanded(
+              flex: 6,
+              child: DashboardWeeklyActivityCard(sales: state.sales),
+            ),
+          if (hasWeekly && hasGoal) const SizedBox(width: 20),
+          if (hasGoal)
+            const Expanded(
+              flex: 6,
+              child: _DashboardAdminGoalCard(),
+            ),
+        ],
+      );
+    }
+
+    // ── NIVEL 2: OPERACIONES, ROTACIÓN Y FEFO (SIMETRÍA 1:1) ───────────────
+    final hasBestSellers = _visibleWidgets.contains('best_sellers');
+    final hasCustomers = _visibleWidgets.contains('customer_segments') && state.topCustomers.isNotEmpty;
+    final hasBatches = _visibleWidgets.contains('expiring_batches');
+
+    final leftLevel2 = <Widget>[
+      if (hasBestSellers)
         DashboardBestSellersTable(
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
         ),
-      if (_visibleWidgets.contains('customer_segments') &&
-          state.topCustomers.isNotEmpty)
+    ];
+
+    final rightLevel2 = <Widget>[
+      if (hasCustomers)
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.desktop,
         ),
-    ];
-
-    final rightWidgets = <Widget>[
-      if (_visibleWidgets.contains('weekly_activity'))
-        DashboardWeeklyActivityCard(
-          sales: state.sales,
-        ),
-      if (_visibleWidgets.contains('radial_goal'))
-        const _DashboardAdminGoalCard(),
-      if (_visibleWidgets.contains('expiring_batches') &&
-          state.criticalBatches.isNotEmpty)
+      if (hasBatches)
         ExpiringBatchesCard(
           batches: state.criticalBatches,
         ),
     ];
 
-    if (leftWidgets.isEmpty && rightWidgets.isEmpty) {
+    Widget? level2Widget;
+    if (leftLevel2.isNotEmpty && rightLevel2.isNotEmpty) {
+      level2Widget = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _withSpacers(leftLevel2, 20),
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _withSpacers(rightLevel2, 20),
+            ),
+          ),
+        ],
+      );
+    } else if (leftLevel2.isNotEmpty) {
+      level2Widget = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withSpacers(leftLevel2, 20),
+      );
+    } else if (rightLevel2.isNotEmpty) {
+      level2Widget = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withSpacers(rightLevel2, 20),
+      );
+    }
+
+    final allLevels = <Widget>[
+      if (level1Widget != null) level1Widget,
+      if (level2Widget != null) level2Widget,
+    ];
+
+    if (allLevels.isEmpty) {
       return _buildEmptyWidgetsPlaceholder();
     }
 
-    if (leftWidgets.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _withSpacers(rightWidgets, 20),
-      );
-    }
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (details) => true,
+      onAcceptWithDetails: (details) {
+        final widgetId = details.data;
+        if (!_visibleWidgets.contains(widgetId)) {
+          _toggleWidget(widgetId, true);
+          if (!kIsWeb) {
+            Vibration.vibrate(duration: 40);
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Widget añadido al Dashboard con éxito'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Color(0xFF16A34A),
+            ),
+          );
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
 
-    if (rightWidgets.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _withSpacers(leftWidgets, 20),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 7,
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: EdgeInsets.all(isHovering ? 8 : 0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: isHovering
+                ? Border.all(color: const Color(0xFF2563EB), width: 2)
+                : null,
+            color: isHovering
+                ? const Color(0xFFEFF6FF).withValues(alpha: 0.25)
+                : Colors.transparent,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: _withSpacers(leftWidgets, 20),
+            children: _withSpacers(allLevels, 20),
           ),
-        ),
-        const SizedBox(width: 20),
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: _withSpacers(rightWidgets, 20),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -974,6 +1071,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 1. Banner Ejecutivo de Bienvenida Agronómica
+                const AgronomicGreetingBanner(),
+                const SizedBox(height: 16),
+
                 if (state.inventory.lowStockProducts > 0 ||
                     state.criticalBatches.isNotEmpty) ...[
                   _HealthSummaryBar(
@@ -1005,6 +1106,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileLayout(BuildContext context, DashboardLoaded state) {
     final mobileWidgets = <Widget>[
+      // 1. Banner Ejecutivo de Bienvenida Agronómica
+      const AgronomicGreetingBanner(),
+      const SizedBox(height: 14),
+
       if (state.inventory.lowStockProducts > 0 ||
           state.criticalBatches.isNotEmpty) ...[
         _HealthSummaryBar(
@@ -1037,8 +1142,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
         ),
-      if (_visibleWidgets.contains('expiring_batches') &&
-          state.criticalBatches.isNotEmpty)
+      if (_visibleWidgets.contains('expiring_batches'))
         ExpiringBatchesCard(
           batches: state.criticalBatches,
         ),
@@ -1548,7 +1652,143 @@ class ExpiringBatchesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (batches.isEmpty) return const SizedBox.shrink();
+    if (batches.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25), width: 1.2),
+          boxShadow: AppColors.cardShadow(opacity: 0.04),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.verified_rounded,
+                    color: Color(0xFF10B981),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Lotes Críticos por Vencer (FEFO)',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      Text(
+                        'Control preventivo de caducidad en almacén',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    '✓ 100% Vigente',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.eco_rounded, color: Color(0xFF16A34A), size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Salud Fitosanitaria Óptima',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'No hay lotes que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: const Color(0xFF166534).withValues(alpha: 0.9),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => context.push('/inventory'),
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Gestionar lotes y almacenes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 14,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final urgent = batches.take(3).toList();
 
@@ -1557,7 +1797,7 @@ class ExpiringBatchesCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.25), width: 1.2),
         boxShadow: AppColors.cardShadow(opacity: 0.05),
       ),
       child: Column(
@@ -1592,7 +1832,7 @@ class ExpiringBatchesCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${batches.length} lote(s) requieren rotación prioritaria',
+                      '${batches.length} lote(s) requieren rotación prioritaria en POS',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -1613,84 +1853,110 @@ class ExpiringBatchesCard extends StatelessWidget {
                     const Divider(height: 1, color: AppColors.border),
             itemBuilder: (context, index) {
               final b = urgent[index];
-              final days = b['days_until_expiration'] as int? ?? 0;
-              final code = b['batch_code'] as String? ?? 'N/A';
-              final prod = b['product_name'] as String? ?? 'Producto';
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            prod,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+              // Mapeo defensivo de campos (PostgreSQL vs Dart)
+              final expiryStr = b['expiry_date'] as String?;
+              final expiryDate = expiryStr != null ? DateTime.tryParse(expiryStr) : null;
+              final days = expiryDate != null
+                  ? expiryDate.difference(DateTime.now()).inDays
+                  : (b['days_until_expiration'] as int? ?? 0);
+
+              final code = (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
+              final prod = (b['products'] is Map
+                      ? b['products']['name']
+                      : (b['product_name'] ?? 'Insumo'))
+                  .toString();
+              final prodId = b['products'] is Map ? b['products']['id'] as String? : null;
+
+              return InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () {
+                  if (prodId != null && prodId.isNotEmpty) {
+                    context.push('/product/$prodId');
+                  } else {
+                    context.push('/inventory');
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              prod,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Lote: $code',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
+                            Text(
+                              'Lote: $code · Click para revisar stock',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            days <= 7
-                                ? AppColors.error.withValues(alpha: 0.12)
-                                : AppColors.warning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        days <= 0
-                            ? 'Vencido'
-                            : days == 1
-                            ? '1 día'
-                            : '$days días',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: days <= 7 ? AppColors.error : AppColors.warning,
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              days <= 7
+                                  ? AppColors.error.withValues(alpha: 0.12)
+                                  : AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          days <= 0
+                              ? 'Vencido'
+                              : days == 1
+                              ? '1 día'
+                              : '$days días',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: days <= 7 ? AppColors.error : AppColors.warning,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           ),
-          if (batches.length > 3) ...[
-            const SizedBox(height: 10),
-            Center(
-              child: TextButton(
-                onPressed: () => context.push('/inventory/batches'),
-                child: Text(
-                  'Ver todos los lotes (${batches.length})',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => context.push('/inventory'),
+              icon: const Icon(Icons.inventory_2_outlined, size: 14),
+              label: Text(
+                'Gestionar todos los lotes (${batches.length})',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
               ),
             ),
-          ],
+          ),
         ],
       ),
     );

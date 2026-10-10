@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 
@@ -1428,110 +1429,128 @@ class DashboardBestSellersTable extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final p = products[index];
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '#${index + 1}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF475569),
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
+                      onTap: () {
+                        final prodId = p['productId'] as String?;
+                        if (prodId != null && prodId.isNotEmpty) {
+                          context.push('/product/$prodId');
+                        } else {
+                          context.push('/inventory');
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  p['name'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  children: [
-                                    Text(
-                                      p['category'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        color: Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Text(
-                                      '•',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFFCBD5E1),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      p['sold'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                p['revenue'] as String,
+                              alignment: Alignment.center,
+                              child: Text(
+                                '#${index + 1}',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF10B981),
+                                  color: Color(0xFF475569),
                                 ),
                               ),
-                              const SizedBox(height: 3),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
-                                    alpha: 0.12,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p['name'] as String,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  p['status'] as String,
-                                  style: TextStyle(
-                                    fontSize: 10,
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        p['category'] as String,
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: Color(0xFF94A3B8),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Text(
+                                        '•',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Color(0xFFCBD5E1),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        p['sold'] as String,
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  p['revenue'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
+                                    color: Color(0xFF10B981),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(height: 3),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    p['status'] as String,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -1604,6 +1623,7 @@ class DashboardBestSellersTable extends StatelessWidget {
                           ),
                         ),
                       ),
+                      SizedBox(width: 24),
                     ],
                   ),
                 ),
@@ -1620,104 +1640,122 @@ class DashboardBestSellersTable extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final p = products[index];
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 70,
-                            child: Text(
-                              p['id'] as String,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 16,
-                                    color: Color(0xFF2563EB),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    p['name'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              p['sold'] as String,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              p['revenue'] as String,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF10B981),
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 100,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
-                                  alpha: 0.12,
-                                ),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      hoverColor: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
+                      onTap: () {
+                        final prodId = p['productId'] as String?;
+                        if (prodId != null && prodId.isNotEmpty) {
+                          context.push('/product/$prodId');
+                        } else {
+                          context.push('/inventory');
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 70,
                               child: Text(
-                                p['status'] as String,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
+                                p['id'] as String,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF64748B),
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 16,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      p['name'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                p['sold'] as String,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                p['revenue'] as String,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 100,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  p['status'] as String,
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
