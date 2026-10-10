@@ -184,6 +184,21 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     }
   }
 
+  Future<void> _navigateWithConfirm(String route) async {
+    final cubit = context.read<ProductFormCubit>();
+    if (cubit.hasUnsavedChanges) {
+      final shouldLeave = await _onWillPop();
+      if (!shouldLeave || !mounted) return;
+    }
+    if (mounted) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        context.go(route);
+      }
+    }
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -299,6 +314,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 showProfileButton: false,
                 showDrawerButton: false,
                 onBack: _handleExit,
+                actions: const [],
                 body: Scaffold(
                   backgroundColor: AppColors.background,
                   body:
@@ -410,6 +426,170 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     );
   }
 
+  // ── Header de Página en Canvas (Estilo Kusale ERP) ──────────────────────────
+  Widget _buildKusalePageHeader(
+    BuildContext context,
+    ProductFormCubit cubit,
+    bool isEdit,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Título Principal y Miga de Pan Interactiva integrada en el Canvas
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isEdit ? 'Editar Producto' : 'Nuevo Producto',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.6,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => _navigateWithConfirm('/catalog'),
+                    borderRadius: BorderRadius.circular(4),
+                    child: const Text(
+                      'Catálogo',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '›',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _navigateWithConfirm('/products'),
+                    borderRadius: BorderRadius.circular(4),
+                    child: const Text(
+                      'Productos',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '›',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    isEdit ? 'Editar' : 'Nuevo Producto',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // Acciones Gemelas de Cabecera (Kusale Header Action Buttons)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tooltip(
+              message: 'Descartar cambios y salir (Esc)',
+              waitDuration: const Duration(milliseconds: 300),
+              child: OutlinedButton(
+                onPressed: _handleExit,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: BorderSide(color: Colors.grey.shade300),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                  ),
+                ),
+                child: const Text(
+                  'Descartar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            BlocSelector<ProductFormCubit, ProductFormState, bool>(
+              selector: (s) => s.isSaving,
+              builder: (context, isSaving) {
+                return Tooltip(
+                  message: isEdit
+                      ? 'Guardar cambios (Alt + G / Ctrl + S)'
+                      : 'Publicar producto en catálogo (Alt + G / Ctrl + S)',
+                  waitDuration: const Duration(milliseconds: 300),
+                  child: FilledButton.icon(
+                    onPressed: isSaving ? null : _guardar,
+                    icon: isSaving
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded, size: 16),
+                    label: Text(
+                      isEdit ? 'Actualizar Producto' : 'Guardar Producto',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radius),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // ── Layout Desktop: Split ERP 2 Columnas (width >= 1024) ────────────────────
   Widget _buildDesktopSplitLayout(
     BuildContext context,
@@ -424,62 +604,69 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
             constraints: const BoxConstraints(maxWidth: 1280),
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Columna Principal Izquierda (60% ancho)
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ProductBasicInfoSection(
-                          nombreCtrl: _nombreCtrl,
-                          descCtrl: _descCtrl,
+                  _buildKusalePageHeader(context, cubit, isEdit),
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Columna Principal Izquierda (65% ancho: flex 13)
+                      Expanded(
+                        flex: 13,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ProductBasicInfoSection(
+                              nombreCtrl: _nombreCtrl,
+                              descCtrl: _descCtrl,
+                            ),
+                            const SizedBox(height: 20),
+                            const ProductPricingInventorySection(),
+                            BlocBuilder<ProductFormCubit, ProductFormState>(
+                              buildWhen: (p, c) =>
+                                  p.hasMultipleVariants != c.hasMultipleVariants,
+                              builder: (context, state) {
+                                if (!state.hasMultipleVariants) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 20),
+                                    _buildVariantsHeader(cubit),
+                                    const SizedBox(height: 12),
+                                    _buildVariantsList(cubit),
+                                  ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            const ProductDetailsSection(),
+                            const SizedBox(height: 20),
+                            const ProductIngredientsSection(),
+                            const SizedBox(height: 20),
+                            const ProductBatchSection(),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        const ProductPricingInventorySection(),
-                        BlocBuilder<ProductFormCubit, ProductFormState>(
-                          buildWhen: (p, c) =>
-                              p.hasMultipleVariants != c.hasMultipleVariants,
-                          builder: (context, state) {
-                            if (!state.hasMultipleVariants) {
-                              return const SizedBox.shrink();
-                            }
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 20),
-                                _buildVariantsHeader(cubit),
-                                const SizedBox(height: 12),
-                                _buildVariantsList(cubit),
-                              ],
-                            );
-                          },
+                      ),
+                      const SizedBox(width: 24),
+                      // Columna Lateral Derecha (35% ancho: flex 7)
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const ProductImagesSection(),
+                            const SizedBox(height: 20),
+                            const ProductConfigSection(),
+                            const SizedBox(height: 20),
+                            _buildDesktopSaveCard(cubit, isEdit),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                        const ProductDetailsSection(),
-                        const SizedBox(height: 20),
-                        const ProductIngredientsSection(),
-                        const SizedBox(height: 20),
-                        const ProductBatchSection(),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  // Columna Lateral Derecha (40% ancho)
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const ProductImagesSection(),
-                        const SizedBox(height: 20),
-                        const ProductConfigSection(),
-                        const SizedBox(height: 20),
-                        _buildDesktopSaveCard(cubit, isEdit),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -689,78 +876,141 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+              const Row(
                 children: [
-                  const Icon(
-                    Icons.save_rounded,
-                    size: 20,
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 19,
                     color: AppColors.primary,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Text(
-                    isEdit ? 'Guardar Cambios' : 'Publicar Producto',
-                    style: const TextStyle(
-                      fontSize: 16,
+                    'Estado y Publicación',
+                    style: TextStyle(
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                 ],
               ),
-              BlocBuilder<ProductFormCubit, ProductFormState>(
-                buildWhen: (p, c) => p.isDirty != c.isDirty,
-                builder: (context, state) {
-                  final isDirty = cubit.hasUnsavedChanges;
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isDirty
-                              ? Colors.orange.shade50
-                              : Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color:
-                            isDirty
-                                ? Colors.orange.shade200
-                                : Colors.green.shade200,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color:
-                                isDirty
-                                    ? Colors.orange.shade600
-                                    : Colors.green.shade600,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isDirty ? 'Sin guardar' : 'Al día',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isDirty
-                                    ? Colors.orange.shade800
-                                    : Colors.green.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isEdit ? 'En Catálogo' : 'Nuevo Borrador',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          BlocBuilder<ProductFormCubit, ProductFormState>(
+            buildWhen: (p, c) =>
+                p.isDirty != c.isDirty ||
+                p.hasMultipleVariants != c.hasMultipleVariants ||
+                p.variantDrafts.length != c.variantDrafts.length,
+            builder: (context, state) {
+              final isDirty = cubit.hasUnsavedChanges;
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDirty
+                      ? Colors.orange.shade50.withValues(alpha: 0.6)
+                      : Colors.green.shade50.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDirty
+                        ? Colors.orange.shade200
+                        : Colors.green.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isDirty
+                            ? Colors.orange.shade600
+                            : Colors.green.shade600,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isDirty
+                            ? 'Tienes cambios pendientes de guardar'
+                            : 'Todos los datos están sincronizados',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDirty
+                              ? Colors.orange.shade900
+                              : Colors.green.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          BlocBuilder<ProductFormCubit, ProductFormState>(
+            buildWhen: (p, c) =>
+                p.hasMultipleVariants != c.hasMultipleVariants ||
+                p.variantDrafts.length != c.variantDrafts.length,
+            builder: (context, state) {
+              final variantCount = state.hasMultipleVariants
+                  ? state.variantDrafts.length
+                  : 1;
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Modalidad de Venta',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      state.hasMultipleVariants
+                          ? '$variantCount variantes'
+                          : 'Producto único (Simple)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           BlocSelector<ProductFormCubit, ProductFormState, bool>(
@@ -769,39 +1019,36 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               return Tooltip(
                 message: isEdit
                     ? 'Guardar cambios (Alt + G / Ctrl + S)'
-                    : 'Publicar producto (Alt + G / Ctrl + S)',
+                    : 'Publicar producto en catálogo (Alt + G / Ctrl + S)',
                 waitDuration: const Duration(milliseconds: 300),
                 child: AppPrimaryButton(
                   label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
                   icon: const Icon(Icons.check_rounded, size: 20),
                   onPressed: isSaving ? null : _guardar,
                   loading: isSaving,
-                  backgroundColor: AppColors.success,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                 ),
               );
             },
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Tooltip(
-                message: 'Descartar cambios y salir (Esc)',
-                waitDuration: const Duration(milliseconds: 300),
-                child: TextButton.icon(
-                  onPressed: _handleExit,
-                  icon: const Icon(Icons.close_rounded, size: 16),
-                  label: const Text(
-                    'Descartar',
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
-                    ),
+          const SizedBox(height: 10),
+          Center(
+            child: Tooltip(
+              message: 'Descartar cambios y salir (Esc)',
+              waitDuration: const Duration(milliseconds: 300),
+              child: TextButton.icon(
+                onPressed: _handleExit,
+                icon: const Icon(Icons.close_rounded, size: 16),
+                label: const Text(
+                  'Descartar y volver',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12.5,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -818,6 +1065,72 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       children: [
         CustomScrollView(
           slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: () => _navigateWithConfirm('/products'),
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Productos',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '›',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isEdit ? 'Editar' : 'Nuevo Producto',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isEdit ? 'Editar Producto' : 'Nuevo Producto',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
             SliverPadding(
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(

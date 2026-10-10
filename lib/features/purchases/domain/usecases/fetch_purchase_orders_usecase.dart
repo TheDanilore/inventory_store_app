@@ -16,6 +16,7 @@ class FetchPurchaseOrdersUseCase {
     String statusFilter = 'Todos',
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) {
     return repository.fetchOrders(
       page: page,
@@ -24,6 +25,7 @@ class FetchPurchaseOrdersUseCase {
       statusFilter: statusFilter,
       startDate: startDate,
       endDate: endDate,
+      forceRefresh: forceRefresh,
     );
   }
 }

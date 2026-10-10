@@ -10,7 +10,10 @@ class FetchPurchaseOrderItemsUseCase {
 
   FetchPurchaseOrderItemsUseCase(this.repository);
 
-  Future<Either<Failure, List<PurchaseOrderItemEntity>>> call(String poId) {
-    return repository.fetchOrderItems(poId);
+  Future<Either<Failure, List<PurchaseOrderItemEntity>>> call(
+    String poId, {
+    bool forceRefresh = false,
+  }) {
+    return repository.fetchOrderItems(poId, forceRefresh: forceRefresh);
   }
 }

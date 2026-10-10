@@ -97,6 +97,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
           _selectedProduct!.id == product.id) {
         setState(() => _selectedProduct = null);
       }
+    } else if (mounted) {
+      // Re-sincronizar cabecera del catálogo tras volver del formulario
+      setState(() {});
     }
   }
 

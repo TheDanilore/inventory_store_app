@@ -12,45 +12,85 @@ class ProductImagesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow(),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Imágenes del Producto',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.photo_library_outlined,
+                    size: 19,
+                    color: AppColors.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Multimedia del Producto',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              BlocBuilder<ProductFormCubit, ProductFormState>(
+                buildWhen: (p, c) => p.formImages.length != c.formImages.length,
+                builder: (context, state) {
+                  final count = state.formImages.length;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$count / 8 fotos',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Mantén presionada una imagen para moverla, o arrástrala rápidamente usando el ícono de las rayas.',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 120,
-            child: BlocBuilder<ProductFormCubit, ProductFormState>(
-              buildWhen:
-                  (p, c) =>
-                      p.isSaving != c.isSaving || p.formImages != c.formImages,
-              builder: (context, state) {
-                final cubit = context.read<ProductFormCubit>();
-                return Row(
-                  children: [
+          const SizedBox(height: 14),
+          BlocBuilder<ProductFormCubit, ProductFormState>(
+            buildWhen:
+                (p, c) =>
+                    p.isSaving != c.isSaving || p.formImages != c.formImages,
+            builder: (context, state) {
+              final cubit = context.read<ProductFormCubit>();
+              if (state.formImages.isEmpty) {
+                return _buildEmptyDropZone(context, cubit, state);
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Mantén presionada una imagen para moverla. La primera foto es la portada principal.',
+                    style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 120,
+                    child: Row(
+                      children: [
                     // Botón Subir
                     InkWell(
                       onTap: state.isSaving ? null : () => cubit.pickImages(),
@@ -316,9 +356,116 @@ class ProductImagesSection extends StatelessWidget {
                       ),
                     ),
                   ],
-                );
-              },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ],
+  ),
+);
+}
+
+  Widget _buildEmptyDropZone(
+    BuildContext context,
+    ProductFormCubit cubit,
+    ProductFormState state,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        vertical: 24,
+        horizontal: 16,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFCBD5E1),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
             ),
+            child: const Icon(
+              Icons.cloud_upload_outlined,
+              size: 30,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Arrastra o sube imágenes del producto',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'JPG, PNG o WEBP. La primera foto será la portada.',
+            style: TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed:
+                    state.isSaving ? null : () => cubit.pickImages(),
+                icon: const Icon(
+                  Icons.add_photo_alternate_rounded,
+                  size: 16,
+                ),
+                label: const Text('Subir Archivos'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      AppColors.radius,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed:
+                    state.isSaving
+                        ? null
+                        : () => _promptForImageUrl(context, cubit),
+                icon: const Icon(Icons.link_rounded, size: 16),
+                label: const Text('Por URL'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      AppColors.radius,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

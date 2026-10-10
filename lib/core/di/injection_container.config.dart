@@ -1122,7 +1122,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
-    gh.factory<_i971.PurchaseOrdersCubit>(
+    gh.lazySingleton<_i971.PurchaseOrdersCubit>(
       () => _i971.PurchaseOrdersCubit(
         fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
         updatePurchaseOrderStatusUseCase:

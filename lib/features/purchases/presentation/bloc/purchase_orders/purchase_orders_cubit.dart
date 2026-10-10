@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/update_or
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
 import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
 
-@injectable
+@lazySingleton
 class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   final FetchPurchaseOrdersUseCase fetchPurchaseOrdersUseCase;
   final UpdatePurchaseOrderStatusUseCase updatePurchaseOrderStatusUseCase;
@@ -25,6 +25,10 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     loadOrders();
   }
 
+  Future<void> refresh() => loadOrders(refresh: true, forceRefresh: true);
+
+  int _currentLoadId = 0;
+
   Future<void> loadOrders({
     String? searchText,
     String? statusFilter,
@@ -32,7 +36,10 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     DateTime? endDate,
     int? page,
     bool refresh = false,
+    bool background = false,
+    bool forceRefresh = false,
   }) async {
+    final loadId = ++_currentLoadId;
     final currentState = state;
     String currentSearchText = '';
     String currentStatusFilter = 'Todos';
@@ -45,20 +52,24 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     if (currentState is PurchaseOrdersLoaded) {
       currentSearchText = searchText ?? currentState.searchText;
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
-      // Date range needs a way to be explicitly cleared if both are null and refresh is requested.
-      // But we just use ?? logic. If we need to clear it, we might need a distinct method.
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
-      currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentOrders = refresh ? [] : currentState.orders;
+      currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentOrders =
+          (refresh && !background && currentState.orders.isEmpty)
+              ? []
+              : currentState.orders;
       currentTotalCount = currentState.totalCount;
     } else if (currentState is PurchaseOrdersLoading) {
       currentSearchText = searchText ?? currentState.searchText;
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
-      currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentOrders = refresh ? [] : currentState.currentOrders;
+      currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentOrders =
+          (refresh && !background && currentState.currentOrders.isEmpty)
+              ? []
+              : currentState.currentOrders;
       currentTotalCount = currentState.totalCount;
     } else if (currentState is PurchaseOrdersError) {
       currentSearchText = searchText ?? currentState.searchText;
@@ -66,7 +77,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage = page ?? (refresh ? 0 : currentState.currentPage);
-      currentOrders = refresh ? [] : currentState.currentOrders;
+      currentOrders = currentState.currentOrders;
       currentTotalCount = currentState.totalCount;
     } else {
       currentSearchText = searchText ?? '';
@@ -95,7 +106,10 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       statusFilter: currentStatusFilter,
       startDate: currentStartDate,
       endDate: currentEndDate,
+      forceRefresh: forceRefresh,
     );
+
+    if (loadId != _currentLoadId) return;
 
     result.fold(
       (failure) {

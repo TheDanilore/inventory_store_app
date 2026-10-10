@@ -30,8 +30,8 @@ class PurchasesRoutes {
         final orderId =
             state.uri.queryParameters['selectedId'] ??
             state.uri.queryParameters['orderId'];
-        return BlocProvider(
-          create: (_) => sl<PurchaseOrdersCubit>(),
+        return BlocProvider.value(
+          value: sl<PurchaseOrdersCubit>(),
           child: PurchaseOrdersScreen(targetOrderId: orderId),
         );
       },

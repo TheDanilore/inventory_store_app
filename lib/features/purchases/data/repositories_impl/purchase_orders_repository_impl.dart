@@ -11,9 +11,32 @@ import 'package:inventory_store_app/features/purchases/data/models/purchase_orde
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
 
+class _PurchaseOrdersCacheEntry {
+  final List<PurchaseOrderEntity> data;
+  final int count;
+  final DateTime timestamp;
+
+  _PurchaseOrdersCacheEntry({
+    required this.data,
+    required this.count,
+    required this.timestamp,
+  });
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 3);
+}
+
 @LazySingleton(as: PurchaseOrdersRepository)
 class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  // ─── CACHÉ L1 EN MEMORIA (STALE-WHILE-REVALIDATE) ──────────────────────────
+  final Map<String, _PurchaseOrdersCacheEntry> _ordersCache = {};
+  final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
+
+  void _invalidateOrdersCache() {
+    _ordersCache.clear();
+  }
 
   @override
   Future<Either<Failure, Map<String, dynamic>?>> getPurchaseOrderById(
@@ -62,7 +85,18 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     String statusFilter = 'Todos',
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey =
+        '${page}_${pageSize}_${searchText}_${statusFilter}_${startDate?.toIso8601String()}_${endDate?.toIso8601String()}';
+
+    if (!forceRefresh && _ordersCache.containsKey(cacheKey)) {
+      final cached = _ordersCache[cacheKey]!;
+      if (!cached.isExpired) {
+        return Right({'data': cached.data, 'count': cached.count});
+      }
+    }
+
     try {
       final start = page * pageSize;
       final end = start + pageSize - 1;
@@ -127,7 +161,14 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
               )
               .toList();
 
-      return Right({'data': dataList, 'count': response.count});
+      final count = response.count;
+      _ordersCache[cacheKey] = _PurchaseOrdersCacheEntry(
+        data: dataList,
+        count: count,
+        timestamp: DateTime.now(),
+      );
+
+      return Right({'data': dataList, 'count': count});
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'fetchOrders PostgrestException: ${e.message}',
@@ -151,8 +192,13 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
   @override
   Future<Either<Failure, List<PurchaseOrderItemEntity>>> fetchOrderItems(
-    String poId,
-  ) async {
+    String poId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _itemsCache.containsKey(poId)) {
+      return Right(_itemsCache[poId]!);
+    }
+
     try {
       // ── 1. Fetch data through single RPC (Zero N+1 Data Egress) ────────
       final response = await _supabase.rpc(
@@ -161,7 +207,10 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       );
 
       final rows = response as List;
-      if (rows.isEmpty) return const Right([]);
+      if (rows.isEmpty) {
+        _itemsCache[poId] = const [];
+        return const Right([]);
+      }
 
       // ── 2. Build result ────────────────────────────────────────────────
       final list =
@@ -187,6 +236,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             );
           }).toList();
 
+      _itemsCache[poId] = list;
       return Right(list);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -242,6 +292,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             ),
           );
         }
+        _invalidateOrdersCache();
+        _itemsCache.remove(poId);
         return const Right(null);
       }
 
@@ -252,6 +304,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', poId);
+      _invalidateOrdersCache();
+      _itemsCache.remove(poId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -343,6 +397,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
       if (rpcRes != null && rpcRes is Map) {
         final isSuccess = rpcRes['success'] as bool? ?? false;
         if (isSuccess) {
+          _invalidateOrdersCache();
           return const Right(null);
         } else if (rpcRes['error'] != null) {
           return Left(ServerFailure(message: rpcRes['error'].toString()));
@@ -661,6 +716,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       await _supabase.from('purchase_order_items').insert(itemsToInsert);
 
+      _invalidateOrdersCache();
+      _itemsCache.remove(orderId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -722,6 +779,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         );
       }
 
+      _invalidateOrdersCache();
+      _itemsCache.remove(poId);
       return const Right(null);
     } catch (e, st) {
       LoggerService.e(
@@ -767,6 +826,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             'Error desconocido en el servidor.';
         return Left(ServerFailure(message: errMsg));
       }
+      _invalidateOrdersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -821,6 +881,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             'Error desconocido en el servidor.';
         return Left(ServerFailure(message: errMsg));
       }
+      _invalidateOrdersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(

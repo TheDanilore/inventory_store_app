@@ -10,11 +10,13 @@ abstract class PurchaseOrdersRepository {
     String statusFilter = 'Todos',
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   });
 
   Future<Either<Failure, List<PurchaseOrderItemEntity>>> fetchOrderItems(
-    String poId,
-  );
+    String poId, {
+    bool forceRefresh = false,
+  });
 
   Future<Either<Failure, Map<String, dynamic>?>> getPurchaseOrderById(
     String poId,

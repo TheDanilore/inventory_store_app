@@ -87,6 +87,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       final state = cubit.state;
       if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
         cubit.loadOrders(refresh: true);
+      } else {
+        // Revalidación silenciosa en background sin borrar la tabla (Stale-While-Revalidate)
+        cubit.loadOrders(background: true);
       }
     });
   }
@@ -245,7 +248,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     // Atajo [R] -> Recargar órdenes de compra
     if (key == LogicalKeyboardKey.keyR) {
       _itemsCache.clear();
-      cubit.loadOrders(refresh: true);
+      cubit.refresh();
       AppSnackbar.show(
         context,
         message: 'Actualizando órdenes de compra...',
@@ -649,7 +652,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           },
           onRefresh: () {
             _itemsCache.clear();
-            cubit.loadOrders(refresh: true);
+            cubit.refresh();
           },
         ),
       );
@@ -1026,9 +1029,23 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
-                      child: CustomScrollView(
-                        controller: _listScrollController,
-                        slivers: [
+                      child: RefreshIndicator(
+                        color: AppColors.primary,
+                        onRefresh: () async {
+                          _itemsCache.clear();
+                          await cubit.refresh();
+                        },
+                        child: CustomScrollView(
+                          controller: _listScrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            if (viewModel.isBackgroundLoading)
+                              const SliverToBoxAdapter(
+                                child: LinearProgressIndicator(
+                                  color: AppColors.teal,
+                                  minHeight: 2,
+                                ),
+                              ),
                           // ── Borrador ──────────────────────────────────────────────
                           if (_hasDraft)
                             SliverToBoxAdapter(
@@ -1148,7 +1165,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               ),
                               onRefresh: () {
                                 _itemsCache.clear();
-                                cubit.loadOrders(refresh: true);
+                                cubit.refresh();
                               },
                               primaryAction: AdminProToolbarAction(
                                 label:
@@ -1274,8 +1291,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                         ],
                       ),
                     ),
-                  ],
-                );
+                  ),
+                ],
+              );
 
                 return listContent;
               },
@@ -1484,7 +1502,13 @@ class _PurchaseOrdersViewModel {
   void clearError() => cubit.clearError();
 
   bool get isLoading =>
-      state is PurchaseOrdersLoading || state is PurchaseOrdersInitial;
+      (state is PurchaseOrdersLoading &&
+          (state as PurchaseOrdersLoading).currentOrders.isEmpty) ||
+      state is PurchaseOrdersInitial;
+
+  bool get isBackgroundLoading =>
+      state is PurchaseOrdersLoading &&
+      (state as PurchaseOrdersLoading).currentOrders.isNotEmpty;
 
   List<dynamic> get orders {
     if (state is PurchaseOrdersLoaded) {

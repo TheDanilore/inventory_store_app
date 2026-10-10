@@ -1515,7 +1515,8 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    final payAmount = double.tryParse(_amountCtrl.text.trim()) ?? 0.0;
+    final cleanText = _amountCtrl.text.trim().replaceAll(',', '.');
+    final payAmount = double.tryParse(cleanText) ?? 0.0;
     if (payAmount <= 0) {
       AppSnackbar.show(
         context,
@@ -1925,7 +1926,7 @@ class _OrderPaymentDialogState extends State<_OrderPaymentDialog> {
                   decimal: true,
                 ),
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}$')),
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
                 style: const TextStyle(
                   fontSize: 16,
