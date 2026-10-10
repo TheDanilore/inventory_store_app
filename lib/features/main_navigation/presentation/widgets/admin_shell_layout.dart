@@ -257,6 +257,7 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
         _headerNotifier.value = AdminHeaderConfig(
           title: AdminShellHelper.resolveTitle(path),
           breadcrumb: AdminShellHelper.resolveBreadcrumb(path),
+          actions: const [],
         );
       }
     } catch (e, st) {

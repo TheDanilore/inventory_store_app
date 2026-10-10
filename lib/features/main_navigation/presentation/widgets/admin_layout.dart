@@ -90,6 +90,11 @@ class _AdminLayoutState extends State<AdminLayout> {
   void _scheduleHeaderUpdate() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Prevenir que pantallas inactivas pausadas en el navigator stack sobreescriban
+      // la cabecera activa de la pantalla visible actual.
+      final route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return;
+
       final shell = AdminShellScope.maybeOf(context);
       if (shell != null && shell.isDesktop) {
         shell.updateHeader(

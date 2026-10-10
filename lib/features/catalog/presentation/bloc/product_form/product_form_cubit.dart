@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:inventory_store_app/core/utils/isolate_utils.dart';
-import 'dart:typed_data';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -428,20 +429,63 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // ── Imágenes ─────────────────────────────────────────────────────────────────
 
-  /// Abre el selector de imágenes y procesa las seleccionadas.
-  /// El resultado (mensajes de advertencia) se emite como estado — sin [BuildContext].
+  /// Procesa y agrega archivos arrastrados o soltados directamente en el área multimedia
+  Future<void> addDroppedFiles(List<XFile> archivos) async {
+    await _processAndAddImageFiles(archivos);
+  }
+
+  /// Abre el selector de imágenes y procesa las seleccionadas con fallback resiliente.
   Future<void> pickImages() async {
-    final picker = ImagePicker();
-    final archivos = await picker.pickMultiImage();
+    List<XFile> archivos = [];
+    try {
+      final picker = ImagePicker();
+      archivos = await picker.pickMultiImage();
+    } catch (e, st) {
+      LoggerService.w(
+        'ImagePicker no disponible, intentando FilePicker de respaldo',
+        tag: 'PRODUCT_FORM_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+    }
+
+    if (archivos.isEmpty) {
+      try {
+        final files = await FilePicker.pickFiles(
+          type: FileType.image,
+        );
+        if (files.isNotEmpty) {
+          for (final f in files) {
+            final bytes = await f.readAsBytes();
+            if (bytes.isNotEmpty) {
+              archivos.add(XFile(f.path ?? '', bytes: bytes, name: f.name));
+            }
+          }
+        }
+      } catch (e, st) {
+        LoggerService.e(
+          'Error en selección mediante FilePicker',
+          tag: 'PRODUCT_FORM_CUBIT',
+          error: e,
+          stackTrace: st,
+        );
+      }
+    }
+
+    if (archivos.isEmpty) return;
+    await _processAndAddImageFiles(archivos);
+  }
+
+  Future<void> _processAndAddImageFiles(List<XFile> archivos) async {
     if (archivos.isEmpty) return;
 
-    const maxImages = 5;
+    const maxImages = 8;
     final currentCount = _formImages.length;
 
     if (currentCount >= maxImages) {
       emit(
         state.copyWith(
-          snackMessage: 'Límite de imágenes alcanzado ($maxImages).',
+          snackMessage: 'Límite de imágenes alcanzado ($maxImages fotos máximo).',
         ),
       );
       return;
@@ -463,11 +507,20 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         continue;
       }
 
-      final bytesOriginales = await archivo.readAsBytes();
-      final bytesOptimizados = await _optimizarImagen(bytesOriginales);
-      nuevosItems.add(
-        FormImageItem(newBytes: bytesOptimizados, newName: nombre),
-      );
+      try {
+        final bytesOriginales = await archivo.readAsBytes();
+        final bytesOptimizados = await _optimizarImagen(bytesOriginales);
+        nuevosItems.add(
+          FormImageItem(newBytes: bytesOptimizados, newName: nombre),
+        );
+      } catch (e, st) {
+        LoggerService.e(
+          'Error leyendo bytes de archivo: $nombre',
+          tag: 'PRODUCT_FORM_CUBIT',
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
 
     _formImages = [..._formImages, ...nuevosItems];
@@ -477,7 +530,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (duplicadas > 0 || excedidas > 0) {
       String msg = '';
       if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
-      if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages.';
+      if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages fotos.';
       snackMsg = msg.trim();
     }
 
@@ -495,11 +548,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final url = rawUrl.trim();
     if (url.isEmpty) return;
 
-    const maxImages = 5;
+    const maxImages = 8;
     if (_formImages.length >= maxImages) {
       emit(
         state.copyWith(
-          snackMessage: 'Límite de imágenes alcanzado ($maxImages).',
+          snackMessage: 'Límite de imágenes alcanzado ($maxImages fotos máximo).',
         ),
       );
       return;
@@ -936,6 +989,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
     if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
+    if (kIsWeb) return bytesOriginales; // En Web evita fallos de isolates/workers
     try {
       return await IsolateUtils.run(() async {
         final bytesComprimidos = await FlutterImageCompress.compressWithList(

@@ -184,6 +184,22 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     }
   }
 
+  bool _isEditableFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    final widget = primaryFocus.context?.widget;
+    return widget is EditableText ||
+        primaryFocus.context?.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  void _handleEscapeKey() {
+    if (_isEditableFocused()) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      return;
+    }
+    _handleExit();
+  }
+
   Future<void> _navigateWithConfirm(String route) async {
     final cubit = context.read<ProductFormCubit>();
     if (cubit.hasUnsavedChanges) {
@@ -304,7 +320,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 },
                 const SingleActivator(LogicalKeyboardKey.keyE, alt: true):
                     _toggleExpandCollapseAll,
-                const SingleActivator(LogicalKeyboardKey.escape): _handleExit,
+                const SingleActivator(LogicalKeyboardKey.escape): _handleEscapeKey,
               },
               child: AdminLayout(
                 title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
@@ -598,77 +614,80 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   ) {
     return Stack(
       children: [
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildKusalePageHeader(context, cubit, isEdit),
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Columna Principal Izquierda (65% ancho: flex 13)
-                      Expanded(
-                        flex: 13,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ProductBasicInfoSection(
-                              nombreCtrl: _nombreCtrl,
-                              descCtrl: _descCtrl,
-                            ),
-                            const SizedBox(height: 20),
-                            const ProductPricingInventorySection(),
-                            BlocBuilder<ProductFormCubit, ProductFormState>(
-                              buildWhen: (p, c) =>
-                                  p.hasMultipleVariants != c.hasMultipleVariants,
-                              builder: (context, state) {
-                                if (!state.hasMultipleVariants) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 20),
-                                    _buildVariantsHeader(cubit),
-                                    const SizedBox(height: 12),
-                                    _buildVariantsList(cubit),
-                                  ],
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 20),
-                            const ProductDetailsSection(),
-                            const SizedBox(height: 20),
-                            const ProductIngredientsSection(),
-                            const SizedBox(height: 20),
-                            const ProductBatchSection(),
-                          ],
+        Scrollbar(
+          thumbVisibility: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1280),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildKusalePageHeader(context, cubit, isEdit),
+                    const SizedBox(height: 24),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Columna Principal Izquierda (65% ancho: flex 13)
+                        Expanded(
+                          flex: 13,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ProductBasicInfoSection(
+                                nombreCtrl: _nombreCtrl,
+                                descCtrl: _descCtrl,
+                              ),
+                              const SizedBox(height: 20),
+                              const ProductPricingInventorySection(),
+                              BlocBuilder<ProductFormCubit, ProductFormState>(
+                                buildWhen: (p, c) =>
+                                    p.hasMultipleVariants != c.hasMultipleVariants,
+                                builder: (context, state) {
+                                  if (!state.hasMultipleVariants) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 20),
+                                      _buildVariantsHeader(cubit),
+                                      const SizedBox(height: 12),
+                                      _buildVariantsList(cubit),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              const ProductDetailsSection(),
+                              const SizedBox(height: 20),
+                              const ProductIngredientsSection(),
+                              const SizedBox(height: 20),
+                              const ProductBatchSection(),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 24),
-                      // Columna Lateral Derecha (35% ancho: flex 7)
-                      Expanded(
-                        flex: 7,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const ProductImagesSection(),
-                            const SizedBox(height: 20),
-                            const ProductConfigSection(),
-                            const SizedBox(height: 20),
-                            _buildDesktopSaveCard(cubit, isEdit),
-                          ],
+                        const SizedBox(width: 24),
+                        // Columna Lateral Derecha (35% ancho: flex 7)
+                        Expanded(
+                          flex: 7,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const ProductImagesSection(),
+                              const SizedBox(height: 20),
+                              const ProductConfigSection(),
+                              const SizedBox(height: 20),
+                              _buildDesktopSaveCard(cubit, isEdit),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
