@@ -28,6 +28,7 @@ abstract class OrdersRepository {
     required String searchQuery,
     required int limit,
     required int offset,
+    bool forceRefresh = false,
   });
 
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
@@ -84,7 +85,9 @@ abstract class OrdersRepository {
     String orderId,
   );
 
-  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts();
+  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts({
+    bool forceRefresh = false,
+  });
   Future<Either<Failure, Map<String, dynamic>?>> getProfileById(
     String profileId,
   );

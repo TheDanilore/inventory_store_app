@@ -45,6 +45,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   bool _stockControl = true;
   bool _batchManagementEnabled = false;
   bool _ingredientsEnabled = false;
+  bool _hasMultipleVariants = false;
 
   String? _selectedCategoryId;
   List<CategoryEntity> _categories = [];
@@ -82,6 +83,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   String get errorMessage => _errorMessage;
   bool get isSaving => _isSaving;
   bool get hasUnsavedChanges => _isDirty;
+  bool get hasMultipleVariants => _hasMultipleVariants;
   ProductEntity? get productToEdit => _productToEdit;
 
   // ── Setters de configuración ─────────────────────────────────────────────────
@@ -109,6 +111,68 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   void setIngredientsEnabled(bool val) {
     _ingredientsEnabled = val;
+    markAsDirty();
+    _syncState();
+  }
+
+  void setHasMultipleVariants(bool val) {
+    if (_hasMultipleVariants == val) return;
+    _hasMultipleVariants = val;
+    if (_variantDrafts.isEmpty) {
+      _variantDrafts = [VariantDraftFormModel()];
+    }
+    markAsDirty();
+    _syncState();
+  }
+
+  /// Actualiza los campos comerciales de la variante base (variante #0)
+  /// en modo de producto simple.
+  void updateDefaultVariant({
+    String? sku,
+    String? barcode,
+    String? price,
+    String? wholesalePrice,
+    String? wholesaleMinQuantity,
+    String? reorderPoint,
+    String? unitCost,
+    bool syncState = true,
+  }) {
+    if (_variantDrafts.isEmpty) {
+      _variantDrafts = [VariantDraftFormModel()];
+    }
+    final current = _variantDrafts.first;
+    _variantDrafts[0] = current.copyWith(
+      sku: sku ?? current.sku,
+      barcode: barcode ?? current.barcode,
+      price: price ?? current.price,
+      wholesalePrice: wholesalePrice ?? current.wholesalePrice,
+      wholesaleMinQuantity: wholesaleMinQuantity ?? current.wholesaleMinQuantity,
+      reorderPoint: reorderPoint ?? current.reorderPoint,
+      unitCost: unitCost ?? current.unitCost,
+    );
+    markAsDirty();
+    if (syncState) {
+      _syncState();
+    }
+  }
+
+  /// Si el usuario desmarca "Tiene múltiples variantes" y existen varias variantes,
+  /// conserva la primera variante y programa las demás para remoción.
+  void revertToSingleVariant() {
+    if (_variantDrafts.isNotEmpty) {
+      for (int i = 1; i < _variantDrafts.length; i++) {
+        final id = _variantDrafts[i].id;
+        if (id != null && id.isNotEmpty) {
+          _removedVariantIds.add(id);
+        }
+      }
+      _variantDrafts = [
+        _variantDrafts.first.copyWith(selectedAttributes: const []),
+      ];
+    } else {
+      _variantDrafts = [VariantDraftFormModel()];
+    }
+    _hasMultipleVariants = false;
     markAsDirty();
     _syncState();
   }
@@ -144,6 +208,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         stockControl: _stockControl,
         batchManagementEnabled: _batchManagementEnabled,
         ingredientsEnabled: _ingredientsEnabled,
+        hasMultipleVariants: _hasMultipleVariants,
         detailRows: List.of(_detailRows),
         ingredientRows: List.of(_ingredientRows),
         formImages: List.of(_formImages),
@@ -231,6 +296,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           (v) => VariantDraftEntity.fromVariant(v),
         );
         _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
+        if (_variantDrafts.isEmpty) {
+          _variantDrafts = [VariantDraftFormModel()];
+        }
+        _hasMultipleVariants = targetProduct.productVariants.length > 1 ||
+            (targetProduct.productVariants.length == 1 &&
+                targetProduct.productVariants.first.attributeValues.isNotEmpty);
 
         await Future.wait([
           _fetchCategories(),
@@ -239,6 +310,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         ]);
       } else {
         _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
+        _hasMultipleVariants = false;
         await Future.wait([
           _fetchCategories(),
           _fetchBrands(),
@@ -631,7 +703,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         emit(
           state.copyWith(
             snackError:
-                'Variante #${i + 1}: Ingresa un precio de venta válido (> 0).',
+                _hasMultipleVariants
+                    ? 'Variante #${i + 1}: Ingresa un precio de venta válido (> 0).'
+                    : 'Ingresa un precio de venta válido (> 0).',
           ),
         );
         return;
@@ -642,7 +716,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           emit(
             state.copyWith(
               snackError:
-                  'Variante #${i + 1}: El precio mayorista debe ser mayor a 0.',
+                  _hasMultipleVariants
+                      ? 'Variante #${i + 1}: El precio mayorista debe ser mayor a 0.'
+                      : 'El precio mayorista debe ser mayor a 0.',
             ),
           );
           return;
@@ -654,7 +730,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           emit(
             state.copyWith(
               snackError:
-                  'Variante #${i + 1}: El costo unitario no puede ser negativo.',
+                  _hasMultipleVariants
+                      ? 'Variante #${i + 1}: El costo unitario no puede ser negativo.'
+                      : 'El costo unitario no puede ser negativo.',
             ),
           );
           return;

@@ -60,6 +60,7 @@ class ProductFormState extends Equatable {
     this.stockControl = true,
     this.batchManagementEnabled = false,
     this.ingredientsEnabled = false,
+    this.hasMultipleVariants = false,
     this.detailRows = const [],
     this.ingredientRows = const [],
     this.formImages = const [],
@@ -69,6 +70,8 @@ class ProductFormState extends Equatable {
     this.snackError,
     this.saveSuccess = false,
   });
+
+  final bool hasMultipleVariants;
 
   factory ProductFormState.initial() => const ProductFormState();
 
@@ -89,6 +92,7 @@ class ProductFormState extends Equatable {
     bool? stockControl,
     bool? batchManagementEnabled,
     bool? ingredientsEnabled,
+    bool? hasMultipleVariants,
     List<DetailModel>? detailRows,
     List<IngredientRowModel>? ingredientRows,
     List<FormImageItem>? formImages,
@@ -117,6 +121,7 @@ class ProductFormState extends Equatable {
       batchManagementEnabled:
           batchManagementEnabled ?? this.batchManagementEnabled,
       ingredientsEnabled: ingredientsEnabled ?? this.ingredientsEnabled,
+      hasMultipleVariants: hasMultipleVariants ?? this.hasMultipleVariants,
       detailRows: detailRows ?? this.detailRows,
       ingredientRows: ingredientRows ?? this.ingredientRows,
       formImages: formImages ?? this.formImages,
@@ -146,6 +151,7 @@ class ProductFormState extends Equatable {
     stockControl,
     batchManagementEnabled,
     ingredientsEnabled,
+    hasMultipleVariants,
     detailRows,
     ingredientRows,
     formImages,

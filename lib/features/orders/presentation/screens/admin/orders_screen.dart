@@ -58,6 +58,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final cubit = context.read<OrdersCubit>();
       if (cubit.state.orders.isEmpty) {
         cubit.loadOrders(reset: true);
+      } else {
+        // Revalidación silenciosa en background (Stale-While-Revalidate)
+        cubit.loadOrders(background: true);
       }
     });
   }
@@ -241,7 +244,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     // Atajo [R] -> Recargar pedidos
     if (key == LogicalKeyboardKey.keyR) {
-      context.read<OrdersCubit>().loadOrders(reset: true);
+      context.read<OrdersCubit>().refresh();
       AppSnackbar.show(
         context,
         message: 'Actualizando pedidos...',
@@ -958,7 +961,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
                 return RefreshIndicator(
                   color: AppColors.primary,
-                  onRefresh: () async => cubit.loadOrders(reset: true),
+                  onRefresh: () async => cubit.refresh(),
                   child: CustomScrollView(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -1030,7 +1033,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                       (val) =>
                                           setState(() => _isTableView = val),
                                 ),
-                                onRefresh: () => cubit.loadOrders(reset: true),
+                                onRefresh: () => cubit.refresh(),
                               ),
                             ),
 

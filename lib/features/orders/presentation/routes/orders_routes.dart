@@ -15,14 +15,16 @@ class OrdersRoutes {
         final customerId = state.uri.queryParameters['customerId'];
         final customerName = state.uri.queryParameters['customerName'];
 
-        return BlocProvider(
-          create: (_) {
-            final cubit = sl<OrdersCubit>();
-            if (customerId != null && customerId.isNotEmpty) {
-              cubit.setCustomerIdFilter(customerId);
-            }
-            return cubit..loadOrders(reset: true);
-          },
+        final cubit = sl<OrdersCubit>();
+        if (customerId != null && customerId.isNotEmpty) {
+          if (cubit.state.customerIdFilter != customerId) {
+            cubit.setCustomerIdFilter(customerId);
+            cubit.loadOrders(reset: true);
+          }
+        }
+
+        return BlocProvider.value(
+          value: cubit,
           child: OrdersScreen(
             targetOrderId: orderId,
             customTitle:

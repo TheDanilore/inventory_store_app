@@ -18,6 +18,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_images_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_basic_info_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_pricing_inventory_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_config_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_details_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_ingredients_section.dart';
@@ -279,8 +280,13 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     _guardar,
                 const SingleActivator(LogicalKeyboardKey.keyG, alt: true):
                     _guardar,
-                const SingleActivator(LogicalKeyboardKey.keyV, alt: true):
-                    () => context.read<ProductFormCubit>().addVariantDraft(),
+                const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () {
+                  final cubit = context.read<ProductFormCubit>();
+                  if (!cubit.state.hasMultipleVariants) {
+                    cubit.setHasMultipleVariants(true);
+                  }
+                  cubit.addVariantDraft();
+                },
                 const SingleActivator(LogicalKeyboardKey.keyE, alt: true):
                     _toggleExpandCollapseAll,
                 const SingleActivator(LogicalKeyboardKey.escape): _handleExit,
@@ -432,15 +438,31 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           descCtrl: _descCtrl,
                         ),
                         const SizedBox(height: 20),
+                        const ProductPricingInventorySection(),
+                        BlocBuilder<ProductFormCubit, ProductFormState>(
+                          buildWhen: (p, c) =>
+                              p.hasMultipleVariants != c.hasMultipleVariants,
+                          builder: (context, state) {
+                            if (!state.hasMultipleVariants) {
+                              return const SizedBox.shrink();
+                            }
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 20),
+                                _buildVariantsHeader(cubit),
+                                const SizedBox(height: 12),
+                                _buildVariantsList(cubit),
+                              ],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
                         const ProductDetailsSection(),
                         const SizedBox(height: 20),
                         const ProductIngredientsSection(),
                         const SizedBox(height: 20),
                         const ProductBatchSection(),
-                        const SizedBox(height: 20),
-                        _buildVariantsHeader(cubit),
-                        const SizedBox(height: 12),
-                        _buildVariantsList(cubit),
                       ],
                     ),
                   ),
@@ -568,59 +590,69 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        OutlinedButton(
-                          onPressed: _handleExit,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radius,
+                        Tooltip(
+                          message: 'Descartar cambios y salir (Esc)',
+                          waitDuration: const Duration(milliseconds: 300),
+                          child: OutlinedButton(
+                            onPressed: _handleExit,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppColors.radius,
+                                ),
                               ),
                             ),
-                          ),
-                          child: const Text(
-                            'Descartar (Esc)',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                            child: const Text(
+                              'Descartar',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
                       BlocSelector<ProductFormCubit, ProductFormState, bool>(
                         selector: (s) => s.isSaving,
                         builder: (context, isSaving) {
-                          return FilledButton.icon(
-                            onPressed: isSaving ? null : _guardar,
-                            icon:
-                                isSaving
-                                    ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                    : const Icon(Icons.check_rounded, size: 18),
-                            label: Text(
-                              isEdit
-                                  ? 'Actualizar Producto (Alt+G)'
-                                  : 'Guardar Producto (Alt+G)',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
+                          return Tooltip(
+                            message: isEdit
+                                ? 'Guardar cambios del producto (Alt + G / Ctrl + S)'
+                                : 'Publicar nuevo producto en catálogo (Alt + G / Ctrl + S)',
+                            waitDuration: const Duration(milliseconds: 300),
+                            child: FilledButton.icon(
+                              onPressed: isSaving ? null : _guardar,
+                              icon:
+                                  isSaving
+                                      ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Icon(Icons.check_rounded, size: 18),
+                              label: Text(
+                                isEdit
+                                    ? 'Actualizar Producto'
+                                    : 'Guardar Producto',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppColors.radius,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
                                 ),
                               ),
                             ),
@@ -734,13 +766,19 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           BlocSelector<ProductFormCubit, ProductFormState, bool>(
             selector: (s) => s.isSaving,
             builder: (context, isSaving) {
-              return AppPrimaryButton(
-                label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
-                icon: const Icon(Icons.check_rounded, size: 20),
-                onPressed: isSaving ? null : _guardar,
-                loading: isSaving,
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
+              return Tooltip(
+                message: isEdit
+                    ? 'Guardar cambios (Alt + G / Ctrl + S)'
+                    : 'Publicar producto (Alt + G / Ctrl + S)',
+                waitDuration: const Duration(milliseconds: 300),
+                child: AppPrimaryButton(
+                  label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
+                  icon: const Icon(Icons.check_rounded, size: 20),
+                  onPressed: isSaving ? null : _guardar,
+                  loading: isSaving,
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                ),
               );
             },
           ),
@@ -748,64 +786,20 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              TextButton.icon(
-                onPressed: _handleExit,
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text(
-                  'Descartar',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13,
+              Tooltip(
+                message: 'Descartar cambios y salir (Esc)',
+                waitDuration: const Duration(milliseconds: 300),
+                child: TextButton.icon(
+                  onPressed: _handleExit,
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  label: const Text(
+                    'Descartar',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                      ),
-                    ),
-                    child: Text(
-                      'Alt+G',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                      ),
-                    ),
-                    child: Text(
-                      'Esc',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -835,6 +829,26 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     descCtrl: _descCtrl,
                   ),
                   const SizedBox(height: 16),
+                  const ProductPricingInventorySection(),
+                  BlocBuilder<ProductFormCubit, ProductFormState>(
+                    buildWhen: (p, c) =>
+                        p.hasMultipleVariants != c.hasMultipleVariants,
+                    builder: (context, state) {
+                      if (!state.hasMultipleVariants) {
+                        return const SizedBox.shrink();
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 16),
+                          _buildVariantsHeader(cubit),
+                          const SizedBox(height: 12),
+                          _buildVariantsList(cubit),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   const ProductConfigSection(),
                   const SizedBox(height: 16),
                   const ProductDetailsSection(),
@@ -842,10 +856,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   const ProductIngredientsSection(),
                   const SizedBox(height: 16),
                   const ProductBatchSection(),
-                  const SizedBox(height: 20),
-                  _buildVariantsHeader(cubit),
-                  const SizedBox(height: 12),
-                  _buildVariantsList(cubit),
                 ]),
               ),
             ),

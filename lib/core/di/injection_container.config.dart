@@ -1516,7 +1516,7 @@ extension GetItInjectableX on _i174.GetIt {
         getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
       ),
     );
-    gh.factory<_i1051.OrdersCubit>(
+    gh.lazySingleton<_i1051.OrdersCubit>(
       () => _i1051.OrdersCubit(
         getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
         updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),

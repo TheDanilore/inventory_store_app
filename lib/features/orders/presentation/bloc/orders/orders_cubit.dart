@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/orders/domain/usecases/update_order
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_state.dart';
 import 'package:injectable/injectable.dart';
 
-@injectable
+@lazySingleton
 class OrdersCubit extends Cubit<OrdersState> {
   final GetFilteredOrdersUc _getFilteredOrdersUc;
   final UpdateOrderStatusUc _updateOrderStatusUc;
@@ -36,9 +36,15 @@ class OrdersCubit extends Cubit<OrdersState> {
     loadOrders(reset: true);
   }
 
+  Future<void> refresh() => loadOrders(reset: true, forceRefresh: true);
+
   int _currentLoadId = 0;
 
-  Future<void> loadOrders({bool reset = false, bool background = false}) async {
+  Future<void> loadOrders({
+    bool reset = false,
+    bool background = false,
+    bool forceRefresh = false,
+  }) async {
     final loadId = ++_currentLoadId;
 
     if (reset) {
@@ -76,6 +82,7 @@ class OrdersCubit extends Cubit<OrdersState> {
         searchQuery: state.searchQuery,
         limit: OrdersState.pageSize,
         offset: startRow,
+        forceRefresh: forceRefresh,
       ),
     );
 

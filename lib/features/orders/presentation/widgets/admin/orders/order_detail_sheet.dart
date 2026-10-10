@@ -672,12 +672,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   ),
                 Expanded(
                   child:
-                      rootState.isLoading
+                      (rootState.isLoading && rootState.order == null)
                           ? const Padding(
                             padding: EdgeInsets.all(16.0),
                             child: OrderDetailSkeleton(),
                           )
-                          : rootState.hasError
+                          : (rootState.hasError && rootState.order == null)
                           ? AppEmptyState(
                             icon: Icons.error_outline_rounded,
                             color: Colors.red,
@@ -701,6 +701,14 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                             children: [
+                              if (rootState.isBackgroundLoading)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 8.0),
+                                  child: LinearProgressIndicator(
+                                    color: AppColors.teal,
+                                    minHeight: 2,
+                                  ),
+                                ),
                               // HEADER
                               if (!widget.isEmbedded) ...[
                                 BlocBuilder<OrderDetailCubit, OrderDetailState>(
@@ -841,7 +849,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 selector:
                                     (state) => _ItemsSectionData(
                                       items: state.items,
-                                      isLoading: state.isLoading,
+                                      isLoading:
+                                          state.isLoading ||
+                                          (state.isBackgroundLoading &&
+                                              state.items.isEmpty),
                                       currentStatus: state.currentStatus,
                                       batchesByVariant: state.batchesByVariant,
                                       usesBatchesMap: state.usesBatchesMap,

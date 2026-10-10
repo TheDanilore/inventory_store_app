@@ -5,6 +5,7 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_item_e
 
 class OrderDetailState extends Equatable {
   final bool isLoading;
+  final bool isBackgroundLoading;
   final bool hasError;
   final bool isSaving;
   final bool isReturning;
@@ -30,6 +31,7 @@ class OrderDetailState extends Equatable {
 
   const OrderDetailState({
     this.isLoading = true,
+    this.isBackgroundLoading = false,
     this.hasError = false,
     this.isSaving = false,
     this.isReturning = false,
@@ -62,6 +64,7 @@ class OrderDetailState extends Equatable {
 
   OrderDetailState copyWith({
     bool? isLoading,
+    bool? isBackgroundLoading,
     bool? hasError,
     bool? isSaving,
     bool? isReturning,
@@ -84,6 +87,7 @@ class OrderDetailState extends Equatable {
   }) {
     return OrderDetailState(
       isLoading: isLoading ?? this.isLoading,
+      isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
       hasError: hasError ?? this.hasError,
       isSaving: isSaving ?? this.isSaving,
       isReturning: isReturning ?? this.isReturning,
@@ -109,6 +113,7 @@ class OrderDetailState extends Equatable {
   @override
   List<Object?> get props => [
     isLoading,
+    isBackgroundLoading,
     hasError,
     isSaving,
     isReturning,

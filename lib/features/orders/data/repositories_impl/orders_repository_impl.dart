@@ -14,9 +14,45 @@ import 'package:inventory_store_app/features/orders/domain/repositories/orders_r
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:injectable/injectable.dart';
 
+class _OrdersCacheEntry {
+  final List<OrderEntity> orders;
+  final int total;
+  final DateTime timestamp;
+
+  _OrdersCacheEntry({
+    required this.orders,
+    required this.total,
+    required this.timestamp,
+  });
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 3);
+}
+
+class _FinancialAccountsCacheEntry {
+  final List<Map<String, dynamic>> accounts;
+  final DateTime timestamp;
+
+  _FinancialAccountsCacheEntry({
+    required this.accounts,
+    required this.timestamp,
+  });
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 15);
+}
+
 @LazySingleton(as: OrdersRepository)
 class OrdersRepositoryImpl implements OrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  // ─── CACHÉ L1 EN MEMORIA (STALE-WHILE-REVALIDATE) ──────────────────────────
+  final Map<String, _OrdersCacheEntry> _ordersCache = {};
+  _FinancialAccountsCacheEntry? _accountsCache;
+
+  void _invalidateOrdersCache() {
+    _ordersCache.clear();
+  }
 
   @override
   Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
@@ -130,7 +166,18 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String searchQuery,
     required int limit,
     required int offset,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey =
+        '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
+
+    if (!forceRefresh) {
+      final cached = _ordersCache[cacheKey];
+      if (cached != null && !cached.isExpired) {
+        return Right((orders: cached.orders, total: cached.total));
+      }
+    }
+
     try {
       var query = _supabase.from('orders').select('''
         id,
@@ -219,6 +266,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final rawData = response.data as List<dynamic>;
       final totalRecords = response.count;
       final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
+
+      _ordersCache[cacheKey] = _OrdersCacheEntry(
+        orders: orders,
+        total: totalRecords,
+        timestamp: DateTime.now(),
+      );
 
       return Right((orders: orders, total: totalRecords));
     } on PostgrestException catch (e, st) {
@@ -604,6 +657,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
               'updated_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', order.id);
+        _invalidateOrdersCache();
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
@@ -768,6 +822,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         await _supabase.from('order_items').upsert(upsertPayload);
       }
 
+      _invalidateOrdersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -848,6 +903,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       };
 
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
+      _invalidateOrdersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -907,7 +963,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
   @override
   Future<Either<Failure, List<Map<String, dynamic>>>>
-  getFinancialAccounts() async {
+  getFinancialAccounts({bool forceRefresh = false}) async {
+    if (!forceRefresh && _accountsCache != null && !_accountsCache!.isExpired) {
+      return Right(_accountsCache!.accounts);
+    }
     try {
       final response = await _supabase
           .from('financial_accounts')
@@ -915,6 +974,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .eq('is_active', true)
           .order('name');
       final accounts = List<Map<String, dynamic>>.from(response);
+      _accountsCache = _FinancialAccountsCacheEntry(
+        accounts: accounts,
+        timestamp: DateTime.now(),
+      );
       return Right(accounts);
     } catch (e, st) {
       LoggerService.e(
@@ -1046,6 +1109,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
 
       if (rpcResp != null && rpcResp['success'] == true) {
+        _invalidateOrdersCache();
         return const Right(null);
       } else {
         final errorMsg =

@@ -159,7 +159,15 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
       return;
     }
 
-    final amount = double.parse(_abonoCtrl.text.trim());
+    final amount = double.tryParse(_abonoCtrl.text.trim().replaceAll(',', '.'));
+    if (amount == null || amount <= 0) {
+      AppSnackbar.show(
+        context,
+        message: 'Ingresa un monto válido mayor a 0',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
     setState(() => _isRegistering = true);
 
     try {

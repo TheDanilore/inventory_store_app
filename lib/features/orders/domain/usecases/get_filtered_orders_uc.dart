@@ -13,6 +13,7 @@ class GetFilteredOrdersParams {
   final String searchQuery;
   final int limit;
   final int offset;
+  final bool forceRefresh;
 
   GetFilteredOrdersParams({
     this.customerIdFilter,
@@ -23,6 +24,7 @@ class GetFilteredOrdersParams {
     required this.searchQuery,
     required this.limit,
     required this.offset,
+    this.forceRefresh = false,
   });
 }
 
@@ -44,6 +46,7 @@ class GetFilteredOrdersUc {
       searchQuery: params.searchQuery,
       limit: params.limit,
       offset: params.offset,
+      forceRefresh: params.forceRefresh,
     );
   }
 }

@@ -71,7 +71,14 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   }
 
   Future<void> fetchData(String orderId) async {
-    emit(state.copyWith(isLoading: true, hasError: false));
+    final hasInitialOrder = state.order != null;
+    emit(
+      state.copyWith(
+        isLoading: !hasInitialOrder,
+        isBackgroundLoading: hasInitialOrder,
+        hasError: false,
+      ),
+    );
 
     try {
       // 1. Fetch main order first
@@ -87,6 +94,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
           emit(
             state.copyWith(
               isLoading: false,
+              isBackgroundLoading: false,
               hasError: true,
               errorMessage: failure.message,
             ),
@@ -152,6 +160,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
           emit(
             state.copyWith(
               isLoading: false,
+              isBackgroundLoading: false,
               order: details.order,
               items: details.items,
               accounts: accountsData,
@@ -176,6 +185,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
       emit(
         state.copyWith(
           isLoading: false,
+          isBackgroundLoading: false,
           hasError: true,
           errorMessage: 'Error inesperado al cargar la orden.',
         ),
