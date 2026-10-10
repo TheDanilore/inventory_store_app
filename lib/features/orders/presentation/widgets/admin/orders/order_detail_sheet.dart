@@ -94,7 +94,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
   @override
   void initState() {
     super.initState();
-    _isEditing = widget.order.status.toUpperCase() == 'PENDING';
+    _isEditing = false;
     _pointsUsedCtrl.text = '0';
     _manualNameCtrl.text = widget.order.customerName.trim();
   }
@@ -708,13 +708,15 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                           p.pointsUsed != c.pointsUsed,
                                   builder: (context, state) {
                                     return OrderDetailHeaderRow(
-                                      orderId: state.order!.id,
+                                      orderId: (state.order ?? displayOrder).id,
                                       isCompleted: state.isCompleted,
                                       isEditing: _isEditing,
                                       canToggleEdit: state.canToggleEdit,
                                       onToggleEditing: () => _toggleEditing(state),
                                       onClose: Navigator.of(context).canPop()
-                                          ? () => _handlePop(false)
+                                          ? () => _handlePop(
+                                              _isEditing ? false : state.wasModified,
+                                            )
                                           : null,
                                       onShare:
                                           () => OrderPdfGenerator.shareTicket(
@@ -1408,7 +1410,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           onPopInvokedWithResult: (didPop, dynamic result) async {
             if (didPop) return;
             final state = context.read<OrderDetailCubit>().state;
-            await _handlePop(state.wasModified);
+            if (_isEditing) {
+              await _handlePop(false);
+            } else {
+              await _handlePop(state.wasModified);
+            }
           },
           child: child,
         );

@@ -458,7 +458,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     _isSideSheetOpen = false;
     if (mounted) {
       _selectOrder(null, updateUrl: true);
-      if (result == true && cubit.state.statusFilter != 'ALL') {
+      if (result == true) {
         cubit.loadOrders(background: true);
       }
     }
