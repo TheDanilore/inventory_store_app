@@ -243,7 +243,6 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               autofocus: true,
               child: AdminLayout(
                 title: 'Información del Negocio',
-                showBackButton: true,
                 // El bottomNavigationBar monolítico ha sido erradicado en favor de un Floating Dock animado.
                 bottomNavigationBar: null,
                 body: isLoading

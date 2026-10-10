@@ -166,7 +166,6 @@ class _CategoriesManagementScreenState
         autofocus: true,
         child: AdminLayout(
           title: 'Categorías',
-          showBackButton: true,
           actions: [
             if (isMobile)
               IconButton(

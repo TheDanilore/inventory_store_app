@@ -21,6 +21,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/dash
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -28,15 +29,8 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = sl<DashboardCubit>();
-    if (cubit.state is DashboardInitial) {
-      cubit.loadDashboardData();
-    } else {
-      cubit.loadDashboardData(background: true);
-    }
-
     return BlocProvider.value(
-      value: cubit,
+      value: sl<DashboardCubit>(),
       child: const _DashboardScreenContent(),
     );
   }
@@ -134,6 +128,17 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   void initState() {
     super.initState();
     _loadVisibleWidgets();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final cubit = context.read<DashboardCubit>();
+      if (cubit.state is DashboardInitial) {
+        cubit.loadDashboardData();
+      } else {
+        // Stale-While-Revalidate: si ya existen datos en caché, revalidar en segundo plano sin parpadeo de shimmers
+        cubit.loadDashboardData(background: true);
+      }
+    });
   }
 
   Future<void> _loadVisibleWidgets() async {
@@ -146,14 +151,28 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               list.where((id) => id != 'ai_assistant').toSet();
         });
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando widgets visibles del dashboard desde preferencias',
+        tag: 'DASHBOARD_SCREEN',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   Future<void> _saveVisibleWidgets() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_prefsKey, _visibleWidgets.toList());
-    } catch (_) {}
+    } catch (e, st) {
+      LoggerService.e(
+        'Error guardando widgets visibles del dashboard en preferencias',
+        tag: 'DASHBOARD_SCREEN',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   void _toggleWidget(String id, bool isVisible) {
@@ -331,19 +350,36 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 }
 
                 if (state is DashboardLoaded) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isDesktop = constraints.maxWidth >= 1100;
-                      final isTablet = constraints.maxWidth >= 720;
+                  return Stack(
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isDesktop = constraints.maxWidth >= 1100;
+                          final isTablet = constraints.maxWidth >= 720;
 
-                      if (isDesktop) {
-                        return _buildDesktopLayout(context, state);
-                      }
-                      if (isTablet) {
-                        return _buildTabletLayout(context, state);
-                      }
-                      return _buildMobileLayout(context, state);
-                    },
+                          if (isDesktop) {
+                            return _buildDesktopLayout(context, state);
+                          }
+                          if (isTablet) {
+                            return _buildTabletLayout(context, state);
+                          }
+                          return _buildMobileLayout(context, state);
+                        },
+                      ),
+                      if (state.isBackgroundLoading)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: LinearProgressIndicator(
+                            minHeight: 2.5,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primary.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 }
 

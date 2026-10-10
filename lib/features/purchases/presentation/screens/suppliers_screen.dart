@@ -216,7 +216,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         },
         child: AdminLayout(
           title: 'Directorio de Proveedores',
-          showBackButton: true,
           actions:
               isDesktopOrTablet
                   ? null

@@ -821,7 +821,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     return AdminLayout(
       title: 'Órdenes de Compra',
-      showBackButton: true,
       actions:
           isDesktopOrTablet
               ? null

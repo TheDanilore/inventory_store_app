@@ -314,7 +314,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               builder: (context, state) {
                 return AdminLayout(
                   title: 'Inventario de Productos',
-                  showBackButton: true,
                   actions: [
                     if (isMobile) ...[
                       IconButton(

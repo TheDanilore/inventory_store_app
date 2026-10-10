@@ -333,7 +333,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         },
         child: AdminLayout(
           title: 'Créditos de Proveedores',
-          showBackButton: true,
           actions:
               isDesktopOrTablet
                   ? null

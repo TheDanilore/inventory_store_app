@@ -180,7 +180,6 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
         autofocus: true,
         child: AdminLayout(
           title: 'Componentes Químicos',
-          showBackButton: true,
           actions: [
             if (isMobile)
               IconButton(

@@ -270,7 +270,6 @@ class _KardexScreenState extends State<KardexScreen> {
             },
             child: AdminLayout(
               title: 'Kardex',
-              showBackButton: true,
               body: Column(
                 children: [
                   // ── Barra de Control Superior (Desktop Toolbar) ──

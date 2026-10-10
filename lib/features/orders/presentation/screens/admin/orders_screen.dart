@@ -815,7 +815,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       autofocus: true,
       child: AdminLayout(
         title: widget.customTitle ?? 'Gestión de Pedidos',
-        showBackButton: true,
         actions: isWide
             ? null
             : [

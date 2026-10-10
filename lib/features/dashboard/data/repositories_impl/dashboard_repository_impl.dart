@@ -15,7 +15,7 @@ class _DashboardCacheEntry<T> {
   _DashboardCacheEntry({required this.data, required this.timestamp});
 
   bool get isExpired =>
-      DateTime.now().difference(timestamp) > const Duration(minutes: 3);
+      DateTime.now().difference(timestamp) > const Duration(minutes: 10);
 }
 
 @LazySingleton(as: DashboardRepository)
@@ -35,6 +35,46 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }) async {
     if (!forceRefresh && _inventoryCache != null && !_inventoryCache!.isExpired) {
       return right(_inventoryCache!.data);
+    }
+
+    // 1. Intentar RPC optimizada en Supabase para Data Egress casi nulo (cálculo en PostgreSQL)
+    try {
+      final rpcResponse = await _supabase.rpc('get_dashboard_inventory_metrics');
+      if (rpcResponse != null && rpcResponse is Map) {
+        final totalStock = (rpcResponse['total_stock'] as num?)?.toInt() ?? 0;
+        final totalProducts = (rpcResponse['total_products'] as num?)?.toInt() ?? 0;
+        final lowStockProducts = (rpcResponse['low_stock_products'] as num?)?.toInt() ?? 0;
+        final totalInvestment = (rpcResponse['total_investment'] as num?)?.toDouble() ?? 0.0;
+        final retailValue = (rpcResponse['retail_value'] as num?)?.toDouble() ?? 0.0;
+        final grossProfit = (rpcResponse['gross_profit'] as num?)?.toDouble() ?? 0.0;
+        final grossMargin = totalInvestment > 0 && retailValue > 0
+            ? (grossProfit / retailValue) * 100
+            : 0.0;
+
+        final inventoryEntity = InventoryMetricsEntity(
+          totalStock: totalStock,
+          lowStockProducts: lowStockProducts,
+          totalInvestment: totalInvestment,
+          retailValue: retailValue,
+          grossProfit: grossProfit,
+          expectedMaxProfit: grossProfit,
+          expectedMinProfit: grossProfit * 0.9,
+          grossMargin: grossMargin,
+          totalProducts: totalProducts,
+        );
+
+        _inventoryCache = _DashboardCacheEntry(
+          data: inventoryEntity,
+          timestamp: DateTime.now(),
+        );
+
+        return right(inventoryEntity);
+      }
+    } catch (rpcErr) {
+      LoggerService.w(
+        'RPC get_dashboard_inventory_metrics no disponible, usando fallback cliente: $rpcErr',
+        tag: 'DASHBOARD_REPO',
+      );
     }
 
     try {
@@ -167,6 +207,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
         error: e,
         stackTrace: stackTrace,
       );
+      if (_inventoryCache != null) {
+        LoggerService.w(
+          'Retornando métricas de inventario desde caché previo tras fallo de red',
+          tag: 'DASHBOARD_REPO',
+        );
+        return right(_inventoryCache!.data);
+      }
       return left(
         ServerFailure(message: 'Error al obtener métricas de inventario: $e'),
       );
@@ -412,6 +459,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
         error: e,
         stackTrace: stackTrace,
       );
+      if (_salesCache.containsKey(cacheKey)) {
+        LoggerService.w(
+          'Retornando métricas de ventas desde caché previo tras fallo de red',
+          tag: 'DASHBOARD_REPO',
+        );
+        return right(_salesCache[cacheKey]!.data);
+      }
       return left(
         ServerFailure(message: 'Error al obtener métricas de ventas: $e'),
       );
@@ -470,6 +524,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
         error: e,
         stackTrace: stackTrace,
       );
+      if (_batchesCache.containsKey(cacheKey)) {
+        LoggerService.w(
+          'Retornando lotes críticos desde caché previo tras fallo de red',
+          tag: 'DASHBOARD_REPO',
+        );
+        return right(_batchesCache[cacheKey]!.data);
+      }
       return left(
         ServerFailure(message: 'Error al obtener lotes por vencer: $e'),
       );

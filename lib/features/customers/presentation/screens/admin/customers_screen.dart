@@ -19,6 +19,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/top_cus
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -45,7 +47,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   final _screenFocusNode = FocusNode();
   final _scrollCtrl = ScrollController();
 
-  // Estado de ordenamiento
+  // Estado de visualización y ordenamiento
+  bool _isTableView = true;
   String _sortColumn = 'name'; // 'name', 'orders', 'debt', 'revenue'
   bool _sortAscending = true;
 
@@ -164,6 +167,12 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     if (key == LogicalKeyboardKey.keyD) {
       final nextIdx = _tabCtrl.index == 1 ? 0 : 1;
       _tabCtrl.animateTo(nextIdx);
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [V] -> Alternar Vista (Tabla vs Tarjetas)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
       return KeyEventResult.handled;
     }
 
@@ -293,64 +302,28 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     _isSideSheetOpen = true;
     setState(() => _selectedCustomer = customer);
 
-    await showGeneralDialog(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: true,
-      barrierLabel: 'Cerrar inspector',
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        final screenWidth = MediaQuery.sizeOf(dialogContext).width;
-        final drawerWidth = screenWidth >= 1440 ? 540.0 : 480.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final drawerWidth = screenWidth >= 1440 ? 560.0 : 500.0;
 
-        return Align(
-          alignment: Alignment.centerRight,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: drawerWidth,
-              height: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x28000000),
-                    blurRadius: 24,
-                    offset: Offset(-4, 0),
-                  ),
-                ],
-              ),
-              child: _CustomerSideSheetInspector(
-                customer: customer,
-                onClose: () => Navigator.of(dialogContext).pop(),
-                onEdit: () {
-                  Navigator.of(dialogContext).pop();
-                  _openEditCustomer(customer);
-                },
-                onOpenFullDetail: () {
-                  Navigator.of(dialogContext).pop();
-                  _openDetail(customer);
-                },
-                onWhatsApp: (p) => _launchWhatsApp(p),
-                onCall: (p) => _launchPhoneCall(p),
-                onCopy: _copyToClipboard,
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, anim, secAnim, child) {
-        final curvedAnim = CurvedAnimation(
-          parent: anim,
-          curve: Curves.easeOutCubic,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1, 0),
-            end: Offset.zero,
-          ).animate(curvedAnim),
-          child: child,
+    await AdaptiveSideSheet.show(
+      context: context,
+      desktopWidth: drawerWidth,
+      barrierLabel: 'Cerrar inspector',
+      builder: (dialogContext, isSlideOver) {
+        return _CustomerSideSheetInspector(
+          customer: customer,
+          onClose: () => Navigator.of(dialogContext).maybePop(),
+          onEdit: () {
+            Navigator.of(dialogContext).pop();
+            _openEditCustomer(customer);
+          },
+          onOpenFullDetail: () {
+            Navigator.of(dialogContext).pop();
+            _openDetail(customer);
+          },
+          onWhatsApp: (p) => _launchWhatsApp(p),
+          onCall: (p) => _launchPhoneCall(p),
+          onCopy: _copyToClipboard,
         );
       },
     );
@@ -564,7 +537,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           onKeyEvent: _handleKeyEvent,
           child: AdminLayout(
             title: 'Clientes',
-            showBackButton: true,
             settingsActions: const [
               PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
               PopupMenuItem(value: 'reload', child: Text('Recargar directorio [R]')),
@@ -609,7 +581,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     ),
                   ),
 
-                  // 2. TOOLBAR UNIFICADA (Segmented control + Buscador ergonomico + CTA)
+                  // 2. TOOLBAR UNIFICADO PRO DE BÚSQUEDA Y ACCIONES
                   BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
                     builder: (context, statsState) {
                       final totalCount = statsState is CustomersStatsLoaded
@@ -625,24 +597,54 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                               ? topState.topCustomers.length
                               : 0;
 
-                          if (isMobile) {
-                            return SliverMainAxisGroup(
-                              slivers: [
-                                _buildMobileSearchSliver(),
-                                _buildMobileTabsSliver(
-                                  totalCount,
-                                  debtCount,
-                                  topCount,
+                          return SliverToBoxAdapter(
+                            child: AdminProToolbar(
+                              isDesktop: isDesktop,
+                              searchController: _searchCtrl,
+                              searchFocusNode: _searchFocusNode,
+                              searchHint:
+                                  'Buscar por nombre, documento o teléfono...',
+                              onSearchChanged: (val) =>
+                                  context.read<CustomersCubit>().search(val.trim()),
+                              onClearSearch: () {
+                                _searchCtrl.clear();
+                                context.read<CustomersCubit>().search('');
+                              },
+                              filterWidgets: [
+                                _buildSegmentedFilter(
+                                  totalCount: totalCount,
+                                  debtCount: debtCount,
+                                  topCount: topCount,
                                 ),
                               ],
-                            );
-                          }
-
-                          return _buildDesktopToolbarSliver(
-                            totalCount: totalCount,
-                            debtCount: debtCount,
-                            topCount: topCount,
-                            isTablet: isTablet,
+                              viewToggleConfig: AdminProViewToggleConfig(
+                                isTableView: _isTableView,
+                                onToggleTableView: (val) =>
+                                    setState(() => _isTableView = val),
+                              ),
+                              onRefresh: _reloadAll,
+                              refreshTooltip: 'Recargar directorio [R]',
+                              primaryAction: AdminProToolbarAction(
+                                label: 'Nuevo cliente',
+                                icon: Icons.person_add_rounded,
+                                onPressed: _openCreateCustomer,
+                                keyHint: 'N',
+                              ),
+                              trailingActions: [
+                                Tooltip(
+                                  message: 'Exportar a PDF',
+                                  child: IconButton(
+                                    icon: const Icon(
+                                      Icons.picture_as_pdf_outlined,
+                                      size: 19,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    onPressed: () =>
+                                        context.read<CustomersCubit>().exportPdf(),
+                                  ),
+                                ),
+                              ],
+                            ),
                           );
                         },
                       );
@@ -680,185 +682,45 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
   // ── 1. FINTECH BENTO METRIC STRIP COMPONENT ─────────────────────────────────
 
-  Widget _buildDesktopToolbarSliver({
+  Widget _buildSegmentedFilter({
     required int totalCount,
     required int debtCount,
     required int topCount,
-    required bool isTablet,
   }) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.02),
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.all(2.5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildSegmentButton(
+            title: 'Todos',
+            count: totalCount,
+            isSelected: _tabCtrl.index == 0,
+            onTap: () => setState(() => _tabCtrl.animateTo(0)),
           ),
-          child: Row(
-            children: [
-              // Segmented Control Pro con 3 Pestañas
-              Container(
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                padding: const EdgeInsets.all(2.5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildSegmentButton(
-                      title: 'Todos',
-                      count: totalCount,
-                      isSelected: _tabCtrl.index == 0,
-                      onTap: () => setState(() => _tabCtrl.animateTo(0)),
-                    ),
-                    const SizedBox(width: 4),
-                    _buildSegmentButton(
-                      title: 'Con deuda activa',
-                      count: debtCount,
-                      isSelected: _tabCtrl.index == 1,
-                      isAlert: debtCount > 0,
-                      onTap: () => setState(() => _tabCtrl.animateTo(1)),
-                    ),
-                    const SizedBox(width: 4),
-                    _buildSegmentButton(
-                      title: '👑 Top VIP',
-                      count: topCount,
-                      isSelected: _tabCtrl.index == 2,
-                      isGold: true,
-                      onTap: () => setState(() => _tabCtrl.animateTo(2)),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 14),
-
-              // Buscador Ergonómico con indicador visual de atajo [/]
-              Expanded(
-                flex: isTablet ? 3 : 2,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: SizedBox(
-                    height: 38,
-                    child: TextField(
-                      controller: _searchCtrl,
-                      focusNode: _searchFocusNode,
-                      style: const TextStyle(fontSize: 13),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'Buscar cliente por nombre, DNI o teléfono...',
-                        hintStyle: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textMuted,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          size: 18,
-                          color: AppColors.textSecondary,
-                        ),
-                        prefixIconConstraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                        suffixIcon: _buildSearchSuffix(isDesktop: true),
-                        suffixIconConstraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.background,
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      onChanged: (val) =>
-                          context.read<CustomersCubit>().search(val.trim()),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 12),
-              if (!isTablet) const Spacer(),
-
-              // Botón Secundario: Exportar PDF
-              OutlinedButton.icon(
-                icon: const Icon(
-                  Icons.picture_as_pdf_outlined,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-                label: const Text('Exportar PDF'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 11,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                onPressed: () => context.read<CustomersCubit>().exportPdf(),
-              ),
-
-              const SizedBox(width: 10),
-
-              // Botón Primario: + Nuevo Cliente [N]
-              FilledButton.icon(
-                icon: const Icon(Icons.person_add_rounded, size: 16),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Nuevo cliente'),
-                    const SizedBox(width: 8),
-                    _KbdBadge(label: 'N', inverted: true),
-                  ],
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 11,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: _openCreateCustomer,
-              ),
-            ],
+          const SizedBox(width: 4),
+          _buildSegmentButton(
+            title: 'Con deuda activa',
+            count: debtCount,
+            isSelected: _tabCtrl.index == 1,
+            isAlert: debtCount > 0,
+            onTap: () => setState(() => _tabCtrl.animateTo(1)),
           ),
-        ),
+          const SizedBox(width: 4),
+          _buildSegmentButton(
+            title: '👑 Top VIP',
+            count: topCount,
+            isSelected: _tabCtrl.index == 2,
+            isGold: true,
+            onTap: () => setState(() => _tabCtrl.animateTo(2)),
+          ),
+        ],
       ),
     );
   }
@@ -943,163 +805,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     );
   }
 
-  // ── 2. MOBILE TOOLBAR (Apple HIG Style) ─────────────────────────────────────
-
-  Widget _buildMobileSearchSliver() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-        child: Semantics(
-          label: 'Buscar cliente',
-          child: TextField(
-            controller: _searchCtrl,
-            focusNode: _searchFocusNode,
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Buscar por nombre, documento o teléfono...',
-              hintStyle: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: AppColors.textSecondary,
-              ),
-              suffixIcon: _buildSearchSuffix(isDesktop: false),
-              filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-            ),
-            onChanged: (val) =>
-                context.read<CustomersCubit>().search(val.trim()),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileTabsSliver(int totalCount, int debtCount, int topCount) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Container(
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.border.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(3),
-          child: TabBar(
-            controller: _tabCtrl,
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(9),
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-            tabs: [
-              Tab(text: 'Todos ($totalCount)'),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Deuda'),
-                    if (debtCount > 0) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$debtCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Tab(text: '👑 Top VIP ($topCount)'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget? _buildSearchSuffix({required bool isDesktop}) {
-    return BlocSelector<CustomersCubit, CustomersState, bool>(
-      selector: (state) => state is CustomersLoading,
-      builder: (context, isLoading) {
-        if (isLoading) {
-          return const Padding(
-            padding: EdgeInsets.all(10.0),
-            child: SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
-        if (_searchCtrl.text.isNotEmpty) {
-          return IconButton(
-            icon: const Icon(Icons.clear_rounded, size: 18),
-            splashRadius: 18,
-            onPressed: () {
-              _searchCtrl.clear();
-              context.read<CustomersCubit>().search('');
-            },
-          );
-        }
-        if (isDesktop) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                _KbdBadge(label: '/'),
-              ],
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
   // ── 3. LIST / TABLE BUILDER ─────────────────────────────────────────────────
 
   Widget _buildContentSliver({
@@ -1110,7 +815,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     required bool isDesktop,
   }) {
     if (state is CustomersLoading) {
-      return isMobile
+      return (isMobile || !_isTableView)
           ? const _CustomersSkeleton()
           : const _DesktopTableSkeleton();
     } else if (state is CustomersLoaded) {
@@ -1123,26 +828,50 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         );
       }
 
-      // MÓVIL: Tarjetas individuales táctiles (Apple HIG)
-      if (isMobile) {
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                if (index == sortedList.length) {
-                  return _buildLoadMoreFooter(state.hasReachedMax);
-                }
-                final c = sortedList[index];
-                return CustomerListCard(
-                  customer: c,
-                  onTap: () => _showMobileCustomerActionSheet(c),
-                );
-              },
-              childCount: sortedList.length + (!state.hasReachedMax ? 1 : 0),
+      // MÓVIL O MODO TARJETAS
+      if (isMobile || !_isTableView) {
+        if (isMobile) {
+          return SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index == sortedList.length) {
+                    return _buildLoadMoreFooter(state.hasReachedMax);
+                  }
+                  final c = sortedList[index];
+                  return CustomerListCard(
+                    customer: c,
+                    onTap: () => _showMobileCustomerActionSheet(c),
+                  );
+                },
+                childCount: sortedList.length + (!state.hasReachedMax ? 1 : 0),
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          return SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 440,
+                mainAxisExtent: 180,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final c = sortedList[index];
+                  return CustomerListCard(
+                    customer: c,
+                    onTap: () => _openDesktopCustomerInspector(c),
+                  );
+                },
+                childCount: sortedList.length,
+              ),
+            ),
+          );
+        }
       }
 
       // DESKTOP & TABLET: Data Table Pro con Sticky Header & Inspector
@@ -2840,26 +2569,23 @@ class _CustomerAvatarLarge extends StatelessWidget {
 
 class _KbdBadge extends StatelessWidget {
   final String label;
-  final bool inverted;
 
-  const _KbdBadge({required this.label, this.inverted = false});
+  const _KbdBadge({required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: inverted
-            ? Colors.white.withValues(alpha: 0.22)
-            : AppColors.border,
+        color: AppColors.border,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: inverted ? Colors.white : AppColors.slate,
+          color: AppColors.slate,
         ),
       ),
     );

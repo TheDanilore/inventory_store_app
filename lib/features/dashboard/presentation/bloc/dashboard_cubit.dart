@@ -34,7 +34,11 @@ class DashboardCubit extends Cubit<DashboardState> {
     bool background = false,
   }) async {
     final currentState = state;
-    if (!background || currentState is! DashboardLoaded) {
+    final hasExistingData = currentState is DashboardLoaded;
+
+    if (hasExistingData) {
+      emit(currentState.copyWith(isBackgroundLoading: true));
+    } else {
       emit(DashboardLoading());
     }
 
@@ -66,31 +70,86 @@ class DashboardCubit extends Cubit<DashboardState> {
           results[2] as Either<Failure, List<Map<String, dynamic>>>;
       final topCustomers = results[3] as List<CustomerEntity>;
 
-      inventoryResult.fold((failure) => emit(DashboardError(failure.message)), (
-        inventory,
-      ) {
-        salesResult.fold((failure) => emit(DashboardError(failure.message)), (
-          sales,
-        ) {
-          batchesResult.fold(
-            (failure) => emit(DashboardError(failure.message)),
-            (batches) {
-              emit(
-                DashboardLoaded(
-                  inventory: inventory,
-                  sales: sales,
-                  criticalBatches: batches,
-                  topCustomers: topCustomers,
-                  salesFilter: activeFilter,
-                  customStartDate: activeStartDate,
-                  customEndDate: activeEndDate,
-                  isSalesLoading: false,
-                ),
-              );
-            },
-          );
-        });
-      });
+      if (hasExistingData) {
+        // Enfoque Stale-While-Revalidate: si ya hay datos previos en pantalla,
+        // nunca destruir la UI si uno de los endpoints falla en segundo plano.
+        final inventory = inventoryResult.getOrElse(
+          (failure) {
+            LoggerService.w(
+              'Fallo al actualizar métricas de inventario en background: ${failure.message}',
+              tag: 'DASHBOARD_CUBIT',
+            );
+            return currentState.inventory;
+          },
+        );
+
+        final sales = salesResult.getOrElse(
+          (failure) {
+            LoggerService.w(
+              'Fallo al actualizar métricas de ventas en background: ${failure.message}',
+              tag: 'DASHBOARD_CUBIT',
+            );
+            return currentState.sales;
+          },
+        );
+
+        final batches = batchesResult.getOrElse(
+          (failure) {
+            LoggerService.w(
+              'Fallo al actualizar lotes críticos en background: ${failure.message}',
+              tag: 'DASHBOARD_CUBIT',
+            );
+            return currentState.criticalBatches;
+          },
+        );
+
+        final finalTopCustomers =
+            topCustomers.isNotEmpty ? topCustomers : currentState.topCustomers;
+
+        emit(
+          DashboardLoaded(
+            inventory: inventory,
+            sales: sales,
+            criticalBatches: batches,
+            topCustomers: finalTopCustomers,
+            salesFilter: activeFilter,
+            customStartDate: activeStartDate,
+            customEndDate: activeEndDate,
+            isSalesLoading: false,
+            isBackgroundLoading: false,
+          ),
+        );
+      } else {
+        // Carga inicial sin datos previos en memoria:
+        inventoryResult.fold(
+          (failure) => emit(DashboardError(failure.message)),
+          (inventory) {
+            salesResult.fold(
+              (failure) => emit(DashboardError(failure.message)),
+              (sales) {
+                batchesResult.fold(
+                  (failure) => emit(DashboardError(failure.message)),
+                  (batches) {
+                    emit(
+                      DashboardLoaded(
+                        inventory: inventory,
+                        sales: sales,
+                        criticalBatches: batches,
+                        topCustomers: topCustomers,
+                        salesFilter: activeFilter,
+                        customStartDate: activeStartDate,
+                        customEndDate: activeEndDate,
+                        isSalesLoading: false,
+                        isBackgroundLoading: false,
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      }
     } catch (e, stack) {
       LoggerService.e(
         'Error cargando dashboard',
@@ -98,7 +157,11 @@ class DashboardCubit extends Cubit<DashboardState> {
         error: e,
         stackTrace: stack,
       );
-      emit(DashboardError('Error inesperado al cargar el dashboard: $e'));
+      if (hasExistingData) {
+        emit(currentState.copyWith(isBackgroundLoading: false));
+      } else {
+        emit(DashboardError('Error inesperado al cargar el dashboard: $e'));
+      }
     }
   }
 
@@ -173,6 +236,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   }
 
   Future<void> refresh() async {
-    await loadDashboardData(forceRefresh: true);
+    final hasLoaded = state is DashboardLoaded;
+    await loadDashboardData(forceRefresh: true, background: hasLoaded);
   }
 }

@@ -181,7 +181,6 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
 
         return AdminLayout(
           title: 'Cuentas y Bancos',
-          showBackButton: true,
           actions: isMobile
               ? [
                   IconButton(

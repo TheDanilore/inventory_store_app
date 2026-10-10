@@ -491,7 +491,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
         if (loadedState == null && state is InventoryEntriesError) {
           return AdminLayout(
             title: 'Historial de Entradas',
-            showBackButton: true,
             body: Center(
               child: AppEmptyState(
                 icon: Icons.error_outline_rounded,
@@ -562,7 +561,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
         return AdminLayout(
           title: 'Historial de Entradas',
-          showBackButton: true,
           actions:
               isDesktopOrTablet
                   ? null

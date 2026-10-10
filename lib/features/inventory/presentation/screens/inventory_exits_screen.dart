@@ -380,7 +380,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
         return AdminLayout(
           title: 'Salidas de Inventario',
-          showBackButton: true,
           onSettingsSelected: (val) {
             if (val != 'pdf') return;
             if (state.exits.isNotEmpty) {

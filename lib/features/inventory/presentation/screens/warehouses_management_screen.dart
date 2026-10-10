@@ -251,7 +251,6 @@ class _WarehousesManagementScreenState
 
                 return AdminLayout(
                   title: 'Almacenes',
-                  showBackButton: true,
                   floatingActionButton:
                       !isDesktop
                           ? _buildMobileFab(context, cubit)

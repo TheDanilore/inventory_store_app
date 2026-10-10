@@ -253,7 +253,6 @@ class _InventoryScreenState extends State<InventoryScreen>
                 ? Material(color: AppColors.background, child: inventoryBody)
                 : AdminLayout(
                     title: 'Inventario',
-                    showBackButton: true,
                     body: inventoryBody,
                   ),
           ),

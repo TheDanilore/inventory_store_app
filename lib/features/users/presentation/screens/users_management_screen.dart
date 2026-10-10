@@ -235,7 +235,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           autofocus: true,
           child: AdminLayout(
             title: 'Gestión de Usuarios',
-            showBackButton: true,
         body: NotificationListener<UserScrollNotification>(
           onNotification: _onScrollNotification,
           child: Column(

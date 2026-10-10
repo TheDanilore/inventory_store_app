@@ -24,6 +24,7 @@ class DashboardLoaded extends DashboardState {
   final DateTime? customStartDate;
   final DateTime? customEndDate;
   final bool isSalesLoading;
+  final bool isBackgroundLoading;
 
   const DashboardLoaded({
     required this.inventory,
@@ -34,6 +35,7 @@ class DashboardLoaded extends DashboardState {
     this.customStartDate,
     this.customEndDate,
     this.isSalesLoading = false,
+    this.isBackgroundLoading = false,
   });
 
   DashboardLoaded copyWith({
@@ -45,6 +47,7 @@ class DashboardLoaded extends DashboardState {
     DateTime? customStartDate,
     DateTime? customEndDate,
     bool? isSalesLoading,
+    bool? isBackgroundLoading,
   }) {
     return DashboardLoaded(
       inventory: inventory ?? this.inventory,
@@ -55,6 +58,7 @@ class DashboardLoaded extends DashboardState {
       customStartDate: customStartDate ?? this.customStartDate,
       customEndDate: customEndDate ?? this.customEndDate,
       isSalesLoading: isSalesLoading ?? this.isSalesLoading,
+      isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
     );
   }
 
@@ -68,6 +72,7 @@ class DashboardLoaded extends DashboardState {
     customStartDate,
     customEndDate,
     isSalesLoading,
+    isBackgroundLoading,
   ];
 }
 

@@ -113,7 +113,6 @@ class _AttributesManagementScreenState
         autofocus: true,
         child: AdminLayout(
           title: 'Atributos de Variantes',
-          showBackButton: true,
           actions: [
             if (isMobile)
               IconButton(

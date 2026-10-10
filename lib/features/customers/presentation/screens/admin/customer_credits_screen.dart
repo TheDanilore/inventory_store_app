@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_cubit.dart';
@@ -264,7 +265,6 @@ class _CustomerCreditsScreenContentState
 
           return AdminLayout(
             title: 'Cuentas por Cobrar',
-            showBackButton: true,
             // En escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
             floatingActionButton:
                 isDesktop
@@ -298,118 +298,39 @@ class _CustomerCreditsScreenContentState
 
                         // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
                         SliverToBoxAdapter(
-                          child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
+                          child: AdminProToolbar(
+                            isDesktop: isDesktop,
+                            searchController: _searchCtrl,
+                            searchFocusNode: _searchFocusNode,
+                            searchHint:
+                                'Buscar por cliente, documento o teléfono...',
+                            onSearchChanged: _onSearchChanged,
+                            onClearSearch: () {
+                              _searchCtrl.clear();
+                              _debounce?.cancel();
+                              context
+                                  .read<CustomerCreditListCubit>()
+                                  .setSearch('');
+                            },
+                            filterWidgets: [
+                              _buildSegmentedFilter(accountsWithDebtCount),
+                            ],
+                            viewToggleConfig: AdminProViewToggleConfig(
+                              isTableView: _isTableView,
+                              onToggleTableView:
+                                  (val) => setState(() => _isTableView = val),
                             ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(0xFFE2E8F0),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x050F172A),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 1),
-                                ),
-                              ],
+                            onRefresh:
+                                () => context
+                                    .read<CustomerCreditListCubit>()
+                                    .loadData(),
+                            refreshTooltip: 'Refrescar créditos [R]',
+                            primaryAction: AdminProToolbarAction(
+                              label: 'Nueva Línea',
+                              icon: Icons.add_rounded,
+                              onPressed: () => _openCreateAccountModal(),
+                              keyHint: 'N',
                             ),
-                            child:
-                                isDesktop
-                                    ? Row(
-                                      children: [
-                                        // Buscador con badge de atajo [/]
-                                        Expanded(
-                                          flex: 5,
-                                          child: _buildSearchField(),
-                                        ),
-                                        const SizedBox(width: 12),
-
-                                        // Segmented Control de Filtro
-                                        _buildSegmentedFilter(
-                                          accountsWithDebtCount,
-                                        ),
-                                        const SizedBox(width: 12),
-
-                                        // Toggle Vista Cards vs Tabla
-                                        _buildViewModeToggle(),
-                                        const SizedBox(width: 8),
-
-                                        // Botón Refrescar [R]
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.refresh_rounded,
-                                            size: 20,
-                                          ),
-                                          color: AppColors.textSecondary,
-                                          tooltip: 'Refrescar créditos [R]',
-                                          onPressed:
-                                              () =>
-                                                  context
-                                                      .read<
-                                                        CustomerCreditListCubit
-                                                      >()
-                                                      .loadData(),
-                                        ),
-                                        const SizedBox(width: 8),
-
-                                        // Botón Primario: Nueva Línea [N]
-                                        SizedBox(
-                                          height: 40,
-                                          child: FilledButton.icon(
-                                            onPressed:
-                                                () => _openCreateAccountModal(),
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor:
-                                                  AppColors.primary,
-                                              foregroundColor: Colors.white,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                  ),
-                                              elevation: 0,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                            ),
-                                            icon: const Icon(
-                                              Icons.add_rounded,
-                                              size: 18,
-                                            ),
-                                            label: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Text(
-                                                  'Nueva Línea',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 12.5,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                _buildButtonKeyHint('N'),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                    : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        _buildSearchField(),
-                                        const SizedBox(height: 10),
-                                        _buildSegmentedFilter(
-                                          accountsWithDebtCount,
-                                        ),
-                                      ],
-                                    ),
                           ),
                         ),
 
@@ -734,79 +655,6 @@ class _CustomerCreditsScreenContentState
 
   // --- SUBCOMPONENTES DE TOOLBAR ---
 
-  Widget _buildSearchField() {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        controller: _searchCtrl,
-        focusNode: _searchFocusNode,
-        onChanged: _onSearchChanged,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
-        ),
-        textAlignVertical: TextAlignVertical.center,
-        decoration: InputDecoration(
-          hintText: 'Buscar por cliente, documento o teléfono...',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.teal,
-            size: 19,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _searchCtrl,
-            builder: (context, value, _) {
-              if (value.text.isNotEmpty) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.cancel_rounded,
-                    color: AppColors.textMuted,
-                    size: 16,
-                  ),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    _debounce?.cancel();
-                    context.read<CustomerCreditListCubit>().setSearch('');
-                  },
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [_buildKeyHint('/')],
-                ),
-              );
-            },
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF8FAFC),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 0,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSegmentedFilter(int debtCount) {
     return SizedBox(
       height: 40,
@@ -842,100 +690,6 @@ class _CustomerCreditsScreenContentState
               },
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewModeToggle() {
-    return SizedBox(
-      height: 40,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            IconButton(
-              tooltip: 'Vista Tabla Pro [V]',
-              icon: Icon(
-                Icons.table_rows_rounded,
-                size: 18,
-                color: _isTableView ? AppColors.tealDark : AppColors.textMuted,
-              ),
-              style: IconButton.styleFrom(
-                backgroundColor:
-                    _isTableView ? AppColors.surface : Colors.transparent,
-                elevation: _isTableView ? 1 : 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(6),
-              ),
-              onPressed: () => setState(() => _isTableView = true),
-            ),
-            IconButton(
-              tooltip: 'Vista Tarjetas [V]',
-              icon: Icon(
-                Icons.grid_view_rounded,
-                size: 18,
-                color: !_isTableView ? AppColors.tealDark : AppColors.textMuted,
-              ),
-              style: IconButton.styleFrom(
-                backgroundColor:
-                    !_isTableView ? AppColors.surface : Colors.transparent,
-                elevation: !_isTableView ? 1 : 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(6),
-              ),
-              onPressed: () => setState(() => _isTableView = false),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildKeyHint(String char) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Text(
-        char,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textMuted,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButtonKeyHint(String char) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        char,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
         ),
       ),
     );
