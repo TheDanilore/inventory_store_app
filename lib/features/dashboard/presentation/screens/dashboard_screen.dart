@@ -118,7 +118,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     'customer_segments',
     'weekly_activity',
     'radial_goal',
-    'ai_assistant',
     'expiring_batches',
   };
 
@@ -134,7 +133,8 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       final list = prefs.getStringList(_prefsKey);
       if (list != null && list.isNotEmpty && mounted) {
         setState(() {
-          _visibleWidgets = list.toSet();
+          _visibleWidgets =
+              list.where((id) => id != 'ai_assistant').toSet();
         });
       }
     } catch (_) {}
@@ -158,35 +158,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     _saveVisibleWidgets();
   }
 
-  void _removeWidget(String id, String widgetName) {
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 30, amplitude: 80);
-    }
-    setState(() {
-      _visibleWidgets.remove(id);
-    });
-    _saveVisibleWidgets();
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Widget "$widgetName" ocultado'),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Deshacer',
-          textColor: const Color(0xFF60A5FA),
-          onPressed: () {
-            setState(() {
-              _visibleWidgets.add(id);
-            });
-            _saveVisibleWidgets();
-          },
-        ),
-      ),
-    );
-  }
-
   void _resetWidgetsToDefault() {
     setState(() {
       _visibleWidgets = {
@@ -196,7 +167,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         'customer_segments',
         'weekly_activity',
         'radial_goal',
-        'ai_assistant',
         'expiring_batches',
       };
     });
@@ -385,9 +355,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     DashboardLoaded state, {
     required bool isDesktop,
   }) {
-    final now = DateTime.now();
-    final dateStr = DateFormat('d MMM, yyyy', 'es').format(now);
-
     if (!isDesktop) {
       // ── MÓVIL: DISEÑO SIMÉTRICO EN 2 FILAS SHOPEERS ─────────────────────────
       return Column(
@@ -456,35 +423,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           ),
           const SizedBox(height: 12),
 
-          // Fila 2: Fecha (34dp) + Botón +Widget (34dp) + Segmentador (34dp)
+          // Fila 2: Cápsula de Fecha Shopeers + Botón +Widget
           Row(
             children: [
-              Container(
-                height: 34,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 13,
-                      color: Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      dateStr,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
+              Expanded(
+                child: _buildShopeersDateRangePill(
+                  context,
+                  state,
+                  isDesktop: false,
                 ),
               ),
               const SizedBox(width: 8),
@@ -520,14 +466,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                       ),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              Expanded(
-                child: SizedBox(
-                  height: 34,
-                  child: _buildSalesFilters(context, state, isDesktop: false),
                 ),
               ),
             ],
@@ -566,45 +504,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           ],
         ),
 
-        // Right: Date Range + Filters + Actions (Exact 38dp height)
+        // Right: Shopeers Date Range Composite Pill + Actions (Exact 38dp height)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Date Range Indicator Pill
-            Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    dateStr,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-
-            // Filter Segmented Pill
-            SizedBox(
-              height: 38,
-              child: _buildSalesFilters(context, state, isDesktop: true),
+            _buildShopeersDateRangePill(
+              context,
+              state,
+              isDesktop: true,
             ),
             const SizedBox(width: 10),
 
@@ -630,7 +537,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     color: Color(0xFF2563EB),
                   ),
                   label: Text(
-                    'Widgets (${_visibleWidgets.length}/8)',
+                    'Widgets (${_visibleWidgets.length}/7)',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -896,7 +803,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             state.topCustomers.isNotEmpty) ||
         _visibleWidgets.contains('weekly_activity') ||
         _visibleWidgets.contains('radial_goal') ||
-        _visibleWidgets.contains('ai_assistant') ||
         (_visibleWidgets.contains('expiring_batches') &&
             state.criticalBatches.isNotEmpty);
   }
@@ -907,29 +813,17 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         DashboardSplineChartCard(
           sales: state.sales,
           inventory: state.inventory,
-          onHide: () => _removeWidget(
-            'profit_spline',
-            'Curva de Utilidad y Ventas',
-          ),
         ),
       if (_visibleWidgets.contains('best_sellers'))
         DashboardBestSellersTable(
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
-          onHide: () => _removeWidget(
-            'best_sellers',
-            'Productos de Mayor Rotación',
-          ),
         ),
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty)
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.desktop,
-          onHide: () => _removeWidget(
-            'customer_segments',
-            'Segmentación de Clientes',
-          ),
         ),
     ];
 
@@ -937,33 +831,13 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       if (_visibleWidgets.contains('weekly_activity'))
         DashboardWeeklyActivityCard(
           sales: state.sales,
-          onHide: () => _removeWidget(
-            'weekly_activity',
-            'Días de Mayor Actividad',
-          ),
         ),
       if (_visibleWidgets.contains('radial_goal'))
-        _DashboardAdminGoalCard(
-          onHide: () => _removeWidget(
-            'radial_goal',
-            'Meta Financiera de Ahorro',
-          ),
-        ),
-      if (_visibleWidgets.contains('ai_assistant'))
-        DashboardAiAssistantCard(
-          onHide: () => _removeWidget(
-            'ai_assistant',
-            'Asistente IA Predictivo',
-          ),
-        ),
+        const _DashboardAdminGoalCard(),
       if (_visibleWidgets.contains('expiring_batches') &&
           state.criticalBatches.isNotEmpty)
         ExpiringBatchesCard(
           batches: state.criticalBatches,
-          onHide: () => _removeWidget(
-            'expiring_batches',
-            'Lotes Críticos por Vencer',
-          ),
         ),
     ];
 
@@ -1145,60 +1019,28 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         DashboardSplineChartCard(
           sales: state.sales,
           inventory: state.inventory,
-          onHide: () => _removeWidget(
-            'profit_spline',
-            'Curva de Utilidad y Ventas',
-          ),
         ),
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty)
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.mobile,
-          onHide: () => _removeWidget(
-            'customer_segments',
-            'Segmentación de Clientes',
-          ),
         ),
       if (_visibleWidgets.contains('weekly_activity'))
         DashboardWeeklyActivityCard(
           sales: state.sales,
-          onHide: () => _removeWidget(
-            'weekly_activity',
-            'Días de Mayor Actividad',
-          ),
         ),
       if (_visibleWidgets.contains('radial_goal'))
-        _DashboardAdminGoalCard(
-          onHide: () => _removeWidget(
-            'radial_goal',
-            'Meta Financiera de Ahorro',
-          ),
-        ),
-      if (_visibleWidgets.contains('ai_assistant'))
-        DashboardAiAssistantCard(
-          onHide: () => _removeWidget(
-            'ai_assistant',
-            'Asistente IA Predictivo',
-          ),
-        ),
+        const _DashboardAdminGoalCard(),
       if (_visibleWidgets.contains('best_sellers'))
         DashboardBestSellersTable(
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
-          onHide: () => _removeWidget(
-            'best_sellers',
-            'Productos de Mayor Rotación',
-          ),
         ),
       if (_visibleWidgets.contains('expiring_batches') &&
           state.criticalBatches.isNotEmpty)
         ExpiringBatchesCard(
           batches: state.criticalBatches,
-          onHide: () => _removeWidget(
-            'expiring_batches',
-            'Lotes Críticos por Vencer',
-          ),
         ),
       if (!_hasAnyWidgetsVisible(state))
         _buildEmptyWidgetsPlaceholder(),
@@ -1224,80 +1066,301 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // FILTROS DE TIEMPO CON INDICADORES DE TECLADO EN DESKTOP
+  // SELECTOR DE FECHAS Y RANGOS PERSONALIZADOS (SHOPEERS STYLE)
   // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildSalesFilters(
+  Future<void> _openCustomDatePicker(
     BuildContext context,
-    DashboardLoaded state, {
-    bool isDesktop = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: SegmentedButton<SalesTimeFilter>(
-        segments: [
-          ButtonSegment(
-            value: SalesTimeFilter.today,
-            label: const Text('Hoy'),
-            tooltip: isDesktop ? 'Filtrar por hoy (Atajo: 1)' : null,
-          ),
-          ButtonSegment(
-            value: SalesTimeFilter.thisWeek,
-            label: Text(isDesktop ? 'Semana' : 'Sem'),
-            tooltip: isDesktop ? 'Filtrar por semana (Atajo: 2)' : null,
-          ),
-          ButtonSegment(
-            value: SalesTimeFilter.thisMonth,
-            label: const Text('Mes'),
-            tooltip: isDesktop ? 'Filtrar por mes (Atajo: 3)' : null,
-          ),
-          ButtonSegment(
-            value: SalesTimeFilter.allTime,
-            label: Text(isDesktop ? 'Histórico' : 'Hist'),
-            tooltip: isDesktop ? 'Filtrar histórico (Atajo: 4)' : null,
-          ),
-        ],
-        selected: {state.salesFilter},
-        showSelectedIcon: false,
-        onSelectionChanged: (set) {
-          if (!kIsWeb) {
-            Vibration.vibrate(duration: 30, amplitude: 64);
-          }
-          context.read<DashboardCubit>().updateSalesFilter(set.first);
-        },
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return AppColors.primary;
-            }
-            return Colors.transparent;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return Colors.white;
-            }
-            return AppColors.textSecondary;
-          }),
-          side: WidgetStateProperty.all(BorderSide.none),
-          shape: WidgetStateProperty.all(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          padding: WidgetStateProperty.all(
-            EdgeInsets.symmetric(horizontal: isDesktop ? 8 : 4, vertical: 0),
-          ),
-          textStyle: WidgetStateProperty.all(
-            TextStyle(
-              fontSize: isDesktop ? 12 : 11,
-              fontWeight: FontWeight.w700,
+    DashboardLoaded state,
+  ) async {
+    final now = DateTime.now();
+    final initialRange = (state.customStartDate != null && state.customEndDate != null)
+        ? DateTimeRange(start: state.customStartDate!, end: state.customEndDate!)
+        : DateTimeRange(
+            start: now.subtract(const Duration(days: 7)),
+            end: now,
+          );
+
+    final picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: initialRange,
+      firstDate: DateTime(2022),
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: 'SELECCIONAR RANGO DE FECHAS',
+      cancelText: 'CANCELAR',
+      confirmText: 'APLICAR',
+      saveText: 'APLICAR',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: const Color(0xFF2563EB),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: const Color(0xFF0F172A),
             ),
           ),
-        ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      if (!kIsWeb) {
+        Vibration.vibrate(duration: 30, amplitude: 64);
+      }
+      if (context.mounted) {
+        context.read<DashboardCubit>().updateSalesFilter(
+          SalesTimeFilter.custom,
+          customStartDate: picked.start,
+          customEndDate: picked.end,
+        );
+      }
+    }
+  }
+
+  Widget _buildShopeersDateRangePill(
+    BuildContext context,
+    DashboardLoaded state, {
+    required bool isDesktop,
+  }) {
+    final now = DateTime.now();
+    String rangeLabel = '';
+    String presetLabel = '';
+
+    switch (state.salesFilter) {
+      case SalesTimeFilter.today:
+        rangeLabel = DateFormat('d MMM, yyyy', 'es').format(now);
+        presetLabel = 'Hoy';
+        break;
+      case SalesTimeFilter.thisWeek:
+        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+        final endOfWeek = startOfWeek.add(const Duration(days: 6));
+        rangeLabel =
+            '${DateFormat('d MMM', 'es').format(startOfWeek)} - ${DateFormat('d MMM, yyyy', 'es').format(endOfWeek)}';
+        presetLabel = isDesktop ? 'Esta semana' : 'Semana';
+        break;
+      case SalesTimeFilter.thisMonth:
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final nextMonth = now.month == 12
+            ? DateTime(now.year + 1, 1, 1)
+            : DateTime(now.year, now.month + 1, 1);
+        final endOfMonth = nextMonth.subtract(const Duration(days: 1));
+        rangeLabel =
+            '${DateFormat('d MMM', 'es').format(startOfMonth)} - ${DateFormat('d MMM, yyyy', 'es').format(endOfMonth)}';
+        presetLabel = isDesktop ? 'Este mes' : 'Mes';
+        break;
+      case SalesTimeFilter.allTime:
+        rangeLabel = 'Todo el histórico';
+        presetLabel = isDesktop ? 'Histórico' : 'Hist';
+        break;
+      case SalesTimeFilter.custom:
+        if (state.customStartDate != null && state.customEndDate != null) {
+          rangeLabel =
+              '${DateFormat('d MMM', 'es').format(state.customStartDate!)} - ${DateFormat('d MMM, yyyy', 'es').format(state.customEndDate!)}';
+        } else {
+          rangeLabel = 'Personalizado';
+        }
+        presetLabel = isDesktop ? 'Personalizado' : 'Pers';
+        break;
+    }
+
+    return Container(
+      height: isDesktop ? 38 : 34,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Left: Calendar Picker Trigger
+          Flexible(
+            child: InkWell(
+              onTap: () => _openCustomDatePicker(context, state),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(10),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isDesktop ? 12 : 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 13,
+                      color: Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        rangeLabel,
+                        style: TextStyle(
+                          fontSize: isDesktop ? 12 : 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Divider
+          Container(
+            width: 1,
+            height: isDesktop ? 18 : 16,
+            color: const Color(0xFFE2E8F0),
+          ),
+
+          // Right: Presets Dropdown
+          PopupMenuButton<SalesTimeFilter>(
+            tooltip: 'Filtro por fecha (Atajos: 1-4)',
+            offset: const Offset(0, 40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            color: Colors.white,
+            elevation: 8,
+            onSelected: (filter) {
+              if (filter == SalesTimeFilter.custom) {
+                _openCustomDatePicker(context, state);
+              } else {
+                if (!kIsWeb) {
+                  Vibration.vibrate(duration: 30, amplitude: 64);
+                }
+                context.read<DashboardCubit>().updateSalesFilter(filter);
+              }
+            },
+            itemBuilder: (context) => [
+              _buildFilterMenuItem(
+                value: SalesTimeFilter.today,
+                label: 'Hoy',
+                shortcut: '1',
+                isSelected: state.salesFilter == SalesTimeFilter.today,
+              ),
+              _buildFilterMenuItem(
+                value: SalesTimeFilter.thisWeek,
+                label: 'Esta semana',
+                shortcut: '2',
+                isSelected: state.salesFilter == SalesTimeFilter.thisWeek,
+              ),
+              _buildFilterMenuItem(
+                value: SalesTimeFilter.thisMonth,
+                label: 'Este mes',
+                shortcut: '3',
+                isSelected: state.salesFilter == SalesTimeFilter.thisMonth,
+              ),
+              _buildFilterMenuItem(
+                value: SalesTimeFilter.allTime,
+                label: 'Histórico',
+                shortcut: '4',
+                isSelected: state.salesFilter == SalesTimeFilter.allTime,
+              ),
+              const PopupMenuDivider(height: 1),
+              _buildFilterMenuItem(
+                value: SalesTimeFilter.custom,
+                label: 'Personalizado...',
+                icon: Icons.date_range_outlined,
+                isSelected: state.salesFilter == SalesTimeFilter.custom,
+              ),
+            ],
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: isDesktop ? 10 : 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    presetLabel,
+                    style: TextStyle(
+                      fontSize: isDesktop ? 12 : 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 15,
+                    color: Color(0xFF64748B),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<SalesTimeFilter> _buildFilterMenuItem({
+    required SalesTimeFilter value,
+    required String label,
+    String? shortcut,
+    IconData? icon,
+    required bool isSelected,
+  }) {
+    return PopupMenuItem<SalesTimeFilter>(
+      value: value,
+      height: 38,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 16,
+                  color: isSelected
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          if (shortcut != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                shortcut,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+          if (isSelected && shortcut == null)
+            const Icon(Icons.check_rounded, size: 16, color: Color(0xFF2563EB)),
+        ],
       ),
     );
   }
@@ -1538,13 +1601,6 @@ class ExpiringBatchesCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onHide != null) ...[
-                const SizedBox(width: 6),
-                DashboardCardOptionsMenu(
-                  title: 'Lotes Críticos por Vencer',
-                  onHide: onHide!,
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -1642,8 +1698,7 @@ class ExpiringBatchesCard extends StatelessWidget {
 }
 
 class _DashboardAdminGoalCard extends StatelessWidget {
-  final VoidCallback? onHide;
-  const _DashboardAdminGoalCard({this.onHide});
+  const _DashboardAdminGoalCard();
 
   @override
   Widget build(BuildContext context) {
@@ -1659,7 +1714,6 @@ class _DashboardAdminGoalCard extends StatelessWidget {
         return DashboardRadialGoalCard(
           currentAmount: goal.$1,
           targetAmount: goal.$2,
-          onHide: onHide,
           onConfigure:
               () => _DashboardScreenContent._openGoalDialog(
                 context,

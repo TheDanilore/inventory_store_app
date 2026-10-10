@@ -1,1 +1,2 @@
-enum SalesTimeFilter { today, thisWeek, thisMonth, allTime }
+enum SalesTimeFilter { today, thisWeek, thisMonth, allTime, custom }
+

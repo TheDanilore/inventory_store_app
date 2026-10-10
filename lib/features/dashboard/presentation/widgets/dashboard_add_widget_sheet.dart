@@ -10,6 +10,7 @@ class DashboardWidgetItem {
   final String categoryTag;
   final Widget previewMockup;
   final bool isDefaultVisible;
+  final bool isComingSoon;
 
   const DashboardWidgetItem({
     required this.id,
@@ -18,6 +19,7 @@ class DashboardWidgetItem {
     required this.categoryTag,
     required this.previewMockup,
     this.isDefaultVisible = true,
+    this.isComingSoon = false,
   });
 }
 
@@ -177,6 +179,8 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
               'Predicciones automáticas, alertas de quiebre de stock y consultas inteligentes.',
           categoryTag: '#InteligenciaArtificial',
           previewMockup: _buildAiAssistantMockup(),
+          isDefaultVisible: false,
+          isComingSoon: true,
         ),
         DashboardWidgetItem(
           id: 'expiring_batches',
@@ -203,19 +207,20 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
     }).toList();
   }
 
-  void _handleToggle(String id) {
+  void _handleToggle(DashboardWidgetItem item) {
+    if (item.isComingSoon) return;
     if (!kIsWeb) {
       Vibration.vibrate(duration: 25, amplitude: 60);
     }
-    final nextState = !_currentVisible.contains(id);
+    final nextState = !_currentVisible.contains(item.id);
     setState(() {
       if (nextState) {
-        _currentVisible.add(id);
+        _currentVisible.add(item.id);
       } else {
-        _currentVisible.remove(id);
+        _currentVisible.remove(item.id);
       }
     });
-    widget.onToggleWidget(id, nextState);
+    widget.onToggleWidget(item.id, nextState);
   }
 
   void _handleReset() {
@@ -223,8 +228,10 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
       Vibration.vibrate(duration: 40, amplitude: 90);
     }
     setState(() {
-      _currentVisible =
-          allAvailableWidgets.map((w) => w.id).toSet();
+      _currentVisible = allAvailableWidgets
+          .where((w) => !w.isComingSoon && w.isDefaultVisible)
+          .map((w) => w.id)
+          .toSet();
     });
     widget.onResetDefaults();
   }
@@ -564,54 +571,85 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
           ),
           const SizedBox(width: 8),
 
-          // Right: Action Button (+ Añadir o ✓ Activo)
+          // Right: Action Button (+ Añadir o ✓ Activo o Próximamente)
           Align(
             alignment: Alignment.center,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _handleToggle(item.id),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: isVisible
-                      ? const Color(0xFFEFF6FF)
-                      : const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(8),
-                  border: isVisible
-                      ? Border.all(color: const Color(0xFFBFDBFE))
-                      : null,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isVisible
-                          ? Icons.check_circle_rounded
-                          : Icons.add_rounded,
-                      size: 14,
-                      color: isVisible
-                          ? const Color(0xFF2563EB)
-                          : Colors.white,
+            child: item.isComingSoon
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isVisible ? 'Activo' : 'Añadir',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Próximamente',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _handleToggle(item),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
                         color: isVisible
-                            ? const Color(0xFF2563EB)
-                            : Colors.white,
+                            ? const Color(0xFFEFF6FF)
+                            : const Color(0xFF2563EB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: isVisible
+                            ? Border.all(color: const Color(0xFFBFDBFE))
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isVisible
+                                ? Icons.check_circle_rounded
+                                : Icons.add_rounded,
+                            size: 14,
+                            color: isVisible
+                                ? const Color(0xFF2563EB)
+                                : Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isVisible ? 'Activo' : 'Añadir',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: isVisible
+                                  ? const Color(0xFF2563EB)
+                                  : Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
         ],
       ),

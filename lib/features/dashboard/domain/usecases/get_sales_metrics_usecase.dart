@@ -13,7 +13,13 @@ class GetSalesMetricsUseCase {
 
   Future<Either<Failure, SalesMetricsEntity>> call({
     required SalesTimeFilter filter,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
   }) async {
-    return await repository.getSalesMetrics(filter: filter);
+    return await repository.getSalesMetrics(
+      filter: filter,
+      customStartDate: customStartDate,
+      customEndDate: customEndDate,
+    );
   }
 }

@@ -21,6 +21,8 @@ class DashboardLoaded extends DashboardState {
   final List<Map<String, dynamic>> criticalBatches;
   final List<CustomerEntity> topCustomers;
   final SalesTimeFilter salesFilter;
+  final DateTime? customStartDate;
+  final DateTime? customEndDate;
   final bool isSalesLoading;
 
   const DashboardLoaded({
@@ -29,6 +31,8 @@ class DashboardLoaded extends DashboardState {
     required this.criticalBatches,
     this.topCustomers = const [],
     required this.salesFilter,
+    this.customStartDate,
+    this.customEndDate,
     this.isSalesLoading = false,
   });
 
@@ -38,6 +42,8 @@ class DashboardLoaded extends DashboardState {
     List<Map<String, dynamic>>? criticalBatches,
     List<CustomerEntity>? topCustomers,
     SalesTimeFilter? salesFilter,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
     bool? isSalesLoading,
   }) {
     return DashboardLoaded(
@@ -46,6 +52,8 @@ class DashboardLoaded extends DashboardState {
       criticalBatches: criticalBatches ?? this.criticalBatches,
       topCustomers: topCustomers ?? this.topCustomers,
       salesFilter: salesFilter ?? this.salesFilter,
+      customStartDate: customStartDate ?? this.customStartDate,
+      customEndDate: customEndDate ?? this.customEndDate,
       isSalesLoading: isSalesLoading ?? this.isSalesLoading,
     );
   }
@@ -57,6 +65,8 @@ class DashboardLoaded extends DashboardState {
     criticalBatches,
     topCustomers,
     salesFilter,
+    customStartDate,
+    customEndDate,
     isSalesLoading,
   ];
 }

@@ -8,6 +8,8 @@ abstract class DashboardRepository {
   Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics();
   Future<Either<Failure, SalesMetricsEntity>> getSalesMetrics({
     required SalesTimeFilter filter,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
   });
   Future<Either<Failure, List<Map<String, dynamic>>>> getCriticalBatches({
     int daysThreshold = 30,

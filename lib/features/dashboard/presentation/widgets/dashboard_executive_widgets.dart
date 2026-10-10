@@ -331,47 +331,35 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
             builder: (context, constraints) {
               final isMobileHeader = constraints.maxWidth < 580;
 
-              final badgeAndMenu = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4.5,
+              final liveBadge = Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 4.5,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.insights_rounded,
+                      size: 14,
+                      color: Color(0xFF2563EB),
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.insights_rounded,
-                          size: 14,
-                          color: Color(0xFF2563EB),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'En Tiempo Real',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1D4ED8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (widget.onHide != null) ...[
-                    const SizedBox(width: 6),
-                    DashboardCardOptionsMenu(
-                      title: 'Ingresos & Ganancia Total',
-                      onHide: widget.onHide!,
+                    SizedBox(width: 5),
+                    Text(
+                      'En Tiempo Real',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D4ED8),
+                      ),
                     ),
                   ],
-                ],
+                ),
               );
 
               final deltaPill = Container(
@@ -420,7 +408,7 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        badgeAndMenu,
+                        liveBadge,
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -476,7 +464,7 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                       ),
                     ],
                   ),
-                  badgeAndMenu,
+                  liveBadge,
                 ],
               );
             },
@@ -858,13 +846,6 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onHide != null) ...[
-                    const SizedBox(width: 6),
-                    DashboardCardOptionsMenu(
-                      title: 'Actividad Semanal',
-                      onHide: onHide!,
-                    ),
-                  ],
                 ],
               ),
             ],
@@ -1237,13 +1218,6 @@ class DashboardAiAssistantCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onHide != null) ...[
-                    const SizedBox(width: 6),
-                    DashboardCardOptionsMenu(
-                      title: 'Asistente ERP Inteligente',
-                      onHide: onHide!,
-                    ),
-                  ],
                 ],
               ),
             ],
@@ -1397,12 +1371,6 @@ class DashboardBestSellersTable extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (onHide != null)
-                    DashboardCardOptionsMenu(
-                      title: 'Productos con Mayor Rotación',
-                      onHide: onHide!,
-                    ),
                 ],
               ),
               const SizedBox(height: 14),

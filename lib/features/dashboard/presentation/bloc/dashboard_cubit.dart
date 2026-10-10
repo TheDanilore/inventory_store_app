@@ -93,12 +93,27 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
-  Future<void> updateSalesFilter(SalesTimeFilter filter) async {
+  Future<void> updateSalesFilter(
+    SalesTimeFilter filter, {
+    DateTime? customStartDate,
+    DateTime? customEndDate,
+  }) async {
     final currentState = state;
     if (currentState is DashboardLoaded) {
-      emit(currentState.copyWith(isSalesLoading: true));
+      emit(
+        currentState.copyWith(
+          isSalesLoading: true,
+          salesFilter: filter,
+          customStartDate: customStartDate,
+          customEndDate: customEndDate,
+        ),
+      );
 
-      final salesResult = await getSalesMetrics(filter: filter);
+      final salesResult = await getSalesMetrics(
+        filter: filter,
+        customStartDate: customStartDate,
+        customEndDate: customEndDate,
+      );
 
       salesResult.fold(
         (failure) {
@@ -113,6 +128,8 @@ class DashboardCubit extends Cubit<DashboardState> {
             currentState.copyWith(
               sales: sales,
               salesFilter: filter,
+              customStartDate: customStartDate,
+              customEndDate: customEndDate,
               isSalesLoading: false,
             ),
           );

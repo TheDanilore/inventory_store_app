@@ -150,6 +150,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
   @override
   Future<Either<Failure, SalesMetricsEntity>> getSalesMetrics({
     required SalesTimeFilter filter,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
   }) async {
     try {
       var query = _supabase
@@ -162,7 +164,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
       switch (filter) {
         case SalesTimeFilter.today:
           final startOfDay = DateTime(now.year, now.month, now.day);
-          query = query.gte('created_at', startOfDay.toIso8601String());
+          final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+          query = query
+              .gte('created_at', startOfDay.toIso8601String())
+              .lte('created_at', endOfDay.toIso8601String());
           break;
         case SalesTimeFilter.thisWeek:
           final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
@@ -171,11 +176,44 @@ class DashboardRepositoryImpl implements DashboardRepository {
             startOfWeek.month,
             startOfWeek.day,
           );
-          query = query.gte('created_at', startOfWeekDay.toIso8601String());
+          final endOfWeekDay = startOfWeekDay.add(
+            const Duration(days: 6, hours: 23, minutes: 59, seconds: 59, milliseconds: 999),
+          );
+          query = query
+              .gte('created_at', startOfWeekDay.toIso8601String())
+              .lte('created_at', endOfWeekDay.toIso8601String());
           break;
         case SalesTimeFilter.thisMonth:
           final startOfMonth = DateTime(now.year, now.month, 1);
-          query = query.gte('created_at', startOfMonth.toIso8601String());
+          final nextMonth = now.month == 12
+              ? DateTime(now.year + 1, 1, 1)
+              : DateTime(now.year, now.month + 1, 1);
+          final endOfMonth = nextMonth.subtract(const Duration(milliseconds: 1));
+          query = query
+              .gte('created_at', startOfMonth.toIso8601String())
+              .lte('created_at', endOfMonth.toIso8601String());
+          break;
+        case SalesTimeFilter.custom:
+          if (customStartDate != null) {
+            final start = DateTime(
+              customStartDate.year,
+              customStartDate.month,
+              customStartDate.day,
+            );
+            query = query.gte('created_at', start.toIso8601String());
+          }
+          if (customEndDate != null) {
+            final end = DateTime(
+              customEndDate.year,
+              customEndDate.month,
+              customEndDate.day,
+              23,
+              59,
+              59,
+              999,
+            );
+            query = query.lte('created_at', end.toIso8601String());
+          }
           break;
         case SalesTimeFilter.allTime:
           break;
@@ -198,27 +236,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final salesMargin =
           totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0.0;
 
-      // ── 1. Weekly Activity & Peak Day ─────────────────────────────────
-      // Siempre calculamos el ritmo de los últimos 7 días o semana actual
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final startOfWeekDay = DateTime(
-        startOfWeek.year,
-        startOfWeek.month,
-        startOfWeek.day,
-      );
-
-      final weeklyOrdersResponse = await _supabase
-          .from('orders')
-          .select('total_amount, created_at')
-          .eq('status', 'COMPLETED')
-          .gte('created_at', startOfWeekDay.toIso8601String());
-
-      final weeklyOrders = List<Map<String, dynamic>>.from(weeklyOrdersResponse);
+      // ── 1. Weekly Activity & Peak Day (In-Memory Processing from Filtered Orders) ──
       final dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
       final Map<int, double> dayTotals = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0, 7: 0.0};
       final Map<int, int> dayCounts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
 
-      for (var o in weeklyOrders) {
+      for (var o in orders) {
         final createdAtStr = o['created_at'] as String?;
         if (createdAtStr != null) {
           final dt = DateTime.tryParse(createdAtStr)?.toLocal();
@@ -241,7 +264,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
       final String peakDayLabel = maxDayVal > 0
           ? '${dayNames[peakWeekday - 1]} pico · S/ ${maxDayVal.toStringAsFixed(0)}'
-          : 'Sin ventas en semana';
+          : 'Sin ventas en período';
 
       final List<Map<String, dynamic>> weeklyActivity = [
         {'day': 'Dom', 'val': dayTotals[7] ?? 0.0, 'orders': dayCounts[7] ?? 0, 'active': peakWeekday == 7 && maxDayVal > 0},
