@@ -337,7 +337,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         AdminTableColumn<OrderEntity>(
           id: 'customer',
           label: 'CLIENTE / DESTINO',
-          flex: 4,
+          flex: 2,
           isSortable: true,
           tooltip: 'Cliente asociado o venta rápida',
           cellBuilder: (context, order) {
@@ -377,7 +377,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         AdminTableColumn<OrderEntity>(
           id: 'status',
           label: 'ESTADO',
-          fixedWidth: 130,
+          flex: 2,
           isSortable: true,
           tooltip: 'Estado actual del pedido',
           cellBuilder: (context, order) {
@@ -392,7 +392,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         AdminTableColumn<OrderEntity>(
           id: 'payment',
           label: 'PAGO',
-          fixedWidth: 115,
+          flex: 2,
           isSortable: false,
           tooltip: 'Estado de pago y método',
           cellBuilder: (context, order) {

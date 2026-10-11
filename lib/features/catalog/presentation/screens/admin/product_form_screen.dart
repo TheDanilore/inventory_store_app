@@ -618,7 +618,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                               const SizedBox(height: 20),
                               const ProductConfigSection(),
                               const SizedBox(height: 20),
-                              _buildDesktopSaveCard(cubit, isEdit),
+                              _buildDesktopJumpNav(cubit, isEdit),
                             ],
                           ),
                         ),
@@ -815,12 +815,20 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   );
 }
 
-  Widget _buildDesktopSaveCard(
-    ProductFormCubit cubit,
-    bool isEdit,
-  ) {
+  // ── Jump-Nav lateral: navega a secciones del formulario ─────────────────────
+  Widget _buildDesktopJumpNav(ProductFormCubit cubit, bool isEdit) {
+    final sections = [
+      (Icons.info_outline_rounded, 'Info básica'),
+      (Icons.attach_money_rounded, 'Precios e Inventario'),
+      (Icons.tune_rounded, 'Variantes'),
+      (Icons.settings_outlined, 'Configuración'),
+      (Icons.list_alt_rounded, 'Detalles Técnicos'),
+      (Icons.science_outlined, 'Ingredientes'),
+      (Icons.inventory_outlined, 'Lotes'),
+    ];
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusLg),
@@ -830,77 +838,78 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 19,
-                    color: AppColors.primary,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Estado y Publicación',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3.5,
-                ),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  isEdit ? 'En Catálogo' : 'Nuevo Borrador',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
+                child: const Icon(
+                  Icons.format_list_bulleted_rounded,
+                  size: 17,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Secciones del Formulario',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          const SizedBox(height: 12),
+          // Links de sección
+          ...sections.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final (icon, label) = entry.value;
+            // Ocultar variantes si no aplica
+            if (idx == 2) {
+              return BlocSelector<ProductFormCubit, ProductFormState, bool>(
+                selector: (s) => s.hasMultipleVariants,
+                builder: (context, hasMultiple) {
+                  if (!hasMultiple) return const SizedBox.shrink();
+                  return _buildJumpNavItem(icon, label);
+                },
+              );
+            }
+            return _buildJumpNavItem(icon, label);
+          }),
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          const SizedBox(height: 14),
+          // Estado de cambios
           BlocBuilder<ProductFormCubit, ProductFormState>(
-            buildWhen: (p, c) =>
-                p.isDirty != c.isDirty ||
-                p.hasMultipleVariants != c.hasMultipleVariants ||
-                p.variantDrafts.length != c.variantDrafts.length,
+            buildWhen: (p, c) => p.isDirty != c.isDirty,
             builder: (context, state) {
               final isDirty = cubit.hasUnsavedChanges;
               return Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: isDirty
-                      ? Colors.orange.shade50.withValues(alpha: 0.6)
-                      : Colors.green.shade50.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(10),
+                      ? Colors.orange.shade50
+                      : Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(9),
                   border: Border.all(
-                    color: isDirty
-                        ? Colors.orange.shade200
-                        : Colors.green.shade200,
+                    color: isDirty ? Colors.orange.shade200 : Colors.green.shade200,
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      width: 7,
+                      height: 7,
                       decoration: BoxDecoration(
-                        color: isDirty
-                            ? Colors.orange.shade600
-                            : Colors.green.shade600,
+                        color: isDirty ? Colors.orange.shade600 : Colors.green.shade600,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -908,14 +917,12 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     Expanded(
                       child: Text(
                         isDirty
-                            ? 'Tienes cambios pendientes de guardar'
-                            : 'Todos los datos están sincronizados',
+                            ? 'Cambios sin guardar'
+                            : 'Todo guardado',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color: isDirty
-                              ? Colors.orange.shade900
-                              : Colors.green.shade900,
+                          color: isDirty ? Colors.orange.shade800 : Colors.green.shade800,
                         ),
                       ),
                     ),
@@ -924,90 +931,91 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               );
             },
           ),
-          const SizedBox(height: 16),
-          BlocBuilder<ProductFormCubit, ProductFormState>(
-            buildWhen: (p, c) =>
-                p.hasMultipleVariants != c.hasMultipleVariants ||
-                p.variantDrafts.length != c.variantDrafts.length,
-            builder: (context, state) {
-              final variantCount = state.hasMultipleVariants
-                  ? state.variantDrafts.length
-                  : 1;
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+          const SizedBox(height: 12),
+          // Tip de atajos
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.keyboard_outlined,
+                  size: 14,
+                  color: AppColors.textMuted,
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Modalidad de Venta',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      state.hasMultipleVariants
-                          ? '$variantCount variantes'
-                          : 'Producto único (Simple)',
+                const SizedBox(width: 6),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
                       style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        height: 1.4,
                       ),
+                      children: [
+                        TextSpan(
+                          text: isEdit ? 'Ctrl+S' : 'Alt+G',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const TextSpan(text: ' para guardar · '),
+                        const TextSpan(
+                          text: 'Esc',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const TextSpan(text: ' para salir'),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          BlocSelector<ProductFormCubit, ProductFormState, bool>(
-            selector: (s) => s.isSaving,
-            builder: (context, isSaving) {
-              return Tooltip(
-                message: isEdit
-                    ? 'Guardar cambios (Alt + G / Ctrl + S)'
-                    : 'Publicar producto en catálogo (Alt + G / Ctrl + S)',
-                waitDuration: const Duration(milliseconds: 300),
-                child: AppPrimaryButton(
-                  label: isEdit ? 'Actualizar Producto' : 'Guardar Producto',
-                  icon: const Icon(Icons.check_rounded, size: 20),
-                  onPressed: isSaving ? null : _guardar,
-                  loading: isSaving,
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Tooltip(
-              message: 'Descartar cambios y salir (Esc)',
-              waitDuration: const Duration(milliseconds: 300),
-              child: TextButton.icon(
-                onPressed: _handleExit,
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text(
-                  'Descartar y volver',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12.5,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildJumpNavItem(IconData icon, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(7),
+        onTap: () {}, // Scroll-to en implementación futura con ScrollController
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+          child: Row(
+            children: [
+              Icon(icon, size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: 9),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.keyboard_arrow_right_rounded,
+                size: 15,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

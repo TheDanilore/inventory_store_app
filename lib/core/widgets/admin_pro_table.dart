@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
@@ -148,6 +149,22 @@ class AdminProTable<T> extends StatefulWidget {
 class _AdminProTableState<T> extends State<AdminProTable<T>> {
   Object? _hoveredItemId;
 
+  // ── Keyboard focus navigation ─────────────────────────────────────────────
+  late final FocusNode _tableFocusNode;
+  int _focusedRowIndex = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _tableFocusNode = FocusNode(debugLabel: 'AdminProTable');
+  }
+
+  @override
+  void dispose() {
+    _tableFocusNode.dispose();
+    super.dispose();
+  }
+
   bool get _isMultiSelectEnabled =>
       widget.enableMultiSelect && widget.onSelectionChanged != null;
 
@@ -177,6 +194,42 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
   void _clearSelection() {
     widget.onSelectionChanged?.call(const {});
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    final count = widget.items.length;
+    if (count == 0) return KeyEventResult.ignored;
+
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _focusedRowIndex =
+            _focusedRowIndex == -1 ? 0 : (_focusedRowIndex + 1).clamp(0, count - 1);
+      });
+      return KeyEventResult.handled;
+    }
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _focusedRowIndex = _focusedRowIndex <= 0
+            ? 0
+            : (_focusedRowIndex - 1).clamp(0, count - 1);
+      });
+      return KeyEventResult.handled;
+    }
+
+    if ((key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter) &&
+        _focusedRowIndex >= 0 &&
+        _focusedRowIndex < count) {
+      widget.onRowTap?.call(widget.items[_focusedRowIndex]);
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
   }
 
   @override
@@ -236,37 +289,45 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               boxShadow: AppColors.cardShadow(opacity: 0.04),
             ),
             clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Cuerpo de la tabla con scroll horizontal
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final tableWidth =
-                          screenWidth < widget.minTableWidth
-                              ? widget.minTableWidth
-                              : (screenWidth - 32).clamp(
-                                widget.minTableWidth,
-                                double.infinity,
-                              );
+            child: Focus(
+              focusNode: _tableFocusNode,
+              onKeyEvent: _handleKeyEvent,
+              child: GestureDetector(
+                onTap: () => _tableFocusNode.requestFocus(),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Cuerpo de la tabla con scroll horizontal
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final tableWidth =
+                              screenWidth < widget.minTableWidth
+                                  ? widget.minTableWidth
+                                  : (screenWidth - 32).clamp(
+                                    widget.minTableWidth,
+                                    double.infinity,
+                                  );
 
-                      return SizedBox(
-                        width: tableWidth,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [_buildTableHeader(), _buildTableRows()],
-                        ),
-                      );
-                    },
-                  ),
+                          return SizedBox(
+                            width: tableWidth,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [_buildTableHeader(), _buildTableRows()],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Pie de Tabla (Paginación y conteo)
+                    if (widget.paginationConfig != null) _buildTableFooter(),
+                  ],
                 ),
-
-                // Pie de Tabla (Paginación y conteo)
-                if (widget.paginationConfig != null) _buildTableFooter(),
-              ],
+              ),
             ),
           ),
         ),
@@ -401,42 +462,69 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         for (int i = 0; i < widget.items.length; i++) ...[
           if (i > 0)
             const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-          _buildTableRow(widget.items[i]),
+          _buildTableRow(widget.items[i], index: i),
         ],
       ],
     );
   }
 
-  Widget _buildTableRow(T item) {
+  Widget _buildTableRow(T item, {required int index}) {
     final id = widget.itemId(item);
     final isSelected = widget.selectedIds.contains(id);
     final isHovered = _hoveredItemId == id;
+    final isFocused = _focusedRowIndex == index;
+    final isHighlighted = isHovered || isFocused;
 
     final rowColor =
         isSelected
-            ? AppColors.primary.withValues(alpha: 0.05)
-            : (isHovered ? const Color(0xFFF8FAFC) : Colors.white);
+            ? AppColors.primary.withValues(alpha: 0.06)
+            : (isHighlighted ? const Color(0xFFF1F5F9) : Colors.white);
+
+    // Subtle shadow on hover/keyboard focus (like Linear/Stripe row lift)
+    final rowShadow = isHighlighted && !isSelected
+        ? [
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 1),
+            ),
+          ]
+        : <BoxShadow>[];
 
     return MouseRegion(
       cursor:
           widget.onRowTap != null
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _hoveredItemId = id),
+      onEnter: (_) {
+        _tableFocusNode.requestFocus();
+        setState(() {
+          _hoveredItemId = id;
+          _focusedRowIndex = index;
+        });
+      },
       onExit: (_) => setState(() => _hoveredItemId = null),
       child: GestureDetector(
         onTap: () => widget.onRowTap?.call(item),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: const Duration(milliseconds: 110),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           decoration: BoxDecoration(
             color: rowColor,
+            boxShadow: rowShadow,
             border:
                 isSelected
                     ? const Border(
                       left: BorderSide(color: AppColors.primary, width: 3.5),
                     )
-                    : null,
+                    : isFocused && !isSelected
+                        ? const Border(
+                          left: BorderSide(
+                            color: Color(0xFF94A3B8),
+                            width: 2,
+                          ),
+                        )
+                        : null,
           ),
           child: Row(
             children: [

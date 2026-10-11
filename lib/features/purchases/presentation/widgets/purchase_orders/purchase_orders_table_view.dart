@@ -395,7 +395,7 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         AdminTableColumn<PurchaseOrderModel>(
           id: 'supplier',
           label: 'PROVEEDOR',
-          flex: 4,
+          flex: 2,
           isSortable: true,
           tooltip: 'Proveedor y comprobante asociado',
           cellBuilder: (context, po) {
@@ -440,7 +440,7 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         AdminTableColumn<PurchaseOrderModel>(
           id: 'status',
           label: 'ESTADO',
-          fixedWidth: 125,
+          flex: 2,
           isSortable: true,
           tooltip: 'Estado logístico de la orden',
           cellBuilder: (context, po) {
@@ -455,7 +455,7 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         AdminTableColumn<PurchaseOrderModel>(
           id: 'payment',
           label: 'PAGO / ESTADO',
-          fixedWidth: 135,
+          flex: 2,
           isSortable: false,
           tooltip: 'Estado financiero de la compra',
           cellBuilder: (context, po) {

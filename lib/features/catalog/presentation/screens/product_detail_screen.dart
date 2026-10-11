@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
@@ -18,7 +20,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_details_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_detail_header.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_financial_bento_grid.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_ingredients_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
@@ -26,19 +27,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_reviews_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_top_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_variant_matrix.dart';
-
-// Keyboard Shortcut Intents
-class _ExportPdfIntent extends Intent {
-  const _ExportPdfIntent();
-}
-
-class _EditProductIntent extends Intent {
-  const _EditProductIntent();
-}
-
-class _SelectVariantIntent extends Intent {
-  const _SelectVariantIntent();
-}
 
 class ProductDetailScreen extends StatelessWidget {
   final ProductEntity product;
@@ -110,14 +98,25 @@ class _ProductDetailScreenContent extends StatefulWidget {
 class _ProductDetailScreenContentState
     extends State<_ProductDetailScreenContent> {
   final PageController _pageController = PageController();
+  final FocusNode _screenFocusNode = FocusNode();
   int _desktopSelectedTab = 0;
+  int _mobileSelectedTab = 0;
 
   ProductDetailCubit get cubit => context.read<ProductDetailCubit>();
   ProductDetailState get state => context.read<ProductDetailCubit>().state;
   ProductEntity get product => widget.product;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _screenFocusNode.requestFocus();
+    });
+  }
+
+  @override
   void dispose() {
+    _screenFocusNode.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -133,7 +132,6 @@ class _ProductDetailScreenContentState
   String? get _selectedVariantId => state.selectedVariantId;
 
   ProductVariantEntity? get _selectedVariant => state.selectedVariant;
-  double get _baseSalePrice => state.baseSalePrice;
   double? get _baseWholesalePrice => state.baseWholesalePrice;
   int get _baseWholesaleMinQty => state.baseWholesaleMinQty;
   double get _effectivePrice => state.effectivePrice;
@@ -641,64 +639,58 @@ class _ProductDetailScreenContentState
   }) {
     if (isDesktop) {
       return [
-        OutlinedButton.icon(
-          onPressed: _exportPdf,
-          icon: const Icon(
-            Icons.picture_as_pdf_outlined,
-            size: 16,
-            color: AppColors.primary,
-          ),
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Exportar PDF',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              _buildKbdBadge('Alt + P'),
-            ],
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppColors.border),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+        Tooltip(
+          message: 'Exportar Ficha Técnica en PDF (P o Alt + P)',
+          waitDuration: const Duration(milliseconds: 250),
+          child: OutlinedButton.icon(
+            onPressed: _exportPdf,
+            icon: const Icon(
+              Icons.picture_as_pdf_outlined,
+              size: 16,
+              color: AppColors.primary,
             ),
-            backgroundColor: Colors.white,
+            label: const Text(
+              'Exportar PDF',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              backgroundColor: Colors.white,
+            ),
           ),
         ),
         const SizedBox(width: 8),
-        ElevatedButton.icon(
-          onPressed: () {
-            context.push('/products/product-form/${product.id}');
-          },
-          icon: const Icon(Icons.edit_outlined, size: 16),
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Editar Producto',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+        Tooltip(
+          message: 'Editar datos del producto (E o Alt + E)',
+          waitDuration: const Duration(milliseconds: 250),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              context.push('/products/product-form/${product.id}');
+            },
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            label: const Text(
+              'Editar Producto',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 8),
-              _buildKbdBadge('Alt + E', isDark: true),
-            ],
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ),
@@ -715,7 +707,7 @@ class _ProductDetailScreenContentState
         onPressed: _exportPdf,
       ),
       IconButton(
-        tooltip: 'Editar',
+        tooltip: 'Editar Producto',
         icon: const Icon(
           Icons.edit_outlined,
           color: AppColors.primary,
@@ -728,99 +720,284 @@ class _ProductDetailScreenContentState
     ];
   }
 
-  Widget _buildKbdBadge(String text, {bool isDark = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.18)
-                : AppColors.background,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.25)
-                  : AppColors.border,
-        ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          color: isDark ? Colors.white : AppColors.textSecondary,
-          letterSpacing: 0.2,
+  Widget _buildMobileStickyActionBar(BuildContext context) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            MediaQuery.of(context).padding.bottom > 0
+                ? MediaQuery.of(context).padding.bottom + 6
+                : 14,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.94),
+            border: const Border(
+              top: BorderSide(color: AppColors.border, width: 1),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: _exportPdf,
+                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    label: const Text(
+                      'Ficha PDF',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      context.push('/products/product-form/${product.id}');
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text(
+                      'Editar Producto',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMobileStickyActionBar(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        10,
-        16,
-        MediaQuery.of(context).padding.bottom > 0
-            ? MediaQuery.of(context).padding.bottom + 6
-            : 14,
+  Widget _buildShortcutsWrapper(BuildContext context) {
+    return Focus(
+      focusNode: _screenFocusNode,
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+        // Regla estricta de aislamiento de foco:
+        if (FocusUtils.isInputFieldFocused()) {
+          return KeyEventResult.ignored;
+        }
+
+        final isAlt = HardwareKeyboard.instance.isAltPressed;
+        final isControl = HardwareKeyboard.instance.isControlPressed;
+
+        // E o Alt+E -> Editar
+        if (event.logicalKey == LogicalKeyboardKey.keyE ||
+            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyE)) {
+          context.push('/products/product-form/${product.id}');
+          return KeyEventResult.handled;
+        }
+
+        // P o Alt+P -> Exportar PDF
+        if (event.logicalKey == LogicalKeyboardKey.keyP ||
+            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyP)) {
+          _exportPdf();
+          return KeyEventResult.handled;
+        }
+
+        // V o Alt+V -> Abrir selector de variantes
+        if (event.logicalKey == LogicalKeyboardKey.keyV ||
+            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyV)) {
+          _showVariantPickerModal();
+          return KeyEventResult.handled;
+        }
+
+        // Esc -> Salir / Volver
+        if (event.logicalKey == LogicalKeyboardKey.escape) {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/products');
+          }
+          return KeyEventResult.handled;
+        }
+
+        return KeyEventResult.ignored;
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 960) {
+            return _buildDesktopLayout(context);
+          } else if (constraints.maxWidth >= 640) {
+            return _buildTabletLayout(context);
+          }
+          return _buildMobileLayout(context);
+        },
       ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        border: const Border(
-          top: BorderSide(color: AppColors.border, width: 1),
+    );
+  }
+
+  // ── Banda Financiera Compacta (Reemplazo moderno del Bento Grid) ───────────
+  Widget _buildFinancialStrip({required bool isCompact}) {
+    final retailProfit = _effectivePrice > _cost ? _effectivePrice - _cost : 0.0;
+    final retailMargin = _effectivePrice > 0 ? (retailProfit / _effectivePrice) * 100 : 0.0;
+    final reorderPoint = _selectedVariant?.reorderPoint ?? product.defaultVariant?.reorderPoint ?? 0;
+    final isLowStock = reorderPoint > 0 && _effectiveStock <= reorderPoint;
+
+    if (isCompact) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricItem(
+                    label: 'PRECIO VENTA',
+                    value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
+                    subValue: _baseWholesalePrice != null
+                        ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)}'
+                        : null,
+                    valueColor: AppColors.primary,
+                  ),
+                ),
+                Container(width: 1, height: 44, color: AppColors.border.withValues(alpha: 0.6)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricItem(
+                    label: 'STOCK TOTAL',
+                    value: '$_effectiveStock uds',
+                    subValue: isLowStock ? 'Bajo punto de reorden' : 'Stock óptimo',
+                    valueColor: isLowStock ? AppColors.error : AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 18, color: AppColors.border),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricItem(
+                    label: 'COSTO ERP',
+                    value: _cost > 0 ? 'S/ ${_cost.toStringAsFixed(2)}' : 'S/ 0.00',
+                    subValue: '${retailMargin.toStringAsFixed(1)}% margen bruto',
+                    valueColor: AppColors.textPrimary,
+                  ),
+                ),
+                Container(width: 1, height: 44, color: AppColors.border.withValues(alpha: 0.6)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricItem(
+                    label: 'VALOR INVENTARIO',
+                    value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
+                    subValue: reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
+                    valueColor: const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
-            offset: const Offset(0, -4),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
         children: [
           Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _exportPdf,
-              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: const Text(
-                'Ficha PDF',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.border),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                backgroundColor: Colors.white,
-              ),
+            flex: 3,
+            child: _buildMetricItem(
+              label: 'PRECIO DE VENTA',
+              value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
+              subValue: _baseWholesalePrice != null
+                  ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)} (Min ${_baseWholesaleMinQty}u)'
+                  : null,
+              valueColor: AppColors.primary,
             ),
           ),
-          const SizedBox(width: 12),
+          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          const SizedBox(width: 18),
+          Expanded(
+            flex: 3,
+            child: _buildMetricItem(
+              label: 'COSTO & RENTABILIDAD',
+              value: _cost > 0 ? 'S/ ${_cost.toStringAsFixed(2)}' : 'S/ 0.00',
+              subValue: '${retailMargin.toStringAsFixed(1)}% margen bruto (S/ ${retailProfit.toStringAsFixed(2)})',
+              valueColor: const Color(0xFF0F172A),
+              badgeColor: retailMargin > 20 ? AppColors.success : AppColors.warning,
+            ),
+          ),
+          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          const SizedBox(width: 18),
+          Expanded(
+            flex: 3,
+            child: _buildMetricItem(
+              label: 'STOCK TOTAL DISPONIBLE',
+              value: '$_effectiveStock unidades',
+              subValue: isLowStock ? 'Alerta: Bajo punto de reorden' : 'Existencias saludables',
+              valueColor: isLowStock ? AppColors.error : AppColors.success,
+              isPill: true,
+            ),
+          ),
+          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          const SizedBox(width: 18),
           Expanded(
             flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                context.push('/products/product-form/${product.id}');
-              },
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text(
-                'Editar Producto',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+            child: _buildMetricItem(
+              label: 'VALORIZACIÓN TOTAL',
+              value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
+              subValue: reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
+              valueColor: const Color(0xFF0F172A),
             ),
           ),
         ],
@@ -828,49 +1005,64 @@ class _ProductDetailScreenContentState
     );
   }
 
-  Widget _buildShortcutsWrapper(BuildContext context) {
-    return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        LogicalKeySet(
-          LogicalKeyboardKey.alt,
-          LogicalKeyboardKey.keyP,
-        ): const _ExportPdfIntent(),
-        LogicalKeySet(
-          LogicalKeyboardKey.alt,
-          LogicalKeyboardKey.keyE,
-        ): const _EditProductIntent(),
-        LogicalKeySet(
-          LogicalKeyboardKey.alt,
-          LogicalKeyboardKey.keyV,
-        ): const _SelectVariantIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _ExportPdfIntent: CallbackAction<_ExportPdfIntent>(
-            onInvoke: (_) => _exportPdf(),
-          ),
-          _EditProductIntent: CallbackAction<_EditProductIntent>(
-            onInvoke:
-                (_) => context.push('/products/product-form/${product.id}'),
-          ),
-          _SelectVariantIntent: CallbackAction<_SelectVariantIntent>(
-            onInvoke: (_) => _showVariantPickerModal(),
-          ),
-        },
-        child: Focus(
-          autofocus: true,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 900) {
-                return _buildDesktopLayout(context);
-              } else if (constraints.maxWidth >= 580) {
-                return _buildTabletLayout(context);
-              }
-              return _buildMobileLayout(context);
-            },
+  Widget _buildMetricItem({
+    required String label,
+    required String value,
+    String? subValue,
+    required Color valueColor,
+    Color? badgeColor,
+    bool isPill = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: AppColors.textSecondary,
           ),
         ),
-      ),
+        const SizedBox(height: 3),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                color: valueColor,
+              ),
+            ),
+            if (badgeColor != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
+              ),
+            ],
+          ],
+        ),
+        if (subValue != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            subValue,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: isPill && valueColor == AppColors.error ? AppColors.error : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -888,16 +1080,11 @@ class _ProductDetailScreenContentState
     mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
     mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
-    final int reorderPoint =
-        _selectedVariant?.reorderPoint ??
-        product.defaultVariant?.reorderPoint ??
-        0;
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HERO HEADER DE PRODUCTO (Sin redundancias de TopBar)
+          // Hero Header sin botones duplicados en TopBar
           ProductDetailHeader(
             product: product,
             isActive: _isActive,
@@ -914,29 +1101,20 @@ class _ProductDetailScreenContentState
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
-                  vertical: 20,
+                  vertical: 18,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // BENTO GRID FINANCIERO (ABOVE-THE-FOLD)
-                    ProductFinancialBentoGrid(
-                      effectivePrice: _effectivePrice,
-                      baseSalePrice: _baseSalePrice,
-                      baseWholesalePrice: _baseWholesalePrice,
-                      baseWholesaleMinQty: _baseWholesaleMinQty,
-                      cost: _cost,
-                      effectiveStock: _effectiveStock,
-                      reorderPoint: reorderPoint,
-                      isCompact: false,
-                    ),
+                    // Banda Métrica Financiera Unificada
+                    _buildFinancialStrip(isCompact: false),
                     const SizedBox(height: 20),
 
-                    // DOS COLUMNAS PRINCIPALES (40% / 60%)
+                    // Dos Columnas Principales (40% / 60%)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ── Columna Izquierda: Galería y Almacenes (40%) ──
+                        // Columna Izquierda: Galería y Ficha Técnica
                         Expanded(
                           flex: 40,
                           child: Column(
@@ -945,56 +1123,32 @@ class _ProductDetailScreenContentState
                                 elevation: 0,
                                 color: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radius,
-                                  ),
-                                  side: const BorderSide(
-                                    color: AppColors.border,
-                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: const BorderSide(color: AppColors.border),
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(16.0),
                                   child: SizedBox(
-                                    height: 480,
+                                    height: 440,
                                     child: ProductGallerySection(
                                       images: gallery.toList(),
                                       pageController: _pageController,
                                       selectedIndex: _selectedImageIndex,
                                       onPageChanged: _onGalleryChanged,
                                       variantImageOverrideUrl:
-                                          (_showVariantImage &&
-                                                  _selectedVariant != null)
+                                          (_showVariantImage && _selectedVariant != null)
                                               ? _selectedVariantImageUrl
                                               : null,
                                       variantLabelOverride:
-                                          (_showVariantImage &&
-                                                  _selectedVariant != null)
-                                              ? _selectedVariant!
-                                                  .attributeMap
-                                                  .values
-                                                  .join(' - ')
+                                          (_showVariantImage && _selectedVariant != null)
+                                              ? _selectedVariant!.attributeMap.values.join(' - ')
                                               : null,
-                                      fallbackImageUrl:
-                                          product.primaryImageUrl,
+                                      fallbackImageUrl: product.primaryImageUrl,
                                     ),
                                   ),
                                 ),
                               ),
                               const SizedBox(height: 16),
-
-                              // Almacenes
-                              const ProductAvailabilityCard(),
-                              const SizedBox(height: 16),
-
-                              // Lotes
-                              if (product.usesBatches) ...[
-                                const ProductBatchesCard(
-                                  initiallyExpanded: true,
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-
-                              // Detalles de ficha técnica
                               ProductDetailsCard(details: mergedDetails),
                               if (_activeIngredients.isNotEmpty) ...[
                                 const SizedBox(height: 16),
@@ -1005,19 +1159,16 @@ class _ProductDetailScreenContentState
                             ],
                           ),
                         ),
-                        const SizedBox(width: 20),
+                        const SizedBox(width: 22),
 
-                        // ── Columna Derecha: Tabs y Secciones (60%) ─
+                        // Columna Derecha: Tabs sin duplicados
                         Expanded(
                           flex: 60,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Pestañas segmentadas para evitar scroll desmedido
                               _buildDesktopTabs(),
                               const SizedBox(height: 16),
-
-                              // Contenido según pestaña activa
                               _buildDesktopTabContent(mergedDetails),
                             ],
                           ),
@@ -1038,78 +1189,68 @@ class _ProductDetailScreenContentState
   Widget _buildDesktopTabs() {
     final tabs = [
       (0, 'Variantes (${_variants.length})', Icons.style_outlined),
-      (1, 'Rentabilidad ERP', Icons.analytics_outlined),
-      (2, 'Decisiones Rápidas', Icons.bolt_outlined),
-      (3, 'Reseñas (${_reviewsList.length})', Icons.star_outline_rounded),
-      (4, 'Vista Completa', Icons.view_agenda_outlined),
+      (1, 'Almacenes y Lotes', Icons.warehouse_outlined),
+      (2, 'Rentabilidad ERP', Icons.analytics_outlined),
+      (3, 'Descripción y Reseñas', Icons.reviews_outlined),
     ];
 
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
-        children:
-            tabs.map((t) {
-              final isSelected = _desktopSelectedTab == t.$1;
-              return Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _desktopSelectedTab = t.$1),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isSelected ? AppColors.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          t.$3,
-                          size: 15,
-                          color:
-                              isSelected
-                                  ? Colors.white
-                                  : AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            t.$2,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSelected ? FontWeight.w700 : FontWeight.w600,
-                              color:
-                                  isSelected
-                                      ? Colors.white
-                                      : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        children: tabs.map((t) {
+          final isSelected = _desktopSelectedTab == t.$1;
+          return Expanded(
+            child: InkWell(
+              onTap: () => setState(() => _desktopSelectedTab = t.$1),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 9,
+                  horizontal: 8,
                 ),
-              );
-            }).toList(),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      t.$3,
+                      size: 15,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        t.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 
   Widget _buildDesktopTabContent(Map<String, dynamic> mergedDetails) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 200),
       switchInCurve: Curves.easeOutQuad,
       switchOutCurve: Curves.easeInQuad,
       transitionBuilder:
@@ -1145,57 +1286,23 @@ class _ProductDetailScreenContentState
           ],
         );
       case 1:
-        return const ProductAdminInfoCard(initiallyExpanded: true);
-      case 2:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ProductQuickDecisionsCard(),
+            const ProductAvailabilityCard(),
             if (product.usesBatches) ...[
               const SizedBox(height: 16),
               const ProductBatchesCard(initiallyExpanded: true),
             ],
           ],
         );
+      case 2:
+        return const ProductAdminInfoCard(initiallyExpanded: true);
       case 3:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProductDescriptionCard(
-              description: product.description ?? '',
-            ),
-            const SizedBox(height: 16),
-            ProductReviewsCard(
-              averageRating: _averageRating,
-              totalReviews: _reviewsList.length,
-              reviews: _reviewsList,
-              onAddReview: _showAddReviewDialog,
-            ),
-          ],
-        );
-      case 4:
       default:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProductVariantMatrix(
-              variants: _variants,
-              selectedVariantId: _selectedVariantId,
-              fallbackImageUrl: product.primaryImageUrl,
-              variantImageUrl: _variantImageUrl,
-              onVariantSelected: (v) {
-                cubit.setVariant(v.id);
-                cubit.selectVariantImage(v.id);
-              },
-              onOpenSelectorModal: _showVariantPickerModal,
-              isDesktop: true,
-              variantStock: (id) => state.variantStock(id),
-            ),
-            const SizedBox(height: 16),
-            const ProductAdminInfoCard(initiallyExpanded: true),
-            const SizedBox(height: 16),
-            const ProductQuickDecisionsCard(),
-            const SizedBox(height: 16),
             ProductDescriptionCard(
               description: product.description ?? '',
             ),
@@ -1225,11 +1332,6 @@ class _ProductDetailScreenContentState
     mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
     mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
-    final int reorderPoint =
-        _selectedVariant?.reorderPoint ??
-        product.defaultVariant?.reorderPoint ??
-        0;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1245,17 +1347,7 @@ class _ProductDetailScreenContentState
             variantCount: _variants.length,
           ),
           const SizedBox(height: 16),
-          // Bento Grid en formato 2x2
-          ProductFinancialBentoGrid(
-            effectivePrice: _effectivePrice,
-            baseSalePrice: _baseSalePrice,
-            baseWholesalePrice: _baseWholesalePrice,
-            baseWholesaleMinQty: _baseWholesaleMinQty,
-            cost: _cost,
-            effectiveStock: _effectiveStock,
-            reorderPoint: reorderPoint,
-            isCompact: true,
-          ),
+          _buildFinancialStrip(isCompact: true),
           const SizedBox(height: 16),
 
           Row(
@@ -1270,9 +1362,7 @@ class _ProductDetailScreenContentState
                       elevation: 0,
                       color: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppColors.radius,
-                        ),
+                        borderRadius: BorderRadius.circular(16),
                         side: const BorderSide(color: AppColors.border),
                       ),
                       child: Padding(
@@ -1285,8 +1375,7 @@ class _ProductDetailScreenContentState
                             selectedIndex: _selectedImageIndex,
                             onPageChanged: _onGalleryChanged,
                             variantImageOverrideUrl:
-                                (_showVariantImage &&
-                                        _selectedVariant != null)
+                                (_showVariantImage && _selectedVariant != null)
                                     ? _selectedVariantImageUrl
                                     : null,
                             fallbackImageUrl: product.primaryImageUrl,
@@ -1295,21 +1384,11 @@ class _ProductDetailScreenContentState
                       ),
                     ),
                     const SizedBox(height: 14),
-                    ProductVariantMatrix(
-                      variants: _variants,
-                      selectedVariantId: _selectedVariantId,
-                      fallbackImageUrl: product.primaryImageUrl,
-                      variantImageUrl: _variantImageUrl,
-                      onVariantSelected: (v) {
-                        cubit.setVariant(v.id);
-                        cubit.selectVariantImage(v.id);
-                      },
-                      onOpenSelectorModal: _showVariantPickerModal,
-                      isDesktop: false,
-                      variantStock: (id) => state.variantStock(id),
-                    ),
-                    const SizedBox(height: 14),
-                    const ProductAvailabilityCard(),
+                    ProductDetailsCard(details: mergedDetails),
+                    if (_activeIngredients.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      ProductIngredientsCard(ingredients: _activeIngredients),
+                    ],
                   ],
                 ),
               ),
@@ -1319,23 +1398,11 @@ class _ProductDetailScreenContentState
               Expanded(
                 flex: 55,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (product.usesBatches) ...[
-                      const ProductBatchesCard(initiallyExpanded: true),
-                      const SizedBox(height: 14),
-                    ],
-                    const ProductAdminInfoCard(initiallyExpanded: true),
+                    _buildDesktopTabs(),
                     const SizedBox(height: 14),
-                    const ProductQuickDecisionsCard(),
-                    const SizedBox(height: 14),
-                    ProductDetailsCard(details: mergedDetails),
-                    const SizedBox(height: 14),
-                    ProductReviewsCard(
-                      averageRating: _averageRating,
-                      totalReviews: _reviewsList.length,
-                      reviews: _reviewsList,
-                      onAddReview: _showAddReviewDialog,
-                    ),
+                    _buildDesktopTabContent(mergedDetails),
                   ],
                 ),
               ),
@@ -1347,7 +1414,7 @@ class _ProductDetailScreenContentState
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
-  // 3. MÓVIL LAYOUT (APPLE HIG / FLUJO TÁCTIL SUAVE)
+  // 3. MÓVIL LAYOUT (APPLE HIG / PÍLDORAS SEGMENTADAS / CERO CARD FATIGUE)
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMobileLayout(BuildContext context) {
@@ -1360,21 +1427,23 @@ class _ProductDetailScreenContentState
     mergedDetails['Usa Lotes'] = product.usesBatches ? 'Sí' : 'No';
     mergedDetails['Tipo de Producto'] = _fmt(product.productType);
 
-    final int reorderPoint =
-        _selectedVariant?.reorderPoint ??
-        product.defaultVariant?.reorderPoint ??
-        0;
+    final mobileTabs = [
+      (0, 'Resumen', Icons.dashboard_outlined),
+      (1, 'Variantes (${_variants.length})', Icons.style_outlined),
+      (2, 'Stock & Lotes', Icons.warehouse_outlined),
+      (3, 'Ficha Técnica', Icons.description_outlined),
+    ];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Galería Móvil
+          // Galería Móvil Compacta
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppColors.radius),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              height: 320,
+              height: 280,
               color: Colors.white,
               child: ProductGallerySection(
                 images: gallery.toList(),
@@ -1393,9 +1462,9 @@ class _ProductDetailScreenContentState
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Top Section
+          // Título, SKU, Rating, Estado
           ProductTopSection(
             name: product.name,
             sku: _selectedVariant?.sku,
@@ -1405,76 +1474,128 @@ class _ProductDetailScreenContentState
             averageRating: _averageRating,
             totalReviews: _reviewsList.length,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Bento Grid 2x2
-          ProductFinancialBentoGrid(
-            effectivePrice: _effectivePrice,
-            baseSalePrice: _baseSalePrice,
-            baseWholesalePrice: _baseWholesalePrice,
-            baseWholesaleMinQty: _baseWholesaleMinQty,
-            cost: _cost,
-            effectiveStock: _effectiveStock,
-            reorderPoint: reorderPoint,
-            isCompact: true,
+          // Píldoras Segmented Control (Apple HIG)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: mobileTabs.map((t) {
+                final isSelected = _mobileSelectedTab == t.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      t.$3,
+                      size: 15,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                    ),
+                    label: Text(
+                      t.$2,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    onSelected: (_) => setState(() => _mobileSelectedTab = t.$1),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Variantes Chips
-          ProductVariantMatrix(
-            variants: _variants,
-            selectedVariantId: _selectedVariantId,
-            fallbackImageUrl: product.primaryImageUrl,
-            variantImageUrl: _variantImageUrl,
-            onVariantSelected: (v) {
-              cubit.setVariant(v.id);
-              cubit.selectVariantImage(v.id);
-            },
-            onOpenSelectorModal: _showVariantPickerModal,
-            isDesktop: false,
-            variantStock: (id) => state.variantStock(id),
-          ),
-          const SizedBox(height: 16),
-
-          // Almacén
-          const ProductAvailabilityCard(),
-          const SizedBox(height: 16),
-
-          // Lotes
-          if (product.usesBatches) ...[
-            const ProductBatchesCard(initiallyExpanded: false),
-            const SizedBox(height: 16),
-          ],
-
-          // Rentabilidad
-          const ProductAdminInfoCard(initiallyExpanded: false),
-          const SizedBox(height: 16),
-
-          // Decisiones
-          const ProductQuickDecisionsCard(),
-          const SizedBox(height: 16),
-
-          // Detalles
-          ProductDetailsCard(details: mergedDetails),
-          if (mergedDetails.isNotEmpty) const SizedBox(height: 16),
-
-          if (_activeIngredients.isNotEmpty) ...[
-            ProductIngredientsCard(ingredients: _activeIngredients),
-            const SizedBox(height: 16),
-          ],
-
-          ProductDescriptionCard(description: product.description ?? ''),
-          if ((product.description ?? '').trim().isNotEmpty)
-            const SizedBox(height: 16),
-
-          ProductReviewsCard(
-            averageRating: _averageRating,
-            totalReviews: _reviewsList.length,
-            reviews: _reviewsList,
-            onAddReview: _showAddReviewDialog,
+          // Contenido modular dinámico según pestaña
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: KeyedSubtree(
+              key: ValueKey<int>(_mobileSelectedTab),
+              child: _buildMobileTabContent(mergedDetails),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildMobileTabContent(Map<String, dynamic> mergedDetails) {
+    switch (_mobileSelectedTab) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildFinancialStrip(isCompact: true),
+            const SizedBox(height: 14),
+            const ProductAvailabilityCard(),
+            const SizedBox(height: 14),
+            ProductDescriptionCard(description: product.description ?? ''),
+            const SizedBox(height: 14),
+            const ProductQuickDecisionsCard(),
+          ],
+        );
+      case 1:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProductVariantMatrix(
+              variants: _variants,
+              selectedVariantId: _selectedVariantId,
+              fallbackImageUrl: product.primaryImageUrl,
+              variantImageUrl: _variantImageUrl,
+              onVariantSelected: (v) {
+                cubit.setVariant(v.id);
+                cubit.selectVariantImage(v.id);
+              },
+              onOpenSelectorModal: _showVariantPickerModal,
+              isDesktop: false,
+              variantStock: (id) => state.variantStock(id),
+            ),
+            const SizedBox(height: 14),
+            const ProductQuickDecisionsCard(),
+          ],
+        );
+      case 2:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ProductAvailabilityCard(),
+            if (product.usesBatches) ...[
+              const SizedBox(height: 14),
+              const ProductBatchesCard(initiallyExpanded: true),
+            ],
+            const SizedBox(height: 14),
+            const ProductAdminInfoCard(initiallyExpanded: true),
+          ],
+        );
+      case 3:
+      default:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProductDetailsCard(details: mergedDetails),
+            if (_activeIngredients.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              ProductIngredientsCard(ingredients: _activeIngredients),
+            ],
+            const SizedBox(height: 14),
+            ProductReviewsCard(
+              averageRating: _averageRating,
+              totalReviews: _reviewsList.length,
+              reviews: _reviewsList,
+              onAddReview: _showAddReviewDialog,
+            ),
+          ],
+        );
+    }
   }
 }

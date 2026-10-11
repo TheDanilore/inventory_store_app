@@ -632,7 +632,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   color: AppColors.tealDark,
                 ),
                 label: const Text(
-                  'Punto de Venta (POS) [P]',
+                  'Punto de Venta (POS)',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
