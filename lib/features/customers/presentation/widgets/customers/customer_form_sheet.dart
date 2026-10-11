@@ -110,8 +110,9 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
   bool _isActive = true;
 
   // Crédito
-  bool _hasCredit = false;
-  bool _creditIsActive = false;
+  bool _hasCredit = true; // Activo por defecto para todos los clientes
+  bool _isUnlimited = true; // Límite infinito por defecto
+  bool _creditIsActive = true;
   bool _creditExistsInDb = false;
   String? _creditId;
   double _currentDebt = 0;
@@ -144,7 +145,11 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
 
   void _prefill() {
     final c = widget.customer;
-    if (c == null) return;
+    if (c == null) {
+      _hasCredit = true;
+      _isUnlimited = true;
+      return;
+    }
 
     _nameCtrl.text = c.fullName;
     _phoneCtrl.text = c.phone ?? '';
@@ -162,7 +167,11 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
     if (!_formKey.currentState!.validate()) return;
 
     final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
-    final newLimit = double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0;
+    // Si _isUnlimited es true, el límite se guarda en 0.0 (representa sin límite)
+    final double newLimit =
+        (_hasCredit && !_isUnlimited)
+            ? (double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0)
+            : 0.0;
 
     context.read<CustomerFormCubit>().save(
       customerId: widget.customer?.id,
@@ -205,11 +214,17 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
           _creditIsActive = account.isActive;
           _hasCredit = account.isActive;
           _currentDebt = account.currentDebt;
-          _creditLimitCtrl.text = account.creditLimit.toStringAsFixed(2);
+          _isUnlimited = account.isUnlimited;
+          _creditLimitCtrl.text =
+              account.isUnlimited ? '' : account.creditLimit.toStringAsFixed(2);
           _isLoadingCredit = false;
         });
       } else if (mounted) {
-        setState(() => _isLoadingCredit = false);
+        setState(() {
+          _hasCredit = true;
+          _isUnlimited = true;
+          _isLoadingCredit = false;
+        });
       }
     } else if (state is CustomerFormCreditLoading && mounted) {
       setState(() => _isLoadingCredit = true);
@@ -577,12 +592,12 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
                                       : AppColors.textMuted,
                               title:
                                   _hasCredit
-                                      ? 'Crédito habilitado'
+                                      ? 'Línea de crédito activa'
                                       : 'Sin crédito',
                               subtitle:
                                   _hasCredit
                                       ? 'El cliente puede comprar a crédito'
-                                      : 'Activa para asignar una línea de crédito',
+                                      : 'Activa para asignar crédito al cliente',
                               value: _hasCredit,
                               onChanged: (v) => setState(() => _hasCredit = v),
                             ),
@@ -598,55 +613,134 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
                                       _currentDebt > 0
                                           ? AppColors.danger
                                           : AppColors.textMuted,
-                                  label: 'Deuda actual',
+                                  label: 'Deuda actual acumulada',
                                   value:
                                       'S/ ${_currentDebt.toStringAsFixed(2)}',
                                   note:
                                       _currentDebt > 0
-                                          ? 'Registra pagos desde el detalle del cliente'
+                                          ? 'Registra abonos desde Cuentas por Cobrar'
                                           : null,
                                 ),
                                 const SizedBox(height: 14),
                               ],
 
-                              // Límite de crédito (editable)
-                              _FieldLabel('Límite de crédito'),
-                              _StyledField(
-                                controller: _creditLimitCtrl,
-                                hint: '0.00',
-                                prefixIcon:
-                                    Icons.account_balance_wallet_rounded,
-                                prefixText: 'S/ ',
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
+                              // Selector de Límite: Infinito vs Tope fijo
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _CreditTypePill(
+                                        title: 'Límite Infinito (∞)',
+                                        subtitle: 'Sin tope máximo',
+                                        icon: Icons.all_inclusive_rounded,
+                                        isSelected: _isUnlimited,
+                                        onTap: () {
+                                          setState(() {
+                                            _isUnlimited = true;
+                                            _creditLimitCtrl.clear();
+                                          });
+                                        },
+                                      ),
                                     ),
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d*\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (v) {
-                                  if (!_hasCredit) return null;
-                                  final n = double.tryParse(v?.trim() ?? '');
-                                  if (n == null || n < 0) {
-                                    return 'Ingresa un límite válido';
-                                  }
-                                  // Advertir si el nuevo límite es menor a la deuda
-                                  if (_isEditing &&
-                                      n < _currentDebt &&
-                                      _currentDebt > 0) {
-                                    return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
-                                  }
-                                  return null;
-                                },
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: _CreditTypePill(
+                                        title: 'Límite en Soles',
+                                        subtitle: 'Tope máximo fijo',
+                                        icon: Icons.tune_rounded,
+                                        isSelected: !_isUnlimited,
+                                        onTap: () {
+                                          setState(() {
+                                            _isUnlimited = false;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
 
+                              if (!_isUnlimited) ...[
+                                const SizedBox(height: 14),
+                                _FieldLabel('Límite de crédito en Soles *'),
+                                _StyledField(
+                                  controller: _creditLimitCtrl,
+                                  hint: 'Ej: 500.00',
+                                  prefixIcon:
+                                      Icons.account_balance_wallet_rounded,
+                                  prefixText: 'S/ ',
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'^\d*\.?\d{0,2}'),
+                                    ),
+                                  ],
+                                  validator: (v) {
+                                    if (!_hasCredit || _isUnlimited) return null;
+                                    final n = double.tryParse(v?.trim() ?? '');
+                                    if (n == null || n <= 0) {
+                                      return 'Ingresa un límite válido mayor a 0';
+                                    }
+                                    if (_isEditing &&
+                                        n < _currentDebt &&
+                                        _currentDebt > 0) {
+                                      return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ] else ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF0FDF4),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0xFFBBF7D0),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: const [
+                                      Icon(
+                                        Icons.verified_rounded,
+                                        size: 18,
+                                        color: Color(0xFF16A34A),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Crédito ilimitado: el cliente podrá comprar a crédito sin restricción de tope máximo.',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF15803D),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
                               // Preview de uso de crédito
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 12),
                               _CreditPreview(
                                 limitCtrl: _creditLimitCtrl,
                                 currentDebt: _isEditing ? _currentDebt : 0,
+                                isUnlimited: _isUnlimited,
                               ),
 
                               // Nota aclaratoria
@@ -1117,8 +1211,13 @@ class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
 class _CreditPreview extends StatefulWidget {
   final TextEditingController limitCtrl;
   final double currentDebt;
+  final bool isUnlimited;
 
-  const _CreditPreview({required this.limitCtrl, required this.currentDebt});
+  const _CreditPreview({
+    required this.limitCtrl,
+    required this.currentDebt,
+    this.isUnlimited = false,
+  });
 
   @override
   State<_CreditPreview> createState() => _CreditPreviewState();
@@ -1141,11 +1240,19 @@ class _CreditPreviewState extends State<_CreditPreview> {
 
   @override
   Widget build(BuildContext context) {
-    final limit = double.tryParse(widget.limitCtrl.text.trim()) ?? 0.0;
+    final bool isUnlimited = widget.isUnlimited;
+    final limit =
+        isUnlimited
+            ? 0.0
+            : (double.tryParse(widget.limitCtrl.text.trim()) ?? 0.0);
     final debt = widget.currentDebt;
-    final pct = limit > 0 ? (debt / limit).clamp(0.0, 1.0) : 0.0;
-    final available = (limit - debt).clamp(0.0, double.infinity);
-    final isRisk = pct >= 0.8;
+    final pct =
+        (!isUnlimited && limit > 0) ? (debt / limit).clamp(0.0, 1.0) : 0.0;
+    final available =
+        isUnlimited
+            ? double.infinity
+            : (limit - debt).clamp(0.0, double.infinity);
+    final isRisk = !isUnlimited && pct >= 0.8;
     final color = isRisk ? AppColors.danger : AppColors.success;
 
     return Container(
@@ -1169,7 +1276,9 @@ class _CreditPreviewState extends State<_CreditPreview> {
                 ),
               ),
               Text(
-                '${(pct * 100).toStringAsFixed(0)}% usado',
+                isUnlimited
+                    ? 'Límite Infinito (∞)'
+                    : '${(pct * 100).toStringAsFixed(0)}% usado',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -1182,7 +1291,7 @@ class _CreditPreviewState extends State<_CreditPreview> {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: pct,
+              value: isUnlimited ? 0.0 : pct,
               minHeight: 6,
               backgroundColor: Colors.grey.shade200,
               valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -1201,14 +1310,20 @@ class _CreditPreviewState extends State<_CreditPreview> {
               Expanded(
                 child: _PreviewStat(
                   label: 'Disponible',
-                  value: 'S/ ${available.toStringAsFixed(2)}',
+                  value:
+                      isUnlimited
+                          ? 'Ilimitado'
+                          : 'S/ ${available.toStringAsFixed(2)}',
                   color: AppColors.success,
                 ),
               ),
               Expanded(
                 child: _PreviewStat(
                   label: 'Límite',
-                  value: 'S/ ${limit.toStringAsFixed(2)}',
+                  value:
+                      isUnlimited
+                          ? 'Sin tope (∞)'
+                          : 'S/ ${limit.toStringAsFixed(2)}',
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -1250,6 +1365,85 @@ class _PreviewStat extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+}
+
+class _CreditTypePill extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CreditTypePill({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 1.2,
+          ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                  : null,
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color:
+                        isSelected ? AppColors.primary : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                color:
+                    isSelected ? AppColors.textSecondary : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1571,6 +1571,7 @@ class _CreditWarningCard extends StatelessWidget {
     }
 
     final limit = (creditInfo!['credit_limit'] as num).toDouble();
+    final isUnlimited = limit <= 0;
     final debt = (creditInfo!['current_debt'] as num).toDouble();
     final insuficiente = creditDisponible < totalFinal;
 
@@ -1597,7 +1598,7 @@ class _CreditWarningCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                insuficiente ? 'Crédito insuficiente' : 'Crédito disponible',
+                insuficiente ? 'Crédito insuficiente' : (isUnlimited ? 'Crédito ilimitado disponible' : 'Crédito disponible'),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1621,7 +1622,7 @@ class _CreditWarningCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'S/ ${limit.toStringAsFixed(2)}',
+                      isUnlimited ? 'Sin límite (∞)' : 'S/ ${limit.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1667,7 +1668,7 @@ class _CreditWarningCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'S/ ${creditDisponible.toStringAsFixed(2)}',
+                      isUnlimited ? 'Ilimitado' : 'S/ ${creditDisponible.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,

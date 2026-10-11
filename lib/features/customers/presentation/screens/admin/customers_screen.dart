@@ -1813,8 +1813,9 @@ class _CustomerSideSheetInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = customer;
-    final availableCredit = (c.creditLimit - c.currentDebt).clamp(0.0, double.infinity);
-    final creditUsageRatio = c.creditLimit > 0
+    final isUnlimited = c.creditLimit <= 0;
+    final availableCredit = isUnlimited ? double.infinity : (c.creditLimit - c.currentDebt).clamp(0.0, double.infinity);
+    final creditUsageRatio = (!isUnlimited && c.creditLimit > 0)
         ? (c.currentDebt / c.creditLimit).clamp(0.0, 1.0)
         : 0.0;
 
@@ -1905,8 +1906,8 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       color: c.isActive
-                                          ? AppColors.successDark
-                                          : AppColors.slate,
+                                        ? AppColors.successDark
+                                        : AppColors.slate,
                                     ),
                                   ),
                                 ),
@@ -2009,7 +2010,7 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                           Expanded(
                             child: _BalanceMiniCard(
                               title: 'Límite Crédito',
-                              value: 'S/ ${c.creditLimit.toStringAsFixed(2)}',
+                              value: isUnlimited ? 'Sin límite (∞)' : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
                             ),
                           ),
                         ],
@@ -2020,8 +2021,8 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                           Expanded(
                             child: _BalanceMiniCard(
                               title: 'Crédito Disponible',
-                              value: 'S/ ${availableCredit.toStringAsFixed(2)}',
-                              isSuccess: availableCredit > 0,
+                              value: isUnlimited ? 'Ilimitado' : 'S/ ${availableCredit.toStringAsFixed(2)}',
+                              isSuccess: isUnlimited || availableCredit > 0,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -2033,7 +2034,7 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (c.creditLimit > 0) ...[
+                      if (!isUnlimited && c.creditLimit > 0) ...[
                         const SizedBox(height: 14),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),

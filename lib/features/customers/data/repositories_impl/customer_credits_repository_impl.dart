@@ -196,6 +196,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         await _supabase.from('customer_credits').insert({
           'profile_id': customerId,
           'credit_limit': creditLimit,
+          'is_active': true,
         });
       }
 

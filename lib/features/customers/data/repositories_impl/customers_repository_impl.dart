@@ -24,7 +24,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
       dynamic queryBuilder = _supabase
           .from('profiles')
           .select(
-            'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at${showOnlyWithDebt ? ', customer_credits:customer_credits!customer_credits_profile_id_fkey!inner(current_debt, credit_limit)' : ''}',
+            'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_profile_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
           );
 
       queryBuilder = queryBuilder.eq('role', 'customer');
@@ -50,17 +50,12 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
       final cIds = res.map((e) => e['id'] as String).toList();
 
-      // Traer agregados
+      // Traer agregados de órdenes completadas
       final ordersRes = await _supabase
           .from('orders')
           .select('customer_id, total_amount')
           .eq('status', 'COMPLETED')
           .inFilter('customer_id', cIds);
-
-      final creditsRes = await _supabase
-          .from('customer_credits')
-          .select('profile_id, current_debt, credit_limit')
-          .inFilter('profile_id', cIds);
 
       return res.map<CustomerEntity>((json) {
         final id = json['id'] as String;
@@ -68,7 +63,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         double currentDebt = 0.0;
         double creditLimit = 0.0;
 
-        if (showOnlyWithDebt && json['customer_credits'] != null) {
+        if (json['customer_credits'] != null) {
           final creditData = json['customer_credits'];
           Map<String, dynamic>? creditObj;
           if (creditData is Map<String, dynamic>) {
@@ -79,15 +74,6 @@ class CustomersRepositoryImpl implements CustomersRepository {
           if (creditObj != null) {
             currentDebt = (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
             creditLimit = (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
-          }
-        } else {
-          // Viene del query separado
-          final creditRowMatch = creditsRes.where((c) => c['profile_id'] == id);
-          final creditRow =
-              creditRowMatch.isNotEmpty ? creditRowMatch.first : null;
-          if (creditRow != null) {
-            currentDebt = (creditRow['current_debt'] as num?)?.toDouble() ?? 0.0;
-            creditLimit = (creditRow['credit_limit'] as num?)?.toDouble() ?? 0.0;
           }
         }
 
@@ -193,30 +179,121 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? documentNumber,
     String? documentType,
   }) async {
-    final Map<String, dynamic> data = {
-      'full_name': fullName,
-      'role': 'customer',
-      'is_active': true,
-    };
-    if (phone != null && phone.isNotEmpty) data['phone'] = phone;
-    if (documentNumber != null && documentNumber.isNotEmpty) {
-      data['document_number'] = documentNumber;
-    }
-    if (documentType != null) data['document_type'] = documentType;
+    try {
+      final cleanName = fullName.trim();
+      final cleanPhone =
+          (phone != null && phone.trim().isNotEmpty) ? phone.trim() : null;
+      final cleanDoc =
+          (documentNumber != null && documentNumber.trim().isNotEmpty)
+              ? documentNumber.trim()
+              : null;
 
-    final res = await _supabase.from('profiles').insert(data).select().single();
-    return CustomerEntity(
-      id: res['id'] as String,
-      fullName: res['full_name'] as String? ?? 'Cliente',
-      phone: res['phone'] as String?,
-      documentNumber: res['document_number'] as String?,
-      documentType: res['document_type'] as String?,
-      avatarUrl: res['avatar_url'] as String?,
-      walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-      isActive: res['is_active'] as bool? ?? true,
-      createdAt:
-          res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
-    );
+      // 1. Intentar primero con el RPC atómico transaccional
+      try {
+        final rpcResp = await _supabase.rpc(
+          'save_customer_full_profile_rpc',
+          params: {
+            'p_full_name': cleanName,
+            'p_phone': cleanPhone,
+            'p_document_number': cleanDoc,
+            'p_document_type': documentType ?? 'DNI',
+            'p_is_active': true,
+            'p_wallet_delta': 0,
+            'p_has_credit': true,
+            'p_credit_limit': 0.0, // 0.0 = Límite infinito por defecto
+          },
+        );
+        if (rpcResp != null && rpcResp['profile_id'] != null) {
+          final String newId = rpcResp['profile_id'] as String;
+          return getCustomerDetail(newId);
+        }
+      } catch (rpcErr) {
+        LoggerService.w(
+          'save_customer_full_profile_rpc no disponible en createCustomer, usando fallback: $rpcErr',
+          tag: 'CUSTOMERS_REPO',
+        );
+        if (rpcErr is PostgrestException && rpcErr.code == '23505') {
+          throw AppException(
+            message: 'Ya existe un cliente con este documento o teléfono.',
+            originalError: rpcErr,
+          );
+        }
+      }
+
+      // 2. Fallback directo
+      final Map<String, dynamic> data = {
+        'full_name': cleanName,
+        'role': 'customer',
+        'is_active': true,
+      };
+      if (cleanPhone != null) data['phone'] = cleanPhone;
+      if (cleanDoc != null) data['document_number'] = cleanDoc;
+      if (documentType != null) data['document_type'] = documentType;
+
+      final res =
+          await _supabase.from('profiles').insert(data).select().single();
+      final profileId = res['id'] as String;
+
+      // Asegurar línea de crédito activa por defecto (límite 0.0 = infinito)
+      try {
+        await _supabase.from('customer_credits').insert({
+          'profile_id': profileId,
+          'credit_limit': 0.0,
+          'current_debt': 0.0,
+          'is_active': true,
+        });
+      } catch (creditErr) {
+        LoggerService.w(
+          'No se pudo inicializar customer_credits en createCustomer fallback: $creditErr',
+          tag: 'CUSTOMERS_REPO',
+        );
+      }
+
+      return CustomerEntity(
+        id: profileId,
+        fullName: res['full_name'] as String? ?? 'Cliente',
+        phone: res['phone'] as String?,
+        documentNumber: res['document_number'] as String?,
+        documentType: res['document_type'] as String?,
+        avatarUrl: res['avatar_url'] as String?,
+        walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+        isActive: res['is_active'] as bool? ?? true,
+        createdAt:
+            res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
+        currentDebt: 0.0,
+        creditLimit: 0.0,
+      );
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'PostgrestException en createCustomer: ${e.message} (code: ${e.code})',
+        error: e,
+        stackTrace: st,
+      );
+      if (e.code == '23505') {
+        throw AppException(
+          message: 'Ya existe un cliente con este documento o teléfono.',
+          originalError: e,
+        );
+      }
+      if (e.code == '42501') {
+        throw AppException(
+          message:
+              'Permiso denegado por políticas de seguridad (RLS). Ejecute la migración SQL.',
+          originalError: e,
+        );
+      }
+      throw AppException(
+        message: 'Error al registrar cliente: ${e.message}',
+        originalError: e,
+      );
+    } catch (e, st) {
+      LoggerService.e('Error en createCustomer', error: e, stackTrace: st);
+      if (e is AppException) rethrow;
+      throw AppException(
+        message: 'Error al registrar cliente: ${e.toString()}',
+        originalError: e,
+      );
+    }
   }
 
   @override
@@ -228,10 +305,13 @@ class CustomersRepositoryImpl implements CustomersRepository {
     String? documentType,
     bool? isActive,
   }) async {
-    final Map<String, dynamic> data = {'full_name': fullName};
-    if (phone != null) data['phone'] = phone.isEmpty ? null : phone;
+    final Map<String, dynamic> data = {'full_name': fullName.trim()};
+    if (phone != null) {
+      data['phone'] = phone.trim().isEmpty ? null : phone.trim();
+    }
     if (documentNumber != null) {
-      data['document_number'] = documentNumber.isEmpty ? null : documentNumber;
+      data['document_number'] =
+          documentNumber.trim().isEmpty ? null : documentNumber.trim();
     }
     if (documentType != null) data['document_type'] = documentType;
     if (isActive != null) data['is_active'] = isActive;
@@ -273,6 +353,53 @@ class CustomersRepositoryImpl implements CustomersRepository {
     required bool creditIsActive,
     required double newCreditLimit,
   }) async {
+    final cleanName = fullName.trim();
+    final cleanPhone =
+        (phone != null && phone.trim().isNotEmpty) ? phone.trim() : null;
+    final cleanDoc =
+        (documentNumber != null && documentNumber.trim().isNotEmpty)
+            ? documentNumber.trim()
+            : null;
+
+    // 1. Intentar primero con el RPC atómico transaccional
+    try {
+      final rpcParams = {
+        'p_customer_id': customerId,
+        'p_full_name': cleanName,
+        'p_phone': cleanPhone,
+        'p_document_number': cleanDoc,
+        'p_document_type': documentType ?? 'DNI',
+        'p_is_active': isActive,
+        'p_wallet_delta': walletAdjustDelta,
+        'p_has_credit': hasCredit,
+        'p_credit_limit': newCreditLimit,
+      };
+
+      final rpcRes = await _supabase.rpc(
+        'save_customer_full_profile_rpc',
+        params: rpcParams,
+      );
+      if (rpcRes != null) {
+        LoggerService.i(
+          'save_customer_full_profile_rpc ejecutado exitosamente',
+          tag: 'CUSTOMERS_REPO',
+        );
+        return;
+      }
+    } catch (rpcErr) {
+      LoggerService.w(
+        'save_customer_full_profile_rpc no disponible o falló, ejecutando fallback: $rpcErr',
+        tag: 'CUSTOMERS_REPO',
+      );
+      if (rpcErr is PostgrestException && rpcErr.code == '23505') {
+        throw AppException(
+          message: 'Ya existe un cliente con este documento o teléfono.',
+          originalError: rpcErr,
+        );
+      }
+    }
+
+    // 2. Fallback en cliente resiliente
     try {
       String? adminProfileId;
       final authUserId = _supabase.auth.currentUser?.id;
@@ -281,16 +408,16 @@ class CustomersRepositoryImpl implements CustomersRepository {
             await _supabase
                 .from('profiles')
                 .select('id')
-                .eq('auth_user_id', authUserId)
+                .or('auth_user_id.eq.$authUserId,id.eq.$authUserId')
                 .maybeSingle();
         if (adminResp != null) adminProfileId = adminResp['id'] as String;
       }
 
       final profileData = {
-        'full_name': fullName,
-        'phone': phone,
-        'document_type': documentType,
-        'document_number': documentNumber,
+        'full_name': cleanName,
+        'phone': cleanPhone,
+        'document_type': documentType ?? 'DNI',
+        'document_number': cleanDoc,
         'is_active': isActive,
       };
 
@@ -331,17 +458,30 @@ class CustomersRepositoryImpl implements CustomersRepository {
         finalProfileId = inserted['id'] as String;
       }
 
-      // Creditos
+      // Créditos: Todo cliente tiene línea de crédito activa (por defecto límite 0.0 = infinito)
       if (hasCredit) {
-        if (creditExistsInDb && creditId != null) {
-          await _supabase
-              .from('customer_credits')
-              .update({
-                'credit_limit': newCreditLimit,
-                'is_active': true,
-                'updated_at': DateTime.now().toIso8601String(),
-              })
-              .eq('id', creditId);
+        final existingCredit =
+            creditExistsInDb
+                ? true
+                : (await _supabase
+                        .from('customer_credits')
+                        .select('id')
+                        .eq('profile_id', finalProfileId)
+                        .maybeSingle()) !=
+                    null;
+
+        if (existingCredit) {
+          final targetCreditId = creditId;
+          final updateQuery = _supabase.from('customer_credits').update({
+            'credit_limit': newCreditLimit,
+            'is_active': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+          if (targetCreditId != null) {
+            await updateQuery.eq('id', targetCreditId);
+          } else {
+            await updateQuery.eq('profile_id', finalProfileId);
+          }
         } else {
           await _supabase.from('customer_credits').insert({
             'profile_id': finalProfileId,
@@ -360,14 +500,38 @@ class CustomersRepositoryImpl implements CustomersRepository {
             })
             .eq('id', creditId);
       }
+    } on PostgrestException catch (e, stack) {
+      LoggerService.e(
+        'PostgrestException en saveCustomerFullProfile: ${e.message} (code: ${e.code})',
+        error: e,
+        stackTrace: stack,
+      );
+      if (e.code == '23505') {
+        throw AppException(
+          message: 'Ya existe un cliente con este documento o teléfono.',
+          originalError: e,
+        );
+      }
+      if (e.code == '42501') {
+        throw AppException(
+          message:
+              'Permiso denegado por políticas de seguridad (RLS). Ejecute la migración SQL en Supabase.',
+          originalError: e,
+        );
+      }
+      throw AppException(
+        message: 'Error de base de datos: ${e.message}',
+        originalError: e,
+      );
     } catch (e, stack) {
       LoggerService.e(
         'Error en saveCustomerFullProfile',
         error: e,
         stackTrace: stack,
       );
+      if (e is AppException) rethrow;
       throw AppException(
-        message: 'Error al guardar el perfil del cliente',
+        message: 'Error al guardar el perfil del cliente: ${e.toString()}',
         originalError: e,
       );
     }

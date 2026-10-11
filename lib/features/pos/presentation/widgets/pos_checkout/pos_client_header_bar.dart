@@ -556,7 +556,9 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                     ),
                     if (hasClient && widget.creditInfo != null && widget.isCredito)
                       Text(
-                        'Crédito: S/ ${(widget.creditInfo!['credit_limit'] ?? 0)}',
+                        ((widget.creditInfo!['credit_limit'] as num?)?.toDouble() ?? 0) <= 0
+                            ? 'Crédito: Ilimitado (∞)'
+                            : 'Crédito: S/ ${(widget.creditInfo!['credit_limit'] ?? 0)}',
                         style: const TextStyle(
                           fontSize: 9.5,
                           color: AppColors.textMuted,

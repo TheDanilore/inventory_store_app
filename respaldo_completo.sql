@@ -3295,6 +3295,113 @@ $$;
 ALTER FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid" DEFAULT NULL::"uuid", "p_full_name" "text" DEFAULT ''::"text", "p_phone" "text" DEFAULT NULL::"text", "p_document_number" "text" DEFAULT NULL::"text", "p_document_type" "text" DEFAULT 'DNI'::"text", "p_is_active" boolean DEFAULT true, "p_wallet_delta" integer DEFAULT 0, "p_has_credit" boolean DEFAULT true, "p_credit_limit" numeric DEFAULT 0.00) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+  v_admin_profile_id uuid;
+  v_target_profile_id uuid;
+  v_credit_id uuid;
+  v_current_wallet int;
+BEGIN
+  -- 1. Resolver el profile id de quien ejecuta la acción
+  SELECT id INTO v_admin_profile_id 
+  FROM profiles 
+  WHERE auth_user_id = auth.uid() OR id = auth.uid() 
+  LIMIT 1;
+
+  -- 2. Operación sobre profiles (Edición vs Creación)
+  IF p_customer_id IS NOT NULL THEN
+    -- EDICIÓN
+    UPDATE profiles
+    SET 
+      full_name = p_full_name,
+      phone = NULLIF(TRIM(p_phone), ''),
+      document_number = NULLIF(TRIM(p_document_number), ''),
+      document_type = p_document_type,
+      is_active = p_is_active
+    WHERE id = p_customer_id;
+    
+    v_target_profile_id := p_customer_id;
+
+    -- Ajuste de billetera de puntos si aplica
+    IF p_wallet_delta <> 0 THEN
+      SELECT wallet_balance INTO v_current_wallet FROM profiles WHERE id = v_target_profile_id;
+      UPDATE profiles 
+      SET wallet_balance = COALESCE(v_current_wallet, 0) + p_wallet_delta 
+      WHERE id = v_target_profile_id;
+
+      INSERT INTO wallet_movements(profile_id, points, movement_type, description)
+      VALUES (
+        v_target_profile_id, 
+        p_wallet_delta, 
+        CASE WHEN p_wallet_delta > 0 THEN 'ADMIN_ADD' ELSE 'ADMIN_SUBTRACT' END,
+        'Ajuste manual administrativo'
+      );
+    END IF;
+  ELSE
+    -- CREACIÓN
+    INSERT INTO profiles (
+      full_name, 
+      phone, 
+      document_type, 
+      document_number, 
+      is_active, 
+      role, 
+      wallet_balance
+    )
+    VALUES (
+      p_full_name, 
+      NULLIF(TRIM(p_phone), ''), 
+      p_document_type, 
+      NULLIF(TRIM(p_document_number), ''), 
+      p_is_active, 
+      'customer', 
+      0
+    )
+    RETURNING id INTO v_target_profile_id;
+  END IF;
+
+  -- 3. GESTIÓN ATÓMICA DE LÍNEA DE CRÉDITO
+  -- Por defecto, todo cliente nuevo o editado tiene línea de crédito activa (p_has_credit = true)
+  SELECT id INTO v_credit_id FROM customer_credits WHERE profile_id = v_target_profile_id;
+
+  IF v_credit_id IS NOT NULL THEN
+    UPDATE customer_credits
+    SET 
+      credit_limit = COALESCE(p_credit_limit, 0.00),
+      is_active = p_has_credit,
+      updated_at = now()
+    WHERE id = v_credit_id;
+  ELSE
+    INSERT INTO customer_credits (
+      profile_id, 
+      credit_limit, 
+      current_debt, 
+      is_active, 
+      created_by
+    )
+    VALUES (
+      v_target_profile_id, 
+      COALESCE(p_credit_limit, 0.00), 
+      0.00, 
+      p_has_credit, 
+      v_admin_profile_id
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'profile_id', v_target_profile_id
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."save_product_complete"("payload" "jsonb") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -5777,6 +5884,18 @@ CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouses" USING (("
 
 
 
+CREATE POLICY "Acceso total admin y empleado customer_credits" ON "public"."customer_credits" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Acceso total admin y empleado perfiles" ON "public"."profiles" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
+CREATE POLICY "Acceso total admin y empleado wallet_movements" ON "public"."wallet_movements" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+
+
+
 CREATE POLICY "Actualizacion de reviews" ON "public"."product_reviews" FOR UPDATE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
@@ -6652,6 +6771,12 @@ GRANT ALL ON FUNCTION "public"."rpc_open_cash_shift"("p_account_id" "uuid", "p_o
 GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_receive_purchase_order_items"("p_order_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."save_customer_full_profile_rpc"("p_customer_id" "uuid", "p_full_name" "text", "p_phone" "text", "p_document_number" "text", "p_document_type" "text", "p_is_active" boolean, "p_wallet_delta" integer, "p_has_credit" boolean, "p_credit_limit" numeric) TO "service_role";
 
 
 

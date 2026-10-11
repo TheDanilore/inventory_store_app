@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_credit_usecase.dart';
 
+import 'package:inventory_store_app/core/errors/app_exception.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form/customer_form_state.dart';
 
 @injectable
@@ -21,7 +22,11 @@ class CustomerFormCubit extends Cubit<CustomerFormState> {
       final account = await _getCreditAccountByCustomerUseCase(customerId);
       emit(CustomerFormCreditLoaded(account));
     } catch (e) {
-      emit(CustomerFormError(e.toString()));
+      if (e is AppException) {
+        emit(CustomerFormError(e.message));
+      } else {
+        emit(CustomerFormError(e.toString().replaceAll('Exception: ', '')));
+      }
     }
   }
 
@@ -59,7 +64,11 @@ class CustomerFormCubit extends Cubit<CustomerFormState> {
       );
       emit(CustomerFormSuccess());
     } catch (e) {
-      emit(CustomerFormError(e.toString()));
+      if (e is AppException) {
+        emit(CustomerFormError(e.message));
+      } else {
+        emit(CustomerFormError(e.toString().replaceAll('Exception: ', '')));
+      }
     }
   }
 }

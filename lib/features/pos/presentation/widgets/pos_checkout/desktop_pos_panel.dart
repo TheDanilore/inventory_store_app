@@ -1359,6 +1359,9 @@ class _CreditWarningCard extends StatelessWidget {
         Colors.blue,
       );
     }
+    final limit = (creditInfo?['credit_limit'] as num?)?.toDouble() ?? 0.0;
+    final isUnlimited = limit <= 0;
+
     if (!creditActivo) {
       return _buildAlert(
         'El cliente no tiene crédito activo.',
@@ -1368,14 +1371,16 @@ class _CreditWarningCard extends StatelessWidget {
     }
     if (totalFinal > creditDisponible) {
       return _buildAlert(
-        'Crédito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLímite: S/ ${(creditInfo?['credit_limit'] ?? 0).toStringAsFixed(2)}',
+        'Crédito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLímite: S/ ${limit.toStringAsFixed(2)}',
         Icons.error_outline_rounded,
         AppColors.danger,
       );
     }
 
     return _buildAlert(
-      'Crédito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
+      isUnlimited
+          ? 'Crédito aprobado (Límite Ilimitado ∞)'
+          : 'Crédito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
       Icons.check_circle_outline_rounded,
       AppColors.success,
     );

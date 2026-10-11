@@ -36,8 +36,9 @@ class OrderDetailCreditSection extends StatelessWidget {
 
     final isActive = creditInfo!['is_active'] == true;
     final limit = (creditInfo!['credit_limit'] as num).toDouble();
+    final isUnlimited = limit <= 0;
     final debt = (creditInfo!['current_debt'] as num).toDouble();
-    final available = (limit - debt).clamp(0.0, double.infinity);
+    final available = isUnlimited ? double.infinity : (limit - debt).clamp(0.0, double.infinity);
 
     return OrderDetailSectionCard(
       title: 'Línea de Crédito',
@@ -64,7 +65,7 @@ class OrderDetailCreditSection extends StatelessWidget {
           Expanded(
             child: _CreditStatCell(
               label: 'Límite Global',
-              value: 'S/ ${limit.toStringAsFixed(2)}',
+              value: isUnlimited ? 'Sin límite (∞)' : 'S/ ${limit.toStringAsFixed(2)}',
               icon: Icons.account_balance_wallet_outlined,
             ),
           ),
@@ -82,8 +83,8 @@ class OrderDetailCreditSection extends StatelessWidget {
           Expanded(
             child: _CreditStatCell(
               label: 'Disponible',
-              value: 'S/ ${available.toStringAsFixed(2)}',
-              valueColor: available > 0 ? AppColors.teal : AppColors.textMuted,
+              value: isUnlimited ? 'Ilimitado' : 'S/ ${available.toStringAsFixed(2)}',
+              valueColor: (isUnlimited || available > 0) ? AppColors.teal : AppColors.textMuted,
               icon: Icons.check_circle_outline_rounded,
             ),
           ),

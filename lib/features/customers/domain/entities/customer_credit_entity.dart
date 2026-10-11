@@ -15,11 +15,17 @@ class CustomerCreditEntity extends Equatable {
   final String? customerDocument;
   final String? customerPhone;
 
+  bool get isUnlimited => creditLimit <= 0;
   double get availableCredit =>
-      (creditLimit - currentDebt).clamp(0.0, double.infinity);
+      isUnlimited
+          ? double.infinity
+          : (creditLimit - currentDebt).clamp(0.0, double.infinity);
   double get usagePercent =>
-      creditLimit > 0 ? (currentDebt / creditLimit).clamp(0.0, 1.0) : 0.0;
-  bool get isMaxedOut => currentDebt >= creditLimit && creditLimit > 0;
+      (!isUnlimited && creditLimit > 0)
+          ? (currentDebt / creditLimit).clamp(0.0, 1.0)
+          : 0.0;
+  bool get isMaxedOut =>
+      !isUnlimited && creditLimit > 0 && currentDebt >= creditLimit;
 
   const CustomerCreditEntity({
     required this.id,

@@ -106,6 +106,7 @@ class PosCalculatorUtils {
   static double getCreditDisponible(Map<String, dynamic>? creditInfo) {
     if (!isCreditActivo(creditInfo)) return 0.0;
     final limit = (creditInfo!['credit_limit'] as num).toDouble();
+    if (limit <= 0) return double.infinity;
     final debt = (creditInfo['current_debt'] as num).toDouble();
     final disp = limit - debt;
     return disp > 0 ? disp : 0;

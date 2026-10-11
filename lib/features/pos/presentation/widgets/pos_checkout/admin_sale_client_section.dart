@@ -232,8 +232,9 @@ class _SelectedClientBanner extends StatelessWidget {
     if (isCredito && creditInfo != null) {
       final isActive = creditInfo!['is_active'] == true;
       final limit = (creditInfo!['credit_limit'] as num).toDouble();
+      final isUnlimited = limit <= 0;
       final debt = (creditInfo!['current_debt'] as num).toDouble();
-      final disponible = (limit - debt).clamp(0.0, double.infinity);
+      final disponible = isUnlimited ? double.infinity : (limit - debt).clamp(0.0, double.infinity);
 
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -263,10 +264,12 @@ class _SelectedClientBanner extends StatelessWidget {
                   ),
                   if (isActive)
                     Text(
-                      'Disponible: S/ ${disponible.toStringAsFixed(2)} de S/ ${limit.toStringAsFixed(2)}',
+                      isUnlimited
+                          ? 'Crédito Ilimitado (∞) · Deuda actual: S/ ${debt.toStringAsFixed(2)}'
+                          : 'Disponible: S/ ${disponible.toStringAsFixed(2)} de S/ ${limit.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 11,
-                        color: disponible > 0 ? AppColors.success : Colors.red,
+                        color: (isUnlimited || disponible > 0) ? AppColors.success : Colors.red,
                       ),
                     ),
                 ],

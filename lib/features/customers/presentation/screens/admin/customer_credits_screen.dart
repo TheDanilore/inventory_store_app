@@ -1333,9 +1333,8 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
         account.creditLimit > 0
             ? (account.currentDebt / account.creditLimit)
             : 0.0;
-    final isMaxedOut =
-        account.currentDebt >= account.creditLimit && account.creditLimit > 0;
-    final isRisk = pct >= 0.8 && !isMaxedOut;
+    final isMaxedOut = account.isMaxedOut;
+    final isRisk = pct >= 0.8 && !isMaxedOut && !account.isUnlimited;
 
     final Color statusColor =
         !account.isActive
@@ -1456,14 +1455,47 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                 flex: 2,
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: Text(
-                    'S/ ${account.creditLimit.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  child: account.isUnlimited
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.all_inclusive_rounded,
+                                size: 13,
+                                color: Color(0xFF059669),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Sin límite',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF059669),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Text(
+                          'S/ ${account.creditLimit.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                 ),
               ),
 
@@ -1473,7 +1505,9 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'S/ ${account.availableCredit.toStringAsFixed(2)}',
+                    account.isUnlimited
+                        ? 'Ilimitado'
+                        : 'S/ ${account.availableCredit.toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -1491,33 +1525,42 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                 flex: 2,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 20),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 50,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: pct.clamp(0.0, 1.0),
-                            minHeight: 5,
-                            backgroundColor: const Color(0xFFE2E8F0),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              statusColor,
-                            ),
+                  child: account.isUnlimited
+                      ? const Text(
+                          'N/A',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textMuted,
                           ),
+                        )
+                      : Row(
+                          children: [
+                            SizedBox(
+                              width: 50,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: LinearProgressIndicator(
+                                  value: pct.clamp(0.0, 1.0),
+                                  minHeight: 5,
+                                  backgroundColor: const Color(0xFFE2E8F0),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    statusColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${(pct * 100).toStringAsFixed(0)}%',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: statusColor,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${(pct * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 
@@ -1702,6 +1745,24 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: Color(0xFF16A34A),
+          ),
+        ),
+      );
+    }
+    if (account.isUnlimited) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECFDF5),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFA7F3D0)),
+        ),
+        child: const Text(
+          'Ilimitada',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF059669),
           ),
         ),
       );

@@ -38,13 +38,10 @@ class _CreditAccountCardState extends State<CreditAccountCard> {
     final onTap = widget.onTap;
     final onPayTap = widget.onPayTap;
     final onHistoryTap = widget.onHistoryTap;
-    final double pct =
-        account.creditLimit > 0
-            ? (account.currentDebt / account.creditLimit)
-            : 0.0;
-    final isMaxedOut =
-        account.currentDebt >= account.creditLimit && account.creditLimit > 0;
-    final isRisk = pct >= 0.8 && !isMaxedOut;
+    final bool isUnlimited = account.isUnlimited;
+    final double pct = account.usagePercent;
+    final isMaxedOut = account.isMaxedOut;
+    final isRisk = !isUnlimited && pct >= 0.8 && !isMaxedOut;
 
     final Color statusColor =
         !account.isActive
@@ -195,7 +192,9 @@ class _CreditAccountCardState extends State<CreditAccountCard> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'Disponible: S/ ${account.availableCredit.toStringAsFixed(2)}',
+                          isUnlimited
+                              ? 'Disponible: Ilimitado'
+                              : 'Disponible: S/ ${account.availableCredit.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -207,7 +206,9 @@ class _CreditAccountCardState extends State<CreditAccountCard> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Límite: S/ ${account.creditLimit.toStringAsFixed(2)}',
+                          isUnlimited
+                              ? 'Límite: Sin límite (∞)'
+                              : 'Límite: S/ ${account.creditLimit.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
@@ -226,7 +227,7 @@ class _CreditAccountCardState extends State<CreditAccountCard> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: pct.clamp(0.0, 1.0),
+                          value: isUnlimited ? 0.0 : pct.clamp(0.0, 1.0),
                           minHeight: 6,
                           backgroundColor: const Color(0xFFF1F5F9),
                           valueColor: AlwaysStoppedAnimation<Color>(
@@ -237,7 +238,9 @@ class _CreditAccountCardState extends State<CreditAccountCard> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '${(pct * 100).toStringAsFixed(0)}%',
+                      isUnlimited
+                          ? 'Ilimitado (∞)'
+                          : '${(pct * 100).toStringAsFixed(0)}%',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,

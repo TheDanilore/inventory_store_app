@@ -109,6 +109,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
   Timer? _debounce;
 
   bool _isSaving = false;
+  bool _isUnlimited = true;
   String? _selectedProfileId;
   String? _selectedProfileName;
 
@@ -121,7 +122,10 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
       _selectedProfileId = widget.accountToEdit!.profileId;
       _selectedProfileName = widget.accountToEdit!.customerName;
       _searchCtrl.text = _selectedProfileName ?? '';
-      _limitCtrl.text = widget.accountToEdit!.creditLimit.toStringAsFixed(2);
+      _isUnlimited = widget.accountToEdit!.isUnlimited;
+      if (!_isUnlimited) {
+        _limitCtrl.text = widget.accountToEdit!.creditLimit.toStringAsFixed(2);
+      }
     }
   }
 
@@ -166,8 +170,12 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
       return;
     }
 
-    final limitVal = double.tryParse(_limitCtrl.text.trim()) ?? 0.0;
-    if (limitVal <= 0) {
+    final limitVal =
+        _isUnlimited
+            ? 0.0
+            : (double.tryParse(_limitCtrl.text.trim()) ?? 0.0);
+
+    if (!_isUnlimited && limitVal <= 0) {
       AppSnackbar.show(
         context,
         message: 'Ingresa un límite de crédito válido (mayor a 0).',
@@ -177,6 +185,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     }
 
     if (_isEditing &&
+        !_isUnlimited &&
         limitVal < widget.accountToEdit!.currentDebt &&
         widget.accountToEdit!.currentDebt > 0) {
       AppSnackbar.show(
@@ -379,64 +388,242 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
             ),
           const SizedBox(height: 16),
           const Text(
-            'Límite de crédito (S/)',
+            'Tipo de límite de crédito',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Container(
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: TextField(
-              controller: _limitCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-              ],
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-              decoration: const InputDecoration(
-                hintText: 'Ej. 500.00',
-                prefixIcon: Icon(
-                  Icons.attach_money_rounded,
-                  color: AppColors.textMuted,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ),
-          if (_isEditing && widget.accountToEdit!.currentDebt > 0) ...[
-            const SizedBox(height: 8),
-            Row(
+            child: Row(
               children: [
-                const Icon(
-                  Icons.info_outline_rounded,
-                  size: 13,
-                  color: AppColors.textMuted,
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isUnlimited = true;
+                        _limitCtrl.clear();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(9),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _isUnlimited ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow:
+                            _isUnlimited
+                                ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                                : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.all_inclusive_rounded,
+                            size: 16,
+                            color:
+                                _isUnlimited
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Sin límite (∞)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  _isUnlimited
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                              color:
+                                  _isUnlimited
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  'Deuda actual: S/ ${widget.accountToEdit!.currentDebt.toStringAsFixed(2)}. '
-                  'El límite no puede ser menor.',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isUnlimited = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(9),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            !_isUnlimited ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow:
+                            !_isUnlimited
+                                ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                                : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 16,
+                            color:
+                                !_isUnlimited
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Límite fijo (S/)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  !_isUnlimited
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                              color:
+                                  !_isUnlimited
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          if (_isUnlimited)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.verified_rounded,
+                    color: Color(0xFF059669),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Crédito ilimitado activado. El cliente puede realizar compras a crédito sin un tope máximo predeterminado.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade800,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            const Text(
+              'Límite de crédito (S/)',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: TextField(
+                controller: _limitCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                ],
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Ej. 500.00',
+                  prefixIcon: Icon(
+                    Icons.attach_money_rounded,
+                    color: AppColors.textMuted,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            if (_isEditing && widget.accountToEdit!.currentDebt > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 13,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Deuda actual: S/ ${widget.accountToEdit!.currentDebt.toStringAsFixed(2)}. '
+                      'El límite no puede ser menor.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
           const SizedBox(height: 24),
           ElevatedButton(
