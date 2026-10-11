@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/bloc/s
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
+import 'package:url_launcher/link.dart';
 
 class AdminSidebarItem {
   final IconData icon;
@@ -572,9 +573,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
       return true;
     }
     if (routePath == '/catalog' &&
-        (currentPath == '/catalog' ||
-            currentPath == '/products' ||
-            currentPath.startsWith('/products/'))) {
+        (currentPath == '/catalog' || currentPath.startsWith('/catalog/'))) {
       return true;
     }
     if (routePath != '/' && currentPath.startsWith('$routePath/')) {
@@ -589,92 +588,111 @@ class _AdminSidebarState extends State<AdminSidebar> {
         final currentPath = GoRouterState.of(context).uri.path;
         final isActive = _isItemActive(item.routePath, currentPath);
 
-        final tile = Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => context.go(item.routePath),
-              hoverColor: const Color(0xFFF1F5F9),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                height: 40,
-                decoration: BoxDecoration(
-                  color:
-                      isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border:
-                      isActive
-                          ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
-                          : Border.all(color: Colors.transparent, width: 1),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: widget.isCollapsed ? 0 : 10,
-                ),
-                child: ClipRect(
-                  child: Row(
-                    mainAxisAlignment:
-                        widget.isCollapsed
-                            ? MainAxisAlignment.center
-                            : MainAxisAlignment.start,
-                    children: [
-                      // Linear / Stripe Active Indicator Bar
-                      if (!widget.isCollapsed && isActive)
-                        Container(
-                          width: 3.5,
-                          height: 18,
-                          margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB),
-                            borderRadius: BorderRadius.circular(3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF2563EB,
-                                ).withValues(alpha: 0.4),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      Icon(
-                        item.icon,
-                        size: 20,
-                        color:
-                            isActive
-                                ? const Color(0xFF2563EB)
-                                : const Color(0xFF64748B),
-                      ),
-                      if (!widget.isCollapsed) ...[
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              letterSpacing: -0.2,
-                              fontWeight:
-                                  isActive ? FontWeight.w700 : FontWeight.w500,
-                              color:
-                                  isActive
-                                      ? const Color(0xFF1E40AF)
-                                      : const Color(0xFF475569),
+        Widget tileContent(FollowLink? followLink) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () {
+                  if (followLink != null) {
+                    followLink();
+                  } else {
+                    context.go(item.routePath);
+                  }
+                },
+                hoverColor: const Color(0xFFF1F5F9),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color:
+                        isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border:
+                        isActive
+                            ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                            : Border.all(color: Colors.transparent, width: 1),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: widget.isCollapsed ? 0 : 10,
+                  ),
+                  child: ClipRect(
+                    child: Row(
+                      mainAxisAlignment:
+                          widget.isCollapsed
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.start,
+                      children: [
+                        // Linear / Stripe Active Indicator Bar
+                        if (!widget.isCollapsed && isActive)
+                          Container(
+                            width: 3.5,
+                            height: 18,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF2563EB,
+                                  ).withValues(alpha: 0.4),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                           ),
+                        Icon(
+                          item.icon,
+                          size: 20,
+                          color:
+                              isActive
+                                  ? const Color(0xFF2563EB)
+                                  : const Color(0xFF64748B),
                         ),
-                        if (item.trailing != null) item.trailing!,
+                        if (!widget.isCollapsed) ...[
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: -0.2,
+                                fontWeight:
+                                    isActive ? FontWeight.w700 : FontWeight.w500,
+                                color:
+                                    isActive
+                                        ? const Color(0xFF1E40AF)
+                                        : const Color(0xFF475569),
+                              ),
+                            ),
+                          ),
+                          if (item.trailing != null) item.trailing!,
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
+          );
+        }
+
+        Widget tile;
+        if (item.routePath.isNotEmpty) {
+          tile = Link(
+            uri: Uri.parse(item.routePath),
+            target: LinkTarget.self,
+            builder: (context, followLink) => tileContent(followLink),
+          );
+        } else {
+          tile = tileContent(null);
+        }
 
         if (widget.isCollapsed) {
           return Tooltip(
@@ -752,90 +770,109 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
     final currentPath = GoRouterState.of(context).uri.path;
     final isActive = _isItemActive(item.routePath, currentPath);
 
-    final tile = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => context.go(item.routePath),
-          hoverColor: const Color(0xFFF1F5F9),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            height: 38,
-            decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border:
-                  isActive
-                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
-                      : Border.all(color: Colors.transparent, width: 1),
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isCollapsed ? 0 : 10,
-            ),
-            child: ClipRect(
-              child: Row(
-                mainAxisAlignment:
-                    widget.isCollapsed
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.start,
-                children: [
-                  if (!widget.isCollapsed && isActive)
-                    Container(
-                      width: 3.5,
-                      height: 16,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB),
-                        borderRadius: BorderRadius.circular(3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF2563EB,
-                            ).withValues(alpha: 0.4),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                    ),
-                  Icon(
-                    item.icon,
-                    size: 19,
-                    color:
-                        isActive
-                            ? const Color(0xFF2563EB)
-                            : const Color(0xFF64748B),
-                  ),
-                  if (!widget.isCollapsed) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          letterSpacing: -0.2,
-                          fontWeight:
-                              isActive ? FontWeight.w700 : FontWeight.w500,
-                          color:
-                              isActive
-                                  ? const Color(0xFF1E40AF)
-                                  : const Color(0xFF475569),
+    Widget tileContent(FollowLink? followLink) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () {
+              if (followLink != null) {
+                followLink();
+              } else {
+                context.go(item.routePath);
+              }
+            },
+            hoverColor: const Color(0xFFF1F5F9),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: 38,
+              decoration: BoxDecoration(
+                color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border:
+                    isActive
+                        ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                        : Border.all(color: Colors.transparent, width: 1),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.isCollapsed ? 0 : 10,
+              ),
+              child: ClipRect(
+                child: Row(
+                  mainAxisAlignment:
+                      widget.isCollapsed
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.start,
+                  children: [
+                    if (!widget.isCollapsed && isActive)
+                      Container(
+                        width: 3.5,
+                        height: 16,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.4),
+                              blurRadius: 4,
+                            ),
+                          ],
                         ),
                       ),
+                    Icon(
+                      item.icon,
+                      size: 19,
+                      color:
+                          isActive
+                              ? const Color(0xFF2563EB)
+                              : const Color(0xFF64748B),
                     ),
-                    if (item.trailing != null) item.trailing!,
+                    if (!widget.isCollapsed) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            letterSpacing: -0.2,
+                            fontWeight:
+                                isActive ? FontWeight.w700 : FontWeight.w500,
+                            color:
+                                isActive
+                                    ? const Color(0xFF1E40AF)
+                                    : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                      if (item.trailing != null) item.trailing!,
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    Widget tile;
+    if (item.routePath.isNotEmpty) {
+      tile = Link(
+        uri: Uri.parse(item.routePath),
+        target: LinkTarget.self,
+        builder: (context, followLink) => tileContent(followLink),
+      );
+    } else {
+      tile = tileContent(null);
+    }
 
     if (widget.isCollapsed) {
       return Tooltip(message: item.title, child: tile);

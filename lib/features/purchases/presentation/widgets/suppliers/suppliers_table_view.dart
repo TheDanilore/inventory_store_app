@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +11,7 @@ class SuppliersTableView extends StatefulWidget {
   final SupplierEntity? selectedSupplier;
   final Function(SupplierEntity) onEdit;
   final Function(SupplierEntity) onToggleStatus;
+  final AdminTablePaginationConfig? paginationConfig;
 
   const SuppliersTableView({
     super.key,
@@ -17,6 +19,7 @@ class SuppliersTableView extends StatefulWidget {
     this.selectedSupplier,
     required this.onEdit,
     required this.onToggleStatus,
+    this.paginationConfig,
   });
 
   @override
@@ -24,7 +27,9 @@ class SuppliersTableView extends StatefulWidget {
 }
 
 class _SuppliersTableViewState extends State<SuppliersTableView> {
-  String? _hoveredId;
+  final Set<Object> _selectedIds = {};
+  String? _sortColumnId;
+  bool _isSortAscending = true;
 
   Future<void> _launchUrl(String urlString) async {
     final uri = Uri.tryParse(urlString);
@@ -61,475 +66,379 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
     );
   }
 
+  List<SupplierEntity> _getSortedSuppliers() {
+    if (_sortColumnId == null) return widget.suppliers;
+    final list = List<SupplierEntity>.from(widget.suppliers);
+    list.sort((a, b) {
+      int cmp = 0;
+      switch (_sortColumnId) {
+        case 'name':
+          cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case 'contact':
+          cmp = (a.contactName ?? '').toLowerCase().compareTo((b.contactName ?? '').toLowerCase());
+          break;
+        case 'address':
+          cmp = (a.address ?? '').toLowerCase().compareTo((b.address ?? '').toLowerCase());
+          break;
+        case 'status':
+          cmp = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
+          break;
+      }
+      return _isSortAscending ? cmp : -cmp;
+    });
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const minTableWidth = 880.0;
-        final needsScroll = constraints.maxWidth < minTableWidth;
+    final sortedList = _getSortedSuppliers();
 
-        final tableContent = SizedBox(
-          width: needsScroll ? minTableWidth : constraints.maxWidth,
-          child: Column(
-            children: [
-              // --- Encabezado Fijo de Tabla ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
-                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+    return AdminProTable<SupplierEntity>(
+      items: sortedList,
+      itemId: (s) => s.id,
+      selectedIds: _selectedIds,
+      onSelectionChanged: (newSet) {
+        setState(() {
+          _selectedIds.clear();
+          _selectedIds.addAll(newSet);
+        });
+      },
+      sortColumnId: _sortColumnId,
+      isSortAscending: _isSortAscending,
+      onSort: (colId, isAsc) {
+        setState(() {
+          _sortColumnId = colId;
+          _isSortAscending = isAsc;
+        });
+      },
+      paginationConfig: widget.paginationConfig,
+      onRowTap: widget.onEdit,
+      minTableWidth: 920.0,
+      margin: EdgeInsets.zero,
+      bulkActions: [
+        AdminBulkAction<SupplierEntity>(
+          label: 'Copiar Datos',
+          icon: Icons.copy_all_rounded,
+          onPressed: (selectedItems) {
+            final text = selectedItems
+                .map((s) => '${s.name} (RUC: ${s.taxId ?? "—"})')
+                .join('\n');
+            _copyToClipboard(context, text, '${selectedItems.length} proveedores');
+          },
+        ),
+        AdminBulkAction<SupplierEntity>(
+          label: 'Alternar Estado',
+          icon: Icons.swap_horiz_rounded,
+          onPressed: (selectedItems) {
+            for (final s in selectedItems) {
+              widget.onToggleStatus(s);
+            }
+            AppSnackbar.show(
+              context,
+              message: 'Se actualizó el estado de ${selectedItems.length} proveedores',
+              type: SnackbarType.info,
+            );
+          },
+        ),
+      ],
+      columns: [
+        // 1. PROVEEDOR / RAZÓN SOCIAL
+        AdminTableColumn<SupplierEntity>(
+          id: 'name',
+          label: 'Proveedor / Razón Social',
+          flex: 5,
+          isSortable: true,
+          cellBuilder: (context, supplier) {
+            return Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: supplier.isActive
+                        ? AppColors.tealLight
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    supplier.name.isNotEmpty
+                        ? supplier.name.substring(0, 1).toUpperCase()
+                        : 'P',
+                    style: TextStyle(
+                      color: supplier.isActive
+                          ? AppColors.tealDark
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Text(
-                        'PROVEEDOR / RAZÓN SOCIAL',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        supplier.name,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
+                          color: supplier.isActive
+                              ? AppColors.textPrimary
+                              : AppColors.textMuted,
+                          decoration: supplier.isActive
+                              ? null
+                              : TextDecoration.lineThrough,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        'CONTACTO COMERCIAL',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        'CANALES DIRECTOS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        'DIRECCIÓN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        'ESTADO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        'ACCIONES',
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // --- Filas de Datos ---
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.suppliers.length,
-                separatorBuilder:
-                    (_, _) =>
-                        const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-                itemBuilder: (context, index) {
-                  final supplier = widget.suppliers[index];
-
-                  final isHovered = _hoveredId == supplier.id;
-                  final isSelected = widget.selectedSupplier?.id == supplier.id;
-
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hoveredId = supplier.id),
-                    onExit: (_) => setState(() => _hoveredId = null),
-                    child: InkWell(
-                      onTap: () => widget.onEdit(supplier),
-                      hoverColor: Colors.transparent,
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        curve: Curves.easeInOut,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.teal.withValues(alpha: 0.05)
-                              : isHovered
-                                  ? const Color(0xFFF8FAFC)
-                                  : Colors.white,
-                          border: Border(
-                            left: BorderSide(
-                              color: isSelected
-                                  ? AppColors.teal
-                                  : isHovered
-                                      ? AppColors.teal.withValues(alpha: 0.6)
-                                      : Colors.transparent,
-                              width: 3.5,
+                      const SizedBox(height: 2),
+                      if (supplier.taxId != null && supplier.taxId!.isNotEmpty)
+                        InkWell(
+                          onTap: () => _copyToClipboard(
+                            context,
+                            supplier.taxId!,
+                            'RUC',
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Text(
+                            'RUC ${supplier.taxId}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
                             ),
                           ),
+                        )
+                      else
+                        const Text(
+                          '—',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 11,
-                        ),
-                        child: Row(
-                          children: [
-                            // Proveedor (Avatar + Nombre + RUC)
-                            Expanded(
-                              flex: 5,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      color: supplier.isActive
-                                          ? AppColors.tealLight
-                                          : Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      supplier.name.isNotEmpty
-                                          ? supplier.name.substring(0, 1).toUpperCase()
-                                          : 'P',
-                                      style: TextStyle(
-                                        color: supplier.isActive
-                                            ? AppColors.tealDark
-                                            : Colors.grey.shade600,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          supplier.name,
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: supplier.isActive
-                                                ? AppColors.textPrimary
-                                                : AppColors.textMuted,
-                                            decoration: supplier.isActive
-                                                ? null
-                                                : TextDecoration.lineThrough,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        if (supplier.taxId != null &&
-                                            supplier.taxId!.isNotEmpty)
-                                          InkWell(
-                                            onTap: () => _copyToClipboard(
-                                              context,
-                                              supplier.taxId!,
-                                              'RUC',
-                                            ),
-                                            borderRadius: BorderRadius.circular(4),
-                                            child: Text(
-                                              'RUC ${supplier.taxId}',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          )
-                                        else
-                                          const Text(
-                                            '—',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
 
-                            // Contacto Comercial
-                            Expanded(
-                              flex: 4,
-                              child: (supplier.contactName != null &&
-                                      supplier.contactName!.isNotEmpty)
-                                  ? Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.person_outline_rounded,
-                                          size: 15,
-                                          color: AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            supplier.contactName!,
-                                            style: const TextStyle(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : const Text(
-                                      '—',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                            ),
+        // 2. CONTACTO COMERCIAL
+        AdminTableColumn<SupplierEntity>(
+          id: 'contact',
+          label: 'Contacto Comercial',
+          flex: 4,
+          isSortable: true,
+          cellBuilder: (context, supplier) {
+            if (supplier.contactName != null && supplier.contactName!.isNotEmpty) {
+              return Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline_rounded,
+                    size: 15,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      supplier.contactName!,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              );
+            }
+            return const Text(
+              '—',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            );
+          },
+        ),
 
-                            // Canales Directos (WhatsApp, Teléfono, Email)
-                            Expanded(
-                              flex: 4,
-                              child: Row(
-                                children: [
-                                  if (supplier.phone != null &&
-                                      supplier.phone!.isNotEmpty) ...[
-                                    _ActionIcon(
-                                      icon: Icons.message_rounded,
-                                      color: AppColors.success,
-                                      bgColor: AppColors.successLight,
-                                      tooltip: 'WhatsApp: ${supplier.phone}',
-                                      onTap: () => _openWhatsApp(supplier.phone!),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    _ActionIcon(
-                                      icon: Icons.phone_rounded,
-                                      color: AppColors.info,
-                                      bgColor: AppColors.infoLight,
-                                      tooltip: 'Llamar: ${supplier.phone}',
-                                      onTap: () => _callPhone(supplier.phone!),
-                                    ),
-                                  ],
-                                  if (supplier.email != null &&
-                                      supplier.email!.isNotEmpty) ...[
-                                    const SizedBox(width: 6),
-                                    _ActionIcon(
-                                      icon: Icons.email_rounded,
-                                      color: AppColors.primary,
-                                      bgColor: AppColors.primaryLight,
-                                      tooltip: supplier.email!,
-                                      onTap: () => _sendEmail(supplier.email!),
-                                    ),
-                                  ],
-                                  if ((supplier.phone == null ||
-                                          supplier.phone!.isEmpty) &&
-                                      (supplier.email == null ||
-                                          supplier.email!.isEmpty))
-                                    const Text(
-                                      '—',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
+        // 3. CANALES DIRECTOS
+        AdminTableColumn<SupplierEntity>(
+          id: 'channels',
+          label: 'Canales Directos',
+          flex: 4,
+          isSortable: false,
+          cellBuilder: (context, supplier) {
+            return Row(
+              children: [
+                if (supplier.phone != null && supplier.phone!.isNotEmpty) ...[
+                  _ActionIcon(
+                    icon: Icons.message_rounded,
+                    color: AppColors.success,
+                    bgColor: AppColors.successLight,
+                    tooltip: 'WhatsApp: ${supplier.phone}',
+                    onTap: () => _openWhatsApp(supplier.phone!),
+                  ),
+                  const SizedBox(width: 6),
+                  _ActionIcon(
+                    icon: Icons.phone_rounded,
+                    color: AppColors.info,
+                    bgColor: AppColors.infoLight,
+                    tooltip: 'Llamar: ${supplier.phone}',
+                    onTap: () => _callPhone(supplier.phone!),
+                  ),
+                ],
+                if (supplier.email != null && supplier.email!.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  _ActionIcon(
+                    icon: Icons.email_rounded,
+                    color: AppColors.primary,
+                    bgColor: AppColors.primaryLight,
+                    tooltip: supplier.email!,
+                    onTap: () => _sendEmail(supplier.email!),
+                  ),
+                ],
+                if ((supplier.phone == null || supplier.phone!.isEmpty) &&
+                    (supplier.email == null || supplier.email!.isEmpty))
+                  const Text(
+                    '—',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
 
-                            // Dirección
-                            Expanded(
-                              flex: 4,
-                              child: Text(
-                                (supplier.address != null &&
-                                        supplier.address!.isNotEmpty)
-                                    ? supplier.address!
-                                    : '—',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: (supplier.address != null &&
-                                          supplier.address!.isNotEmpty)
-                                      ? AppColors.textSecondary
-                                      : AppColors.textMuted,
-                                  fontWeight: (supplier.address != null &&
-                                          supplier.address!.isNotEmpty)
-                                      ? FontWeight.normal
-                                      : FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+        // 4. DIRECCIÓN
+        AdminTableColumn<SupplierEntity>(
+          id: 'address',
+          label: 'Dirección',
+          flex: 4,
+          isSortable: true,
+          cellBuilder: (context, supplier) {
+            final hasAddress = supplier.address != null && supplier.address!.isNotEmpty;
+            return Text(
+              hasAddress ? supplier.address! : '—',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: hasAddress ? AppColors.textSecondary : AppColors.textMuted,
+                fontWeight: hasAddress ? FontWeight.normal : FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            );
+          },
+        ),
 
-                            // Estado (Status Pill interactivo)
-                            SizedBox(
-                              width: 100,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: InkWell(
-                                  onTap: () => widget.onToggleStatus(supplier),
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: supplier.isActive
-                                          ? AppColors.successLight
-                                          : const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: supplier.isActive
-                                            ? AppColors.success.withValues(alpha: 0.3)
-                                            : const Color(0xFFE2E8F0),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 6,
-                                          height: 6,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: supplier.isActive
-                                                ? AppColors.success
-                                                : AppColors.textMuted,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          supplier.isActive ? 'Activo' : 'Inactivo',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: supplier.isActive
-                                                ? AppColors.successDark
-                                                : AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Acciones (Botón Editar Estilizado)
-                            SizedBox(
-                              width: 100,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Tooltip(
-                                    message: 'Editar proveedor',
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => widget.onEdit(supplier),
-                                      icon: const Icon(Icons.edit_outlined, size: 13),
-                                      label: const Text(
-                                        'Editar',
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.textSecondary,
-                                        side: const BorderSide(
-                                          color: Color(0xFFE2E8F0),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 5,
-                                        ),
-                                        visualDensity: VisualDensity.compact,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+        // 5. ESTADO
+        AdminTableColumn<SupplierEntity>(
+          id: 'status',
+          label: 'Estado',
+          fixedWidth: 110,
+          isSortable: true,
+          cellBuilder: (context, supplier) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: () => widget.onToggleStatus(supplier),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: supplier.isActive
+                        ? AppColors.successLight
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: supplier.isActive
+                          ? AppColors.success.withValues(alpha: 0.3)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: supplier.isActive
+                              ? AppColors.success
+                              : AppColors.textMuted,
                         ),
                       ),
-                    ),
-                  );
-                },
+                      const SizedBox(width: 5),
+                      Text(
+                        supplier.isActive ? 'Activo' : 'Inactivo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: supplier.isActive
+                              ? AppColors.successDark
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-        );
+            );
+          },
+        ),
 
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x050F172A),
-                blurRadius: 4,
-                offset: Offset(0, 1),
+        // 6. ACCIONES
+        AdminTableColumn<SupplierEntity>(
+          id: 'actions',
+          label: 'Acciones',
+          fixedWidth: 100,
+          isSortable: false,
+          alignment: Alignment.centerRight,
+          cellBuilder: (context, supplier) {
+            return Tooltip(
+              message: 'Editar proveedor',
+              child: OutlinedButton.icon(
+                onPressed: () => widget.onEdit(supplier),
+                icon: const Icon(Icons.edit_outlined, size: 13),
+                label: const Text(
+                  'Editar',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
               ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: needsScroll
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: tableContent,
-                )
-              : tableContent,
-        );
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 }
-
 
 class _ActionIcon extends StatelessWidget {
   final IconData icon;

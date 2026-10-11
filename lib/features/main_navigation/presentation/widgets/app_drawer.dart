@@ -558,9 +558,7 @@ class _AppDrawerState extends State<AppDrawer> {
       return true;
     }
     if (routePath == '/catalog' &&
-        (currentPath == '/catalog' ||
-            currentPath == '/products' ||
-            currentPath.startsWith('/products/'))) {
+        (currentPath == '/catalog' || currentPath.startsWith('/catalog/'))) {
       return true;
     }
     if (routePath != '/' && currentPath.startsWith('$routePath/')) {

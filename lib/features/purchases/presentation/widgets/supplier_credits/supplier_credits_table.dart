@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 
 class SupplierCreditsTable extends StatefulWidget {
   final List<SupplierCreditEntity> accounts;
@@ -8,6 +11,7 @@ class SupplierCreditsTable extends StatefulWidget {
   final Function(SupplierCreditEntity) onSelectAccount;
   final Function(SupplierCreditEntity) onPay;
   final Function(SupplierCreditEntity) onViewHistory;
+  final AdminTablePaginationConfig? paginationConfig;
 
   const SupplierCreditsTable({
     super.key,
@@ -16,6 +20,7 @@ class SupplierCreditsTable extends StatefulWidget {
     required this.onSelectAccount,
     required this.onPay,
     required this.onViewHistory,
+    this.paginationConfig,
   });
 
   @override
@@ -23,7 +28,9 @@ class SupplierCreditsTable extends StatefulWidget {
 }
 
 class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
-  String? _hoveredId;
+  final Set<Object> _selectedIds = {};
+  String? _sortColumnId;
+  bool _isSortAscending = true;
 
   Color _getDebtColor(double pct, bool isMaxedOut, double debt) {
     if (debt <= 0) return AppColors.textMuted;
@@ -38,553 +45,403 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
     return AppColors.teal;
   }
 
+  void _copyToClipboard(BuildContext context, String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    AppSnackbar.show(
+      context,
+      message: '$label copiado al portapapeles',
+      type: SnackbarType.success,
+    );
+  }
+
+  List<SupplierCreditEntity> _getSortedAccounts() {
+    if (_sortColumnId == null) return widget.accounts;
+    final list = List<SupplierCreditEntity>.from(widget.accounts);
+    list.sort((a, b) {
+      int cmp = 0;
+      switch (_sortColumnId) {
+        case 'supplier':
+          cmp = a.supplierName.toLowerCase().compareTo(b.supplierName.toLowerCase());
+          break;
+        case 'creditLimit':
+          cmp = a.creditLimit.compareTo(b.creditLimit);
+          break;
+        case 'currentDebt':
+          cmp = a.currentDebt.compareTo(b.currentDebt);
+          break;
+        case 'availableCredit':
+          cmp = a.availableCredit.compareTo(b.availableCredit);
+          break;
+        case 'usage':
+          cmp = a.usagePercent.compareTo(b.usagePercent);
+          break;
+        case 'status':
+          cmp = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
+          break;
+      }
+      return _isSortAscending ? cmp : -cmp;
+    });
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const minTableWidth = 960.0;
-        final needsScroll = constraints.maxWidth < minTableWidth;
+    final sortedList = _getSortedAccounts();
 
-        final tableContent = SizedBox(
-          width: needsScroll ? minTableWidth : constraints.maxWidth,
-          child: Column(
-            children: [
-              // --- Encabezado Fijo de Tabla ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
-                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+    return AdminProTable<SupplierCreditEntity>(
+      items: sortedList,
+      itemId: (account) => account.creditId,
+      selectedIds: _selectedIds,
+      onSelectionChanged: (newSet) {
+        setState(() {
+          _selectedIds.clear();
+          _selectedIds.addAll(newSet);
+        });
+      },
+      sortColumnId: _sortColumnId,
+      isSortAscending: _isSortAscending,
+      onSort: (colId, isAsc) {
+        setState(() {
+          _sortColumnId = colId;
+          _isSortAscending = isAsc;
+        });
+      },
+      paginationConfig: widget.paginationConfig,
+      onRowTap: widget.onSelectAccount,
+      minTableWidth: 960.0,
+      margin: EdgeInsets.zero,
+      bulkActions: [
+        AdminBulkAction<SupplierCreditEntity>(
+          label: 'Copiar Resumen Deudas',
+          icon: Icons.copy_all_rounded,
+          onPressed: (selectedItems) {
+            final text = selectedItems
+                .map(
+                  (a) =>
+                      '${a.supplierName}: Deuda S/ ${a.currentDebt.toStringAsFixed(2)} / Límite S/ ${a.creditLimit.toStringAsFixed(2)}',
+                )
+                .join('\n');
+            _copyToClipboard(context, text, '${selectedItems.length} cuentas de proveedores');
+          },
+        ),
+      ],
+      columns: [
+        // 1. PROVEEDOR
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'supplier',
+          label: 'Proveedor',
+          flex: 4,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            return Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: account.isActive
+                        ? AppColors.tealLight
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    account.supplierName.isNotEmpty
+                        ? account.supplierName.substring(0, 1).toUpperCase()
+                        : 'P',
+                    style: TextStyle(
+                      color: account.isActive
+                          ? AppColors.tealDark
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-                child: const Row(
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        account.supplierName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      if (account.supplierTaxId != null &&
+                          account.supplierTaxId!.isNotEmpty)
+                        InkWell(
+                          onTap: () => _copyToClipboard(
+                            context,
+                            account.supplierTaxId!,
+                            'RUC',
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          child: Text(
+                            'RUC ${account.supplierTaxId}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        )
+                      else if (account.supplierPhone != null &&
+                          account.supplierPhone!.isNotEmpty)
+                        Text(
+                          'Tel: ${account.supplierPhone}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        )
+                      else
+                        const Text(
+                          '—',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 2. LÍNEA CRÉDITO
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'creditLimit',
+          label: 'Línea Crédito',
+          fixedWidth: 125,
+          alignment: Alignment.centerRight,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            return Text(
+              'S/ ${account.creditLimit.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            );
+          },
+        ),
+
+        // 3. DEUDA ACTUAL
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'currentDebt',
+          label: 'Deuda Actual',
+          fixedWidth: 125,
+          alignment: Alignment.centerRight,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            final pct = account.usagePercent.clamp(0.0, 1.0);
+            final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
+
+            return Text(
+              account.currentDebt > 0
+                  ? 'S/ ${account.currentDebt.toStringAsFixed(2)}'
+                  : 'S/ 0.00',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: debtColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            );
+          },
+        ),
+
+        // 4. DISPONIBLE
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'availableCredit',
+          label: 'Disponible',
+          fixedWidth: 125,
+          alignment: Alignment.centerRight,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            return Text(
+              'S/ ${account.availableCredit.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: account.availableCredit > 0
+                    ? AppColors.tealDark
+                    : AppColors.textMuted,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            );
+          },
+        ),
+
+        // 5. USO DE LÍNEA
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'usage',
+          label: 'Uso de Línea',
+          fixedWidth: 130,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            final pct = account.usagePercent.clamp(0.0, 1.0);
+            final progressColor = _getProgressColor(pct, account.isMaxedOut);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      flex: 4,
-                      child: Text(
-                        'PROVEEDOR',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
+                    Text(
+                      '${(pct * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: progressColor,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
-                    SizedBox(
-                      width: 115,
-                      child: Text(
-                        'LÍNEA CRÉDITO',
+                    if (account.isMaxedOut)
+                      const Text(
+                        '100%',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.danger,
                         ),
                       ),
-                    ),
-                    SizedBox(
-                      width: 115,
-                      child: Text(
-                        'DEUDA ACTUAL',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: pct,
+                    minHeight: 5,
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 6. ESTADO
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'status',
+          label: 'Estado',
+          fixedWidth: 105,
+          isSortable: true,
+          cellBuilder: (context, account) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: account.isActive
+                      ? AppColors.successLight
+                      : const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: account.isActive
+                        ? AppColors.success.withValues(alpha: 0.3)
+                        : const Color(0xFFFECACA),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5.5,
+                      height: 5.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: account.isActive
+                            ? AppColors.success
+                            : AppColors.danger,
                       ),
                     ),
-                    SizedBox(
-                      width: 115,
-                      child: Text(
-                        'DISPONIBLE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 130,
-                      child: Text(
-                        'USO DE LÍNEA',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        'ESTADO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 130,
-                      child: Text(
-                        'ACCIONES',
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.4,
-                        ),
+                    const SizedBox(width: 5),
+                    Text(
+                      account.isActive ? 'Activa' : 'Suspendida',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: account.isActive
+                            ? AppColors.successDark
+                            : AppColors.danger,
                       ),
                     ),
                   ],
                 ),
               ),
+            );
+          },
+        ),
 
-              // --- Filas de Datos ---
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.accounts.length,
-                separatorBuilder:
-                    (_, _) => const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: Color(0xFFE2E8F0),
-                    ),
-                itemBuilder: (context, index) {
-                  final account = widget.accounts[index];
-                  final pct = account.usagePercent.clamp(0.0, 1.0);
-                  final progressColor = _getProgressColor(pct, account.isMaxedOut);
-                  final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
-
-                  final isHovered = _hoveredId == account.creditId;
-                  final isSelected = widget.selectedAccount?.creditId == account.creditId;
-
-                  return MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    onEnter: (_) => setState(() => _hoveredId = account.creditId),
-                    onExit: (_) => setState(() => _hoveredId = null),
-                    child: InkWell(
-                      onTap: () => widget.onSelectAccount(account),
-                      hoverColor: Colors.transparent,
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 140),
-                        curve: Curves.easeInOut,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.teal.withValues(alpha: 0.05)
-                              : isHovered
-                                  ? const Color(0xFFF8FAFC)
-                                  : Colors.white,
-                          border: Border(
-                            left: BorderSide(
-                              color: isSelected
-                                  ? AppColors.teal
-                                  : isHovered
-                                      ? AppColors.teal.withValues(alpha: 0.6)
-                                      : Colors.transparent,
-                              width: 3.5,
-                            ),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 11,
-                        ),
-                        child: Row(
-                          children: [
-                            // Proveedor (Avatar + Nombre + RUC)
-                            Expanded(
-                              flex: 4,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      color: account.isActive
-                                          ? AppColors.tealLight
-                                          : Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      account.supplierName.isNotEmpty
-                                          ? account.supplierName.substring(0, 1).toUpperCase()
-                                          : 'P',
-                                      style: TextStyle(
-                                        color: account.isActive
-                                            ? AppColors.tealDark
-                                            : Colors.grey.shade600,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          account.supplierName,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        if (account.supplierTaxId != null &&
-                                            account.supplierTaxId!.isNotEmpty)
-                                          Text(
-                                            'RUC ${account.supplierTaxId}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          )
-                                        else
-                                          const Text(
-                                            '—',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Línea Total
-                            SizedBox(
-                              width: 115,
-                              child: Text(
-                                'S/ ${account.creditLimit.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ),
-
-                            // Deuda Actual
-                            SizedBox(
-                              width: 115,
-                              child: account.currentDebt == 0
-                                  ? Row(
-                                      children: [
-                                        const Text(
-                                          'S/ 0.00',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textMuted,
-                                            fontFeatures: [FontFeature.tabularFigures()],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 5,
-                                            vertical: 1.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF1F5F9),
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'Al día',
-                                            style: TextStyle(
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : Text(
-                                      'S/ ${account.currentDebt.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: debtColor,
-                                        fontFeatures: const [FontFeature.tabularFigures()],
-                                      ),
-                                    ),
-                            ),
-
-                            // Disponible
-                            SizedBox(
-                              width: 115,
-                              child: Text(
-                                'S/ ${account.availableCredit.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: account.isActive
-                                      ? AppColors.tealDark
-                                      : AppColors.textMuted,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ),
-
-                            // Uso de Línea (Barra + %)
-                            SizedBox(
-                              width: 130,
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: LinearProgressIndicator(
-                                        value: pct,
-                                        minHeight: 6,
-                                        backgroundColor: const Color(0xFFE2E8F0),
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                          progressColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: 44,
-                                    child: Text(
-                                      '${(pct * 100).toStringAsFixed(1)}%',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: progressColor,
-                                        fontFeatures: const [FontFeature.tabularFigures()],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Estado
-                            SizedBox(
-                              width: 100,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: account.isActive
-                                        ? AppColors.successLight
-                                        : const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: account.isActive
-                                          ? AppColors.success.withValues(alpha: 0.3)
-                                          : const Color(0xFFE2E8F0),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 6,
-                                        height: 6,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: account.isActive
-                                              ? AppColors.success
-                                              : AppColors.textMuted,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        account.isActive ? 'Activo' : 'Suspendido',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: account.isActive
-                                              ? AppColors.successDark
-                                              : Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            // Acciones (Botón Abonar Estilizado + Menú)
-                            SizedBox(
-                              width: 130,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Tooltip(
-                                    message: 'Registrar abono a cuenta',
-                                    child: OutlinedButton.icon(
-                                      onPressed: () => widget.onPay(account),
-                                      icon: const Icon(
-                                        Icons.payments_outlined,
-                                        size: 13,
-                                      ),
-                                      label: const Text(
-                                        'Abonar',
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.tealDark,
-                                        side: BorderSide(
-                                          color: AppColors.teal.withValues(alpha: 0.3),
-                                        ),
-                                        backgroundColor: AppColors.teal.withValues(alpha: 0.05),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 9,
-                                          vertical: 5,
-                                        ),
-                                        visualDensity: VisualDensity.compact,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  PopupMenuButton<String>(
-                                    tooltip: 'Más opciones',
-                                    offset: const Offset(0, 36),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                    ),
-                                    padding: EdgeInsets.zero,
-                                    icon: Container(
-                                      width: 26,
-                                      height: 26,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: const Icon(
-                                        Icons.more_vert_rounded,
-                                        size: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                    onSelected: (val) {
-                                      if (val == 'pay') widget.onPay(account);
-                                      if (val == 'history') widget.onViewHistory(account);
-                                      if (val == 'manage') widget.onSelectAccount(account);
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'pay',
-                                        height: 36,
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.payments_outlined, size: 15, color: AppColors.tealDark),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Registrar abono',
-                                              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'history',
-                                        height: 36,
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.history_rounded, size: 15, color: AppColors.textSecondary),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Ver movimientos',
-                                              style: TextStyle(fontSize: 12.5),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'manage',
-                                        height: 36,
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.tune_rounded, size: 15, color: AppColors.textSecondary),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              'Ajustar línea / Opciones',
-                                              style: TextStyle(fontSize: 12.5),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+        // 7. ACCIONES
+        AdminTableColumn<SupplierCreditEntity>(
+          id: 'actions',
+          label: 'Acciones',
+          fixedWidth: 135,
+          isSortable: false,
+          alignment: Alignment.centerRight,
+          cellBuilder: (context, account) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (account.currentDebt > 0 && account.isActive) ...[
+                  FilledButton.tonal(
+                    onPressed: () => widget.onPay(account),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.tealLight,
+                      foregroundColor: AppColors.tealDark,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x050F172A),
-                blurRadius: 4,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: needsScroll
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: tableContent,
-                )
-              : tableContent,
-        );
-      },
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.payment_rounded, size: 13),
+                        SizedBox(width: 4),
+                        Text(
+                          'Abonar',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                IconButton(
+                  icon: const Icon(Icons.history_rounded, size: 18),
+                  tooltip: 'Historial de movimientos',
+                  splashRadius: 16,
+                  color: AppColors.textSecondary,
+                  onPressed: () => widget.onViewHistory(account),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 }
