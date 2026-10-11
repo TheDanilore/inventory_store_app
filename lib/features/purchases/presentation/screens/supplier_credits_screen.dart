@@ -333,20 +333,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         },
         child: AdminLayout(
           title: 'Créditos de Proveedores',
-          actions:
-              isWide
-                  ? null
-                  : [
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Actualizar cuentas',
-                      onPressed: () {
-                        context.read<SupplierCreditsCubit>().loadAccounts(
-                          refresh: true,
-                        );
-                      },
-                    ),
-                  ],
           // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
           floatingActionButton:
               isWide

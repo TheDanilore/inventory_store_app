@@ -330,9 +330,12 @@ class _AdminLayoutState extends State<AdminLayout> {
                                 ),
                               ),
                       actions: [
-                        if (widget.actions != null) ...widget.actions!,
+                        if (widget.actions != null)
+                          ...widget.actions!.where((a) => !_isRefreshWidget(a)),
                         if (widget.actions != null &&
-                            widget.actions!.isNotEmpty)
+                            widget.actions!
+                                .where((a) => !_isRefreshWidget(a))
+                                .isNotEmpty)
                           const SizedBox(width: 6),
 
                         if (widget.showSettingsButton &&
@@ -407,6 +410,24 @@ class _AdminLayoutState extends State<AdminLayout> {
       );
       return 'Panel de Administración ERP';
     }
+  }
+
+  static bool _isRefreshWidget(Widget w) {
+    if (w is IconButton) {
+      final icon = w.icon;
+      if (icon is Icon &&
+          (icon.icon == Icons.refresh_rounded ||
+           icon.icon == Icons.refresh)) {
+        return true;
+      }
+      final tooltip = w.tooltip?.toLowerCase() ?? '';
+      if (tooltip.contains('actualizar') ||
+          tooltip.contains('refrescar') ||
+          tooltip.contains('recargar')) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

@@ -217,21 +217,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         },
         child: AdminLayout(
           title: 'Directorio de Proveedores',
-          actions:
-              isWide
-                  ? null
-                  : [
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Actualizar proveedores',
-                      onPressed: () {
-                        context.read<SuppliersCubit>().loadSuppliers(
-                          page: 0,
-                          refresh: true,
-                        );
-                      },
-                    ),
-                  ],
           // En tablet/escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
               isWide
@@ -300,7 +285,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     // --- 1. BENTO METRIC RIBBON PARA PROVEEDORES ---
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: EdgeInsets.fromLTRB(
+                          isWide ? 24 : 16,
+                          isWide ? 14 : 12,
+                          isWide ? 24 : 16,
+                          4,
+                        ),
                         child: _SuppliersKpiBar(
                           totalCount:
                               totalCount > 0 ? totalCount : suppliers.length,

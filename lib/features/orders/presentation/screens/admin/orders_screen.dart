@@ -828,18 +828,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       autofocus: true,
       child: AdminLayout(
         title: widget.customTitle ?? 'Gestión de Pedidos',
-        actions:
-            isWide
-                ? null
-                : [
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Actualizar pedidos',
-                    onPressed: () {
-                      context.read<OrdersCubit>().loadOrders(reset: true);
-                    },
-                  ),
-                ],
         body: LayoutBuilder(
           builder: (context, constraints) {
             return BlocConsumer<OrdersCubit, OrdersState>(

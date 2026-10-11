@@ -54,24 +54,15 @@ class AdminProViewToggleConfig {
 /// Toolbar Pro Unificado de alto rendimiento y diseño consistente para pantallas administrativas.
 ///
 /// Arquitectura Camaleónica y Adaptabilidad Multi-dispositivo:
-/// - **Mobile (< 640px)**: Ergonomía Apple HIG. Buscador amplio (46dp), botón de filtros
-///   agrupados con badge numérico que abre un BottomSheet modal con drag handle, botón de
-///   más acciones/exportación colapsable, botón de refresco y el CTA de creación oculto por defecto
-///   (`hidePrimaryActionOnMobile = true`) para delegar la creación al FAB de la zona del pulgar.
+/// - **Mobile (< 640px)**: Idéntico a Products Command Bar (Apple HIG):
+///   Buscador independiente de 44dp, botón de filtros agrupados 44x44 con badge numérico que abre
+///   el Modal Bottom Sheet, botón de más acciones/exportación 44x44, botón de refresco 44x44
+///   y el CTA de creación oculto por defecto (`hidePrimaryActionOnMobile = true`) para delegar
+///   la creación al FAB de la zona del pulgar.
 /// - **Tablet (640px – 1024px)**: Layout híbrido en 2 niveles equilibrados (Fila 1: Búsqueda + CTA,
 ///   Fila 2: Filtros modulares + Toggle de Vista + Trailing + Refresco).
 /// - **Desktop (>= 1024px)**: Barra de comandos unificada de alta densidad estilo Linear/Stripe (40dp)
 ///   con alineación horizontal, micro-interacciones hover y cursores explícitos.
-///
-/// Motor de Atajos de Teclado con Aislamiento de Foco Estricto:
-/// - [/] o [Alt+/] : Enfocar buscador.
-/// - [Esc]         : Limpiar búsqueda y desenfocar.
-/// - [R] o [Alt+R] : Recargar datos.
-/// - [N] o [Alt+N] : Nuevo registro (CTA principal).
-/// - [V] o [Alt+V] : Alternar vista Tabla/Tarjetas.
-/// - [F] o [Alt+F] : Abrir modal de filtros en móvil.
-/// Los atajos alfanuméricos se desactivan automáticamente si el usuario está escribiendo en cualquier
-/// campo de texto editable de la pantalla.
 class AdminProToolbar extends StatefulWidget {
   final TextEditingController searchController;
   final FocusNode? searchFocusNode;
@@ -107,6 +98,9 @@ class AdminProToolbar extends StatefulWidget {
   /// Callback para abrir un BottomSheet personalizado de filtros en móvil (ej. ProductsMobileFiltersSheet).
   final VoidCallback? onOpenMobileFilters;
 
+  /// Callback opcional para limpiar todos los filtros en el BottomSheet de móvil.
+  final VoidCallback? onClearFilters;
+
   /// Constructor opcional para renderizar un BottomSheet de filtros en móvil.
   final WidgetBuilder? mobileFiltersSheetBuilder;
 
@@ -132,17 +126,18 @@ class AdminProToolbar extends StatefulWidget {
     this.filterWidgets = const [],
     this.viewToggleConfig,
     this.onRefresh,
-    this.refreshTooltip = 'Refrescar datos',
+    this.refreshTooltip = 'Actualizar',
     this.primaryAction,
     this.trailingActions,
     this.secondaryRow,
     this.isDesktop,
     this.isTablet,
-    this.margin = const EdgeInsets.fromLTRB(16, 10, 16, 8),
+    this.margin = const EdgeInsets.fromLTRB(16, 8, 16, 8),
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     this.hidePrimaryActionOnMobile = true,
     this.activeFiltersCount,
     this.onOpenMobileFilters,
+    this.onClearFilters,
     this.mobileFiltersSheetBuilder,
     this.mobileFiltersTitle = 'Filtros de Búsqueda',
     this.mobileActionsTitle = 'Opciones y Herramientas',
@@ -193,7 +188,6 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
     // Si el usuario está escribiendo activamente dentro de un campo de texto:
     if (isInputActive) {
-      // Atajo Esc: limpia búsqueda y retira foco si el foco está en el buscador
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         if (widget.searchController.text.isNotEmpty) {
           widget.searchController.clear();
@@ -203,7 +197,6 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         FocusManager.instance.primaryFocus?.unfocus();
         return true;
       }
-      // Regla estricta: NO interceptar ninguna otra tecla si hay foco activo en un input
       return false;
     }
 
@@ -266,15 +259,15 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     return false;
   }
 
-  // ── BUSCADOR LIMPIO CON ATRIBUTO TOOLTEXT ─────────────────────────────────
-  Widget _buildSearchField({required bool isMobile}) {
+  // ── BUSCADOR DE ESCRITORIO (DENTRO DE BARRA COHESIVA) ─────────────────────
+  Widget _buildDesktopSearchField() {
     final searchTooltipMsg =
         widget.searchKeyHint != null && widget.searchKeyHint!.isNotEmpty
             ? 'Buscar (Atajo: ${widget.searchKeyHint} o Alt+${widget.searchKeyHint})'
             : 'Buscar';
 
     return SizedBox(
-      height: isMobile ? 46 : 40,
+      height: 40,
       child: Tooltip(
         message: searchTooltipMsg,
         waitDuration: const Duration(milliseconds: 600),
@@ -343,6 +336,70 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               horizontal: 12,
               vertical: 0,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── BUSCADOR DE MÓVIL (STANDALONE 44DP ESTILO PRODUCTS) ───────────────────
+  Widget _buildMobileSearchField() {
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: widget.searchController,
+        focusNode: _effectiveSearchFocusNode,
+        onChanged: widget.onSearchChanged,
+        onSubmitted: widget.onSearchSubmitted,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          hintText: widget.searchHint,
+          hintStyle: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.searchController,
+            builder: (context, value, _) {
+              if (value.text.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: () {
+                    widget.searchController.clear();
+                    widget.onClearSearch?.call();
+                    widget.onSearchChanged?.call('');
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
           ),
         ),
       ),
@@ -502,7 +559,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     );
   }
 
-  // ── BOTÓN DE FILTROS AGRUPADOS PARA MÓVIL (APPLE HIG) ─────────────────────
+  // ── BOTÓN DE FILTROS AGRUPADOS PARA MÓVIL (STANDALONE 44X44 ESTILO PRODUCTS)
   Widget _buildMobileFiltersTriggerButton(BuildContext context) {
     final count = widget.activeFiltersCount ?? 0;
     final hasActive = count > 0;
@@ -511,16 +568,16 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       clipBehavior: Clip.none,
       children: [
         Container(
-          height: 46,
+          height: 44,
+          width: 44,
           decoration: BoxDecoration(
             color:
                 hasActive
                     ? AppColors.primary.withValues(alpha: 0.08)
                     : AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppColors.radius),
             border: Border.all(
               color: hasActive ? AppColors.primary : AppColors.border,
-              width: hasActive ? 1.5 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
@@ -530,67 +587,50 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               ),
             ],
           ),
-          child: Tooltip(
-            message: 'Filtros (Atajo: F)',
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                if (widget.onOpenMobileFilters != null) {
-                  widget.onOpenMobileFilters!();
-                } else if (widget.mobileFiltersSheetBuilder != null) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: widget.mobileFiltersSheetBuilder!,
-                  );
-                } else {
-                  _showDefaultMobileFiltersSheet(context);
-                }
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 46, minHeight: 46),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.tune_rounded,
-                      size: 20,
-                      color:
-                          hasActive
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                    ),
-                    if (hasActive) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '$count',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+          child: IconButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              if (widget.onOpenMobileFilters != null) {
+                widget.onOpenMobileFilters!();
+              } else if (widget.mobileFiltersSheetBuilder != null) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: widget.mobileFiltersSheetBuilder!,
+                );
+              } else {
+                _showDefaultMobileFiltersSheet(context);
+              }
+            },
+            icon: Icon(
+              Icons.tune_rounded,
+              size: 20,
+              color:
+                  hasActive ? AppColors.primary : AppColors.textSecondary,
             ),
+            tooltip: 'Filtros (Atajo: F)',
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            padding: const EdgeInsets.all(10),
           ),
         ),
         if (hasActive)
           Positioned(
-            top: -3,
-            right: -3,
+            top: -4,
+            right: -4,
             child: Container(
-              width: 9,
-              height: 9,
+              padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
                 color: AppColors.accent,
                 shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -637,29 +677,35 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.tune_rounded,
-                            size: 20,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.mobileFiltersTitle,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                      Text(
+                        widget.mobileFiltersTitle,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (widget.onClearFilters != null)
+                        TextButton(
+                          onPressed: () {
+                            widget.onClearFilters!();
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text(
+                            'Limpiar Todo',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        color: AppColors.textMuted,
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          color: AppColors.textMuted,
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
                     ],
                   ),
                   const Divider(color: AppColors.divider, height: 20),
@@ -701,13 +747,14 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     );
   }
 
-  // ── BOTÓN DE ACCIONES SECUNDARIAS (IMPORTAR / EXPORTAR) EN MÓVIL ──────────
+  // ── BOTÓN DE ACCIONES SECUNDARIAS (STANDALONE 44X44 ESTILO PRODUCTS) ──────
   Widget _buildMobileTrailingActionsButton(BuildContext context) {
     return Container(
-      height: 46,
+      height: 44,
+      width: 44,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppColors.radius),
         border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
@@ -727,8 +774,8 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             size: 20,
             color: AppColors.textSecondary,
           ),
-          constraints: const BoxConstraints(minWidth: 46, minHeight: 46),
-          padding: const EdgeInsets.all(11),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          padding: const EdgeInsets.all(10),
         ),
       ),
     );
@@ -817,6 +864,30 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     );
   }
 
+  // ── BOTÓN DE REFRESCO STANDALONE 44X44 EN MÓVIL ───────────────────────────
+  Widget _buildMobileRefreshButton() {
+    return Container(
+      height: 44,
+      width: 44,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppColors.radius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: _AdminProRefreshButton(
+        onRefresh: widget.onRefresh,
+        tooltip: widget.refreshTooltip,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
@@ -824,6 +895,15 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     final bool useTabletLayout =
         widget.isTablet ?? (!useDesktopLayout && (width >= 640));
 
+    // ── MÓVIL (< 640px): Fila limpia de botones standalone idéntica a Products ──
+    if (!useDesktopLayout && !useTabletLayout) {
+      return Padding(
+        padding: widget.margin,
+        child: _buildMobileLayout(context),
+      );
+    }
+
+    // ── DESKTOP & TABLET: Barra unificada en tarjeta de superficie ─────────────
     return Container(
       margin: widget.margin,
       padding: widget.padding,
@@ -842,9 +922,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       child:
           useDesktopLayout
               ? _buildDesktopLayout()
-              : (useTabletLayout
-                  ? _buildTabletLayout()
-                  : _buildMobileLayout(context)),
+              : _buildTabletLayout(),
     );
   }
 
@@ -855,7 +933,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         // 1. Buscador expandido
         Expanded(
           flex: widget.searchFlex,
-          child: _buildSearchField(isMobile: false),
+          child: _buildDesktopSearchField(),
         ),
 
         // 2. Filtros centrales modulares
@@ -923,7 +1001,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         // Fila 1: Buscador expandido + CTA destacado a la derecha
         Row(
           children: [
-            Expanded(child: _buildSearchField(isMobile: false)),
+            Expanded(child: _buildDesktopSearchField()),
             if (widget.primaryAction != null) ...[
               const SizedBox(width: 10),
               _buildPrimaryActionButton(widget.primaryAction!, isMobile: false),
@@ -976,7 +1054,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     );
   }
 
-  // ── 3. MOBILE LAYOUT (APPLE HIG, 1 FILA COMPACTA, CTA DELEGADO AL FAB) ───
+  // ── 3. MOBILE LAYOUT (APPLE HIG, STANDALONE ROW, CTA DELEGADO AL FAB) ────
   Widget _buildMobileLayout(BuildContext context) {
     final hasFilters =
         widget.filterWidgets.isNotEmpty ||
@@ -992,11 +1070,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Fila compacta de comandos (46dp de altura táctil)
+        // Fila compacta de comandos (44dp de altura táctil)
         Row(
           children: [
             // Buscador expandido
-            Expanded(child: _buildSearchField(isMobile: true)),
+            Expanded(child: _buildMobileSearchField()),
 
             // Botón de Filtros agrupados (con badge de activos)
             if (hasFilters) ...[
@@ -1019,10 +1097,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             // Botón de Refresco
             if (widget.onRefresh != null) ...[
               const SizedBox(width: 8),
-              _AdminProRefreshButton(
-                onRefresh: widget.onRefresh,
-                tooltip: widget.refreshTooltip,
-              ),
+              _buildMobileRefreshButton(),
             ],
           ],
         ),

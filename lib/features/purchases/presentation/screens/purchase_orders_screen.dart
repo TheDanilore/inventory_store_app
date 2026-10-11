@@ -822,21 +822,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     return AdminLayout(
       title: 'Órdenes de Compra',
-      actions:
-          isDesktopOrTablet
-              ? null
-              : [
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Actualizar órdenes',
-                  onPressed: () {
-                    _itemsCache.clear();
-                    context.read<PurchaseOrdersCubit>().loadOrders(
-                      refresh: true,
-                    );
-                  },
-                ),
-              ],
       floatingActionButton:
           isDesktopOrTablet
               ? null
@@ -1055,11 +1040,11 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  0,
+                                padding: EdgeInsets.fromLTRB(
+                                  isDesktopOrTablet ? 24 : 16,
+                                  isDesktopOrTablet ? 14 : 12,
+                                  isDesktopOrTablet ? 24 : 16,
+                                  4,
                                 ),
                                 child: _PurchaseOrdersBentoKpiBar(
                                   orderCount: viewModel.orders.length,
@@ -1067,7 +1052,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   totalAmount: totalAmount,
                                   pendingCount: pendingCount,
                                   totalDebt: totalDebt,
-                                  isDesktop: isTablet,
+                                  isDesktop: isDesktopOrTablet,
                                 ),
                               ),
                             ),

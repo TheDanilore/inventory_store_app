@@ -112,10 +112,14 @@ class AdminDesktopTopBar extends StatelessWidget {
 
           const Spacer(),
 
-          // ── Quick Custom Actions ──────────────────────────────────
+          // ── Quick Custom Actions (excluye botones de refresco del topbar) ──
           if (actions != null)
-            ...actions!.map((action) => SizedBox(height: 38, child: action)),
-          if (actions != null && actions!.isNotEmpty) const SizedBox(width: 12),
+            ...actions!
+                .where((a) => !_isRefreshWidget(a))
+                .map((action) => SizedBox(height: 38, child: action)),
+          if (actions != null &&
+              actions!.where((a) => !_isRefreshWidget(a)).isNotEmpty)
+            const SizedBox(width: 12),
 
           // ── Theme Mode Indicator Toggle ───────────────────────────
           _TopBarIconButton(
@@ -265,6 +269,24 @@ class AdminDesktopTopBar extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static bool _isRefreshWidget(Widget w) {
+    if (w is IconButton) {
+      final icon = w.icon;
+      if (icon is Icon &&
+          (icon.icon == Icons.refresh_rounded ||
+           icon.icon == Icons.refresh)) {
+        return true;
+      }
+      final tooltip = w.tooltip?.toLowerCase() ?? '';
+      if (tooltip.contains('actualizar') ||
+          tooltip.contains('refrescar') ||
+          tooltip.contains('recargar')) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

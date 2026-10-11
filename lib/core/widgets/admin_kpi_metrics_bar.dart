@@ -318,6 +318,9 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
 
     final isInteractive = widget.onTap != null;
 
+    final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < 640;
+
     final cardContent = MouseRegion(
       cursor:
           isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -327,7 +330,10 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         transform: Matrix4.translationValues(0, _isHovered ? -2.0 : 0, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 16,
+          vertical: isMobile ? 11 : 13,
+        ),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -352,8 +358,8 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
         ),
         child: Row(
           children: [
-            _buildIconContainer(effectiveAccent, effectiveGlow),
-            const SizedBox(width: 14),
+            _buildIconContainer(effectiveAccent, effectiveGlow, isMobile),
+            SizedBox(width: isMobile ? 10 : 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,10 +369,10 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
                   Text(
                     widget.title.toUpperCase(),
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: isMobile ? 10.0 : 10.5,
                       fontWeight: FontWeight.w800,
                       color: effectiveAccent,
-                      letterSpacing: 0.5,
+                      letterSpacing: isMobile ? 0.3 : 0.5,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -375,7 +381,7 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
                   Text(
                     widget.value,
                     style: TextStyle(
-                      fontSize: 18.5,
+                      fontSize: isMobile ? 16.5 : 18.5,
                       fontWeight: FontWeight.w900,
                       color: effectiveValueColor,
                       letterSpacing: -0.4,
@@ -388,7 +394,7 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
                   Text(
                     widget.subtitle,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: isMobile ? 10.5 : 11,
                       color: effectiveSubtitleColor,
                       fontWeight: FontWeight.w500,
                     ),
@@ -418,18 +424,26 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
     return cardContent;
   }
 
-  Widget _buildIconContainer(Color effectiveAccent, Color effectiveGlow) {
+  Widget _buildIconContainer(
+    Color effectiveAccent,
+    Color effectiveGlow,
+    bool isMobile,
+  ) {
+    final size = isMobile ? 40.0 : 44.0;
+    final iconSize = isMobile ? 20.0 : 22.0;
+    final borderRadius = BorderRadius.circular(isMobile ? 10 : 12);
+
     if (widget.iconGradient != null) {
       return Container(
-        width: 44,
-        height: 44,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: widget.iconGradient!,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           boxShadow: [
             BoxShadow(
               color: effectiveGlow,
@@ -441,38 +455,38 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
         child: Icon(
           widget.icon,
           color: widget.iconColor ?? Colors.white,
-          size: 22,
+          size: iconSize,
         ),
       );
     }
 
     if (widget.iconBgColor != null) {
       return Container(
-        width: 44,
-        height: 44,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: widget.iconBgColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
         ),
         child: Icon(
           widget.icon,
           color: widget.iconColor ?? effectiveAccent,
-          size: 22,
+          size: iconSize,
         ),
       );
     }
 
     // Por defecto: Gradiente suave derivado del acento
     return Container(
-      width: 44,
-      height: 44,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [effectiveAccent, effectiveAccent.withValues(alpha: 0.85)],
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: borderRadius,
         boxShadow: [
           BoxShadow(
             color: effectiveGlow,
@@ -484,7 +498,7 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
       child: Icon(
         widget.icon,
         color: widget.iconColor ?? Colors.white,
-        size: 22,
+        size: iconSize,
       ),
     );
   }
@@ -530,7 +544,7 @@ class AdminKpiMetricsBar extends StatelessWidget {
     this.spacing = 12.0,
     this.mobileHeight = 88.0,
     this.mobileItemWidth = 230.0,
-    this.isMobileGrid = false,
+    this.isMobileGrid = true,
     this.isLoading = false,
     this.shimmerCount = 4,
   });
