@@ -142,15 +142,33 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       _variantDrafts = [VariantDraftFormModel()];
     }
     final current = _variantDrafts.first;
+    final targetSku = sku ?? current.sku;
+    final targetBarcode = barcode ?? current.barcode;
+    final targetPrice = price ?? current.price;
+    final targetWholesalePrice = wholesalePrice ?? current.wholesalePrice;
+    final targetWholesaleMinQuantity =
+        wholesaleMinQuantity ?? current.wholesaleMinQuantity;
+    final targetReorderPoint = reorderPoint ?? current.reorderPoint;
+    final targetUnitCost = unitCost ?? current.unitCost;
+
+    final hasChanged = current.sku != targetSku ||
+        current.barcode != targetBarcode ||
+        current.price != targetPrice ||
+        current.wholesalePrice != targetWholesalePrice ||
+        current.wholesaleMinQuantity != targetWholesaleMinQuantity ||
+        current.reorderPoint != targetReorderPoint ||
+        current.unitCost != targetUnitCost;
+
+    if (!hasChanged) return;
+
     _variantDrafts[0] = current.copyWith(
-      sku: sku ?? current.sku,
-      barcode: barcode ?? current.barcode,
-      price: price ?? current.price,
-      wholesalePrice: wholesalePrice ?? current.wholesalePrice,
-      wholesaleMinQuantity:
-          wholesaleMinQuantity ?? current.wholesaleMinQuantity,
-      reorderPoint: reorderPoint ?? current.reorderPoint,
-      unitCost: unitCost ?? current.unitCost,
+      sku: targetSku,
+      barcode: targetBarcode,
+      price: targetPrice,
+      wholesalePrice: targetWholesalePrice,
+      wholesaleMinQuantity: targetWholesaleMinQuantity,
+      reorderPoint: targetReorderPoint,
+      unitCost: targetUnitCost,
     );
     markAsDirty();
     if (syncState) {
@@ -688,10 +706,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     bool syncState = false,
   }) {
     if (index >= 0 && index < _variantDrafts.length) {
+      final current = _variantDrafts[index];
+      final isSame = current.sku == updated.sku &&
+          current.barcode == updated.barcode &&
+          current.price == updated.price &&
+          current.wholesalePrice == updated.wholesalePrice &&
+          current.wholesaleMinQuantity == updated.wholesaleMinQuantity &&
+          current.reorderPoint == updated.reorderPoint &&
+          current.unitCost == updated.unitCost &&
+          current.isActive == updated.isActive &&
+          current.externalImageUrl == updated.externalImageUrl &&
+          listEquals(current.urlsExistentes, updated.urlsExistentes) &&
+          current.nuevasImagenes.length == updated.nuevasImagenes.length &&
+          current.selectedAttributes.length == updated.selectedAttributes.length;
+
+      if (isSame) return;
+
       _variantDrafts[index] = updated;
+      markAsDirty();
+      if (syncState) _syncState();
     }
-    markAsDirty();
-    if (syncState) _syncState();
   }
 
   // ── Guardado ─────────────────────────────────────────────────────────────────

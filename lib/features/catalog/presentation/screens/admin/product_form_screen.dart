@@ -339,7 +339,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                               final isDesktop = constraints.maxWidth >= 1024;
                               return Form(
                                 key: _formKey,
-                                onChanged: cubit.markAsDirty,
                                 child: Stack(
                                   children: [
                                     if (isDesktop)
@@ -1135,80 +1134,177 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           ],
         ),
 
-        // Barra inferior de guardado Sticky con Blur iOS
+        // Barra flotante Glassmorphism de guardado en Mobile
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: ClipRRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
-              child: Container(
-                padding: const EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 12,
-                  bottom: 24,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.94),
-                  border: Border(top: BorderSide(color: AppColors.border)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, -4),
+          left: 12,
+          right: 12,
+          bottom: 12,
+          child: SafeArea(
+            top: false,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
                     ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Row(
-                    children: [
-                      OutlinedButton(
-                        onPressed: _handleExit,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppColors.radius,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.90),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.85),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Micro-estado reactivo vía BlocSelector
+                        BlocSelector<
+                          ProductFormCubit,
+                          ProductFormState,
+                          bool
+                        >(
+                          selector: (s) => s.isDirty,
+                          builder: (context, isDirty) {
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isDirty
+                                        ? Colors.orange.shade50
+                                        : Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      isDirty
+                                          ? Colors.orange.shade200
+                                          : Colors.green.shade200,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isDirty
+                                              ? Colors.orange.shade600
+                                              : Colors.green.shade600,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isDirty ? 'Sin guardar' : 'Al día',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          isDirty
+                                              ? Colors.orange.shade800
+                                              : Colors.green.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        const Spacer(),
+                        Tooltip(
+                          message: 'Descartar cambios y salir (Esc)',
+                          child: OutlinedButton(
+                            onPressed: _handleExit,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppColors.radius,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'Salir',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                              ),
                             ),
                           ),
                         ),
-                        child: const Text(
-                          'Salir',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: BlocSelector<
+                        const SizedBox(width: 8),
+                        BlocSelector<
                           ProductFormCubit,
                           ProductFormState,
                           bool
                         >(
                           selector: (s) => s.isSaving,
                           builder: (context, isSaving) {
-                            return AppPrimaryButton(
-                              label:
-                                  isEdit
-                                      ? 'Actualizar Producto'
-                                      : 'Guardar Producto',
-                              icon: const Icon(Icons.check_rounded, size: 20),
+                            return FilledButton.icon(
                               onPressed: isSaving ? null : _guardar,
-                              loading: isSaving,
-                              backgroundColor: AppColors.success,
-                              foregroundColor: Colors.white,
+                              icon:
+                                  isSaving
+                                      ? const SizedBox(
+                                        width: 13,
+                                        height: 13,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Icon(
+                                        Icons.check_rounded,
+                                        size: 15,
+                                      ),
+                              label: Text(
+                                isEdit ? 'Actualizar' : 'Guardar',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppColors.radius,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1231,16 +1327,17 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         final count = state.variantDrafts.length;
         final activeCount = state.variantDrafts.where((d) => d.isActive).length;
         final isAllExpanded = _allExpanded == true;
+        final isMobile = MediaQuery.sizeOf(context).width < 640;
 
         return Row(
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Variantes',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: isMobile ? 16 : 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
@@ -1248,7 +1345,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 7,
                     vertical: 2.5,
                   ),
                   decoration: BoxDecoration(
@@ -1256,9 +1353,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '$count ${count == 1 ? 'variante' : 'variantes'}${count > 0 ? ' • $activeCount activas' : ''}',
+                    isMobile
+                        ? '$count var.'
+                        : '$count ${count == 1 ? 'variante' : 'variantes'}${count > 0 ? ' • $activeCount activas' : ''}',
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
                     ),
@@ -1268,43 +1367,67 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
             ),
             const Spacer(),
             if (count > 1) ...[
-              TextButton.icon(
-                onPressed: _toggleExpandCollapseAll,
-                icon: Icon(
-                  isAllExpanded
-                      ? Icons.unfold_less_rounded
-                      : Icons.unfold_more_rounded,
-                  size: 16,
-                ),
-                label: Text(
-                  isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                ),
+              Tooltip(
+                message: isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
+                waitDuration: const Duration(milliseconds: 300),
+                child: isMobile
+                    ? IconButton(
+                        onPressed: _toggleExpandCollapseAll,
+                        icon: Icon(
+                          isAllExpanded
+                              ? Icons.unfold_less_rounded
+                              : Icons.unfold_more_rounded,
+                          size: 18,
+                          color: AppColors.textSecondary,
+                        ),
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                        splashRadius: 16,
+                      )
+                    : TextButton.icon(
+                        onPressed: _toggleExpandCollapseAll,
+                        icon: Icon(
+                          isAllExpanded
+                              ? Icons.unfold_less_rounded
+                              : Icons.unfold_more_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                        ),
+                      ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: isMobile ? 4 : 6),
             ],
             FilledButton.icon(
               onPressed: cubit.addVariantDraft,
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(
-                'Agregar variante',
-                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+              label: Text(
+                isMobile ? 'Agregar' : 'Agregar variante',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 10 : 12,
                   vertical: 8,
                 ),
                 shape: RoundedRectangleBorder(

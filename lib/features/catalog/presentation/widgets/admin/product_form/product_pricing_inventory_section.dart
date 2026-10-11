@@ -25,13 +25,14 @@ class _ProductPricingInventorySectionState
   late final TextEditingController _wholesaleMinCtrl;
 
   bool _isInitialized = false;
+  bool _isSyncing = false;
 
   @override
   void initState() {
     super.initState();
     _skuCtrl = TextEditingController();
     _barcodeCtrl = TextEditingController();
-    _reorderCtrl = TextEditingController(text: '3');
+    _reorderCtrl = TextEditingController();
     _unitCostCtrl = TextEditingController();
     _priceCtrl = TextEditingController();
     _wholesalePriceCtrl = TextEditingController();
@@ -49,23 +50,22 @@ class _ProductPricingInventorySectionState
   void _syncControllersFromState(ProductFormState state) {
     if (_isInitialized) return;
     if (state.variantDrafts.isNotEmpty) {
+      _isSyncing = true;
       final defaultDraft = state.variantDrafts.first;
       _skuCtrl.text = defaultDraft.sku;
       _barcodeCtrl.text = defaultDraft.barcode;
-      _reorderCtrl.text =
-          defaultDraft.reorderPoint.isNotEmpty
-              ? defaultDraft.reorderPoint
-              : '3';
+      _reorderCtrl.text = defaultDraft.reorderPoint;
       _unitCostCtrl.text = defaultDraft.unitCost;
       _priceCtrl.text = defaultDraft.price;
       _wholesalePriceCtrl.text = defaultDraft.wholesalePrice;
       _wholesaleMinCtrl.text = defaultDraft.wholesaleMinQuantity;
       _isInitialized = true;
+      _isSyncing = false;
     }
   }
 
   void _onFieldChanged() {
-    if (!mounted) return;
+    if (!mounted || _isSyncing || !_isInitialized) return;
     final cubit = context.read<ProductFormCubit>();
     cubit.updateDefaultVariant(
       sku: _skuCtrl.text.trim(),
