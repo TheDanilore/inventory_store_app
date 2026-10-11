@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Configuración para la acción principal del toolbar (CTA).
-/// El atajo de teclado [keyHint] ahora se muestra exclusivamente en el Tooltip (tooltext).
+/// El atajo de teclado [keyHint] se muestra exclusivamente en el Tooltip (tooltext).
 class AdminProToolbarAction {
   final String label;
   final IconData icon;
@@ -41,8 +41,8 @@ class AdminProViewToggleConfig {
   const AdminProViewToggleConfig({
     required this.isTableView,
     required this.onToggleTableView,
-    this.tableTooltip = 'Vista en Tabla Pro (Atajo: V)',
-    this.cardsTooltip = 'Vista en Tarjetas (Atajo: V)',
+    this.tableTooltip = 'Vista en Tabla',
+    this.cardsTooltip = 'Vista en Tarjetas',
     this.activeColor,
     this.tableIcon = Icons.table_rows_rounded,
     this.cardsIcon = Icons.grid_view_rounded,
@@ -53,17 +53,26 @@ class AdminProViewToggleConfig {
 
 /// Toolbar Pro Unificado de alto rendimiento y diseño consistente para pantallas administrativas.
 ///
-/// Arquitectura Camaleónica:
-/// - **Mobile (< 640px)**: Ergonomía Apple HIG, buscador amplio (46dp), botón CTA visible
-///   prioritario en primera posición y carrusel de filtros táctiles elásticos.
-/// - **Tablet (640px – 1024px)**: Layout híbrido en 2 niveles (Fila 1: Búsqueda + CTA,
-///   Fila 2: Filtros + Vista + Refresco).
-/// - **Desktop (>= 1024px)**: Barra de comandos de alta densidad estilo Linear/Stripe (40dp)
-///   con alineación horizontal unificada y micro-interacciones hover.
+/// Arquitectura Camaleónica y Adaptabilidad Multi-dispositivo:
+/// - **Mobile (< 640px)**: Ergonomía Apple HIG. Buscador amplio (46dp), botón de filtros
+///   agrupados con badge numérico que abre un BottomSheet modal con drag handle, botón de
+///   más acciones/exportación colapsable, botón de refresco y el CTA de creación oculto por defecto
+///   (`hidePrimaryActionOnMobile = true`) para delegar la creación al FAB de la zona del pulgar.
+/// - **Tablet (640px – 1024px)**: Layout híbrido en 2 niveles equilibrados (Fila 1: Búsqueda + CTA,
+///   Fila 2: Filtros modulares + Toggle de Vista + Trailing + Refresco).
+/// - **Desktop (>= 1024px)**: Barra de comandos unificada de alta densidad estilo Linear/Stripe (40dp)
+///   con alineación horizontal, micro-interacciones hover y cursores explícitos.
 ///
-/// Los atajos de teclado ya no se renderizan como badges literales en pantalla,
-/// sino limpiamente en el Tooltip contextual (tooltext) al posicionar el cursor.
-class AdminProToolbar extends StatelessWidget {
+/// Motor de Atajos de Teclado con Aislamiento de Foco Estricto:
+/// - [/] o [Alt+/] : Enfocar buscador.
+/// - [Esc]         : Limpiar búsqueda y desenfocar.
+/// - [R] o [Alt+R] : Recargar datos.
+/// - [N] o [Alt+N] : Nuevo registro (CTA principal).
+/// - [V] o [Alt+V] : Alternar vista Tabla/Tarjetas.
+/// - [F] o [Alt+F] : Abrir modal de filtros en móvil.
+/// Los atajos alfanuméricos se desactivan automáticamente si el usuario está escribiendo en cualquier
+/// campo de texto editable de la pantalla.
+class AdminProToolbar extends StatefulWidget {
   final TextEditingController searchController;
   final FocusNode? searchFocusNode;
   final String searchHint;
@@ -88,6 +97,28 @@ class AdminProToolbar extends StatelessWidget {
   final EdgeInsetsGeometry margin;
   final EdgeInsetsGeometry padding;
 
+  /// Si es true, oculta el botón de acción principal (CTA) en vista móvil (<640px)
+  /// para evitar duplicidad con el FloatingActionButton (FAB) inferior del Scaffold.
+  final bool hidePrimaryActionOnMobile;
+
+  /// Conteo opcional de filtros actualmente activos para renderizar el badge semántico.
+  final int? activeFiltersCount;
+
+  /// Callback para abrir un BottomSheet personalizado de filtros en móvil (ej. ProductsMobileFiltersSheet).
+  final VoidCallback? onOpenMobileFilters;
+
+  /// Constructor opcional para renderizar un BottomSheet de filtros en móvil.
+  final WidgetBuilder? mobileFiltersSheetBuilder;
+
+  /// Título para el BottomSheet modal de filtros en móvil.
+  final String mobileFiltersTitle;
+
+  /// Título para el BottomSheet modal de acciones secundarias (Importar/Exportar) en móvil.
+  final String mobileActionsTitle;
+
+  /// Activa o desactiva el motor de atajos de teclado con aislamiento de foco.
+  final bool enableKeyboardShortcuts;
+
   const AdminProToolbar({
     super.key,
     required this.searchController,
@@ -101,7 +132,7 @@ class AdminProToolbar extends StatelessWidget {
     this.filterWidgets = const [],
     this.viewToggleConfig,
     this.onRefresh,
-    this.refreshTooltip = 'Refrescar datos (Atajo: R)',
+    this.refreshTooltip = 'Refrescar datos',
     this.primaryAction,
     this.trailingActions,
     this.secondaryRow,
@@ -109,13 +140,137 @@ class AdminProToolbar extends StatelessWidget {
     this.isTablet,
     this.margin = const EdgeInsets.fromLTRB(16, 10, 16, 8),
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    this.hidePrimaryActionOnMobile = true,
+    this.activeFiltersCount,
+    this.onOpenMobileFilters,
+    this.mobileFiltersSheetBuilder,
+    this.mobileFiltersTitle = 'Filtros de Búsqueda',
+    this.mobileActionsTitle = 'Opciones y Herramientas',
+    this.enableKeyboardShortcuts = true,
   });
+
+  @override
+  State<AdminProToolbar> createState() => _AdminProToolbarState();
+}
+
+class _AdminProToolbarState extends State<AdminProToolbar> {
+  late final FocusNode _internalSearchFocusNode = FocusNode();
+
+  FocusNode get _effectiveSearchFocusNode =>
+      widget.searchFocusNode ?? _internalSearchFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enableKeyboardShortcuts) {
+      HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.enableKeyboardShortcuts) {
+      HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    }
+    _internalSearchFocusNode.dispose();
+    super.dispose();
+  }
+
+  // ── MOTOR DE AISLAMIENTO DE FOCO Y ATAJOS DE TECLADO ──────────────────────
+  bool _isTextInputActive() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    final context = primaryFocus.context;
+    if (context == null) return false;
+    return context.widget is EditableText ||
+        context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    final isInputActive = _isTextInputActive();
+
+    // Si el usuario está escribiendo activamente dentro de un campo de texto:
+    if (isInputActive) {
+      // Atajo Esc: limpia búsqueda y retira foco si el foco está en el buscador
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        if (widget.searchController.text.isNotEmpty) {
+          widget.searchController.clear();
+          widget.onClearSearch?.call();
+          widget.onSearchChanged?.call('');
+        }
+        FocusManager.instance.primaryFocus?.unfocus();
+        return true;
+      }
+      // Regla estricta: NO interceptar ninguna otra tecla si hay foco activo en un input
+      return false;
+    }
+
+    final isAlt = HardwareKeyboard.instance.isAltPressed;
+
+    // 1. Atajo [/] o [Alt+/] -> Enfocar buscador
+    if (event.logicalKey == LogicalKeyboardKey.slash ||
+        (isAlt && event.logicalKey == LogicalKeyboardKey.slash)) {
+      _effectiveSearchFocusNode.requestFocus();
+      return true;
+    }
+
+    // 2. Atajo [Esc] -> Limpiar búsqueda
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (widget.searchController.text.isNotEmpty) {
+        widget.searchController.clear();
+        widget.onClearSearch?.call();
+        widget.onSearchChanged?.call('');
+        return true;
+      }
+    }
+
+    // 3. Atajo [R] o [Alt+R] -> Refrescar datos
+    if (event.logicalKey == LogicalKeyboardKey.keyR) {
+      if (widget.onRefresh != null) {
+        HapticFeedback.selectionClick();
+        widget.onRefresh!();
+        return true;
+      }
+    }
+
+    // 4. Atajo [N] o [Alt+N] -> Acción principal (Crear)
+    if (event.logicalKey == LogicalKeyboardKey.keyN) {
+      if (widget.primaryAction != null) {
+        HapticFeedback.lightImpact();
+        widget.primaryAction!.onPressed();
+        return true;
+      }
+    }
+
+    // 5. Atajo [V] o [Alt+V] -> Alternar vista Tabla / Tarjetas
+    if (event.logicalKey == LogicalKeyboardKey.keyV) {
+      if (widget.viewToggleConfig != null) {
+        HapticFeedback.selectionClick();
+        widget.viewToggleConfig!.onToggleTableView(
+          !widget.viewToggleConfig!.isTableView,
+        );
+        return true;
+      }
+    }
+
+    // 6. Atajo [F] o [Alt+F] -> Filtros
+    if (event.logicalKey == LogicalKeyboardKey.keyF) {
+      if (widget.onOpenMobileFilters != null) {
+        widget.onOpenMobileFilters!();
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   // ── BUSCADOR LIMPIO CON ATRIBUTO TOOLTEXT ─────────────────────────────────
   Widget _buildSearchField({required bool isMobile}) {
     final searchTooltipMsg =
-        searchKeyHint != null && searchKeyHint!.isNotEmpty
-            ? 'Buscar (Atajo: $searchKeyHint)'
+        widget.searchKeyHint != null && widget.searchKeyHint!.isNotEmpty
+            ? 'Buscar (Atajo: ${widget.searchKeyHint} o Alt+${widget.searchKeyHint})'
             : 'Buscar';
 
     return SizedBox(
@@ -124,18 +279,18 @@ class AdminProToolbar extends StatelessWidget {
         message: searchTooltipMsg,
         waitDuration: const Duration(milliseconds: 600),
         child: TextField(
-          controller: searchController,
-          focusNode: searchFocusNode,
-          onChanged: onSearchChanged,
-          onSubmitted: onSearchSubmitted,
+          controller: widget.searchController,
+          focusNode: _effectiveSearchFocusNode,
+          onChanged: widget.onSearchChanged,
+          onSubmitted: widget.onSearchSubmitted,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 13.5,
             fontWeight: FontWeight.w500,
             color: AppColors.textPrimary,
           ),
           textAlignVertical: TextAlignVertical.center,
           decoration: InputDecoration(
-            hintText: searchHint,
+            hintText: widget.searchHint,
             hintStyle: const TextStyle(
               color: AppColors.textMuted,
               fontSize: 13,
@@ -147,7 +302,7 @@ class AdminProToolbar extends StatelessWidget {
               size: 19,
             ),
             suffixIcon: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: searchController,
+              valueListenable: widget.searchController,
               builder: (context, value, _) {
                 if (value.text.isNotEmpty) {
                   return IconButton(
@@ -158,16 +313,15 @@ class AdminProToolbar extends StatelessWidget {
                     ),
                     tooltip: 'Limpiar búsqueda (Atajo: Esc)',
                     onPressed: () {
-                      searchController.clear();
-                      if (onClearSearch != null) {
-                        onClearSearch!();
-                      } else if (onSearchChanged != null) {
-                        onSearchChanged!('');
+                      widget.searchController.clear();
+                      if (widget.onClearSearch != null) {
+                        widget.onClearSearch!();
+                      } else if (widget.onSearchChanged != null) {
+                        widget.onSearchChanged!('');
                       }
                     },
                   );
                 }
-                // Limpieza total: sin badges literales en el buscador
                 return const SizedBox.shrink();
               },
             ),
@@ -213,7 +367,7 @@ class AdminProToolbar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Tooltip(
-              message: config.tableTooltip,
+              message: '${config.tableTooltip} (Atajo: V)',
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
                 onTap: () {
@@ -254,7 +408,7 @@ class AdminProToolbar extends StatelessWidget {
             ),
             const SizedBox(width: 2),
             Tooltip(
-              message: config.cardsTooltip,
+              message: '${config.cardsTooltip} (Atajo: V)',
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
                 onTap: () {
@@ -310,10 +464,8 @@ class AdminProToolbar extends StatelessWidget {
             : (action.backgroundColor ?? AppColors.primary);
     final effectiveFgColor = action.foregroundColor ?? Colors.white;
 
-    final tooltipMsg =
-        action.keyHint != null && action.keyHint!.isNotEmpty
-            ? '${action.label} (Atajo: ${action.keyHint})'
-            : action.label;
+    final keyHint = action.keyHint ?? 'N';
+    final tooltipMsg = '${action.label} (Atajo: $keyHint o Alt+$keyHint)';
 
     return Tooltip(
       message: tooltipMsg,
@@ -345,22 +497,336 @@ class AdminProToolbar extends StatelessWidget {
               letterSpacing: -0.1,
             ),
           ),
-          // Limpieza total: ya no se renderiza ningún badge literal en la vista
         ),
       ),
+    );
+  }
+
+  // ── BOTÓN DE FILTROS AGRUPADOS PARA MÓVIL (APPLE HIG) ─────────────────────
+  Widget _buildMobileFiltersTriggerButton(BuildContext context) {
+    final count = widget.activeFiltersCount ?? 0;
+    final hasActive = count > 0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color:
+                hasActive
+                    ? AppColors.primary.withValues(alpha: 0.08)
+                    : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: hasActive ? AppColors.primary : AppColors.border,
+              width: hasActive ? 1.5 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Tooltip(
+            message: 'Filtros (Atajo: F)',
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                if (widget.onOpenMobileFilters != null) {
+                  widget.onOpenMobileFilters!();
+                } else if (widget.mobileFiltersSheetBuilder != null) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: widget.mobileFiltersSheetBuilder!,
+                  );
+                } else {
+                  _showDefaultMobileFiltersSheet(context);
+                }
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 46, minHeight: 46),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.tune_rounded,
+                      size: 20,
+                      color:
+                          hasActive
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                    ),
+                    if (hasActive) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (hasActive)
+          Positioned(
+            top: -3,
+            right: -3,
+            child: Container(
+              width: 9,
+              height: 9,
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── MODAL BOTTOM SHEET DE FILTROS POR DEFECTO PARA MÓVIL ──────────────────
+  void _showDefaultMobileFiltersSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.tune_rounded,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.mobileFiltersTitle,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        color: AppColors.textMuted,
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: AppColors.divider, height: 20),
+                  for (final filter in widget.filterWidgets) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: filter,
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Aplicar Filtros',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── BOTÓN DE ACCIONES SECUNDARIAS (IMPORTAR / EXPORTAR) EN MÓVIL ──────────
+  Widget _buildMobileTrailingActionsButton(BuildContext context) {
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Tooltip(
+        message: widget.mobileActionsTitle,
+        waitDuration: const Duration(milliseconds: 300),
+        child: IconButton(
+          onPressed: () => _showMobileTrailingActionsSheet(context),
+          icon: const Icon(
+            Icons.more_vert_rounded,
+            size: 20,
+            color: AppColors.textSecondary,
+          ),
+          constraints: const BoxConstraints(minWidth: 46, minHeight: 46),
+          padding: const EdgeInsets.all(11),
+        ),
+      ),
+    );
+  }
+
+  void _showMobileTrailingActionsSheet(BuildContext context) {
+    if (widget.trailingActions == null || widget.trailingActions!.isEmpty) {
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.more_horiz_rounded,
+                            size: 22,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.mobileActionsTitle,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        color: AppColors.textMuted,
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: AppColors.divider, height: 20),
+                  for (final action in widget.trailingActions!) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: action,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final bool useDesktopLayout = isDesktop ?? (width >= 1024);
+    final bool useDesktopLayout = widget.isDesktop ?? (width >= 1024);
     final bool useTabletLayout =
-        isTablet ?? (!useDesktopLayout && (width >= 640));
+        widget.isTablet ?? (!useDesktopLayout && (width >= 640));
 
     return Container(
-      margin: margin,
-      padding: padding,
+      margin: widget.margin,
+      padding: widget.padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(useDesktopLayout ? 14 : 16),
@@ -376,7 +842,9 @@ class AdminProToolbar extends StatelessWidget {
       child:
           useDesktopLayout
               ? _buildDesktopLayout()
-              : (useTabletLayout ? _buildTabletLayout() : _buildMobileLayout()),
+              : (useTabletLayout
+                  ? _buildTabletLayout()
+                  : _buildMobileLayout(context)),
     );
   }
 
@@ -385,61 +853,68 @@ class AdminProToolbar extends StatelessWidget {
     final primaryRow = Row(
       children: [
         // 1. Buscador expandido
-        Expanded(flex: searchFlex, child: _buildSearchField(isMobile: false)),
+        Expanded(
+          flex: widget.searchFlex,
+          child: _buildSearchField(isMobile: false),
+        ),
 
         // 2. Filtros centrales modulares
-        for (final filter in filterWidgets) ...[
+        for (final filter in widget.filterWidgets) ...[
           const SizedBox(width: 10),
           filter,
         ],
 
         // 3. Switch de visualización
-        if (viewToggleConfig != null) ...[
+        if (widget.viewToggleConfig != null) ...[
           const SizedBox(width: 10),
-          _buildViewModeToggle(viewToggleConfig!),
+          _buildViewModeToggle(widget.viewToggleConfig!),
         ],
 
         // 4. Botón de refresco con rotación interactiva
-        if (onRefresh != null) ...[
+        if (widget.onRefresh != null) ...[
           const SizedBox(width: 8),
-          _AdminProRefreshButton(onRefresh: onRefresh, tooltip: refreshTooltip),
+          _AdminProRefreshButton(
+            onRefresh: widget.onRefresh,
+            tooltip: widget.refreshTooltip,
+          ),
         ],
 
         // 5. Acciones extra opcionales (ej: Exportar, Importar)
-        if (trailingActions != null)
-          for (final action in trailingActions!) ...[
+        if (widget.trailingActions != null)
+          for (final action in widget.trailingActions!) ...[
             const SizedBox(width: 8),
             action,
           ],
 
         // 6. Botón de acción principal (CTA)
-        if (primaryAction != null) ...[
+        if (widget.primaryAction != null) ...[
           const SizedBox(width: 8),
-          _buildPrimaryActionButton(primaryAction!, isMobile: false),
+          _buildPrimaryActionButton(widget.primaryAction!, isMobile: false),
         ],
       ],
     );
 
-    if (secondaryRow == null) {
+    if (widget.secondaryRow == null) {
       return primaryRow;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
-      children: [primaryRow, const SizedBox(height: 12), secondaryRow!],
+      children: [primaryRow, const SizedBox(height: 12), widget.secondaryRow!],
     );
   }
 
   // ── 2. TABLET LAYOUT (EFICIENCIA HÍBRIDA EN 2 NIVELES EQUILIBRADOS) ───────
   Widget _buildTabletLayout() {
     final showToggleOnTablet =
-        viewToggleConfig != null && viewToggleConfig!.showOnTablet;
+        widget.viewToggleConfig != null &&
+        widget.viewToggleConfig!.showOnTablet;
     final hasSecondaryItems =
-        filterWidgets.isNotEmpty ||
+        widget.filterWidgets.isNotEmpty ||
         showToggleOnTablet ||
-        onRefresh != null ||
-        (trailingActions != null && trailingActions!.isNotEmpty);
+        widget.onRefresh != null ||
+        (widget.trailingActions != null && widget.trailingActions!.isNotEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -449,9 +924,9 @@ class AdminProToolbar extends StatelessWidget {
         Row(
           children: [
             Expanded(child: _buildSearchField(isMobile: false)),
-            if (primaryAction != null) ...[
+            if (widget.primaryAction != null) ...[
               const SizedBox(width: 10),
-              _buildPrimaryActionButton(primaryAction!, isMobile: false),
+              _buildPrimaryActionButton(widget.primaryAction!, isMobile: false),
             ],
           ],
         ),
@@ -466,7 +941,7 @@ class AdminProToolbar extends StatelessWidget {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      for (final filter in filterWidgets) ...[
+                      for (final filter in widget.filterWidgets) ...[
                         filter,
                         const SizedBox(width: 8),
                       ],
@@ -476,94 +951,92 @@ class AdminProToolbar extends StatelessWidget {
               ),
               if (showToggleOnTablet) ...[
                 const SizedBox(width: 8),
-                _buildViewModeToggle(viewToggleConfig!),
+                _buildViewModeToggle(widget.viewToggleConfig!),
               ],
-              if (onRefresh != null) ...[
+              if (widget.onRefresh != null) ...[
                 const SizedBox(width: 6),
                 _AdminProRefreshButton(
-                  onRefresh: onRefresh,
-                  tooltip: refreshTooltip,
+                  onRefresh: widget.onRefresh,
+                  tooltip: widget.refreshTooltip,
                 ),
               ],
-              if (trailingActions != null)
-                for (final action in trailingActions!) ...[
+              if (widget.trailingActions != null)
+                for (final action in widget.trailingActions!) ...[
                   const SizedBox(width: 6),
                   action,
                 ],
             ],
           ),
         ],
-        if (secondaryRow != null) ...[
+        if (widget.secondaryRow != null) ...[
           const SizedBox(height: 10),
-          secondaryRow!,
+          widget.secondaryRow!,
         ],
       ],
     );
   }
 
-  // ── 3. MOBILE LAYOUT (APPLE HIG, TOUCH TARGETS 46DP, CTA PRIORITARIO) ─────
-  Widget _buildMobileLayout() {
+  // ── 3. MOBILE LAYOUT (APPLE HIG, 1 FILA COMPACTA, CTA DELEGADO AL FAB) ───
+  Widget _buildMobileLayout(BuildContext context) {
+    final hasFilters =
+        widget.filterWidgets.isNotEmpty ||
+        widget.onOpenMobileFilters != null ||
+        widget.mobileFiltersSheetBuilder != null;
+    final hasTrailing =
+        widget.trailingActions != null && widget.trailingActions!.isNotEmpty;
     final showToggleOnMobile =
-        viewToggleConfig != null && viewToggleConfig!.showOnMobile;
-    final hasMiddleOrEndItems =
-        primaryAction != null ||
-        filterWidgets.isNotEmpty ||
-        showToggleOnMobile ||
-        (trailingActions != null && trailingActions!.isNotEmpty);
+        widget.viewToggleConfig != null &&
+        widget.viewToggleConfig!.showOnMobile;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Fila superior: Buscador táctil (46dp) + Botón de refresco integrado
+        // Fila compacta de comandos (46dp de altura táctil)
         Row(
           children: [
+            // Buscador expandido
             Expanded(child: _buildSearchField(isMobile: true)),
-            if (onRefresh != null) ...[
-              const SizedBox(width: 6),
+
+            // Botón de Filtros agrupados (con badge de activos)
+            if (hasFilters) ...[
+              const SizedBox(width: 8),
+              _buildMobileFiltersTriggerButton(context),
+            ],
+
+            // Alternador de vista (si habilitado en móvil)
+            if (showToggleOnMobile) ...[
+              const SizedBox(width: 8),
+              _buildViewModeToggle(widget.viewToggleConfig!),
+            ],
+
+            // Acciones secundarias (Importar / Exportar colapsadas en menú)
+            if (hasTrailing) ...[
+              const SizedBox(width: 8),
+              _buildMobileTrailingActionsButton(context),
+            ],
+
+            // Botón de Refresco
+            if (widget.onRefresh != null) ...[
+              const SizedBox(width: 8),
               _AdminProRefreshButton(
-                onRefresh: onRefresh,
-                tooltip: refreshTooltip,
+                onRefresh: widget.onRefresh,
+                tooltip: widget.refreshTooltip,
               ),
             ],
           ],
         ),
-        // Fila inferior: CTA SIEMPRE visible primero + Filtros táctiles elásticos
-        if (hasMiddleOrEndItems) ...[
+
+        // CTA Principal en móvil SOLO si se solicita explícitamente no ocultarlo
+        if (!widget.hidePrimaryActionOnMobile &&
+            widget.primaryAction != null) ...[
           const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                // CTA Principal primero en móvil para visibilidad instantánea
-                if (primaryAction != null) ...[
-                  _buildPrimaryActionButton(primaryAction!, isMobile: true),
-                  const SizedBox(width: 8),
-                ],
-                // Alternador de vista (si habilitado en móvil)
-                if (showToggleOnMobile) ...[
-                  _buildViewModeToggle(viewToggleConfig!),
-                  const SizedBox(width: 8),
-                ],
-                // Filtros modulares
-                for (final filter in filterWidgets) ...[
-                  filter,
-                  const SizedBox(width: 8),
-                ],
-                // Acciones extra
-                if (trailingActions != null)
-                  for (final action in trailingActions!) ...[
-                    action,
-                    const SizedBox(width: 8),
-                  ],
-              ],
-            ),
-          ),
+          _buildPrimaryActionButton(widget.primaryAction!, isMobile: true),
         ],
-        if (secondaryRow != null) ...[
+
+        if (widget.secondaryRow != null) ...[
           const SizedBox(height: 10),
-          secondaryRow!,
+          widget.secondaryRow!,
         ],
       ],
     );
@@ -609,8 +1082,13 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTooltip =
+        widget.tooltip.contains('Atajo')
+            ? widget.tooltip
+            : '${widget.tooltip} (Atajo: R o Alt+R)';
+
     return Tooltip(
-      message: widget.tooltip,
+      message: effectiveTooltip,
       waitDuration: const Duration(milliseconds: 300),
       child: IconButton(
         onPressed: widget.onRefresh != null ? _handleTap : null,
