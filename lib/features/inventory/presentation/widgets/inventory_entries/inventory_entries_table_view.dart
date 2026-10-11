@@ -242,7 +242,7 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
         AdminTableColumn<InventoryEntryEntity>(
           id: 'supplier',
           label: 'PROVEEDOR',
-          flex: 4,
+          flex: 3,
           isSortable: true,
           tooltip: 'Proveedor que despachó la mercadería',
           cellBuilder: (context, entry) {
@@ -286,7 +286,7 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
         AdminTableColumn<InventoryEntryEntity>(
           id: 'warehouse',
           label: 'ALMACÉN',
-          fixedWidth: 135,
+          flex: 2,
           isSortable: true,
           tooltip: 'Almacén donde ingresó el stock',
           cellBuilder: (context, entry) {

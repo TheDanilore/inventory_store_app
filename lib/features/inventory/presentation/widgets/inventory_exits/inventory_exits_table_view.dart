@@ -256,7 +256,7 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
         AdminTableColumn<InventoryExitEntity>(
           id: 'reason',
           label: 'MOTIVO',
-          flex: 4,
+          fixedWidth: 165,
           isSortable: true,
           tooltip: 'Causa o destino de la salida',
           cellBuilder: (context, exit) {
@@ -271,7 +271,7 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
         AdminTableColumn<InventoryExitEntity>(
           id: 'warehouse',
           label: 'ALMACÉN ORIGEN',
-          fixedWidth: 140,
+          flex: 3,
           isSortable: true,
           tooltip: 'Almacén de donde se descontó el stock',
           cellBuilder: (context, exit) {

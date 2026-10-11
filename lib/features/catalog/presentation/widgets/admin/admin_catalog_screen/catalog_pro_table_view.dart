@@ -225,7 +225,7 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                 AdminTableColumn<ProductEntity>(
                   id: 'stock',
                   label: 'STOCK DISPONIBLE',
-                  flex: 2,
+                  fixedWidth: 140,
                   isSortable: true,
                   cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
                 ),
@@ -234,7 +234,7 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                 AdminTableColumn<ProductEntity>(
                   id: 'price',
                   label: 'PRECIO VENTA',
-                  flex: 2,
+                  fixedWidth: 135,
                   isSortable: true,
                   cellBuilder: (context, product) {
                     if (product.displaySalePrice != null) {
@@ -256,7 +256,7 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                 AdminTableColumn<ProductEntity>(
                   id: 'status',
                   label: 'ESTADO',
-                  flex: 2,
+                  fixedWidth: 110,
                   isSortable: true,
                   cellBuilder: (context, product) => ProductStatusPill(
                     isActive: product.isActive,

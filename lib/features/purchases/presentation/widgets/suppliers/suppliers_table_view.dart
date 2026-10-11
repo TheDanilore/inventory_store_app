@@ -235,7 +235,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
         AdminTableColumn<SupplierEntity>(
           id: 'contact',
           label: 'Contacto Comercial',
-          flex: 4,
+          flex: 3,
           isSortable: true,
           cellBuilder: (context, supplier) {
             if (supplier.contactName != null && supplier.contactName!.isNotEmpty) {
@@ -277,7 +277,7 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
         AdminTableColumn<SupplierEntity>(
           id: 'channels',
           label: 'Canales Directos',
-          flex: 4,
+          fixedWidth: 135,
           isSortable: false,
           cellBuilder: (context, supplier) {
             return Row(

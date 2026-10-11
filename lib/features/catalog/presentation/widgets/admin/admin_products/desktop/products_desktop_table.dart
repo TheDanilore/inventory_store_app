@@ -284,7 +284,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         AdminTableColumn<ProductEntity>(
           id: 'type',
           label: 'TIPO',
-          flex: 2,
+          fixedWidth: 120,
           cellBuilder: (context, product) => ProductTypeBadge(type: product.productType),
         ),
 
@@ -292,7 +292,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         AdminTableColumn<ProductEntity>(
           id: 'price',
           label: 'PRECIO VENTA',
-          flex: 2,
+          fixedWidth: 135,
           isSortable: true,
           cellBuilder: (context, product) {
             if (product.productVariants.length > 1 &&
@@ -331,7 +331,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         AdminTableColumn<ProductEntity>(
           id: 'stock',
           label: 'STOCK TOTAL',
-          flex: 2,
+          fixedWidth: 130,
           isSortable: true,
           cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
         ),
@@ -340,7 +340,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         AdminTableColumn<ProductEntity>(
           id: 'status',
           label: 'ESTADO',
-          flex: 2,
+          fixedWidth: 110,
           isSortable: true,
           cellBuilder: (context, product) => ProductStatusPill(
             isActive: product.isActive,

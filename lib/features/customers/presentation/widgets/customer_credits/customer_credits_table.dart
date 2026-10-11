@@ -300,7 +300,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         AdminTableColumn<CustomerCreditEntity>(
           id: 'status',
           label: 'ESTADO',
-          flex: 2,
+          fixedWidth: 125,
           isSortable: true,
           tooltip: 'Estado de la línea de crédito',
           cellBuilder: (context, account) {
@@ -318,7 +318,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         AdminTableColumn<CustomerCreditEntity>(
           id: 'debt',
           label: 'DEUDA ACTUAL',
-          flex: 2,
+          fixedWidth: 135,
           alignment: Alignment.centerRight,
           isSortable: true,
           tooltip: 'Saldo deudor acumulado',
@@ -359,7 +359,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         AdminTableColumn<CustomerCreditEntity>(
           id: 'limit',
           label: 'LÍMITE TOTAL',
-          flex: 2,
+          fixedWidth: 135,
           alignment: Alignment.centerRight,
           isSortable: true,
           tooltip: 'Límite autorizado para crédito',
@@ -416,7 +416,7 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         AdminTableColumn<CustomerCreditEntity>(
           id: 'available',
           label: 'DISPONIBLE',
-          flex: 2,
+          fixedWidth: 135,
           alignment: Alignment.centerRight,
           isSortable: true,
           tooltip: 'Saldo de crédito disponible para compras',
