@@ -8,10 +8,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 
-typedef VariantDraftUpdateCallback = void Function(
-  VariantDraftFormModel newDraft, {
-  bool syncState,
-});
+typedef VariantDraftUpdateCallback =
+    void Function(VariantDraftFormModel newDraft, {bool syncState});
 
 class VariantDraftCard extends StatefulWidget {
   final int index;
@@ -148,14 +146,16 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         widget.draft.unitCost != unitCostCtrl.text) {
       unitCostCtrl.text = widget.draft.unitCost;
     }
-    final currentCompleted = _selectedAttributes
-        .where((a) => a.attributeId != null && a.valueId != null)
-        .map((a) => '${a.attributeId}:${a.valueId}')
-        .toSet();
-    final newCompleted = widget.draft.selectedAttributes
-        .where((a) => a['attribute_id'] != null && a['value_id'] != null)
-        .map((a) => '${a['attribute_id']}:${a['value_id']}')
-        .toSet();
+    final currentCompleted =
+        _selectedAttributes
+            .where((a) => a.attributeId != null && a.valueId != null)
+            .map((a) => '${a.attributeId}:${a.valueId}')
+            .toSet();
+    final newCompleted =
+        widget.draft.selectedAttributes
+            .where((a) => a['attribute_id'] != null && a['value_id'] != null)
+            .map((a) => '${a['attribute_id']}:${a['value_id']}')
+            .toSet();
     if (!setEquals(currentCompleted, newCompleted)) {
       _selectedAttributes.clear();
       _parseInitialAttributes();
@@ -289,11 +289,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         height: 34,
         placeholder: (context, url) => Container(color: Colors.grey.shade100),
         errorWidget:
-            (context, url, error) => const Icon(
-              Icons.broken_image,
-              size: 15,
-              color: Colors.grey,
-            ),
+            (context, url, error) =>
+                const Icon(Icons.broken_image, size: 15, color: Colors.grey),
       );
     } else if (widget.draft.externalImageUrl != null &&
         widget.draft.externalImageUrl!.isNotEmpty) {
@@ -304,11 +301,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
         height: 34,
         placeholder: (context, url) => Container(color: Colors.grey.shade100),
         errorWidget:
-            (context, url, error) => const Icon(
-              Icons.broken_image,
-              size: 15,
-              color: Colors.grey,
-            ),
+            (context, url, error) =>
+                const Icon(Icons.broken_image, size: 15, color: Colors.grey),
       );
     }
 
@@ -323,11 +317,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       clipBehavior: Clip.antiAlias,
       child:
           img ??
-          Icon(
-            Icons.layers_outlined,
-            size: 18,
-            color: Colors.grey.shade400,
-          ),
+          Icon(Icons.layers_outlined, size: 18, color: Colors.grey.shade400),
     );
   }
 
@@ -420,10 +410,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     vertical: 2.5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.teal.withValues(alpha: 0.08),
+                                    color: AppColors.teal.withValues(
+                                      alpha: 0.08,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: AppColors.teal.withValues(alpha: 0.25),
+                                      color: AppColors.teal.withValues(
+                                        alpha: 0.25,
+                                      ),
                                     ),
                                   ),
                                   child: Text(
@@ -453,7 +447,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                                 child: Text(
                                   'SKU: $sku',
@@ -470,14 +466,22 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
 
                           // Precio de venta y Margen
                           ListenableBuilder(
-                            listenable: Listenable.merge([priceCtrl, unitCostCtrl]),
+                            listenable: Listenable.merge([
+                              priceCtrl,
+                              unitCostCtrl,
+                            ]),
                             builder: (context, _) {
                               final priceText = priceCtrl.text.trim();
-                              if (priceText.isEmpty) return const SizedBox.shrink();
+                              if (priceText.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
                               final p = double.tryParse(priceText) ?? 0.0;
-                              final c = double.tryParse(unitCostCtrl.text.trim()) ?? 0.0;
+                              final c =
+                                  double.tryParse(unitCostCtrl.text.trim()) ??
+                                  0.0;
                               final hasCost = c > 0 && p > 0;
-                              final margin = hasCost ? ((p - c) / p) * 100 : 0.0;
+                              final margin =
+                                  hasCost ? ((p - c) / p) * 100 : 0.0;
 
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -498,11 +502,18 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         vertical: 1.5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: margin >= 25
-                                            ? AppColors.success.withValues(alpha: 0.12)
-                                            : margin > 0
-                                                ? AppColors.warning.withValues(alpha: 0.12)
-                                                : AppColors.error.withValues(alpha: 0.12),
+                                        color:
+                                            margin >= 25
+                                                ? AppColors.success.withValues(
+                                                  alpha: 0.12,
+                                                )
+                                                : margin > 0
+                                                ? AppColors.warning.withValues(
+                                                  alpha: 0.12,
+                                                )
+                                                : AppColors.error.withValues(
+                                                  alpha: 0.12,
+                                                ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -510,9 +521,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: margin >= 25
-                                              ? AppColors.success
-                                              : margin > 0
+                                          color:
+                                              margin >= 25
+                                                  ? AppColors.success
+                                                  : margin > 0
                                                   ? AppColors.warning
                                                   : AppColors.error,
                                         ),
@@ -621,7 +633,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   icon: Icons.qr_code_2_rounded,
                                   hintText: 'Ej: PROD-001',
                                   validator: (val) {
-                                    if (val != null && val.isNotEmpty && val.trim().isEmpty) {
+                                    if (val != null &&
+                                        val.isNotEmpty &&
+                                        val.trim().isEmpty) {
                                       return 'SKU inválido';
                                     }
                                     return null;
@@ -642,7 +656,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   validator: (val) {
                                     if (val != null && val.trim().isNotEmpty) {
                                       final n = int.tryParse(val.trim());
-                                      if (n == null || n < 0) return 'No negativo';
+                                      if (n == null || n < 0) {
+                                        return 'No negativo';
+                                      }
                                     }
                                     return null;
                                   },
@@ -691,7 +707,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         unitCostCtrl,
                                         priceCtrl,
                                       ]),
-                                      builder: (context, _) => _buildMarginBadge(),
+                                      builder:
+                                          (context, _) => _buildMarginBadge(),
                                     ),
                                   ],
                                 ),
@@ -724,9 +741,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                           ),
                                         ],
                                         validator: (val) {
-                                          if (val != null && val.trim().isNotEmpty) {
-                                            final n = double.tryParse(val.trim());
-                                            if (n == null || n < 0) return 'No negativo';
+                                          if (val != null &&
+                                              val.trim().isNotEmpty) {
+                                            final n = double.tryParse(
+                                              val.trim(),
+                                            );
+                                            if (n == null || n < 0) {
+                                              return 'No negativo';
+                                            }
                                           }
                                           return null;
                                         },
@@ -757,7 +779,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                           ),
                                         ],
                                         validator: (val) {
-                                          if (val == null || val.trim().isEmpty) {
+                                          if (val == null ||
+                                              val.trim().isEmpty) {
                                             return 'Requerido';
                                           }
                                           final n = double.tryParse(val.trim());
@@ -799,9 +822,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                           ),
                                         ],
                                         validator: (val) {
-                                          if (val != null && val.trim().isNotEmpty) {
-                                            final n = double.tryParse(val.trim());
-                                            if (n == null || n <= 0) return 'Debe ser > 0';
+                                          if (val != null &&
+                                              val.trim().isNotEmpty) {
+                                            final n = double.tryParse(
+                                              val.trim(),
+                                            );
+                                            if (n == null || n <= 0) {
+                                              return 'Debe ser > 0';
+                                            }
                                           }
                                           return null;
                                         },
@@ -827,8 +855,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                               .digitsOnly,
                                         ],
                                         validator: (val) {
-                                          if (wholesalePriceCtrl.text.trim().isNotEmpty) {
-                                            if (val == null || val.trim().isEmpty) {
+                                          if (wholesalePriceCtrl.text
+                                              .trim()
+                                              .isNotEmpty) {
+                                            if (val == null ||
+                                                val.trim().isEmpty) {
                                               return 'Requerido';
                                             }
                                             final n = int.tryParse(val.trim());
@@ -917,11 +948,15 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                     CachedNetworkImage(
                                       imageUrl: widget.draft.externalImageUrl!,
                                       fit: BoxFit.cover,
-                                      placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.broken_image, color: Colors.red),
+                                      placeholder:
+                                          (context, url) => const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                      errorWidget:
+                                          (context, url, error) => const Icon(
+                                            Icons.broken_image,
+                                            color: Colors.red,
+                                          ),
                                     ),
                                     onDelete: () {
                                       widget.onUpdate(
@@ -975,15 +1010,17 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
     final isPositive = marginPercent > 0;
     final isHealthy = marginPercent >= 25;
 
-    final color = isHealthy
-        ? AppColors.success
-        : isPositive
+    final color =
+        isHealthy
+            ? AppColors.success
+            : isPositive
             ? Colors.orange.shade700
             : AppColors.error;
 
-    final bgColor = isHealthy
-        ? AppColors.success.withValues(alpha: 0.1)
-        : isPositive
+    final bgColor =
+        isHealthy
+            ? AppColors.success.withValues(alpha: 0.1)
+            : isPositive
             ? Colors.orange.shade50
             : AppColors.error.withValues(alpha: 0.1);
 
@@ -1001,8 +1038,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             isHealthy
                 ? Icons.trending_up_rounded
                 : isPositive
-                    ? Icons.remove_rounded
-                    : Icons.warning_amber_rounded,
+                ? Icons.remove_rounded
+                : Icons.warning_amber_rounded,
             size: 13,
             color: color,
           ),
@@ -1106,7 +1143,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             border: Border.all(
                               color:
                                   hasKey
-                                      ? AppColors.primary.withValues(alpha: 0.45)
+                                      ? AppColors.primary.withValues(
+                                        alpha: 0.45,
+                                      )
                                       : Colors.grey.shade300,
                             ),
                           ),
@@ -1115,7 +1154,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  hasKey ? row.attributeName : 'Propiedad...',
+                                  hasKey
+                                      ? row.attributeName
+                                      : 'Buscar propiedad...',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color:
@@ -1132,9 +1173,12 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                 ),
                               ),
                               Icon(
-                                Icons.arrow_drop_down_rounded,
-                                size: 20,
-                                color: hasKey ? AppColors.primary : Colors.grey.shade400,
+                                Icons.search_rounded,
+                                size: 18,
+                                color:
+                                    hasKey
+                                        ? AppColors.primary
+                                        : Colors.grey.shade400,
                               ),
                             ],
                           ),
@@ -1171,7 +1215,9 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             border: Border.all(
                               color:
                                   hasValue
-                                      ? AppColors.primary.withValues(alpha: 0.45)
+                                      ? AppColors.primary.withValues(
+                                        alpha: 0.45,
+                                      )
                                       : Colors.grey.shade300,
                             ),
                           ),
@@ -1180,7 +1226,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  hasValue ? row.valueName : 'Valor...',
+                                  hasValue ? row.valueName : 'Buscar valor...',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color:
@@ -1197,9 +1243,12 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                 ),
                               ),
                               Icon(
-                                Icons.arrow_drop_down_rounded,
-                                size: 20,
-                                color: hasValue ? AppColors.primary : Colors.grey.shade400,
+                                Icons.search_rounded,
+                                size: 18,
+                                color:
+                                    hasValue
+                                        ? AppColors.primary
+                                        : Colors.grey.shade400,
                               ),
                             ],
                           ),
@@ -1217,7 +1266,10 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                     ),
                     tooltip: 'Eliminar propiedad',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                     splashRadius: 16,
                   ),
                 ],
@@ -1279,11 +1331,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.link_rounded,
-                  color: Colors.blueGrey,
-                  size: 22,
-                ),
+                Icon(Icons.link_rounded, color: Colors.blueGrey, size: 22),
                 SizedBox(height: 4),
                 Text(
                   'URL',
@@ -1329,12 +1377,14 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
       },
     );
     if (url != null && url!.isNotEmpty) {
-      widget.onUpdate(widget.draft.copyWith(
-        externalImageUrl: url,
-        urlsExistentes: [], // Limpiar otras
-        nuevasImagenes: [],
-        clearExternalImageUrl: false,
-      ));
+      widget.onUpdate(
+        widget.draft.copyWith(
+          externalImageUrl: url,
+          urlsExistentes: [], // Limpiar otras
+          nuevasImagenes: [],
+          clearExternalImageUrl: false,
+        ),
+      );
       if (mounted) setState(() {});
     }
   }

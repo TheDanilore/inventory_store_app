@@ -147,7 +147,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       barcode: barcode ?? current.barcode,
       price: price ?? current.price,
       wholesalePrice: wholesalePrice ?? current.wholesalePrice,
-      wholesaleMinQuantity: wholesaleMinQuantity ?? current.wholesaleMinQuantity,
+      wholesaleMinQuantity:
+          wholesaleMinQuantity ?? current.wholesaleMinQuantity,
       reorderPoint: reorderPoint ?? current.reorderPoint,
       unitCost: unitCost ?? current.unitCost,
     );
@@ -221,7 +222,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   void markAsDirty() {
-    if (!_isDirty) _isDirty = true;
+    if (!_isDirty) {
+      _isDirty = true;
+      emit(state.copyWith(isDirty: true));
+    }
   }
 
   // ── Inicialización ───────────────────────────────────────────────────────────
@@ -233,6 +237,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _isInitializingData = true;
     _hasErrorLoading = false;
     _errorMessage = '';
+    _isDirty = false;
     _detailRows = [];
     _ingredientRows = [];
     _formImages = [];
@@ -300,7 +305,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         if (_variantDrafts.isEmpty) {
           _variantDrafts = [VariantDraftFormModel()];
         }
-        _hasMultipleVariants = targetProduct.productVariants.length > 1 ||
+        _hasMultipleVariants =
+            targetProduct.productVariants.length > 1 ||
             (targetProduct.productVariants.length == 1 &&
                 targetProduct.productVariants.first.attributeValues.isNotEmpty);
 
@@ -312,10 +318,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } else {
         _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
         _hasMultipleVariants = false;
-        await Future.wait([
-          _fetchCategories(),
-          _fetchBrands(),
-        ]);
+        await Future.wait([_fetchCategories(), _fetchBrands()]);
       }
     } catch (e) {
       _hasErrorLoading = true;
@@ -451,9 +454,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     if (archivos.isEmpty) {
       try {
-        final files = await FilePicker.pickFiles(
-          type: FileType.image,
-        );
+        final files = await FilePicker.pickFiles(type: FileType.image);
         if (files.isNotEmpty) {
           for (final f in files) {
             final bytes = await f.readAsBytes();
@@ -485,7 +486,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (currentCount >= maxImages) {
       emit(
         state.copyWith(
-          snackMessage: 'Límite de imágenes alcanzado ($maxImages fotos máximo).',
+          snackMessage:
+              'Límite de imágenes alcanzado ($maxImages fotos máximo).',
         ),
       );
       return;
@@ -530,7 +532,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (duplicadas > 0 || excedidas > 0) {
       String msg = '';
       if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
-      if (excedidas > 0) msg += '$excedidas exceden el límite de $maxImages fotos.';
+      if (excedidas > 0) {
+        msg += '$excedidas exceden el límite de $maxImages fotos.';
+      }
       snackMsg = msg.trim();
     }
 
@@ -552,7 +556,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (_formImages.length >= maxImages) {
       emit(
         state.copyWith(
-          snackMessage: 'Límite de imágenes alcanzado ($maxImages fotos máximo).',
+          snackMessage:
+              'Límite de imágenes alcanzado ($maxImages fotos máximo).',
         ),
       );
       return;
@@ -702,7 +707,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }) async {
     final cleanNombre = nombre.trim();
     if (cleanNombre.isEmpty) {
-      emit(state.copyWith(snackError: 'El nombre del producto es obligatorio.'));
+      emit(
+        state.copyWith(snackError: 'El nombre del producto es obligatorio.'),
+      );
       return;
     }
 
@@ -989,7 +996,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
     if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
-    if (kIsWeb) return bytesOriginales; // En Web evita fallos de isolates/workers
+    if (kIsWeb) {
+      return bytesOriginales; // En Web evita fallos de isolates/workers
+    }
     try {
       return await IsolateUtils.run(() async {
         final bytesComprimidos = await FlutterImageCompress.compressWithList(
