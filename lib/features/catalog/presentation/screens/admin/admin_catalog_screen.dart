@@ -79,28 +79,15 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         context.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 
-  Future<void> _navigateToProductForm({ProductEntity? product}) async {
-    final cubit = context.read<AdminCatalogCubit>();
+  void _navigateToProductForm({ProductEntity? product}) {
     final uri = product != null
         ? '/products/product-form/${product.id}'
         : '/products/product-form';
 
-    final result = await context.push<bool>(
+    context.go(
       uri,
       extra: product != null ? {'productToEdit': product} : null,
     );
-
-    if (result == true && mounted) {
-      await cubit.refreshProducts(forceRefresh: true);
-      if (_selectedProduct != null &&
-          product != null &&
-          _selectedProduct!.id == product.id) {
-        setState(() => _selectedProduct = null);
-      }
-    } else if (mounted) {
-      // Re-sincronizar cabecera del catálogo tras volver del formulario
-      setState(() {});
-    }
   }
 
   void _handleProductInteraction({

@@ -14,14 +14,14 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/common/products_floating_bulk_bar.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_command_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_table.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_command_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_filters_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
@@ -42,6 +42,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   late final FocusNode _screenFocusNode;
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
+  bool _isTableView = true;
 
   // Selección múltiple aislada mediante ValueNotifier (previene re-renders globales)
   final ValueNotifier<Set<String>> _selectedProductIdsNotifier =
@@ -126,6 +127,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         type: SnackbarType.info,
         duration: const Duration(seconds: 2),
       );
+      return KeyEventResult.handled;
+    }
+
+    // Atajo [V] -> Alternar Vista (Tabla Pro vs Tarjetas)
+    if (key == LogicalKeyboardKey.keyV) {
+      setState(() => _isTableView = !_isTableView);
       return KeyEventResult.handled;
     }
 
@@ -258,6 +265,421 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
+  int _countActiveFilters(AdminCatalogState state) {
+    int count = 0;
+    if (state.stockFilter != CatalogStockFilter.all) count++;
+    if (state.selectedCategoryId != null) count++;
+    if (state.selectedBrandId != null) count++;
+    if (state.filterIsActive != null) count++;
+    if (state.searchByIngredient) count++;
+    return count;
+  }
+
+  Widget _buildDropdownContainer({
+    required bool isFiltered,
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color:
+            isFiltered
+                ? AppColors.teal.withValues(alpha: 0.1)
+                : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
+          width: isFiltered ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 15,
+            color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
+              color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 16,
+            color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryDropdown(
+    BuildContext context,
+    AdminCatalogState state,
+    AdminCatalogCubit cubit,
+  ) {
+    final isFiltered = state.selectedCategoryId != null;
+    final selectedCategory =
+        state.categories
+            .where((c) => c.id == state.selectedCategoryId)
+            .firstOrNull;
+    final selectedCategoryName =
+        selectedCategory?.name ?? 'Todas las Categorías';
+
+    return PopupMenuButton<String?>(
+      initialValue: state.selectedCategoryId,
+      offset: const Offset(0, 44),
+      tooltip: 'Filtrar por categoría',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: cubit.setCategory,
+      itemBuilder:
+          (context) => [
+            const PopupMenuItem<String?>(
+              value: null,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.category_outlined,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Todas las Categorías', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            ...state.categories.map(
+              (c) => PopupMenuItem<String?>(
+                value: c.id,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.folder_outlined,
+                      size: 16,
+                      color:
+                          state.selectedCategoryId == c.id
+                              ? AppColors.teal
+                              : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        c.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              state.selectedCategoryId == c.id
+                                  ? FontWeight.w700
+                                  : FontWeight.normal,
+                          color:
+                              state.selectedCategoryId == c.id
+                                  ? AppColors.tealDark
+                                  : AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+      child: _buildDropdownContainer(
+        isFiltered: isFiltered,
+        icon: Icons.category_rounded,
+        label:
+            isFiltered
+                ? 'Categoría: $selectedCategoryName'
+                : 'Todas las Categorías',
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown(
+    BuildContext context,
+    AdminCatalogState state,
+    AdminCatalogCubit cubit,
+  ) {
+    final isFiltered = state.filterIsActive != null;
+    final statusLabel =
+        state.filterIsActive == null
+            ? 'Todos los Estados'
+            : (state.filterIsActive! ? 'Solo Activos' : 'Solo Inactivos');
+
+    return PopupMenuButton<bool?>(
+      initialValue: state.filterIsActive,
+      offset: const Offset(0, 44),
+      tooltip: 'Filtrar por estado activo/inactivo',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: cubit.setFilterIsActive,
+      itemBuilder:
+          (context) => const [
+            PopupMenuItem(
+              value: null,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.list_alt_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Todos los Estados', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: true,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.success,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Solo Activos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: false,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cancel_rounded,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Solo Inactivos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      child: _buildDropdownContainer(
+        isFiltered: isFiltered,
+        icon: Icons.visibility_outlined,
+        label: statusLabel,
+      ),
+    );
+  }
+
+  Widget _buildStockDropdown(
+    BuildContext context,
+    AdminCatalogState state,
+    AdminCatalogCubit cubit,
+  ) {
+    final isFiltered = state.stockFilter != CatalogStockFilter.all;
+    String stockLabel = 'Cualquier Stock';
+    if (state.stockFilter == CatalogStockFilter.inStock) {
+      stockLabel = 'En Stock';
+    } else if (state.stockFilter == CatalogStockFilter.outOfStock) {
+      stockLabel = 'Agotados';
+    }
+
+    return PopupMenuButton<CatalogStockFilter>(
+      initialValue: state.stockFilter,
+      offset: const Offset(0, 44),
+      tooltip: 'Filtrar por nivel de existencias',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: cubit.setStockFilter,
+      itemBuilder:
+          (context) => const [
+            PopupMenuItem(
+              value: CatalogStockFilter.all,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.all_inbox_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                  SizedBox(width: 8),
+                  Text('Cualquier Stock', style: TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.inStock,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: AppColors.success,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'En Stock disponible',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.outOfStock,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Agotados / Críticos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      child: _buildDropdownContainer(
+        isFiltered: isFiltered,
+        icon:
+            isFiltered && state.stockFilter == CatalogStockFilter.inStock
+                ? Icons.check_circle_outline_rounded
+                : (isFiltered &&
+                        state.stockFilter == CatalogStockFilter.outOfStock
+                    ? Icons.error_outline_rounded
+                    : Icons.inventory_2_outlined),
+        label: stockLabel,
+      ),
+    );
+  }
+
+  Widget _buildSortDropdown(
+    BuildContext context,
+    AdminCatalogState state,
+    AdminCatalogCubit cubit,
+  ) {
+    return PopupMenuButton<CatalogSortOption>(
+      tooltip: 'Ordenar productos',
+      initialValue: state.sortOption,
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      onSelected: cubit.setSortOption,
+      itemBuilder:
+          (context) =>
+              CatalogSortOption.values.map((opt) {
+                final isSelected = state.sortOption == opt;
+                return PopupMenuItem(
+                  value: opt,
+                  child: Row(
+                    children: [
+                      if (isSelected)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        )
+                      else
+                        const SizedBox(width: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        opt.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+      child: _buildDropdownContainer(
+        isFiltered: state.sortOption != CatalogSortOption.recent,
+        icon: Icons.sort_rounded,
+        label: state.sortOption.label,
+      ),
+    );
+  }
+
+  Widget _buildPaginationSliver(
+    AdminCatalogState state,
+    AdminCatalogCubit cubit,
+    BuildContext context,
+    bool isMobile,
+  ) {
+    if (state.totalPages <= 1 || state.products.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox(height: 24));
+    }
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          isMobile ? 16.0 : 24.0,
+          16.0,
+          isMobile ? 16.0 : 24.0,
+          32.0,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppColors.cardShadow(opacity: 0.03),
+          ),
+          child: AdminPageBlocks(
+            currentPage: state.currentPage,
+            totalPages: state.totalPages,
+            onPageChanged: cubit.setPage,
+            totalItems: state.totalCount,
+            itemName: 'productos',
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<AdminCatalogCubit>();
@@ -267,7 +689,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         final width = constraints.maxWidth;
         final isMobile = width < 720;
         final isTablet = width >= 720 && width < 1100;
-        final isDesktop = width >= 1100;
 
         return Focus(
           focusNode: _screenFocusNode,
@@ -380,6 +801,48 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             slivers: [
+                              // ── 0. Cabecera Ejecutiva Stripe / Linear (Arriba de Métricas) ──
+                              SliverToBoxAdapter(
+                                child: AdminPageHeader(
+                                  breadcrumb: 'Inicio > Catálogo Maestro',
+                                  title: 'Catálogo de Productos',
+                                  subtitle:
+                                      'Administra precios, márgenes brutos, inventario en tiempo real y visibilidad multicanal.',
+                                  isDesktop: !isMobile,
+                                  actions: [
+                                    AdminHeaderButton.outlined(
+                                      label: 'Importar',
+                                      icon: Icons.upload_file_rounded,
+                                      tooltip:
+                                          'Importar lote de productos desde CSV',
+                                      onPressed:
+                                          () => context.go(
+                                            '/products/bulk-import',
+                                          ),
+                                    ),
+                                    AdminHeaderButton.outlined(
+                                      label: 'Exportar CSV',
+                                      icon: Icons.table_chart_outlined,
+                                      iconColor: const Color(0xFF10B981),
+                                      tooltip:
+                                          'Exportar catálogo en PDF / CSV',
+                                      onPressed:
+                                          () => _handleExportPdf(cubit, state),
+                                    ),
+                                    AdminHeaderButton.primary(
+                                      label: 'Nuevo Producto',
+                                      icon: Icons.add_rounded,
+                                      tooltip:
+                                          'Registrar nuevo producto (Atajo: N)',
+                                      onPressed:
+                                          () => context.go(
+                                            '/products/product-form',
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
                               // ── 1. Bento Metric Strip (Pulso en Tiempo Real) ──
                               SliverToBoxAdapter(
                                 child: _buildBentoMetrics(
@@ -389,7 +852,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 ),
                               ),
 
-                              // ── 2. Command Bar Dinámica ────────────────────────
+                              // ── 2. Toolbar Pro Unificado (Fila Única Desktop & 44dp Mobile) ──
                               SliverToBoxAdapter(
                                 child: Padding(
                                   padding: EdgeInsets.fromLTRB(
@@ -398,82 +861,76 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     isMobile ? 16.0 : 24.0,
                                     14.0,
                                   ),
-                                  child:
-                                      isMobile
-                                          ? ProductsMobileCommandBar(
-                                            cubit: cubit,
-                                            state: state,
-                                            searchCtrl: _searchCtrl,
-                                            searchFocusNode: _searchFocusNode,
-                                            onOpenFilters:
-                                                () =>
-                                                    ProductsMobileFiltersSheet.show(
-                                                      context,
-                                                      cubit,
-                                                    ),
-                                          )
-                                          : ProductsDesktopCommandBar(
-                                            cubit: cubit,
-                                            state: state,
-                                            searchCtrl: _searchCtrl,
-                                            searchFocusNode: _searchFocusNode,
-                                            onNewProduct:
-                                                () => context.go(
-                                                  '/products/product-form',
-                                                ),
-                                            onExportPdf:
-                                                () => _handleExportPdf(
-                                                  cubit,
-                                                  state,
-                                                ),
-                                            onBulkImport:
-                                                () => context.go(
-                                                  '/products/bulk-import',
-                                                ),
+                                  child: AdminProToolbar(
+                                    isDesktop: !isMobile,
+                                    searchController: _searchCtrl,
+                                    searchFocusNode: _searchFocusNode,
+                                    searchHint:
+                                        state.searchByIngredient
+                                            ? 'Buscar por principio activo / fórmula farmacéutica...'
+                                            : 'Buscar por título, SKU, código de barras o etiqueta...',
+                                    onSearchChanged: cubit.setSearchTerm,
+                                    onClearSearch: () {
+                                      _searchCtrl.clear();
+                                      cubit.clearSearch();
+                                    },
+                                    onSearchSubmitted:
+                                        (val) => cubit.submitSearch(val),
+                                    searchKeyHint: '/',
+                                    filterWidgets: [
+                                      _buildCategoryDropdown(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      _buildStatusDropdown(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      _buildStockDropdown(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      _buildSortDropdown(context, state, cubit),
+                                    ],
+                                    viewToggleConfig: AdminProViewToggleConfig(
+                                      isTableView: _isTableView,
+                                      onToggleTableView:
+                                          (val) => setState(
+                                            () => _isTableView = val,
                                           ),
+                                    ),
+                                    onRefresh: () => cubit.refreshProducts(),
+                                    refreshTooltip:
+                                        'Recargar catálogo (Atajo: R)',
+                                    onOpenMobileFilters:
+                                        () => ProductsMobileFiltersSheet.show(
+                                          context,
+                                          cubit,
+                                        ),
+                                    activeFiltersCount: _countActiveFilters(
+                                      state,
+                                    ),
+                                  ),
                                 ),
                               ),
-
 
                               // ── 3. Contenido Principal (Data-Grid vs Tarjetas) ──
                               _buildSliverBody(
                                 state,
                                 cubit,
-                                isDesktop: isDesktop || isTablet,
+                                isDesktop: !isMobile && _isTableView,
                               ),
 
-                              // ── 4. Paginación Integrada ─────────────────────────
-                              if (state.products.isNotEmpty &&
-                                  state.totalPages > 1)
-                                SliverToBoxAdapter(
-                                  child: Container(
-                                    margin: EdgeInsets.fromLTRB(
-                                      isMobile ? 16.0 : 24.0,
-                                      16.0,
-                                      isMobile ? 16.0 : 24.0,
-                                      32.0,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Theme.of(context).colorScheme.surface,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: AppColors.border.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    child: AdminPageBlocks(
-                                      currentPage: state.currentPage,
-                                      totalPages: state.totalPages,
-                                      onPageChanged: cubit.setPage,
-                                    ),
-                                  ),
-                                ),
+                              // ── 4. Paginación Integrada (AdminPageBlocks) ──
+                              _buildPaginationSliver(
+                                state,
+                                cubit,
+                                context,
+                                isMobile,
+                              ),
                             ],
                           ),
                         ),

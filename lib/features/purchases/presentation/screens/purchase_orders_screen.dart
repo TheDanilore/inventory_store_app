@@ -27,6 +27,7 @@ import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
@@ -973,6 +974,36 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   minHeight: 2,
                                 ),
                               ),
+
+                            // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                            SliverToBoxAdapter(
+                              child: AdminPageHeader(
+                                breadcrumb: 'Inicio > Compras',
+                                title: 'Órdenes de Compra',
+                                subtitle:
+                                    'Gestiona pedidos a proveedores, recepción de mercancía y cuentas por pagar.',
+                                isDesktop: isDesktopOrTablet,
+                                actions: [
+                                  AdminHeaderButton.primary(
+                                    label:
+                                        _hasDraft
+                                            ? 'Continuar Borrador'
+                                            : 'Nueva Orden',
+                                    icon:
+                                        _hasDraft
+                                            ? Icons.edit_note_rounded
+                                            : Icons.add_shopping_cart_rounded,
+                                    tooltip:
+                                        'Crear o continuar orden (Atajo: N)',
+                                    onPressed:
+                                        () => context.go(
+                                          '/purchase-orders/form',
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                             // ── Borrador ──────────────────────────────────────────────
                             if (_hasDraft)
                               SliverToBoxAdapter(
@@ -1057,7 +1088,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                               ),
                             ),
 
-                            // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
+                            // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ─
                             SliverToBoxAdapter(
                               child: AdminProToolbar(
                                 isDesktop: constraints.maxWidth >= 1024,
@@ -1100,20 +1131,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   _itemsCache.clear();
                                   cubit.refresh();
                                 },
-                                primaryAction: AdminProToolbarAction(
-                                  label:
-                                      _hasDraft
-                                          ? 'Continuar Borrador'
-                                          : 'Nueva Orden',
-                                  icon:
-                                      _hasDraft
-                                          ? Icons.edit_note_rounded
-                                          : Icons.add_shopping_cart_rounded,
-                                  onPressed:
-                                      () => context.go('/purchase-orders/form'),
-                                  keyHint: 'N',
-                                  isHighlighted: _hasDraft,
-                                ),
                               ),
                             ),
 
