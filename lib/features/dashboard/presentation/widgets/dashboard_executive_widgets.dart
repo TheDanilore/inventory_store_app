@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 
@@ -1315,6 +1316,94 @@ class DashboardBestSellersTable extends StatelessWidget {
     this.onHide,
   });
 
+  Widget _buildProductThumbnail({
+    required String? imageUrl,
+    required int rank,
+    double size = 36,
+  }) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(size > 32 ? 10 : 8),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: imageUrl != null && imageUrl.trim().isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: const Color(0xFFF8FAFC),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: size * 0.45,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: const Color(0xFFF1F5F9),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: size * 0.45,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                )
+              : Container(
+                  color: const Color(0xFFF1F5F9),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.inventory_2_outlined,
+                    size: size * 0.45,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+        ),
+        if (rank > 0)
+          Positioned(
+            top: -4,
+            left: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: rank == 1
+                    ? const Color(0xFFF59E0B)
+                    : rank == 2
+                        ? const Color(0xFF64748B)
+                        : rank == 3
+                            ? const Color(0xFFB45309)
+                            : const Color(0xFF334155),
+                borderRadius: BorderRadius.circular(5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Text(
+                '#$rank',
+                style: const TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final products = (bestSellers != null && bestSellers!.isNotEmpty)
@@ -1444,22 +1533,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                         child: Row(
                           children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '#${index + 1}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF475569),
-                                ),
-                              ),
+                            _buildProductThumbnail(
+                              imageUrl: p['imageUrl'] as String?,
+                              rank: index + 1,
+                              size: 38,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1673,18 +1750,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                               flex: 3,
                               child: Row(
                                 children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 16,
-                                      color: Color(0xFF2563EB),
-                                    ),
+                                  _buildProductThumbnail(
+                                    imageUrl: p['imageUrl'] as String?,
+                                    rank: index + 1,
+                                    size: 32,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(

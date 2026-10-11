@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_entity.dart';
 
@@ -10,6 +11,7 @@ class InventoryEntriesTableView extends StatefulWidget {
   final InventoryEntryEntity? selectedEntry;
   final ValueChanged<InventoryEntryEntity> onSelectEntry;
   final VoidCallback? onRefresh;
+  final AdminTablePaginationConfig? paginationConfig;
 
   const InventoryEntriesTableView({
     super.key,
@@ -17,6 +19,7 @@ class InventoryEntriesTableView extends StatefulWidget {
     required this.selectedEntry,
     required this.onSelectEntry,
     this.onRefresh,
+    this.paginationConfig,
   });
 
   @override
@@ -25,7 +28,9 @@ class InventoryEntriesTableView extends StatefulWidget {
 }
 
 class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
-  String? _hoveredId;
+  final Set<Object> _selectedIds = {};
+  String? _sortColumnId;
+  bool _isSortAscending = true;
 
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
@@ -36,21 +41,51 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
     );
   }
 
+  List<InventoryEntryEntity> _getSortedEntries() {
+    if (_sortColumnId == null) return widget.entries;
+    final list = List<InventoryEntryEntity>.from(widget.entries);
+    list.sort((a, b) {
+      int cmp = 0;
+      switch (_sortColumnId) {
+        case 'voucher':
+          cmp = (a.documentNumber ?? a.id).compareTo(b.documentNumber ?? b.id);
+          break;
+        case 'date':
+          final dateA = a.createdAt ?? a.documentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final dateB = b.createdAt ?? b.documentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+          cmp = dateA.compareTo(dateB);
+          break;
+        case 'supplier':
+          cmp = (a.supplierName ?? '').toLowerCase().compareTo((b.supplierName ?? '').toLowerCase());
+          break;
+        case 'warehouse':
+          cmp = (a.warehouseName ?? '').toLowerCase().compareTo((b.warehouseName ?? '').toLowerCase());
+          break;
+        case 'total':
+          cmp = a.totalAmount.compareTo(b.totalAmount);
+          break;
+      }
+      return _isSortAscending ? cmp : -cmp;
+    });
+    return list;
+  }
+
   Widget _buildPaymentBadge(String? paymentMode) {
     final mode = (paymentMode ?? 'CONTADO').toUpperCase();
     final isCredit = mode.contains('CREDIT') || mode.contains('CRÉDITO');
 
-    final bg = isCredit ? const Color(0xFFEFF6FF) : AppColors.successLight;
-    final text = isCredit ? const Color(0xFF1D4ED8) : AppColors.successDark;
+    final bg = isCredit ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5);
+    final border = isCredit ? const Color(0xFFBFDBFE) : const Color(0xFFA7F3D0);
+    final text = isCredit ? const Color(0xFF1D4ED8) : const Color(0xFF047857);
     final label = isCredit ? 'Crédito' : 'Contado';
-    final icon =
-        isCredit ? Icons.credit_card_rounded : Icons.payments_rounded;
+    final icon = isCredit ? Icons.credit_card_rounded : Icons.payments_rounded;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -72,518 +107,461 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
 
   @override
   Widget build(BuildContext context) {
+    final sortedEntries = _getSortedEntries();
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const minTableWidth = 1000.0;
-        final tableWidth =
-            constraints.maxWidth < minTableWidth
-                ? minTableWidth
-                : constraints.maxWidth;
+    return AdminProTable<InventoryEntryEntity>(
+      items: sortedEntries,
+      itemId: (e) => e.id,
+      selectedIds: _selectedIds,
+      onSelectionChanged: (newSet) {
+        setState(() {
+          _selectedIds.clear();
+          _selectedIds.addAll(newSet);
+        });
+      },
+      sortColumnId: _sortColumnId,
+      isSortAscending: _isSortAscending,
+      onSort: (colId, isAsc) {
+        setState(() {
+          _sortColumnId = colId;
+          _isSortAscending = isAsc;
+        });
+      },
+      paginationConfig: widget.paginationConfig,
+      onRowTap: widget.onSelectEntry,
+      minTableWidth: 1000.0,
+      margin: EdgeInsets.zero,
+      bulkActions: [
+        AdminBulkAction<InventoryEntryEntity>(
+          label: 'Copiar Códigos',
+          icon: Icons.copy_rounded,
+          onPressed: (selectedList) {
+            final codes = selectedList
+                .map((e) => e.id.length >= 8 ? '#${e.id.substring(0, 8).toUpperCase()}' : '#${e.id.toUpperCase()}')
+                .join(', ');
+            _copyToClipboard(context, codes, '${selectedList.length} códigos de entrada');
+          },
+        ),
+        AdminBulkAction<InventoryEntryEntity>(
+          label: 'Copiar Resumen de Entradas',
+          icon: Icons.summarize_rounded,
+          customColor: AppColors.teal,
+          onPressed: (selectedList) {
+            final total = selectedList.fold(0.0, (sum, e) => sum + e.totalAmount);
+            final summary = selectedList
+                .map((e) => '- #${e.id.substring(0, 8).toUpperCase()} | ${e.supplierName ?? "Sin prov."} | ${e.documentType}: ${e.documentNumber ?? "-"} | S/ ${e.totalAmount.toStringAsFixed(2)}')
+                .join('\n');
+            final fullText = 'RESUMEN ENTRADAS DE INVENTARIO (${selectedList.length})\n$summary\nTotal acumulado: S/ ${total.toStringAsFixed(2)}';
+            _copyToClipboard(context, fullText, 'Resumen de entradas');
+          },
+        ),
+      ],
+      columns: [
+        // 1. Comprobante / Entrada
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'voucher',
+          label: 'COMPROBANTE',
+          fixedWidth: 125,
+          isSortable: true,
+          tooltip: 'Código interno y número de comprobante',
+          cellBuilder: (context, entry) {
+            final shortId = entry.id.length >= 8
+                ? entry.id.substring(0, 8).toUpperCase()
+                : entry.id.toUpperCase();
+            final docInfo = (entry.documentNumber != null && entry.documentNumber!.isNotEmpty)
+                ? '${entry.documentType}: ${entry.documentNumber}'
+                : entry.documentType;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x050F172A),
-                blurRadius: 4,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: SizedBox(
-              width: tableWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // --- Encabezado Fijo de Tabla ---
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                InkWell(
+                  onTap: () => _copyToClipboard(context, shortId, 'Código de entrada'),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFCBD5E1)),
                     ),
-                    decoration: const BoxDecoration(
-                      color: AppColors.background,
-                      border: Border(
-                        bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                    child: Text(
+                      '#$shortId',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
                       ),
                     ),
-                    child: const Row(
+                  ),
+                ),
+                if (docInfo.isNotEmpty && docInfo.toUpperCase() != 'NINGUNO') ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    docInfo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+
+        // 2. Fecha / Hora
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'date',
+          label: 'FECHA / HORA',
+          fixedWidth: 135,
+          isSortable: true,
+          tooltip: 'Fecha de recepción en almacén',
+          cellBuilder: (context, entry) {
+            final formattedDate = entry.createdAt != null
+                ? dateFormat.format(entry.createdAt!)
+                : (entry.documentDate != null ? dateFormat.format(entry.documentDate!) : '—');
+            return Text(
+              formattedDate,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF475569),
+              ),
+            );
+          },
+        ),
+
+        // 3. Proveedor
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'supplier',
+          label: 'PROVEEDOR',
+          flex: 4,
+          isSortable: true,
+          tooltip: 'Proveedor que despachó la mercadería',
+          cellBuilder: (context, entry) {
+            return Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.local_shipping_outlined,
+                      size: 15,
+                      color: AppColors.tealDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    entry.supplierName ?? 'Sin proveedor',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 4. Almacén Destino
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'warehouse',
+          label: 'ALMACÉN',
+          fixedWidth: 135,
+          isSortable: true,
+          tooltip: 'Almacén donde ingresó el stock',
+          cellBuilder: (context, entry) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.storefront_rounded,
+                  size: 14,
+                  color: Color(0xFF64748B),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    entry.warehouseName ?? 'Almacén general',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 5. Orden de Compra
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'purchaseOrder',
+          label: 'ORDEN COMPRA',
+          fixedWidth: 120,
+          isSortable: false,
+          tooltip: 'Orden de compra vinculada',
+          cellBuilder: (context, entry) {
+            if (entry.purchaseOrderId != null && entry.purchaseOrderId!.isNotEmpty) {
+              final poShort = entry.purchaseOrderId!.length >= 8
+                  ? entry.purchaseOrderId!.substring(0, 8).toUpperCase()
+                  : entry.purchaseOrderId!.toUpperCase();
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAF5FF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE9D5FF)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.link_rounded, size: 12, color: Color(0xFF7E22CE)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        '#$poShort',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF7E22CE),
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const Text('—', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12));
+          },
+        ),
+
+        // 6. Modo de Pago
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'payment',
+          label: 'PAGO',
+          fixedWidth: 105,
+          isSortable: false,
+          tooltip: 'Condición de pago registrada',
+          cellBuilder: (context, entry) {
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: _buildPaymentBadge(entry.paymentMode),
+            );
+          },
+        ),
+
+        // 7. Total Entrada
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'total',
+          label: 'TOTAL',
+          fixedWidth: 115,
+          alignment: Alignment.centerRight,
+          isSortable: true,
+          tooltip: 'Valor total monetario de la entrada',
+          cellBuilder: (context, entry) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                RichText(
+                  textAlign: TextAlign.end,
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(
+                        text: 'S/ ',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF64748B),
+                          fontFamily: 'Inter',
+                        ),
+                      ),
+                      TextSpan(
+                        text: entry.totalAmount.toStringAsFixed(2),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                          fontFamily: 'Inter',
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.itemCount} prod. (${entry.totalQuantity.toInt()} uds.)',
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // 8. Acciones
+        AdminTableColumn<InventoryEntryEntity>(
+          id: 'actions',
+          label: 'ACCIONES',
+          fixedWidth: 100,
+          alignment: Alignment.centerRight,
+          isSortable: false,
+          cellBuilder: (context, entry) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 18, color: Color(0xFF64748B)),
+                  tooltip: 'Ver detalle',
+                  hoverColor: const Color(0xFFF1F5F9),
+                  onPressed: () => widget.onSelectEntry(entry),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                  tooltip: 'Abrir entrada',
+                  onPressed: () => widget.onSelectEntry(entry),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+      mobileCardBuilder: (context, entry, isSelected, onSelect) {
+        final shortId = entry.id.length >= 8
+            ? entry.id.substring(0, 8).toUpperCase()
+            : entry.id.toUpperCase();
+        final docInfo = (entry.documentNumber != null && entry.documentNumber!.isNotEmpty)
+            ? '${entry.documentType}: ${entry.documentNumber}'
+            : entry.documentType;
+        final formattedDate = entry.createdAt != null
+            ? dateFormat.format(entry.createdAt!)
+            : (entry.documentDate != null ? dateFormat.format(entry.documentDate!) : '—');
+
+        return InkWell(
+          onTap: () => widget.onSelectEntry(entry),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFFF0FDFA) : AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? AppColors.teal : AppColors.border,
+                width: isSelected ? 1.6 : 1,
+              ),
+              boxShadow: AppColors.cardShadow(opacity: 0.03),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
-                        SizedBox(
-                          width: 120,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
                           child: Text(
-                            'COMPROBANTE',
-                            style: TextStyle(
+                            '#$shortId',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
                               fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: 130,
-                          child: Text(
-                            'FECHA / HORA',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 4,
-                          child: Text(
-                            'PROVEEDOR',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 130,
-                          child: Text(
-                            'ALMACÉN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 115,
-                          child: Text(
-                            'ORDEN COMPRA',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 105,
-                          child: Text(
-                            'PAGO',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 110,
-                          child: Text(
-                            'TOTAL',
-                            textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 110,
-                          child: Text(
-                            'ACCIONES',
-                            textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          formattedDate,
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
-                  ),
-
-                  // --- Filas de Datos ---
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: widget.entries.length,
-                      separatorBuilder:
-                          (_, _) => const Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: Color(0xFFE2E8F0),
+                    Checkbox(
+                      value: isSelected,
+                      activeColor: AppColors.teal,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      onChanged: (val) => onSelect(val ?? false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  entry.supplierName ?? 'Sin proveedor',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.warehouseName ?? "Almacén general"} • $docInfo',
+                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildPaymentBadge(entry.paymentMode),
+                    RichText(
+                      textAlign: TextAlign.end,
+                      text: TextSpan(
+                        children: [
+                          const TextSpan(
+                            text: 'S/ ',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
                           ),
-                      itemBuilder: (context, index) {
-                        final entry = widget.entries[index];
-                        final isHovered = _hoveredId == entry.id;
-                        final isSelected =
-                            widget.selectedEntry?.id == entry.id;
-
-                        final shortId =
-                            entry.id.length >= 8
-                                ? entry.id.substring(0, 8).toUpperCase()
-                                : entry.id.toUpperCase();
-
-                        final docInfo =
-                            (entry.documentNumber != null &&
-                                    entry.documentNumber!.isNotEmpty)
-                                ? '${entry.documentType}: ${entry.documentNumber}'
-                                : entry.documentType;
-
-                        final formattedDate =
-                            entry.createdAt != null
-                                ? dateFormat.format(entry.createdAt!)
-                                : (entry.documentDate != null
-                                    ? dateFormat.format(entry.documentDate!)
-                                    : '—');
-
-                        return MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          onEnter:
-                              (_) => setState(() => _hoveredId = entry.id),
-                          onExit: (_) => setState(() => _hoveredId = null),
-                          child: InkWell(
-                            onTap: () => widget.onSelectEntry(entry),
-                            hoverColor: Colors.transparent,
-                            splashColor: Colors.transparent,
-                            highlightColor: Colors.transparent,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 140),
-                              curve: Curves.easeInOut,
-                              decoration: BoxDecoration(
-                                color:
-                                    isSelected
-                                        ? AppColors.tealLight.withValues(alpha: 0.45)
-                                        : (isHovered
-                                            ? const Color(0xFFF8FAFC)
-                                            : Colors.white),
-                                border: Border(
-                                  left: BorderSide(
-                                    color:
-                                        isSelected
-                                            ? AppColors.teal
-                                            : Colors.transparent,
-                                    width: 3.5,
-                                  ),
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 11,
-                              ),
-                              child: Row(
-                                children: [
-                                  // 1. Comprobante / Entrada
-                                  SizedBox(
-                                    width: 120,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        InkWell(
-                                          onTap:
-                                              () => _copyToClipboard(
-                                                context,
-                                                shortId,
-                                                'Código de entrada',
-                                              ),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.background,
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              border: Border.all(
-                                                color: AppColors.border,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              '#$shortId',
-                                              style: const TextStyle(
-                                                fontFamily: 'monospace',
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.textPrimary,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        if (docInfo.isNotEmpty &&
-                                            docInfo.toUpperCase() != 'NINGUNO') ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            docInfo,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 10.5,
-                                              color: AppColors.textMuted,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-
-                                  // 2. Fecha / Hora
-                                  SizedBox(
-                                    width: 130,
-                                    child: Text(
-                                      formattedDate,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // 3. Proveedor
-                                  Expanded(
-                                    flex: 4,
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 28,
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.background,
-                                            borderRadius:
-                                                BorderRadius.circular(6),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.local_shipping_outlined,
-                                              size: 15,
-                                              color: AppColors.tealDark,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            entry.supplierName ??
-                                                'Sin proveedor',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // 4. Almacén Destino
-                                  SizedBox(
-                                    width: 130,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.storefront_rounded,
-                                          size: 14,
-                                          color: AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Flexible(
-                                          child: Text(
-                                            entry.warehouseName ??
-                                                'Almacén general',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // 5. Orden de Compra Asociada
-                                  SizedBox(
-                                    width: 115,
-                                    child:
-                                        entry.purchaseOrderId != null &&
-                                                entry
-                                                    .purchaseOrderId!
-                                                    .isNotEmpty
-                                            ? Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 7,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFFAF5FF),
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                                border: Border.all(
-                                                  color: const Color(
-                                                    0xFFE9D5FF,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.link_rounded,
-                                                    size: 12,
-                                                    color: Color(0xFF7E22CE),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Flexible(
-                                                    child: Text(
-                                                      '#${entry.purchaseOrderId!.length >= 8 ? entry.purchaseOrderId!.substring(0, 8).toUpperCase() : entry.purchaseOrderId!.toUpperCase()}',
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF7E22CE,
-                                                        ),
-                                                        fontFamily: 'monospace',
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            )
-                                            : const Text(
-                                              '—',
-                                              style: TextStyle(
-                                                color: AppColors.textMuted,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                  ),
-
-                                  // 6. Modo de Pago
-                                  SizedBox(
-                                    width: 105,
-                                    child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: _buildPaymentBadge(
-                                        entry.paymentMode,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // 7. Total Entrada
-                                  SizedBox(
-                                    width: 110,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'S/ ${entry.totalAmount.toStringAsFixed(2)}',
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900,
-                                            color: AppColors.textPrimary,
-                                            fontFeatures: [
-                                              FontFeature.tabularFigures(),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${entry.itemCount} prod. (${entry.totalQuantity.toInt()} uds.)',
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            color: AppColors.textMuted,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // 8. Acciones
-                                  SizedBox(
-                                    width: 110,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.visibility_outlined,
-                                            size: 18,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                          tooltip: 'Ver detalle',
-                                          onPressed:
-                                              () => widget.onSelectEntry(entry),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.chevron_right_rounded,
-                                            size: 20,
-                                            color:
-                                                isHovered
-                                                    ? AppColors.tealDark
-                                                    : AppColors.textMuted,
-                                          ),
-                                          tooltip: 'Ver detalle',
-                                          onPressed:
-                                              () => widget.onSelectEntry(entry),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          TextSpan(
+                            text: entry.totalAmount.toStringAsFixed(2),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF0F172A),
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         );

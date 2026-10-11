@@ -1,13 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
+import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/common/products_avatar.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/common/products_badges.dart';
 
 /// Tabla de datos de alta densidad ("Pro Data Table") para Desktop y Tablet.
-/// Diseñada con estética inspirada en Stripe y Linear para administradores "Power Users".
-class CatalogProTableView extends StatelessWidget {
+/// Diseñada con estética ejecutiva utilizando [AdminProTable].
+class CatalogProTableView extends StatefulWidget {
   final List<ProductEntity> products;
   final int pageSize;
   final int currentPage;
@@ -40,772 +41,311 @@ class CatalogProTableView extends StatelessWidget {
   });
 
   @override
+  State<CatalogProTableView> createState() => _CatalogProTableViewState();
+}
+
+class _CatalogProTableViewState extends State<CatalogProTableView> {
+  final Set<Object> _selectedIds = {};
+  String? _sortColumnId;
+  bool _isSortAscending = true;
+
+  List<ProductEntity> _getSortedProducts() {
+    if (_sortColumnId == null) return widget.products;
+    final list = List<ProductEntity>.from(widget.products);
+    list.sort((a, b) {
+      int cmp = 0;
+      switch (_sortColumnId) {
+        case 'product':
+          cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case 'category':
+          cmp = (a.categoryName ?? '').toLowerCase().compareTo((b.categoryName ?? '').toLowerCase());
+          break;
+        case 'price':
+          final priceA = a.displaySalePrice ?? a.minSalePrice ?? 0.0;
+          final priceB = b.displaySalePrice ?? b.minSalePrice ?? 0.0;
+          cmp = priceA.compareTo(priceB);
+          break;
+        case 'stock':
+          cmp = a.totalStock.compareTo(b.totalStock);
+          break;
+        case 'status':
+          cmp = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
+          break;
+      }
+      return _isSortAscending ? cmp : -cmp;
+    });
+    return list;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final effectiveTotal = totalCount ?? products.length;
-    final totalPages =
-        effectiveTotal == 0 ? 1 : (effectiveTotal / pageSize).ceil();
-    final start = effectiveTotal == 0 ? 0 : (currentPage * pageSize) + 1;
-    final end = ((currentPage + 1) * pageSize) > effectiveTotal
-        ? effectiveTotal
-        : (currentPage + 1) * pageSize;
+    final effectiveTotal = widget.totalCount ?? widget.products.length;
+    final sortedProducts = _getSortedProducts();
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (headerSliver != null) headerSliver!,
-        if (chipsSliver != null) chipsSliver!,
+        if (widget.headerSliver != null) widget.headerSliver!,
+        if (widget.chipsSliver != null) widget.chipsSliver!,
 
-        // ── Barra de Conteo y Resumen ──────────────────────────────────────
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
-            child: Row(
-              children: [
-                Text(
-                  'Mostrando $start-$end de $effectiveTotal productos',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: AdminProTable<ProductEntity>(
+              items: sortedProducts,
+              itemId: (p) => p.id,
+              selectedIds: _selectedIds,
+              onSelectionChanged: (ids) => setState(() => _selectedIds
+                ..clear()
+                ..addAll(ids)),
+              sortColumnId: _sortColumnId,
+              isSortAscending: _isSortAscending,
+              onSort: (colId, asc) => setState(() {
+                _sortColumnId = colId;
+                _isSortAscending = asc;
+              }),
+              minTableWidth: 920.0,
+              margin: EdgeInsets.zero,
+              onRowTap: widget.onProductSelected,
+              paginationConfig: AdminTablePaginationConfig(
+                currentPage: widget.currentPage + 1,
+                pageSize: widget.pageSize,
+                totalItems: effectiveTotal,
+                onPageChanged: (p) => widget.onPageChanged(p - 1),
+                onPageSizeChanged: (_) {},
+              ),
+              bulkActions: [
+                AdminBulkAction<ProductEntity>(
+                  label: 'Activar',
+                  icon: Icons.play_circle_outline_rounded,
+                  onPressed: (selected) {
+                    for (final p in selected) {
+                      if (!p.isActive) widget.onToggleActive(p);
+                    }
+                  },
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'Vista Tabla Pro',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.slate,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Pág. ${currentPage + 1} de $totalPages',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                AdminBulkAction<ProductEntity>(
+                  label: 'Desactivar',
+                  icon: Icons.pause_circle_outline_rounded,
+                  onPressed: (selected) {
+                    for (final p in selected) {
+                      if (p.isActive) widget.onToggleActive(p);
+                    }
+                  },
                 ),
               ],
-            ),
-          ),
-        ),
+              columns: [
+                // 1. Producto (Avatar + Nombre + Marca)
+                AdminTableColumn<ProductEntity>(
+                  id: 'product',
+                  label: 'PRODUCTO',
+                  flex: 4,
+                  isSortable: true,
+                  cellBuilder: (context, product) {
+                    final variantCount = product.productVariants.length;
 
-        // ── Contenedor Virtualizado de la Tabla Pro ─────────────────────────
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          sliver: SliverMainAxisGroup(
-            slivers: [
-              // Cabecera Fija con borde superior redondeado
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    border: Border(
-                      top: BorderSide(color: AppColors.border),
-                      left: BorderSide(color: AppColors.border),
-                      right: BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      _buildTableHeader(),
-                      const Divider(height: 1, color: AppColors.border),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Filas de Productos con Virtualización Real (SliverList.separated)
-              SliverList.separated(
-                itemCount: products.length,
-                separatorBuilder: (_, _) => Container(
-                  color: Colors.white,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        left: BorderSide(color: AppColors.border),
-                        right: BorderSide(color: AppColors.border),
-                      ),
-                    ),
-                    child: const Divider(height: 1, color: AppColors.border),
-                  ),
-                ),
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  final isSelected = selectedProduct?.id == product.id;
-                  final isLast = index == products.length - 1;
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: isLast
-                          ? const BorderRadius.vertical(
-                              bottom: Radius.circular(16),
-                            )
-                          : null,
-                      border: Border(
-                        left: const BorderSide(color: AppColors.border),
-                        right: const BorderSide(color: AppColors.border),
-                        bottom: isLast
-                            ? const BorderSide(color: AppColors.border)
-                            : BorderSide.none,
-                      ),
-                    ),
-                    clipBehavior: isLast ? Clip.antiAlias : Clip.none,
-                    child: _ProductTableRow(
-                      product: product,
-                      isSelected: isSelected,
-                      onTap: () => onProductSelected(product),
-                      onEdit: () => onEdit(product),
-                      onToggleActive: () => onToggleActive(product),
-                      onSale: () => onSale(product),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        if (totalPages > 1)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppColors.cardShadow(opacity: 0.03),
-                ),
-                child: AdminPageBlocks(
-                  currentPage: currentPage,
-                  totalPages: totalPages,
-                  onPageChanged: onPageChanged,
-                  totalItems: effectiveTotal,
-                  itemsPerPage: pageSize,
-                  itemName: 'productos',
-                ),
-              ),
-            ),
-          ),
-        SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),
-      ],
-    );
-  }
-
-  Widget _buildTableHeader() {
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: const Row(
-        children: [
-          // Producto (Miniatura + Nombre + Marca)
-          Expanded(
-            flex: 6,
-            child: Text(
-              'PRODUCTO',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-
-          // Categoría
-          Expanded(
-            flex: 3,
-            child: Text(
-              'CATEGORÍA',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-
-          // Stock
-          Expanded(
-            flex: 3,
-            child: Text(
-              'STOCK DISPONIBLE',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-
-          // Precio
-          Expanded(
-            flex: 3,
-            child: Text(
-              'PRECIO VENTA',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-
-          // Estado
-          Expanded(
-            flex: 2,
-            child: Text(
-              'ESTADO',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-
-          // Acciones
-          SizedBox(
-            width: 140,
-            child: Text(
-              'ACCIONES',
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProductTableRow extends StatefulWidget {
-  final ProductEntity product;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final Future<void> Function() onToggleActive;
-  final VoidCallback onSale;
-
-  const _ProductTableRow({
-    required this.product,
-    required this.isSelected,
-    required this.onTap,
-    required this.onEdit,
-    required this.onToggleActive,
-    required this.onSale,
-  });
-
-  @override
-  State<_ProductTableRow> createState() => _ProductTableRowState();
-}
-
-class _ProductTableRowState extends State<_ProductTableRow> {
-  bool _isHovered = false;
-  bool _isToggling = false;
-
-  Color _stockColor(int stock) {
-    if (stock <= 5) return AppColors.danger;
-    if (stock <= 15) return AppColors.warning;
-    return AppColors.tealDark;
-  }
-
-  Color _stockBg(int stock) {
-    if (stock <= 5) return const Color(0xFFFEE2E2);
-    if (stock <= 15) return const Color(0xFFFEF3C7);
-    return const Color(0xFFCCFBF1);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final product = widget.product;
-    final defaultVariant = product.defaultVariant;
-    final primaryImg = product.primaryImageUrl;
-
-    Color rowBackground = Colors.white;
-    if (widget.isSelected) {
-      rowBackground = const Color(0xFFEFF6FF); // Slate Blue highlight
-    } else if (_isHovered) {
-      rowBackground = const Color(0xFFF8FAFC);
-    }
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          color: rowBackground,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              // ── 1. PRODUCTO (Miniatura + Nombre + Marca + SKU) ────────────
-              Expanded(
-                flex: 6,
-                child: Row(
-                  children: [
-                    // Miniatura con radio sutil
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: primaryImg != null && primaryImg.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: primaryImg,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 100,
-                              memCacheHeight: 100,
-                              errorWidget: (_, _, _) =>
-                                  _buildInitialThumbnail(product.name),
-                            )
-                          : _buildInitialThumbnail(product.name),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Textos
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  product.name,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: product.isActive
-                                        ? AppColors.textPrimary
-                                        : AppColors.textMuted,
-                                    decoration: !product.isActive
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (widget.isSelected) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 1,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'Viendo',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              if (product.brandName != null &&
-                                  product.brandName!.isNotEmpty) ...[
-                                Text(
-                                  product.brandName!.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textSecondary,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  '•',
-                                  style: TextStyle(
-                                    color: AppColors.border,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                              ],
-                              Text(
-                                defaultVariant?.sku != null &&
-                                        defaultVariant!.sku!.isNotEmpty
-                                    ? 'SKU: ${defaultVariant.sku}'
-                                    : 'ID: ${product.id.length > 8 ? product.id.substring(0, 8) : product.id}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── 2. CATEGORÍA ──────────────────────────────────────────────
-              Expanded(
-                flex: 3,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      product.categoryName ?? 'Sin categoría',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.slate,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── 3. STOCK DISPONIBLE ───────────────────────────────────────
-              Expanded(
-                flex: 3,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _stockBg(product.totalStock),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _stockColor(product.totalStock),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            product.totalStock <= 0
-                                ? '0 un. (Agotado)'
-                                : '${product.totalStock} un.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: _stockColor(product.totalStock),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── 4. PRECIO DE VENTA ────────────────────────────────────────
-              Expanded(
-                flex: 3,
-                child: Text(
-                  'S/ ${(product.displaySalePrice ?? 0).toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: product.isActive
-                        ? AppColors.textPrimary
-                        : AppColors.textMuted,
-                  ),
-                ),
-              ),
-
-              // ── 5. ESTADO (Activo / Inactivo con Toggle) ──────────────────
-              Expanded(
-                flex: 2,
-                child: InkWell(
-                  onTap: _isToggling
-                      ? null
-                      : () async {
-                          setState(() => _isToggling = true);
-                          try {
-                            await widget.onToggleActive();
-                          } finally {
-                            if (mounted) setState(() => _isToggling = false);
-                          }
-                        },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    return Row(
                       children: [
-                        if (_isToggling)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          Icon(
-                            product.isActive
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_off_rounded,
-                            size: 16,
-                            color: product.isActive
-                                ? AppColors.success
-                                : AppColors.textMuted,
-                          ),
-                        const SizedBox(width: 5),
-                        Text(
-                          product.isActive ? 'Activo' : 'Pausado',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: product.isActive
-                                ? AppColors.successDark
-                                : AppColors.textSecondary,
+                        ProductAvatar(product: product, size: 36),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                product.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (variantCount > 1) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '$variantCount var.',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  if (product.brandName != null &&
+                                      product.brandName!.isNotEmpty)
+                                    Text(
+                                      product.brandName!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
+                    );
+                  },
+                ),
+
+                // 2. Categoría
+                AdminTableColumn<ProductEntity>(
+                  id: 'category',
+                  label: 'CATEGORÍA',
+                  flex: 2,
+                  isSortable: true,
+                  cellBuilder: (context, product) => Text(
+                    product.categoryName ?? 'Sin categoría',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
-              ),
 
-              // ── 6. ACCIONES RÁPIDAS ────────────────────────────────────────
-              SizedBox(
-                width: 140,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    // Inspeccionar
-                    Tooltip(
-                      message: 'Ver detalles rápidos',
-                      child: IconButton(
-                        icon: const Icon(Icons.visibility_outlined, size: 18),
-                        onPressed: widget.onTap,
-                        style: IconButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          hoverColor: AppColors.background,
-                        ),
-                      ),
-                    ),
-
-                    // Editar
-                    Tooltip(
-                      message: 'Editar producto',
-                      child: IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        onPressed: widget.onEdit,
-                        style: IconButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          hoverColor: AppColors.primaryLight,
-                        ),
-                      ),
-                    ),
-
-                    // POS
-                    Tooltip(
-                      message: 'Agregar a POS',
-                      child: IconButton(
-                        icon: const Icon(Icons.point_of_sale_rounded, size: 18),
-                        onPressed: widget.onSale,
-                        style: IconButton.styleFrom(
-                          foregroundColor: AppColors.tealDark,
-                          hoverColor: AppColors.tealLight,
-                        ),
-                      ),
-                    ),
-                  ],
+                // 3. Stock
+                AdminTableColumn<ProductEntity>(
+                  id: 'stock',
+                  label: 'STOCK DISPONIBLE',
+                  flex: 2,
+                  isSortable: true,
+                  cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
                 ),
-              ),
-            ],
+
+                // 4. Precio Venta
+                AdminTableColumn<ProductEntity>(
+                  id: 'price',
+                  label: 'PRECIO VENTA',
+                  flex: 2,
+                  isSortable: true,
+                  cellBuilder: (context, product) {
+                    if (product.displaySalePrice != null) {
+                      return Text(
+                        'S/ ${product.displaySalePrice!.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      );
+                    }
+                    return const Text('—', style: TextStyle(color: AppColors.textMuted));
+                  },
+                ),
+
+                // 5. Estado
+                AdminTableColumn<ProductEntity>(
+                  id: 'status',
+                  label: 'ESTADO',
+                  flex: 2,
+                  isSortable: true,
+                  cellBuilder: (context, product) => ProductStatusPill(
+                    isActive: product.isActive,
+                    onTap: () => widget.onToggleActive(product),
+                  ),
+                ),
+
+                // 6. Acciones
+                AdminTableColumn<ProductEntity>(
+                  id: 'actions',
+                  label: 'ACCIONES',
+                  fixedWidth: 110,
+                  cellBuilder: (context, product) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                        tooltip: 'Vender',
+                        splashRadius: 14,
+                        color: AppColors.teal,
+                        onPressed: () => widget.onSale(product),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        tooltip: 'Editar',
+                        splashRadius: 14,
+                        color: AppColors.textSecondary,
+                        onPressed: () => widget.onEdit(product),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              mobileCardBuilder: (context, product, isSelected, onSelect) {
+                return InkWell(
+                  onTap: () => widget.onProductSelected(product),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        ProductAvatar(product: product, size: 38),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                product.categoryName ?? 'Sin categoría',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ProductStockBadge(stock: product.totalStock),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInitialThumbnail(String name) {
-    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'P';
-    return Center(
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: AppColors.primary,
-        ),
-      ),
+        SliverToBoxAdapter(child: SizedBox(height: widget.bottomPadding + 16)),
+      ],
     );
   }
 }
 
-/// Shimmer para la tabla de productos durante estado de carga.
 class CatalogTableSkeleton extends StatelessWidget {
   const CatalogTableSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            color: const Color(0xFFF8FAFC),
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: const Row(
-              children: [
-                Expanded(
-                  flex: 6,
-                  child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: AppShimmer(width: 60, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: AppShimmer(width: 60, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 50, height: 12, borderRadius: 4),
-                ),
-                SizedBox(
-                  width: 140,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 12,
-            separatorBuilder: (_, _) =>
-                const Divider(height: 1, color: AppColors.border),
-            itemBuilder: (_, _) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const AppShimmer(width: 44, height: 44, borderRadius: 10),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    flex: 6,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppShimmer(
-                          width: double.infinity,
-                          height: 14,
-                          borderRadius: 4,
-                        ),
-                        SizedBox(height: 6),
-                        AppShimmer(width: 100, height: 10, borderRadius: 4),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    flex: 3,
-                    child: AppShimmer(width: 70, height: 20, borderRadius: 6),
-                  ),
-                  const Expanded(
-                    flex: 3,
-                    child: AppShimmer(width: 60, height: 20, borderRadius: 6),
-                  ),
-                  const Expanded(
-                    flex: 3,
-                    child: AppShimmer(width: 60, height: 16, borderRadius: 4),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 50, height: 16, borderRadius: 4),
-                  ),
-                  const SizedBox(
-                    width: 140,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        AppShimmer(width: 28, height: 28, borderRadius: 6),
-                        SizedBox(width: 6),
-                        AppShimmer(width: 28, height: 28, borderRadius: 6),
-                        SizedBox(width: 6),
-                        AppShimmer(width: 28, height: 28, borderRadius: 6),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return const AppTableShimmer(rowCount: 8, minWidth: 920.0);
   }
 }
+

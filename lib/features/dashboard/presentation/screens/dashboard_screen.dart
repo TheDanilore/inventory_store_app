@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -1644,7 +1645,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
                   ),
                 ),
                 Text(
-                  '${widget.lowStockCount} stock bajo · ${widget.criticalBatchesCount} lotes próximos a vencer',
+                  '${widget.lowStockCount} stock bajo · ${widget.criticalBatchesCount} lotes en alerta',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -1656,7 +1657,7 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
           TextButton.icon(
             onPressed: () {
               if (widget.criticalBatchesCount > 0) {
-                context.push('/inventory/batches');
+                context.push('/inventory?tab=batches');
               } else {
                 context.push('/inventory');
               }
@@ -1779,7 +1780,7 @@ class ExpiringBatchesCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'No hay lotes que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
+                          'No hay lotes vencidos ni que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
                           style: TextStyle(
                             fontSize: 11.5,
                             color: const Color(0xFF166534).withValues(alpha: 0.9),
@@ -1794,7 +1795,7 @@ class ExpiringBatchesCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => context.push('/inventory'),
+              onTap: () => context.push('/inventory?tab=batches'),
               borderRadius: BorderRadius.circular(8),
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
@@ -1825,6 +1826,12 @@ class ExpiringBatchesCard extends StatelessWidget {
     }
 
     final urgent = batches.take(3).toList();
+    final expiredCount = batches.where((b) {
+      final expiryStr = b['expiry_date'] as String?;
+      final expiryDate = expiryStr != null ? DateTime.tryParse(expiryStr) : null;
+      return expiryDate != null && expiryDate.isBefore(DateTime.now());
+    }).length;
+    final expiringSoonCount = batches.length - expiredCount;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1866,7 +1873,9 @@ class ExpiringBatchesCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${batches.length} lote(s) requieren rotación prioritaria en POS',
+                      expiredCount > 0
+                          ? '$expiredCount vencido(s) · $expiringSoonCount por vencer'
+                          : '${batches.length} lote(s) requieren rotación prioritaria en POS',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -1875,6 +1884,22 @@ class ExpiringBatchesCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (expiredCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '⚠️ $expiredCount Vencido(s)',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -1900,21 +1925,69 @@ class ExpiringBatchesCard extends StatelessWidget {
                       ? b['products']['name']
                       : (b['product_name'] ?? 'Insumo'))
                   .toString();
-              final prodId = b['products'] is Map ? b['products']['id'] as String? : null;
+
+              String? imgUrl;
+              if (b['products'] is Map) {
+                final prodImgs = b['products']['product_images'] as List<dynamic>?;
+                if (prodImgs != null && prodImgs.isNotEmpty) {
+                  final mainImg = prodImgs.firstWhere(
+                    (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                    orElse: () => prodImgs.first,
+                  ) as Map<String, dynamic>?;
+                  imgUrl = mainImg?['image_url'] as String?;
+                }
+              }
+              if (imgUrl == null && b['product_variants'] is Map) {
+                final varImgs = b['product_variants']['product_images'] as List<dynamic>?;
+                if (varImgs != null && varImgs.isNotEmpty) {
+                  final mainImg = varImgs.firstWhere(
+                    (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                    orElse: () => varImgs.first,
+                  ) as Map<String, dynamic>?;
+                  imgUrl = mainImg?['image_url'] as String?;
+                }
+              }
 
               return InkWell(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () {
-                  if (prodId != null && prodId.isNotEmpty) {
-                    context.push('/product/$prodId');
-                  } else {
-                    context.push('/inventory');
-                  }
+                  context.push('/inventory?tab=batches');
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   child: Row(
                     children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border, width: 0.8),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: imgUrl != null && imgUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imgUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                errorWidget: (context, url, error) => const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.inventory_2_outlined,
+                                size: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1946,17 +2019,21 @@ class ExpiringBatchesCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color:
-                              days <= 7
-                                  ? AppColors.error.withValues(alpha: 0.12)
-                                  : AppColors.warning.withValues(alpha: 0.12),
+                              days <= 0
+                                  ? AppColors.error.withValues(alpha: 0.15)
+                                  : days <= 7
+                                      ? AppColors.error.withValues(alpha: 0.12)
+                                      : AppColors.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          days <= 0
-                              ? 'Vencido'
-                              : days == 1
-                              ? '1 día'
-                              : '$days días',
+                          days < 0
+                              ? 'Vencido (${days.abs()}d)'
+                              : days == 0
+                                  ? 'Vence hoy'
+                                  : days == 1
+                                      ? '1 día'
+                                      : '$days días',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1979,7 +2056,7 @@ class ExpiringBatchesCard extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: TextButton.icon(
-              onPressed: () => context.push('/inventory'),
+              onPressed: () => context.push('/inventory?tab=batches'),
               icon: const Icon(Icons.inventory_2_outlined, size: 14),
               label: Text(
                 'Gestionar todos los lotes (${batches.length})',

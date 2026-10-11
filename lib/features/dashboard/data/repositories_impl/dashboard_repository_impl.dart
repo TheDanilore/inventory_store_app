@@ -383,27 +383,76 @@ class DashboardRepositoryImpl implements DashboardRepository {
         try {
           final itemsResponse = await _supabase
               .from('order_items')
-              .select('product_id, quantity, applied_price, products(name)')
+              .select('''
+                product_id, variant_id, quantity, applied_price,
+                products(
+                  id, name,
+                  categories(name),
+                  product_images(image_url, is_main)
+                ),
+                product_variants(
+                  id,
+                  product_images(image_url, is_main)
+                )
+              ''')
               .inFilter('order_id', orderIds);
 
           final items = List<Map<String, dynamic>>.from(itemsResponse);
-          final Map<String, ({String name, int qty, double revenue})> aggregated = {};
+          final Map<String, ({String name, String? imageUrl, String category, int qty, double revenue})> aggregated = {};
 
           for (var item in items) {
             final prodId = item['product_id'] as String? ?? 'unknown';
             String prodName = 'Producto';
-            if (item['products'] is Map && item['products']['name'] != null) {
-              prodName = item['products']['name'].toString();
+            String category = 'General';
+            String? imageUrl;
+
+            if (item['products'] is Map) {
+              final prodMap = item['products'] as Map<String, dynamic>;
+              if (prodMap['name'] != null) {
+                prodName = prodMap['name'].toString();
+              }
+              if (prodMap['categories'] is Map && prodMap['categories']['name'] != null) {
+                category = prodMap['categories']['name'].toString();
+              }
+              final prodImgs = prodMap['product_images'] as List<dynamic>? ?? [];
+              if (prodImgs.isNotEmpty) {
+                final mainImg = prodImgs.firstWhere(
+                  (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                  orElse: () => prodImgs.first,
+                ) as Map<String, dynamic>?;
+                imageUrl = mainImg?['image_url'] as String?;
+              }
             }
+
+            if (imageUrl == null && item['product_variants'] is Map) {
+              final varMap = item['product_variants'] as Map<String, dynamic>;
+              final varImgs = varMap['product_images'] as List<dynamic>? ?? [];
+              if (varImgs.isNotEmpty) {
+                final mainImg = varImgs.firstWhere(
+                  (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                  orElse: () => varImgs.first,
+                ) as Map<String, dynamic>?;
+                imageUrl = mainImg?['image_url'] as String?;
+              }
+            }
+
             final qty = (item['quantity'] as num?)?.toInt() ?? 0;
             final price = (item['applied_price'] as num?)?.toDouble() ?? 0.0;
 
             final existing = aggregated[prodId];
             if (existing == null) {
-              aggregated[prodId] = (name: prodName, qty: qty, revenue: qty * price);
+              aggregated[prodId] = (
+                name: prodName,
+                imageUrl: imageUrl,
+                category: category,
+                qty: qty,
+                revenue: qty * price,
+              );
             } else {
               aggregated[prodId] = (
                 name: prodName,
+                imageUrl: existing.imageUrl ?? imageUrl,
+                category: existing.category != 'General' ? existing.category : category,
                 qty: existing.qty + qty,
                 revenue: existing.revenue + (qty * price),
               );
@@ -418,7 +467,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
               'id': '#${e.key.length > 5 ? e.key.substring(0, 5) : e.key}',
               'productId': e.key,
               'name': e.value.name,
-              'category': 'Ventas',
+              'imageUrl': e.value.imageUrl,
+              'category': e.value.category,
               'sold': '${e.value.qty} unid.',
               'revenue': 'S/ ${e.value.revenue.toStringAsFixed(2)}',
               'rating': '★ 5.0',
@@ -494,9 +544,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .from('warehouse_stock_batches')
           .select('''
             id, batch_number, expiry_date, available_quantity,
-            products(id, name),
+            products(
+              id, name,
+              product_images(image_url, is_main)
+            ),
             product_variants(
               sku, 
+              product_images(image_url, is_main),
               variant_attribute_values(
                 attribute_values(value, attributes(name))
               )
@@ -505,9 +559,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
           ''')
           .not('expiry_date', 'is', null)
           .lte('expiry_date', thresholdDate.toIso8601String().substring(0, 10))
-          .gte('expiry_date', now.toIso8601String().substring(0, 10))
           .gt('available_quantity', 0)
-          .order('expiry_date')
+          .order('expiry_date', ascending: true)
           .limit(limit);
 
       final result = List<Map<String, dynamic>>.from(response);
