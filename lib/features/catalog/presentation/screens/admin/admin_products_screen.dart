@@ -434,31 +434,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 ),
                               ),
 
-                              // ── Contador de página (Estilo Órdenes de Compra) ──
-                              if (state.catalogState != ViewState.loading &&
-                                  state.products.isNotEmpty)
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      isMobile ? 16.0 : 24.0,
-                                      0,
-                                      isMobile ? 16.0 : 24.0,
-                                      10.0,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          '  en esta página',
-                                          style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
 
                               // ── 3. Contenido Principal (Data-Grid vs Tarjetas) ──
                               _buildSliverBody(

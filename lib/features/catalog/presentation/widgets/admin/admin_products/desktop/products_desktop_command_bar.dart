@@ -714,19 +714,6 @@ class ProductsDesktopCommandBar extends StatelessWidget {
               ),
             ],
 
-            const SizedBox(width: 16),
-            Container(width: 1, height: 18, color: const Color(0xFFE2E8F0)),
-            const SizedBox(width: 16),
-
-            // 8. Contador de productos
-            Text(
-              '${state.totalCount} ${state.totalCount == 1 ? "producto" : "productos"}',
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-              ),
-            ),
           ],
         ),
       ),
