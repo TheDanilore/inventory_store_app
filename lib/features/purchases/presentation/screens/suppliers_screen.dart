@@ -197,8 +197,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 800;
-    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+    final isWide = width >= 640;
+    final isDesktop = width >= 1024;
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -218,7 +218,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
         child: AdminLayout(
           title: 'Directorio de Proveedores',
           actions:
-              isDesktopOrTablet
+              isWide
                   ? null
                   : [
                     IconButton(
@@ -232,9 +232,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                       },
                     ),
                   ],
-          // En escritorio ocultamos el FAB; la acción vive en el Toolbar
+          // En tablet/escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
-              isDesktop
+              isWide
                   ? null
                   : FloatingActionButton(
                     onPressed: () => _openSupplierModal(context),
@@ -306,7 +306,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                               totalCount > 0 ? totalCount : suppliers.length,
                           activeCount: activeCount,
                           withRucCount: withRucCount,
-                          isDesktop: isDesktop,
+                          isDesktop: isWide,
                         ),
                       ),
                     ),
@@ -357,7 +357,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              if (isDesktop) ...[
+                              if (isWide) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -412,7 +412,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     ..._buildSupplierContentSlivers(
                       isLoading: isLoading,
                       suppliers: suppliers,
-                      isDesktop: isDesktop,
+                      isWide: isWide,
                       searchQuery: searchQuery,
                     ),
 
@@ -437,11 +437,11 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   List<Widget> _buildSupplierContentSlivers({
     required bool isLoading,
     required List<SupplierEntity> suppliers,
-    required bool isDesktop,
+    required bool isWide,
     required String searchQuery,
   }) {
     if (isLoading && suppliers.isEmpty) {
-      return [_buildSkeletonsSliver(isDesktop)];
+      return [_buildSkeletonsSliver(isWide)];
     }
 
     if (suppliers.isEmpty) {
@@ -484,7 +484,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       ];
     }
 
-    if (isDesktop && _isTableView) {
+    if (isWide && _isTableView) {
       return [
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -504,7 +504,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       ];
     }
 
-    if (isDesktop) {
+    if (isWide) {
       return [
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -713,4 +713,3 @@ class _SuppliersKpiBar extends StatelessWidget {
     );
   }
 }
-

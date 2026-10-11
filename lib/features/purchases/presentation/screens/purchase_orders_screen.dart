@@ -120,7 +120,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       _pendingTargetOrderId = widget.targetOrderId;
       final state = cubit.state;
       if (state is PurchaseOrdersLoaded) {
-        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        final isTablet = MediaQuery.sizeOf(context).width >= 640;
         _resolveTargetOrder(state.orders.cast<PurchaseOrderModel>(), isTablet);
       }
     }
@@ -132,7 +132,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     });
 
     if (updateUrl && mounted) {
-      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      final isTablet = MediaQuery.sizeOf(context).width >= 640;
       if (isTablet) {
         if (po != null) {
           context.replace('/purchase-orders?selectedId=${po.id}');
@@ -326,7 +326,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       if (key == LogicalKeyboardKey.enter ||
           key == LogicalKeyboardKey.numpadEnter) {
         final po = _selectedOrder ?? displayOrders.first;
-        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        final isTablet = MediaQuery.sizeOf(context).width >= 640;
         if (isTablet) {
           _openDesktopDetailSheet(po);
         } else {
@@ -818,7 +818,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
 
     return AdminLayout(
       title: 'Órdenes de Compra',
@@ -904,7 +904,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         onKeyEvent: _handleKeyEvent,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 800;
+            final isTablet = constraints.maxWidth >= 640;
 
             return BlocConsumer<PurchaseOrdersCubit, PurchaseOrdersState>(
               buildWhen:
@@ -1075,7 +1075,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh, Nueva Orden) ─
                             SliverToBoxAdapter(
                               child: AdminProToolbar(
-                                isDesktop: isTablet,
+                                isDesktop: constraints.maxWidth >= 1024,
                                 searchController: _searchCtrl,
                                 searchFocusNode: _searchFocusNode,
                                 searchHint:
@@ -1309,19 +1309,30 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
           title: 'Por Recibir / Pend.',
           value: '$pendingCount',
           subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
-          icon: pendingCount > 0
-              ? Icons.pending_actions_rounded
-              : Icons.check_circle_outline_rounded,
-          accentColor: pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
+          icon:
+              pendingCount > 0
+                  ? Icons.pending_actions_rounded
+                  : Icons.check_circle_outline_rounded,
+          accentColor:
+              pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
           gradientColors: [
             Colors.white,
-            pendingCount > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFECFDF5),
+            pendingCount > 0
+                ? const Color(0xFFFFFBEB)
+                : const Color(0xFFECFDF5),
           ],
-          iconGradient: pendingCount > 0
-              ? const [Color(0xFFF59E0B), Color(0xFFD97706)]
-              : const [Color(0xFF10B981), Color(0xFF059669)],
-          borderColor: pendingCount > 0 ? const Color(0xFFFDE68A) : const Color(0xFFA7F3D0),
-          glowColor: pendingCount > 0 ? const Color(0x2EF59E0B) : const Color(0x2E10B981),
+          iconGradient:
+              pendingCount > 0
+                  ? const [Color(0xFFF59E0B), Color(0xFFD97706)]
+                  : const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor:
+              pendingCount > 0
+                  ? const Color(0xFFFDE68A)
+                  : const Color(0xFFA7F3D0),
+          glowColor:
+              pendingCount > 0
+                  ? const Color(0x2EF59E0B)
+                  : const Color(0x2E10B981),
         ),
         AdminKpiItem(
           title: 'Saldo por Pagar',
@@ -1333,18 +1344,20 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
             Colors.white,
             totalDebt > 0 ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDFA),
           ],
-          iconGradient: totalDebt > 0
-              ? const [Color(0xFFF43F5E), Color(0xFFE11D48)]
-              : const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor: totalDebt > 0 ? const Color(0xFFFECDD3) : const Color(0xFF99F6E4),
-          glowColor: totalDebt > 0 ? const Color(0x2EF43F5E) : const Color(0x2E0D9488),
+          iconGradient:
+              totalDebt > 0
+                  ? const [Color(0xFFF43F5E), Color(0xFFE11D48)]
+                  : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor:
+              totalDebt > 0 ? const Color(0xFFFECDD3) : const Color(0xFF99F6E4),
+          glowColor:
+              totalDebt > 0 ? const Color(0x2EF43F5E) : const Color(0x2E0D9488),
           valueColor: totalDebt > 0 ? AppColors.accent : AppColors.textPrimary,
         ),
       ],
     );
   }
 }
-
 
 class _PurchaseOrdersViewModel {
   final PurchaseOrdersCubit cubit;

@@ -289,35 +289,38 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveAccent = widget.isAlert
-        ? AppColors.danger
-        : (widget.accentColor ?? AppColors.primary);
+    final effectiveAccent =
+        widget.isAlert
+            ? AppColors.danger
+            : (widget.accentColor ?? AppColors.primary);
 
-    final effectiveGradient = widget.gradientColors ?? [
-      Colors.white,
-      effectiveAccent.withValues(alpha: 0.04),
-    ];
+    final effectiveGradient =
+        widget.gradientColors ??
+        [Colors.white, effectiveAccent.withValues(alpha: 0.04)];
 
-    final effectiveBorder = widget.isAlert
-        ? AppColors.danger.withValues(alpha: 0.35)
-        : (widget.borderColor ??
-            effectiveAccent.withValues(alpha: 0.22));
+    final effectiveBorder =
+        widget.isAlert
+            ? AppColors.danger.withValues(alpha: 0.35)
+            : (widget.borderColor ?? effectiveAccent.withValues(alpha: 0.22));
 
-    final effectiveGlow = widget.glowColor ??
-        effectiveAccent.withValues(alpha: 0.18);
+    final effectiveGlow =
+        widget.glowColor ?? effectiveAccent.withValues(alpha: 0.18);
 
-    final effectiveValueColor = widget.isAlert
-        ? AppColors.danger
-        : (widget.valueColor ?? AppColors.textPrimary);
+    final effectiveValueColor =
+        widget.isAlert
+            ? AppColors.danger
+            : (widget.valueColor ?? AppColors.textPrimary);
 
-    final effectiveSubtitleColor = widget.isAlert
-        ? AppColors.danger.withValues(alpha: 0.85)
-        : (widget.subtitleColor ?? AppColors.textSecondary);
+    final effectiveSubtitleColor =
+        widget.isAlert
+            ? AppColors.danger.withValues(alpha: 0.85)
+            : (widget.subtitleColor ?? AppColors.textSecondary);
 
     final isInteractive = widget.onTap != null;
 
     final cardContent = MouseRegion(
-      cursor: isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor:
+          isInteractive ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
@@ -333,9 +336,10 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isHovered
-                ? effectiveAccent.withValues(alpha: 0.65)
-                : effectiveBorder,
+            color:
+                _isHovered
+                    ? effectiveAccent.withValues(alpha: 0.65)
+                    : effectiveBorder,
             width: 1.2,
           ),
           boxShadow: [
@@ -466,10 +470,7 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            effectiveAccent,
-            effectiveAccent.withValues(alpha: 0.85),
-          ],
+          colors: [effectiveAccent, effectiveAccent.withValues(alpha: 0.85)],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
@@ -492,12 +493,12 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
 /// Contenedor adaptativo de Métricas KPI Bento Ribbon.
 ///
 /// Distribución:
-/// - **Desktop / Tablet (>= 800px)**: Fila expansiva uniforme con separación estética.
-/// - **Mobile (< 800px)**: Carrusel horizontal con física elástica (o grid 2x2 opcional).
+/// - **Desktop / Tablet (>= 640px)**: Fila expansiva uniforme con separación estética.
+/// - **Mobile (< 640px)**: Carrusel horizontal con física elástica (o grid 2x2 opcional).
 class AdminKpiMetricsBar extends StatelessWidget {
   final List<AdminKpiItem> items;
 
-  /// Forzar modo desktop/tablet o móvil. Si es null, se autodetecta por ancho (>= 800px).
+  /// Forzar modo desktop/tablet o móvil. Si es null, se autodetecta por ancho (>= 640px).
   final bool? isDesktop;
 
   /// Padding exterior de la barra.
@@ -537,7 +538,7 @@ class AdminKpiMetricsBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final desktop = isDesktop ?? (width >= 800);
+    final desktop = isDesktop ?? (width >= 640);
 
     Widget content;
 
@@ -577,10 +578,11 @@ class AdminKpiMetricsBar extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         itemCount: items.length,
         separatorBuilder: (_, _) => SizedBox(width: spacing),
-        itemBuilder: (_, index) => SizedBox(
-          width: mobileItemWidth,
-          child: AdminKpiCard.fromItem(items[index]),
-        ),
+        itemBuilder:
+            (_, index) => SizedBox(
+              width: mobileItemWidth,
+              child: AdminKpiCard.fromItem(items[index]),
+            ),
       ),
     );
   }
@@ -640,14 +642,15 @@ class AdminKpiMetricsBar extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: count,
         separatorBuilder: (_, _) => SizedBox(width: spacing),
-        itemBuilder: (context, index) => SizedBox(
-          width: mobileItemWidth,
-          child: const AppShimmer(
-            width: double.infinity,
-            height: double.infinity,
-            borderRadius: 16,
-          ),
-        ),
+        itemBuilder:
+            (context, index) => SizedBox(
+              width: mobileItemWidth,
+              child: const AppShimmer(
+                width: double.infinity,
+                height: double.infinity,
+                borderRadius: 16,
+              ),
+            ),
       ),
     );
   }

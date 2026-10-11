@@ -313,8 +313,8 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 800;
-    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+    final isWide = width >= 640;
+    final isDesktop = width >= 1024;
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -334,7 +334,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
         child: AdminLayout(
           title: 'Créditos de Proveedores',
           actions:
-              isDesktopOrTablet
+              isWide
                   ? null
                   : [
                     IconButton(
@@ -347,9 +347,9 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                       },
                     ),
                   ],
-          // En escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
+          // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
           floatingActionButton:
-              isDesktop
+              isWide
                   ? null
                   : FloatingActionButton(
                     onPressed: _openCreateAccountModal,
@@ -572,7 +572,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
 
                     // --- 3. CONTENIDO: CARDS O TABLA ---
                     if (isLoading && accounts.isEmpty)
-                      (isDesktop && _isTableView)
+                      (isWide && _isTableView)
                           ? const SliverPadding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             sliver: SliverToBoxAdapter(
@@ -582,7 +582,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                           : SliverPadding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             sliver:
-                                isDesktop
+                                isWide
                                     ? SliverGrid(
                                       gridDelegate:
                                           const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -649,7 +649,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                               'Intenta cambiar los filtros o realizar otra búsqueda.',
                         ),
                       )
-                    else if (isDesktop && _isTableView)
+                    else if (isWide && _isTableView)
                       // VISTA DE ALTA DENSIDAD: TABLA PRO
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -671,7 +671,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         sliver:
-                            isDesktop
+                            isWide
                                 ? SliverGrid(
                                   gridDelegate:
                                       const SliverGridDelegateWithMaxCrossAxisExtent(

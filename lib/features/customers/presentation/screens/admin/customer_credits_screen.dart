@@ -251,7 +251,8 @@ class _CustomerCreditsScreenContentState
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 800;
+    final isWide = width >= 640;
+    final isDesktop = width >= 1024;
 
     return Focus(
       autofocus: true,
@@ -265,9 +266,9 @@ class _CustomerCreditsScreenContentState
 
           return AdminLayout(
             title: 'Cuentas por Cobrar',
-            // En escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
+            // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
             floatingActionButton:
-                isDesktop
+                isWide
                     ? null
                     : FloatingActionButton(
                       onPressed: () => _openCreateAccountModal(),
@@ -284,328 +285,311 @@ class _CustomerCreditsScreenContentState
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                        // --- 1. KPI BENTO METRIC BAR ---
-                        if (!state.isLoading || state.accounts.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: GlobalStatsBar(
-                              totalDebt: state.totalDebt,
-                              activeAccounts: state.activeAccounts,
-                              suspendedAccounts: state.suspendedAccounts,
-                              maxedOutAccounts: state.maxedOutAccounts,
-                              accountsWithDebt: accountsWithDebtCount,
-                            ),
-                          ),
+                  // --- 1. KPI BENTO METRIC BAR ---
+                  if (!state.isLoading || state.accounts.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: GlobalStatsBar(
+                        totalDebt: state.totalDebt,
+                        activeAccounts: state.activeAccounts,
+                        suspendedAccounts: state.suspendedAccounts,
+                        maxedOutAccounts: state.maxedOutAccounts,
+                        accountsWithDebt: accountsWithDebtCount,
+                      ),
+                    ),
 
-                        // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
-                        SliverToBoxAdapter(
-                          child: AdminProToolbar(
-                            isDesktop: isDesktop,
-                            searchController: _searchCtrl,
-                            searchFocusNode: _searchFocusNode,
-                            searchHint:
-                                'Buscar por cliente, documento o teléfono...',
-                            onSearchChanged: _onSearchChanged,
-                            onClearSearch: () {
-                              _searchCtrl.clear();
-                              _debounce?.cancel();
+                  // --- 2. TOOLBAR UNIFICADO DE BÚSQUEDA Y ACCIONES ---
+                  SliverToBoxAdapter(
+                    child: AdminProToolbar(
+                      isDesktop: isDesktop,
+                      searchController: _searchCtrl,
+                      searchFocusNode: _searchFocusNode,
+                      searchHint: 'Buscar por cliente, documento o teléfono...',
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: () {
+                        _searchCtrl.clear();
+                        _debounce?.cancel();
+                        context.read<CustomerCreditListCubit>().setSearch('');
+                      },
+                      filterWidgets: [
+                        _buildSegmentedFilter(accountsWithDebtCount),
+                      ],
+                      viewToggleConfig: AdminProViewToggleConfig(
+                        isTableView: _isTableView,
+                        onToggleTableView:
+                            (val) => setState(() => _isTableView = val),
+                      ),
+                      onRefresh:
+                          () =>
                               context
                                   .read<CustomerCreditListCubit>()
-                                  .setSearch('');
-                            },
-                            filterWidgets: [
-                              _buildSegmentedFilter(accountsWithDebtCount),
-                            ],
-                            viewToggleConfig: AdminProViewToggleConfig(
-                              isTableView: _isTableView,
-                              onToggleTableView:
-                                  (val) => setState(() => _isTableView = val),
-                            ),
-                            onRefresh:
-                                () => context
-                                    .read<CustomerCreditListCubit>()
-                                    .loadData(),
-                            refreshTooltip: 'Refrescar créditos [R]',
-                            primaryAction: AdminProToolbarAction(
-                              label: 'Nueva Línea',
-                              icon: Icons.add_rounded,
-                              onPressed: () => _openCreateAccountModal(),
-                              keyHint: 'N',
-                            ),
-                          ),
-                        ),
-
-                        // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
-                        if (!state.isLoading && state.accounts.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    '${state.accounts.length} ${state.accounts.length == 1 ? "cuenta" : "cuentas"} en esta página',
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (isDesktop) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surface,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: const Color(0xFFE2E8F0),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        '↑ ↓ navegar',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: const Color(0xFFE2E8F0),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Pág. ${state.currentPage} / ${state.totalPages}',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        // --- 3. CONTENIDO: CARDS O TABLA ---
-                        if (state.isLoading && state.accounts.isEmpty)
-                          (isDesktop && _isTableView)
-                              ? const SliverPadding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                sliver: SliverToBoxAdapter(
-                                  child: AppTableShimmer(),
-                                ),
-                              )
-                              : SliverPadding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                sliver:
-                                    isDesktop
-                                        ? SliverGrid(
-                                          gridDelegate:
-                                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                                maxCrossAxisExtent: 420,
-                                                mainAxisExtent: 220,
-                                                crossAxisSpacing: 16,
-                                                mainAxisSpacing: 16,
-                                              ),
-                                          delegate: SliverChildBuilderDelegate(
-                                            (context, index) =>
-                                                const AppShimmer(
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                  borderRadius: 16,
-                                                ),
-                                            childCount: 6,
-                                          ),
-                                        )
-                                        : SliverList(
-                                          delegate: SliverChildBuilderDelegate(
-                                            (context, index) => const Padding(
-                                              padding: EdgeInsets.only(
-                                                bottom: 12,
-                                              ),
-                                              child: AppShimmer(
-                                                width: double.infinity,
-                                                height: 180,
-                                                borderRadius: 16,
-                                              ),
-                                            ),
-                                            childCount: 4,
-                                          ),
-                                        ),
-                              )
-                        else if (state.errorMessage.isNotEmpty &&
-                            state.accounts.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: AppEmptyState(
-                              icon: Icons.error_outline_rounded,
-                              color: AppColors.danger,
-                              title: 'Error de carga',
-                              message: state.errorMessage,
-                              action: FilledButton.icon(
-                                onPressed:
-                                    () =>
-                                        context
-                                            .read<CustomerCreditListCubit>()
-                                            .loadData(),
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Reintentar'),
-                              ),
-                            ),
-                          )
-                        else if (state.accounts.isEmpty)
-                          SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: AppEmptyState(
-                              icon: Icons.receipt_long_rounded,
-                              title:
-                                  _searchCtrl.text.isNotEmpty
-                                      ? 'No se encontraron resultados'
-                                      : (_tabController.index == 1
-                                          ? 'No hay créditos con deuda pendiente'
-                                          : 'No hay líneas de crédito registradas'),
-                              message:
-                                  _searchCtrl.text.isNotEmpty
-                                      ? 'No hay resultados que coincidan con "${_searchCtrl.text}".'
-                                      : 'Crea una nueva línea de crédito para autorizar ventas a plazo.',
-                              action: FilledButton(
-                                onPressed: () {
-                                  if (_searchCtrl.text.isNotEmpty) {
-                                    _searchCtrl.clear();
-                                    _debounce?.cancel();
-                                    context
-                                        .read<CustomerCreditListCubit>()
-                                        .setSearch('');
-                                  } else {
-                                    _openCreateAccountModal();
-                                  }
-                                },
-                                child: Text(
-                                  _searchCtrl.text.isNotEmpty
-                                      ? 'Limpiar filtro'
-                                      : '+ Nueva Línea de Crédito',
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (isDesktop && _isTableView)
-                          // VISTA DE ALTA DENSIDAD: TABLA PRO
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver: SliverToBoxAdapter(
-                              child: _CustomerCreditsDataTable(
-                                accounts: state.accounts,
-                                onPayTap: _openPaymentModal,
-                                onHistoryTap: _openMovementsScreen,
-                                onEditTap:
-                                    (account) => _openCreateAccountModal(
-                                      accountToEdit: account,
-                                    ),
-                                onToggleStatusTap: _toggleAccountStatus,
-                                onCopy: _copyToClipboard,
-                              ),
-                            ),
-                          )
-                        else
-                          // VISTA VISUAL: TARJETAS DINÁMICAS
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver:
-                                isDesktop
-                                    ? SliverGrid(
-                                      gridDelegate:
-                                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                                            maxCrossAxisExtent: 420,
-                                            mainAxisExtent: 220,
-                                            crossAxisSpacing: 16,
-                                            mainAxisSpacing: 16,
-                                          ),
-                                      delegate: SliverChildBuilderDelegate((
-                                        context,
-                                        index,
-                                      ) {
-                                        final account = state.accounts[index];
-                                        return CreditAccountCard(
-                                          account: account,
-                                          onTap:
-                                              () => _showAccountOptions(
-                                                context,
-                                                account,
-                                              ),
-                                          onPayTap:
-                                              account.isActive &&
-                                                      account.currentDebt > 0
-                                                  ? () =>
-                                                      _openPaymentModal(account)
-                                                  : null,
-                                          onHistoryTap:
-                                              () =>
-                                                  _openMovementsScreen(account),
-                                        );
-                                      }, childCount: state.accounts.length),
-                                    )
-                                    : SliverList(
-                                      delegate: SliverChildBuilderDelegate((
-                                        context,
-                                        index,
-                                      ) {
-                                        final account = state.accounts[index];
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 12,
-                                          ),
-                                          child: CreditAccountCard(
-                                            account: account,
-                                            onTap:
-                                                () => _showAccountOptions(
-                                                  context,
-                                                  account,
-                                                ),
-                                            onPayTap:
-                                                account.isActive &&
-                                                        account.currentDebt > 0
-                                                    ? () => _openPaymentModal(
-                                                      account,
-                                                    )
-                                                    : null,
-                                            onHistoryTap:
-                                                () => _openMovementsScreen(
-                                                  account,
-                                                ),
-                                          ),
-                                        );
-                                      }, childCount: state.accounts.length),
-                                    ),
-                          ),
-
-                        // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
-                        _buildPaginationSliver(
-                          currentPage: state.currentPage,
-                          totalPages: state.totalPages,
-                          totalItems: state.totalAccounts,
-                          isLoading: state.isLoading,
-                          context: context,
-                        ),
-                      ],
+                                  .loadData(),
+                      refreshTooltip: 'Refrescar créditos [R]',
+                      primaryAction: AdminProToolbarAction(
+                        label: 'Nueva Línea',
+                        icon: Icons.add_rounded,
+                        onPressed: () => _openCreateAccountModal(),
+                        keyHint: 'N',
+                      ),
                     ),
                   ),
-                );
+
+                  // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR ---
+                  if (!state.isLoading && state.accounts.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${state.accounts.length} ${state.accounts.length == 1 ? "cuenta" : "cuentas"} en esta página',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (isDesktop) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                child: const Text(
+                                  '↑ ↓ navegar',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Text(
+                                'Pág. ${state.currentPage} / ${state.totalPages}',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // --- 3. CONTENIDO: CARDS O TABLA ---
+                  if (state.isLoading && state.accounts.isEmpty)
+                    (isWide && _isTableView)
+                        ? const SliverPadding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverToBoxAdapter(child: AppTableShimmer()),
+                        )
+                        : SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver:
+                              isWide
+                                  ? SliverGrid(
+                                    gridDelegate:
+                                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                                          maxCrossAxisExtent: 420,
+                                          mainAxisExtent: 220,
+                                          crossAxisSpacing: 16,
+                                          mainAxisSpacing: 16,
+                                        ),
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) => const AppShimmer(
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        borderRadius: 16,
+                                      ),
+                                      childCount: 6,
+                                    ),
+                                  )
+                                  : SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) => const Padding(
+                                        padding: EdgeInsets.only(bottom: 12),
+                                        child: AppShimmer(
+                                          width: double.infinity,
+                                          height: 180,
+                                          borderRadius: 16,
+                                        ),
+                                      ),
+                                      childCount: 4,
+                                    ),
+                                  ),
+                        )
+                  else if (state.errorMessage.isNotEmpty &&
+                      state.accounts.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppEmptyState(
+                        icon: Icons.error_outline_rounded,
+                        color: AppColors.danger,
+                        title: 'Error de carga',
+                        message: state.errorMessage,
+                        action: FilledButton.icon(
+                          onPressed:
+                              () =>
+                                  context
+                                      .read<CustomerCreditListCubit>()
+                                      .loadData(),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Reintentar'),
+                        ),
+                      ),
+                    )
+                  else if (state.accounts.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppEmptyState(
+                        icon: Icons.receipt_long_rounded,
+                        title:
+                            _searchCtrl.text.isNotEmpty
+                                ? 'No se encontraron resultados'
+                                : (_tabController.index == 1
+                                    ? 'No hay créditos con deuda pendiente'
+                                    : 'No hay líneas de crédito registradas'),
+                        message:
+                            _searchCtrl.text.isNotEmpty
+                                ? 'No hay resultados que coincidan con "${_searchCtrl.text}".'
+                                : 'Crea una nueva línea de crédito para autorizar ventas a plazo.',
+                        action: FilledButton(
+                          onPressed: () {
+                            if (_searchCtrl.text.isNotEmpty) {
+                              _searchCtrl.clear();
+                              _debounce?.cancel();
+                              context.read<CustomerCreditListCubit>().setSearch(
+                                '',
+                              );
+                            } else {
+                              _openCreateAccountModal();
+                            }
+                          },
+                          child: Text(
+                            _searchCtrl.text.isNotEmpty
+                                ? 'Limpiar filtro'
+                                : '+ Nueva Línea de Crédito',
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (isWide && _isTableView)
+                    // VISTA DE ALTA DENSIDAD: TABLA PRO
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverToBoxAdapter(
+                        child: _CustomerCreditsDataTable(
+                          accounts: state.accounts,
+                          onPayTap: _openPaymentModal,
+                          onHistoryTap: _openMovementsScreen,
+                          onEditTap:
+                              (account) => _openCreateAccountModal(
+                                accountToEdit: account,
+                              ),
+                          onToggleStatusTap: _toggleAccountStatus,
+                          onCopy: _copyToClipboard,
+                        ),
+                      ),
+                    )
+                  else
+                    // VISTA VISUAL: TARJETAS DINÁMICAS
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver:
+                          isWide
+                              ? SliverGrid(
+                                gridDelegate:
+                                    const SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: 420,
+                                      mainAxisExtent: 220,
+                                      crossAxisSpacing: 16,
+                                      mainAxisSpacing: 16,
+                                    ),
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final account = state.accounts[index];
+                                  return CreditAccountCard(
+                                    account: account,
+                                    onTap:
+                                        () => _showAccountOptions(
+                                          context,
+                                          account,
+                                        ),
+                                    onPayTap:
+                                        account.isActive &&
+                                                account.currentDebt > 0
+                                            ? () => _openPaymentModal(account)
+                                            : null,
+                                    onHistoryTap:
+                                        () => _openMovementsScreen(account),
+                                  );
+                                }, childCount: state.accounts.length),
+                              )
+                              : SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final account = state.accounts[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: CreditAccountCard(
+                                      account: account,
+                                      onTap:
+                                          () => _showAccountOptions(
+                                            context,
+                                            account,
+                                          ),
+                                      onPayTap:
+                                          account.isActive &&
+                                                  account.currentDebt > 0
+                                              ? () => _openPaymentModal(account)
+                                              : null,
+                                      onHistoryTap:
+                                          () => _openMovementsScreen(account),
+                                    ),
+                                  );
+                                }, childCount: state.accounts.length),
+                              ),
+                    ),
+
+                  // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                  _buildPaginationSliver(
+                    currentPage: state.currentPage,
+                    totalPages: state.totalPages,
+                    totalItems: state.totalAccounts,
+                    isLoading: state.isLoading,
+                    context: context,
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       ),
     );

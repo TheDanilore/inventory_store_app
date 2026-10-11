@@ -12,7 +12,7 @@ class AdminDesktopTopBar extends StatelessWidget {
   final bool showBackButton;
   final VoidCallback onBack;
   final String title;
-  final String breadcrumbText;
+  final String? breadcrumbText;
   final List<Widget>? actions;
   final bool showSettingsButton;
   final List<PopupMenuEntry<String>>? settingsActions;
@@ -25,7 +25,7 @@ class AdminDesktopTopBar extends StatelessWidget {
     required this.showBackButton,
     required this.onBack,
     required this.title,
-    required this.breadcrumbText,
+    this.breadcrumbText = '',
     this.actions,
     required this.showSettingsButton,
     this.settingsActions,
@@ -43,7 +43,7 @@ class AdminDesktopTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Sub-page Back Button (Only when explicitly enabled for non-root views) ──
+          // ── Sub-page Back Button & Contextual Title (Only for sub-pages / non-root views) ──
           if (showBackButton) ...[
             _TopBarIconButton(
               icon: Icons.arrow_back_rounded,
@@ -51,31 +51,25 @@ class AdminDesktopTopBar extends StatelessWidget {
               onTap: onBack,
             ),
             const SizedBox(width: 12),
-          ],
-
-          // ── Contextual Breadcrumbs (Linear / Stripe style) ────────
-          if (breadcrumbText.isNotEmpty) ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340),
-              child: Text(
-                breadcrumbText,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF475569),
-                  letterSpacing: -0.2,
+            if (title.isNotEmpty) ...[
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(width: 14),
-            Container(
-              width: 1,
-              height: 20,
-              color: const Color(0xFFE2E8F0),
-            ),
-            const SizedBox(width: 14),
+              const SizedBox(width: 14),
+              Container(width: 1, height: 20, color: const Color(0xFFE2E8F0)),
+              const SizedBox(width: 14),
+            ],
           ],
 
           Tooltip(
@@ -90,10 +84,7 @@ class AdminDesktopTopBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFE2E8F0),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                 ),
                 child: const Row(
                   children: [

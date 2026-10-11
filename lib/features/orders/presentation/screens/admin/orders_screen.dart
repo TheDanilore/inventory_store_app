@@ -82,7 +82,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       }
       _pendingTargetOrderId = widget.targetOrderId;
       final cubit = context.read<OrdersCubit>();
-      final isWide = MediaQuery.sizeOf(context).width >= 800;
+      final isWide = MediaQuery.sizeOf(context).width >= 640;
       _resolveTargetOrder(cubit.state.orders, isWide);
     }
   }
@@ -93,7 +93,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
 
     if (updateUrl && mounted) {
-      final isWide = MediaQuery.sizeOf(context).width >= 800;
+      final isWide = MediaQuery.sizeOf(context).width >= 640;
       if (isWide) {
         if (order != null) {
           context.replace('/orders?selectedId=${order.id}');
@@ -203,7 +203,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.ignored;
     }
 
-    final isControlOrMeta = HardwareKeyboard.instance.isControlPressed ||
+    final isControlOrMeta =
+        HardwareKeyboard.instance.isControlPressed ||
         HardwareKeyboard.instance.isMetaPressed;
     final key = event.logicalKey;
 
@@ -237,7 +238,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     // Atajo [P] o [Ctrl + P] -> Imprimir ticket del pedido activo
-    if (key == LogicalKeyboardKey.keyP || (isControlOrMeta && key == LogicalKeyboardKey.keyP)) {
+    if (key == LogicalKeyboardKey.keyP ||
+        (isControlOrMeta && key == LogicalKeyboardKey.keyP)) {
       if (_selectedOrder != null) {
         _printOrderTicket(_selectedOrder!);
         return KeyEventResult.handled;
@@ -287,23 +289,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final cubit = context.read<OrdersCubit>();
     final orders = cubit.state.orders;
     if (orders.isNotEmpty) {
-      final currentIndex = _selectedOrder != null
-          ? orders.indexWhere((o) => o.id == _selectedOrder!.id)
-          : -1;
+      final currentIndex =
+          _selectedOrder != null
+              ? orders.indexWhere((o) => o.id == _selectedOrder!.id)
+              : -1;
 
       if (key == LogicalKeyboardKey.arrowDown) {
-        final nextIndex = currentIndex == -1 ? 0 : (currentIndex + 1).clamp(0, orders.length - 1);
+        final nextIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex + 1).clamp(0, orders.length - 1);
         _selectOrder(orders[nextIndex], updateUrl: true);
         return KeyEventResult.handled;
       } else if (key == LogicalKeyboardKey.arrowUp) {
-        final prevIndex = currentIndex == -1 ? 0 : (currentIndex - 1).clamp(0, orders.length - 1);
+        final prevIndex =
+            currentIndex == -1
+                ? 0
+                : (currentIndex - 1).clamp(0, orders.length - 1);
         _selectOrder(orders[prevIndex], updateUrl: true);
         return KeyEventResult.handled;
       }
 
-      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter) {
         final order = _selectedOrder ?? orders.first;
-        final isWide = MediaQuery.sizeOf(context).width >= 800;
+        final isWide = MediaQuery.sizeOf(context).width >= 640;
         _showOrderDetails(order, isWide);
         return KeyEventResult.handled;
       }
@@ -371,8 +381,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (!mounted) return;
 
     try {
-      final success =
-          await context.read<OrdersCubit>().updateOrderStatus(order, newStatus);
+      final success = await context.read<OrdersCubit>().updateOrderStatus(
+        order,
+        newStatus,
+      );
       if (!mounted) return;
       if (success) {
         AppSnackbar.show(
@@ -808,7 +820,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
     );
     final width = MediaQuery.sizeOf(context).width;
-    final isWide = width >= 800;
+    final isWide = width >= 640;
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -816,17 +828,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
       autofocus: true,
       child: AdminLayout(
         title: widget.customTitle ?? 'Gestión de Pedidos',
-        actions: isWide
-            ? null
-            : [
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Actualizar pedidos',
-                  onPressed: () {
-                    context.read<OrdersCubit>().loadOrders(reset: true);
-                  },
-                ),
-              ],
+        actions:
+            isWide
+                ? null
+                : [
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Actualizar pedidos',
+                    onPressed: () {
+                      context.read<OrdersCubit>().loadOrders(reset: true);
+                    },
+                  ),
+                ],
         body: LayoutBuilder(
           builder: (context, constraints) {
             return BlocConsumer<OrdersCubit, OrdersState>(
@@ -872,10 +885,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   currentSelectedOrder = _selectedOrder;
                 }
 
-                final displayOrders = (currentSelectedOrder != null &&
-                        !state.orders.any((o) => o.id == currentSelectedOrder!.id))
-                    ? [currentSelectedOrder, ...state.orders]
-                    : state.orders;
+                final displayOrders =
+                    (currentSelectedOrder != null &&
+                            !state.orders.any(
+                              (o) => o.id == currentSelectedOrder!.id,
+                            ))
+                        ? [currentSelectedOrder, ...state.orders]
+                        : state.orders;
 
                 return RefreshIndicator(
                   color: AppColors.primary,
@@ -897,148 +913,143 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                           child: _OrdersBentoKpiBar(
-                                  pageOrdersCount: state.orders.length,
-                                  totalRecords: state.totalRecords,
-                                  pageTotalAmount: state.totalAmountCurrentPage,
-                                  pendingCount: state.pendingCountCurrentPage,
-                                  pendingDebt: state.pendingDebtCurrentPage,
-                                  isWide: isWide,
-                                ),
-                              ),
-                            ),
+                            pageOrdersCount: state.orders.length,
+                            totalRecords: state.totalRecords,
+                            pageTotalAmount: state.totalAmountCurrentPage,
+                            pendingCount: state.pendingCountCurrentPage,
+                            pendingDebt: state.pendingDebtCurrentPage,
+                            isWide: isWide,
+                          ),
+                        ),
+                      ),
 
-                            // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
-                            SliverToBoxAdapter(
-                              child: AdminProToolbar(
-                                isDesktop: isWide,
-                                searchController: _searchCtrl,
-                                searchFocusNode: _searchFocusNode,
-                                searchHint:
-                                    'Buscar por cliente o ID de pedido...',
-                                onSearchChanged: _onSearchChanged,
-                                onClearSearch: () {
-                                  _searchCtrl.clear();
-                                  cubit.setSearchQuery('');
-                                },
-                                filterWidgets: [
-                                  _buildStatusDropdown(context, state, cubit),
-                                  _buildPaymentDropdown(context, state, cubit),
-                                  DateFilterCalendar(
-                                    height: 40,
-                                    borderRadius: BorderRadius.circular(10),
-                                    dateRange:
-                                        state.startDate != null &&
-                                                state.endDate != null
-                                            ? DateTimeRange(
-                                              start: state.startDate!,
-                                              end: state.endDate!,
-                                            )
-                                            : null,
-                                    onDateRangeSelected: (picked) {
-                                      cubit.setDateRange(
-                                        picked.start,
-                                        picked.end,
-                                      );
-                                    },
-                                    onClear: () {
-                                      cubit.setDateRange(null, null);
-                                    },
+                      // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
+                      SliverToBoxAdapter(
+                        child: AdminProToolbar(
+                          isDesktop: width >= 1024,
+                          searchController: _searchCtrl,
+                          searchFocusNode: _searchFocusNode,
+                          searchHint: 'Buscar por cliente o ID de pedido...',
+                          onSearchChanged: _onSearchChanged,
+                          onClearSearch: () {
+                            _searchCtrl.clear();
+                            cubit.setSearchQuery('');
+                          },
+                          filterWidgets: [
+                            _buildStatusDropdown(context, state, cubit),
+                            _buildPaymentDropdown(context, state, cubit),
+                            DateFilterCalendar(
+                              height: 40,
+                              borderRadius: BorderRadius.circular(10),
+                              dateRange:
+                                  state.startDate != null &&
+                                          state.endDate != null
+                                      ? DateTimeRange(
+                                        start: state.startDate!,
+                                        end: state.endDate!,
+                                      )
+                                      : null,
+                              onDateRangeSelected: (picked) {
+                                cubit.setDateRange(picked.start, picked.end);
+                              },
+                              onClear: () {
+                                cubit.setDateRange(null, null);
+                              },
+                            ),
+                          ],
+                          viewToggleConfig: AdminProViewToggleConfig(
+                            isTableView: _isTableView,
+                            onToggleTableView:
+                                (val) => setState(() => _isTableView = val),
+                          ),
+                          onRefresh: () => cubit.refresh(),
+                        ),
+                      ),
+
+                      // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR (ESTILO COMPRAS / PEDIDOS) ---
+                      if (!state.isLoading && displayOrders.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${displayOrders.length} ${displayOrders.length == 1 ? "pedido" : "pedidos"} en esta página',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (isWide) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      '↑ ↓ navegar',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
                                   ),
                                 ],
-                                viewToggleConfig: AdminProViewToggleConfig(
-                                  isTableView: _isTableView,
-                                  onToggleTableView:
-                                      (val) =>
-                                          setState(() => _isTableView = val),
-                                ),
-                                onRefresh: () => cubit.refresh(),
-                              ),
-                            ),
-
-                            // --- 2.5 ENCABEZADO DE NAVEGACIÓN Y CONTADOR (ESTILO COMPRAS / PEDIDOS) ---
-                            if (!state.isLoading && displayOrders.isNotEmpty)
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '${displayOrders.length} ${displayOrders.length == 1 ? "pedido" : "pedidos"} en esta página',
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      if (isWide) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.surface,
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                            border: Border.all(
-                                                color: const Color(0xFFE2E8F0)),
-                                          ),
-                                          child: const Text(
-                                            '↑ ↓ navegar',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textMuted,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surface,
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                          border: Border.all(
-                                              color: const Color(0xFFE2E8F0)),
-                                        ),
-                                        child: Text(
-                                          'Pág. ${state.currentPage + 1} / ${state.totalPages}',
-                                          style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Pág. ${state.currentPage + 1} / ${state.totalPages}',
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
-                              ),
-
-                            // --- 3. LISTADO O TABLA PRO ---
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                              sliver: _buildListOrTableSliver(
-                                state,
-                                cubit,
-                                isWide,
-                                isLoyaltyEnabled,
-                                currentSelectedOrder,
-                                displayOrders,
-                              ),
+                              ],
                             ),
-
-                            // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
-                            _buildPaginationSliver(context, state, cubit),
-                          ],
+                          ),
                         ),
-                      );
+
+                      // --- 3. LISTADO O TABLA PRO ---
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        sliver: _buildListOrTableSliver(
+                          state,
+                          cubit,
+                          isWide,
+                          isLoyaltyEnabled,
+                          currentSelectedOrder,
+                          displayOrders,
+                        ),
+                      ),
+
+                      // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                      _buildPaginationSliver(context, state, cubit),
+                    ],
+                  ),
+                );
               },
             );
           },
@@ -1060,9 +1071,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     if (state.isLoading) {
       if (_isTableView && isWide) {
-        return const SliverToBoxAdapter(
-          child: AppTableShimmer(),
-        );
+        return const SliverToBoxAdapter(child: AppTableShimmer());
       }
       return SliverList(
         delegate: SliverChildBuilderDelegate(
@@ -1269,15 +1278,18 @@ class _OrdersBentoKpiBar extends StatelessWidget {
         ),
         AdminKpiItem(
           title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
-          value: pendingDebt > 0
-              ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
-              : '$pendingCount',
-          subtitle: pendingDebt > 0
-              ? 'Créditos pendientes'
-              : 'Borradores por completar',
-          icon: pendingDebt > 0
-              ? Icons.credit_card_rounded
-              : Icons.pending_actions_rounded,
+          value:
+              pendingDebt > 0
+                  ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
+                  : '$pendingCount',
+          subtitle:
+              pendingDebt > 0
+                  ? 'Créditos pendientes'
+                  : 'Borradores por completar',
+          icon:
+              pendingDebt > 0
+                  ? Icons.credit_card_rounded
+                  : Icons.pending_actions_rounded,
           gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
           iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
           borderColor: const Color(0xFFFDE68A),
@@ -1288,4 +1300,3 @@ class _OrdersBentoKpiBar extends StatelessWidget {
     );
   }
 }
-

@@ -36,6 +36,7 @@ class AdminProViewToggleConfig {
   final IconData tableIcon;
   final IconData cardsIcon;
   final bool showOnMobile;
+  final bool showOnTablet;
 
   const AdminProViewToggleConfig({
     required this.isTableView,
@@ -46,6 +47,7 @@ class AdminProViewToggleConfig {
     this.tableIcon = Icons.table_rows_rounded,
     this.cardsIcon = Icons.grid_view_rounded,
     this.showOnMobile = false,
+    this.showOnTablet = true,
   });
 }
 
@@ -82,6 +84,7 @@ class AdminProToolbar extends StatelessWidget {
   final Widget? secondaryRow;
 
   final bool? isDesktop;
+  final bool? isTablet;
   final EdgeInsetsGeometry margin;
   final EdgeInsetsGeometry padding;
 
@@ -103,15 +106,17 @@ class AdminProToolbar extends StatelessWidget {
     this.trailingActions,
     this.secondaryRow,
     this.isDesktop,
+    this.isTablet,
     this.margin = const EdgeInsets.fromLTRB(16, 10, 16, 8),
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
   });
 
   // ── BUSCADOR LIMPIO CON ATRIBUTO TOOLTEXT ─────────────────────────────────
   Widget _buildSearchField({required bool isMobile}) {
-    final searchTooltipMsg = searchKeyHint != null && searchKeyHint!.isNotEmpty
-        ? 'Buscar (Atajo: $searchKeyHint)'
-        : 'Buscar';
+    final searchTooltipMsg =
+        searchKeyHint != null && searchKeyHint!.isNotEmpty
+            ? 'Buscar (Atajo: $searchKeyHint)'
+            : 'Buscar';
 
     return SizedBox(
       height: isMobile ? 46 : 40,
@@ -211,7 +216,10 @@ class AdminProToolbar extends StatelessWidget {
               message: config.tableTooltip,
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
-                onTap: () => config.onToggleTableView(true),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  config.onToggleTableView(true);
+                },
                 borderRadius: BorderRadius.circular(7),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -219,22 +227,27 @@ class AdminProToolbar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: config.isTableView ? AppColors.surface : Colors.transparent,
+                    color:
+                        config.isTableView
+                            ? AppColors.surface
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(7),
-                    boxShadow: config.isTableView
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
+                    boxShadow:
+                        config.isTableView
+                            ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ]
+                            : null,
                   ),
                   child: Icon(
                     config.tableIcon,
                     size: 18,
-                    color: config.isTableView ? activeColor : AppColors.textMuted,
+                    color:
+                        config.isTableView ? activeColor : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -244,7 +257,10 @@ class AdminProToolbar extends StatelessWidget {
               message: config.cardsTooltip,
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
-                onTap: () => config.onToggleTableView(false),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  config.onToggleTableView(false);
+                },
                 borderRadius: BorderRadius.circular(7),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -252,22 +268,27 @@ class AdminProToolbar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: !config.isTableView ? AppColors.surface : Colors.transparent,
+                    color:
+                        !config.isTableView
+                            ? AppColors.surface
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(7),
-                    boxShadow: !config.isTableView
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
+                    boxShadow:
+                        !config.isTableView
+                            ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ]
+                            : null,
                   ),
                   child: Icon(
                     config.cardsIcon,
                     size: 18,
-                    color: !config.isTableView ? activeColor : AppColors.textMuted,
+                    color:
+                        !config.isTableView ? activeColor : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -289,9 +310,10 @@ class AdminProToolbar extends StatelessWidget {
             : (action.backgroundColor ?? AppColors.primary);
     final effectiveFgColor = action.foregroundColor ?? Colors.white;
 
-    final tooltipMsg = action.keyHint != null && action.keyHint!.isNotEmpty
-        ? '${action.label} (Atajo: ${action.keyHint})'
-        : action.label;
+    final tooltipMsg =
+        action.keyHint != null && action.keyHint!.isNotEmpty
+            ? '${action.label} (Atajo: ${action.keyHint})'
+            : action.label;
 
     return Tooltip(
       message: tooltipMsg,
@@ -333,7 +355,8 @@ class AdminProToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final bool useDesktopLayout = isDesktop ?? (width >= 1024);
-    final bool useTabletLayout = !useDesktopLayout && (width >= 640);
+    final bool useTabletLayout =
+        isTablet ?? (!useDesktopLayout && (width >= 640));
 
     return Container(
       margin: margin,
@@ -350,9 +373,10 @@ class AdminProToolbar extends StatelessWidget {
           ),
         ],
       ),
-      child: useDesktopLayout
-          ? _buildDesktopLayout()
-          : (useTabletLayout ? _buildTabletLayout() : _buildMobileLayout()),
+      child:
+          useDesktopLayout
+              ? _buildDesktopLayout()
+              : (useTabletLayout ? _buildTabletLayout() : _buildMobileLayout()),
     );
   }
 
@@ -378,24 +402,21 @@ class AdminProToolbar extends StatelessWidget {
         // 4. Botón de refresco con rotación interactiva
         if (onRefresh != null) ...[
           const SizedBox(width: 8),
-          _AdminProRefreshButton(
-            onRefresh: onRefresh,
-            tooltip: refreshTooltip,
-          ),
+          _AdminProRefreshButton(onRefresh: onRefresh, tooltip: refreshTooltip),
         ],
 
-        // 5. Botón de acción principal (CTA)
-        if (primaryAction != null) ...[
-          const SizedBox(width: 8),
-          _buildPrimaryActionButton(primaryAction!, isMobile: false),
-        ],
-
-        // 6. Acciones extra opcionales
+        // 5. Acciones extra opcionales (ej: Exportar, Importar)
         if (trailingActions != null)
           for (final action in trailingActions!) ...[
             const SizedBox(width: 8),
             action,
           ],
+
+        // 6. Botón de acción principal (CTA)
+        if (primaryAction != null) ...[
+          const SizedBox(width: 8),
+          _buildPrimaryActionButton(primaryAction!, isMobile: false),
+        ],
       ],
     );
 
@@ -412,9 +433,11 @@ class AdminProToolbar extends StatelessWidget {
 
   // ── 2. TABLET LAYOUT (EFICIENCIA HÍBRIDA EN 2 NIVELES EQUILIBRADOS) ───────
   Widget _buildTabletLayout() {
+    final showToggleOnTablet =
+        viewToggleConfig != null && viewToggleConfig!.showOnTablet;
     final hasSecondaryItems =
         filterWidgets.isNotEmpty ||
-        viewToggleConfig != null ||
+        showToggleOnTablet ||
         onRefresh != null ||
         (trailingActions != null && trailingActions!.isNotEmpty);
 
@@ -451,7 +474,7 @@ class AdminProToolbar extends StatelessWidget {
                   ),
                 ),
               ),
-              if (viewToggleConfig != null) ...[
+              if (showToggleOnTablet) ...[
                 const SizedBox(width: 8),
                 _buildViewModeToggle(viewToggleConfig!),
               ],
@@ -552,10 +575,7 @@ class _AdminProRefreshButton extends StatefulWidget {
   final VoidCallback? onRefresh;
   final String tooltip;
 
-  const _AdminProRefreshButton({
-    this.onRefresh,
-    required this.tooltip,
-  });
+  const _AdminProRefreshButton({this.onRefresh, required this.tooltip});
 
   @override
   State<_AdminProRefreshButton> createState() => _AdminProRefreshButtonState();

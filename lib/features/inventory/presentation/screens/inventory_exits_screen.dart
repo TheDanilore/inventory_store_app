@@ -79,7 +79,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       }
       _pendingTargetExitId = widget.targetExitId;
       final exits = context.read<InventoryExitsCubit>().state.exits;
-      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      final isTablet = MediaQuery.sizeOf(context).width >= 640;
       _resolveTargetExit(exits, isTablet);
     }
   }
@@ -88,7 +88,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     setState(() => _selectedExit = exit);
 
     if (updateUrl && mounted) {
-      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      final isTablet = MediaQuery.sizeOf(context).width >= 640;
       if (isTablet) {
         if (exit != null) {
           context.replace('/inventory-exits?selectedId=${exit.id}');
@@ -240,7 +240,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
       if (event.logicalKey == LogicalKeyboardKey.enter ||
           event.logicalKey == LogicalKeyboardKey.numpadEnter) {
         final exit = _selectedExit ?? exits.first;
-        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        final isTablet = MediaQuery.sizeOf(context).width >= 640;
         if (isTablet) {
           _openDesktopDetailSheet(exit);
         } else {
@@ -352,7 +352,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
 
     return BlocConsumer<InventoryExitsCubit, InventoryExitsState>(
       listener: (context, state) {
@@ -425,7 +425,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
             onKeyEvent: _handleKeyEvent,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isTablet = constraints.maxWidth >= 800;
+                final isTablet = constraints.maxWidth >= 640;
 
                 // Si es tablet y la salida seleccionada ya no existe en la lista filtrada, deseleccionar
                 if (isTablet && _selectedExit != null && !_isTableView) {
@@ -518,7 +518,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                       // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
                       SliverToBoxAdapter(
                         child: AdminProToolbar(
-                          isDesktop: isTablet,
+                          isDesktop: constraints.maxWidth >= 1024,
                           searchController: _searchCtrl,
                           searchFocusNode: _searchFocusNode,
                           searchHint: 'Buscar motivo o notas... [/]',
@@ -839,7 +839,6 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
     );
   }
 }
-
 
 class _ExitCard extends StatefulWidget {
   final InventoryExitEntity exitData;

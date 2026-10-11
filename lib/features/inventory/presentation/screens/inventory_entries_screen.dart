@@ -80,7 +80,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       _pendingTargetEntryId = widget.targetEntryId;
       final state = context.read<InventoryEntriesCubit>().state;
       if (state is InventoryEntriesLoaded) {
-        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        final isTablet = MediaQuery.sizeOf(context).width >= 640;
         _resolveTargetEntry(state.entries, isTablet);
       }
     }
@@ -90,7 +90,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     setState(() => _selectedEntry = entry);
 
     if (updateUrl && mounted) {
-      final isTablet = MediaQuery.sizeOf(context).width >= 800;
+      final isTablet = MediaQuery.sizeOf(context).width >= 640;
       if (isTablet) {
         if (entry != null) {
           context.replace('/inventory-entries?selectedId=${entry.id}');
@@ -308,7 +308,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
       if (event.logicalKey == LogicalKeyboardKey.enter ||
           event.logicalKey == LogicalKeyboardKey.numpadEnter) {
         final entry = _selectedEntry ?? entries.first;
-        final isTablet = MediaQuery.sizeOf(context).width >= 800;
+        final isTablet = MediaQuery.sizeOf(context).width >= 640;
         if (isTablet) {
           _openDesktopDetailSheet(entry);
         } else {
@@ -467,7 +467,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 800;
+    final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
 
     return BlocConsumer<InventoryEntriesCubit, InventoryEntriesState>(
       listener: (context, state) {
@@ -598,7 +598,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
             onKeyEvent: _handleKeyEvent,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isTablet = constraints.maxWidth >= 800;
+                final isTablet = constraints.maxWidth >= 640;
 
                 return RefreshIndicator(
                   color: AppColors.primary,
@@ -1071,7 +1071,8 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
         ),
         AdminKpiItem(
           title: 'Almacén Destino',
-          value: warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
+          value:
+              warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
           subtitle: 'Filtro aplicado',
           icon: Icons.storefront_rounded,
           accentColor: AppColors.warningDark,
@@ -1084,7 +1085,6 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
     );
   }
 }
-
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ENTRY CARD

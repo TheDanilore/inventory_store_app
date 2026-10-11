@@ -237,10 +237,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   void _handleBulkExportPdf(AdminCatalogCubit cubit) {
     final selected = _selectedProductIdsNotifier.value;
     if (selected.isEmpty) return;
-    cubit.exportCatalogPdf(
-      optionsMode: 2,
-      selectedIds: selected.toList(),
-    );
+    cubit.exportCatalogPdf(optionsMode: 2, selectedIds: selected.toList());
   }
 
   void _showProductQuickView(ProductEntity product, AdminCatalogCubit cubit) {
@@ -277,13 +274,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           autofocus: true,
           onKeyEvent: _handleKeyEvent,
           child: BlocListener<AdminCatalogCubit, AdminCatalogState>(
-            listenWhen: (previous, current) =>
-                previous.actionState != current.actionState ||
-                previous.currentPage != current.currentPage ||
-                previous.searchTerm != current.searchTerm ||
-                previous.selectedCategoryId != current.selectedCategoryId ||
-                previous.selectedBrandId != current.selectedBrandId ||
-                previous.stockFilter != current.stockFilter,
+            listenWhen:
+                (previous, current) =>
+                    previous.actionState != current.actionState ||
+                    previous.currentPage != current.currentPage ||
+                    previous.searchTerm != current.searchTerm ||
+                    previous.selectedCategoryId != current.selectedCategoryId ||
+                    previous.selectedBrandId != current.selectedBrandId ||
+                    previous.stockFilter != current.stockFilter,
             listener: (context, state) {
               if (state.actionState == ViewState.error) {
                 AppSnackbar.show(
@@ -298,134 +296,52 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               }
             },
             child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-              buildWhen: (prev, current) =>
-                  prev.catalogState != current.catalogState ||
-                  prev.products != current.products ||
-                  prev.currentPage != current.currentPage ||
-                  prev.totalPages != current.totalPages ||
-                  prev.totalCount != current.totalCount ||
-                  prev.actionState != current.actionState ||
-                  prev.selectedCategoryId != current.selectedCategoryId ||
-                  prev.selectedBrandId != current.selectedBrandId ||
-                  prev.filterIsActive != current.filterIsActive ||
-                  prev.stockFilter != current.stockFilter ||
-                  prev.sortOption != current.sortOption ||
-                  prev.searchTerm != current.searchTerm ||
-                  prev.searchByIngredient != current.searchByIngredient,
+              buildWhen:
+                  (prev, current) =>
+                      prev.catalogState != current.catalogState ||
+                      prev.products != current.products ||
+                      prev.currentPage != current.currentPage ||
+                      prev.totalPages != current.totalPages ||
+                      prev.totalCount != current.totalCount ||
+                      prev.actionState != current.actionState ||
+                      prev.selectedCategoryId != current.selectedCategoryId ||
+                      prev.selectedBrandId != current.selectedBrandId ||
+                      prev.filterIsActive != current.filterIsActive ||
+                      prev.stockFilter != current.stockFilter ||
+                      prev.sortOption != current.sortOption ||
+                      prev.searchTerm != current.searchTerm ||
+                      prev.searchByIngredient != current.searchByIngredient,
               builder: (context, state) {
                 return AdminLayout(
                   title: 'Inventario de Productos',
-                  actions: [
-                    if (isMobile) ...[
-                      IconButton(
-                        icon: const Icon(Icons.picture_as_pdf_rounded),
-                        tooltip: 'Exportar PDF',
-                        onPressed: () => _handleExportPdf(cubit, state),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.upload_file_rounded),
-                        tooltip: 'Importar Lote (CSV)',
-                        onPressed: () => context.go('/products/bulk-import'),
-                      ),
-                    ],
-                    if (!isMobile) ...[
-                      OutlinedButton.icon(
-                        onPressed: () => _handleExportPdf(cubit, state),
-                        icon: const Icon(
-                          Icons.picture_as_pdf_rounded,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        label: const Text(
-                          'Exportar PDF',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => context.go('/products/bulk-import'),
-                        icon: const Icon(Icons.upload_file_rounded, size: 16),
-                        label: const Text(
-                          'Importar CSV',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: () => context.go('/products/product-form'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              'Nuevo Producto',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
+                  actions:
+                      isMobile
+                          ? [
+                            IconButton(
+                              icon: const Icon(Icons.picture_as_pdf_rounded),
+                              tooltip: 'Exportar PDF',
+                              onPressed: () => _handleExportPdf(cubit, state),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 1.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'N',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
+                            IconButton(
+                              icon: const Icon(Icons.upload_file_rounded),
+                              tooltip: 'Importar Lote (CSV)',
+                              onPressed:
+                                  () => context.go('/products/bulk-import'),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                  floatingActionButton: isMobile
-                      ? ValueListenableBuilder<bool>(
-                          valueListenable: _isFabExtended,
-                          builder: (context, extended, child) {
-                            return extended
-                                ? FloatingActionButton.extended(
+                          ]
+                          : null,
+                  floatingActionButton:
+                      isMobile
+                          ? ValueListenableBuilder<bool>(
+                            valueListenable: _isFabExtended,
+                            builder: (context, extended, child) {
+                              return extended
+                                  ? FloatingActionButton.extended(
                                     heroTag: 'products_add_fab',
-                                    onPressed: () =>
-                                        context.go('/products/product-form'),
+                                    onPressed:
+                                        () => context.go(
+                                          '/products/product-form',
+                                        ),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     elevation: 4,
@@ -438,19 +354,21 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       ),
                                     ),
                                   )
-                                : FloatingActionButton(
+                                  : FloatingActionButton(
                                     heroTag: 'products_add_fab',
-                                    onPressed: () =>
-                                        context.go('/products/product-form'),
+                                    onPressed:
+                                        () => context.go(
+                                          '/products/product-form',
+                                        ),
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     elevation: 4,
                                     tooltip: 'Nuevo Producto',
                                     child: const Icon(Icons.add_rounded),
                                   );
-                          },
-                        )
-                      : null,
+                            },
+                          )
+                          : null,
                   body: Stack(
                     children: [
                       Container(
@@ -480,26 +398,67 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     isMobile ? 16.0 : 24.0,
                                     14.0,
                                   ),
-                                  child: isMobile
-                                      ? ProductsMobileCommandBar(
-                                          cubit: cubit,
-                                          state: state,
-                                          searchCtrl: _searchCtrl,
-                                          searchFocusNode: _searchFocusNode,
-                                          onOpenFilters: () =>
-                                              ProductsMobileFiltersSheet.show(
-                                            context,
-                                            cubit,
+                                  child:
+                                      isMobile
+                                          ? ProductsMobileCommandBar(
+                                            cubit: cubit,
+                                            state: state,
+                                            searchCtrl: _searchCtrl,
+                                            searchFocusNode: _searchFocusNode,
+                                            onOpenFilters:
+                                                () =>
+                                                    ProductsMobileFiltersSheet.show(
+                                                      context,
+                                                      cubit,
+                                                    ),
+                                          )
+                                          : ProductsDesktopCommandBar(
+                                            cubit: cubit,
+                                            state: state,
+                                            searchCtrl: _searchCtrl,
+                                            searchFocusNode: _searchFocusNode,
+                                            onNewProduct:
+                                                () => context.go(
+                                                  '/products/product-form',
+                                                ),
+                                            onExportPdf:
+                                                () => _handleExportPdf(
+                                                  cubit,
+                                                  state,
+                                                ),
+                                            onBulkImport:
+                                                () => context.go(
+                                                  '/products/bulk-import',
+                                                ),
                                           ),
-                                        )
-                                      : ProductsDesktopCommandBar(
-                                          cubit: cubit,
-                                          state: state,
-                                          searchCtrl: _searchCtrl,
-                                          searchFocusNode: _searchFocusNode,
-                                        ),
                                 ),
                               ),
+
+                              // ── Contador de página (Estilo Órdenes de Compra) ──
+                              if (state.catalogState != ViewState.loading &&
+                                  state.products.isNotEmpty)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      isMobile ? 16.0 : 24.0,
+                                      0,
+                                      isMobile ? 16.0 : 24.0,
+                                      10.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          '  en esta página',
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
 
                               // ── 3. Contenido Principal (Data-Grid vs Tarjetas) ──
                               _buildSliverBody(
@@ -524,13 +483,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surface,
+                                      color:
+                                          Theme.of(context).colorScheme.surface,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: AppColors.border
-                                            .withValues(alpha: 0.8),
+                                        color: AppColors.border.withValues(
+                                          alpha: 0.8,
+                                        ),
                                       ),
                                     ),
                                     child: AdminPageBlocks(
@@ -590,12 +549,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     required bool isTablet,
   }) {
     final totalCount = state.totalCount;
-    final inStockCount =
-        state.products.where((p) => p.totalStock > 0).length;
+    final inStockCount = state.products.where((p) => p.totalStock > 0).length;
     final outOfStockCount =
         state.products.where((p) => p.totalStock <= 0).length;
-    final totalUnits =
-        state.products.fold<int>(0, (sum, p) => sum + p.totalStock);
+    final totalUnits = state.products.fold<int>(
+      0,
+      (sum, p) => sum + p.totalStock,
+    );
     final isMultiPage = state.totalPages > 1;
 
     return AdminKpiMetricsBar(
@@ -622,11 +582,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         AdminKpiItem(
           title: isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
           value: '$inStockCount',
-          subtitle: isMultiPage
-              ? '$inStockCount en pág. actual'
-              : (totalCount > 0
-                  ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
-                  : 'Listo para despacho'),
+          subtitle:
+              isMultiPage
+                  ? '$inStockCount en pág. actual'
+                  : (totalCount > 0
+                      ? '${((inStockCount / (totalCount > 0 ? totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
+                      : 'Listo para despacho'),
           icon: Icons.check_circle_outline_rounded,
           accentColor: AppColors.successDark,
           gradientColors: const [Colors.white, Color(0xFFECFDF5)],
@@ -637,22 +598,33 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         AdminKpiItem(
           title: isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
           value: '$outOfStockCount',
-          subtitle: isMultiPage
-              ? '$outOfStockCount en pág. actual'
-              : (outOfStockCount > 0
-                  ? 'Requieren reposición'
-                  : 'Sin quiebres de inventario'),
+          subtitle:
+              isMultiPage
+                  ? '$outOfStockCount en pág. actual'
+                  : (outOfStockCount > 0
+                      ? 'Requieren reposición'
+                      : 'Sin quiebres de inventario'),
           icon: Icons.warning_amber_rounded,
-          accentColor: outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
+          accentColor:
+              outOfStockCount > 0 ? AppColors.danger : AppColors.tealDark,
           gradientColors: [
             Colors.white,
-            outOfStockCount > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDFA),
+            outOfStockCount > 0
+                ? const Color(0xFFFEF2F2)
+                : const Color(0xFFF0FDFA),
           ],
-          iconGradient: outOfStockCount > 0
-              ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-              : const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor: outOfStockCount > 0 ? const Color(0xFFFECACA) : const Color(0xFF99F6E4),
-          glowColor: outOfStockCount > 0 ? const Color(0x2EEF4444) : const Color(0x2E0D9488),
+          iconGradient:
+              outOfStockCount > 0
+                  ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+                  : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+          borderColor:
+              outOfStockCount > 0
+                  ? const Color(0xFFFECACA)
+                  : const Color(0xFF99F6E4),
+          glowColor:
+              outOfStockCount > 0
+                  ? const Color(0x2EEF4444)
+                  : const Color(0x2E0D9488),
           isAlert: outOfStockCount > 0,
         ),
         AdminKpiItem(
@@ -682,31 +654,33 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       return SliverPadding(
         padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24.0 : 16.0),
         sliver: SliverToBoxAdapter(
-          child: isDesktop
-              ? Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                    border: Border.all(
-                      color: AppColors.border.withValues(alpha: 0.8),
+          child:
+              isDesktop
+                  ? Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.8),
+                      ),
                     ),
+                    child: const ProductsDesktopShimmer(rows: 6),
+                  )
+                  : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 6,
+                    itemBuilder:
+                        (context, index) => const Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: AppShimmer(
+                            width: double.infinity,
+                            height: 104,
+                            borderRadius: 16,
+                          ),
+                        ),
                   ),
-                  child: const ProductsDesktopShimmer(rows: 6),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: 6,
-                  itemBuilder: (context, index) => const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: AppShimmer(
-                      width: double.infinity,
-                      height: 104,
-                      borderRadius: 16,
-                    ),
-                  ),
-                ),
         ),
       );
     }
@@ -759,7 +733,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 const Text(
                   'Prueba ajustando el término de búsqueda o cambiando los filtros seleccionados.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
@@ -799,7 +776,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+              border: Border.all(
+                color: AppColors.border.withValues(alpha: 0.8),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
@@ -819,8 +798,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     selectedProductIds: selectedIds,
                     matchedIngredients: state.matchedIngredients,
                     onProductSelected: _toggleProductSelected,
-                    onSelectAllPage: (selectAll) =>
-                        _selectAllPage(state.products, selectAll),
+                    onSelectAllPage:
+                        (selectAll) =>
+                            _selectAllPage(state.products, selectAll),
                     onRowTap: (p) => _showProductQuickView(p, cubit),
                     onToggleActive: (p) => _toggleProductoActivo(p, cubit),
                     onEdit: (p) {
@@ -864,4 +844,3 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 }
-
