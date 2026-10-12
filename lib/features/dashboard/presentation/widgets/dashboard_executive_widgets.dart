@@ -646,9 +646,11 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -657,19 +659,30 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                   color: const Color(0xFF2563EB),
                   label: 'Ventas Realizadas',
                   value: '$totalSales transacciones',
+                  isDark: isDark,
                 ),
-                Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+                Container(
+                  width: 1,
+                  height: 26,
+                  color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                ),
                 _buildBreakdownItem(
                   color: const Color(0xFF10B981),
                   label: 'Ganancia Bruta',
                   value: 'S/ ${widget.sales.totalProfit.toStringAsFixed(2)}',
+                  isDark: isDark,
                 ),
-                Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+                Container(
+                  width: 1,
+                  height: 26,
+                  color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                ),
                 _buildBreakdownItem(
                   color: const Color(0xFFF59E0B),
                   label: 'Fondo Reposición',
                   value:
                       'S/ ${widget.sales.replacementFund.toStringAsFixed(2)}',
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -683,6 +696,7 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
     required Color color,
     required String label,
     required String value,
+    required bool isDark,
   }) {
     return Row(
       children: [
@@ -697,18 +711,18 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF64748B),
+                color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
             ),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
               ),
             ),
           ],
@@ -1475,7 +1489,7 @@ class DashboardAiAssistantCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. DASHBOARD BEST SELLING PRODUCTS TABLE (SHOPEERS DATA TABLE PRO)
 // ─────────────────────────────────────────────────────────────────────────────
-class DashboardBestSellersTable extends StatelessWidget {
+class DashboardBestSellersTable extends StatefulWidget {
   final List<Map<String, dynamic>>? bestSellers;
   final List<Map<String, dynamic>> criticalBatches;
   final VoidCallback? onHide;
@@ -1487,108 +1501,75 @@ class DashboardBestSellersTable extends StatelessWidget {
     this.onHide,
   });
 
+  @override
+  State<DashboardBestSellersTable> createState() =>
+      _DashboardBestSellersTableState();
+}
+
+class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
+  int? _hoveredRank;
+
   Widget _buildProductThumbnail({
     required String? imageUrl,
-    required int rank,
-    double size = 36,
+    double size = 32,
     bool isDark = false,
   }) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(size > 32 ? 10 : 8),
-            border: Border.all(
-              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-              width: 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child:
-              imageUrl != null && imageUrl.trim().isNotEmpty
-                  ? CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder:
-                        (context, url) => Container(
-                          color:
-                              isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF8FAFC),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.inventory_2_outlined,
-                            size: size * 0.45,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                    errorWidget:
-                        (context, url, error) => Container(
-                          color:
-                              isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF1F5F9),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.inventory_2_outlined,
-                            size: size * 0.45,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                  )
-                  : Container(
-                    color:
-                        isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFF1F5F9),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.inventory_2_outlined,
-                      size: size * 0.45,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+          width: 0.8,
         ),
-        if (rank > 0)
-          Positioned(
-            top: -4,
-            left: -4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
+      ),
+      clipBehavior: Clip.antiAlias,
+      child:
+          imageUrl != null && imageUrl.trim().isNotEmpty
+              ? CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder:
+                    (context, url) => Container(
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: size * 0.45,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                errorWidget:
+                    (context, url, error) => Container(
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: size * 0.45,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+              )
+              : Container(
                 color:
-                    rank == 1
-                        ? const Color(0xFFF59E0B)
-                        : rank == 2
-                        ? const Color(0xFF64748B)
-                        : rank == 3
-                        ? const Color(0xFFB45309)
-                        : const Color(0xFF334155),
-                borderRadius: BorderRadius.circular(5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Text(
-                '#$rank',
-                style: const TextStyle(
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.1,
+                    isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFF1F5F9),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  size: size * 0.45,
+                  color: const Color(0xFF94A3B8),
                 ),
               ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -1596,8 +1577,8 @@ class DashboardBestSellersTable extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final products =
-        (bestSellers != null && bestSellers!.isNotEmpty)
-            ? bestSellers!
+        (widget.bestSellers != null && widget.bestSellers!.isNotEmpty)
+            ? widget.bestSellers!
             : <Map<String, dynamic>>[];
 
     return LayoutBuilder(
@@ -1774,7 +1755,6 @@ class DashboardBestSellersTable extends StatelessWidget {
                             children: [
                               _buildProductThumbnail(
                                 imageUrl: p['imageUrl'] as String?,
-                                rank: index + 1,
                                 size: 38,
                                 isDark: isDark,
                               ),
@@ -1892,260 +1872,347 @@ class DashboardBestSellersTable extends StatelessWidget {
                   },
                 )
               else ...[
-                // ── VISTA DESKTOP: TABLA COMPLETA CON ENCABEZADOS ────────
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? AppColors.darkSurfaceElevated
-                            : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+                // ── VISTA DESKTOP: TABLA PRO CON HOVER INTERACTIVO Y ENCABEZADOS ──
+                MouseRegion(
+                  onExit: (_) {
+                    if (_hoveredRank != null) {
+                      setState(() => _hoveredRank = null);
+                    }
+                  },
+                  child: Column(
                     children: [
-                      SizedBox(
-                        width: 70,
-                        child: Text(
-                          'CÓDIGO',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
+                      // Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
                         ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'NOMBRE DEL PRODUCTO',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? AppColors.darkSurfaceElevated
+                                  : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'DESPACHADOS',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          'FACTURACIÓN',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 100,
-                        child: Text(
-                          'ESTADO',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                // Table Rows
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: products.length,
-                  separatorBuilder:
-                      (context, index) => Divider(
-                        height: 1,
-                        color:
-                            isDark
-                                ? AppColors.darkBorder
-                                : const Color(0xFFF1F5F9),
-                      ),
-                  itemBuilder: (context, index) {
-                    final p = products[index];
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color:
-                            index.isOdd
-                                ? (isDark
-                                    ? AppColors.darkSurfaceElevated.withValues(
-                                      alpha: 0.5,
-                                    )
-                                    : const Color(0xFFF8FAFC))
-                                : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(10),
-                        hoverColor:
-                            isDark
-                                ? AppColors.darkSurfaceElevated
-                                : AppColors.primaryLight.withValues(
-                                  alpha: 0.45,
-                                ),
-                        onTap: () {
-                          final prodId = p['productId'] as String?;
-                          if (prodId != null && prodId.isNotEmpty) {
-                            context.go('/product/$prodId');
-                          } else {
-                            context.go('/inventory');
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 70,
-                                child: Text(
-                                  p['id'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF94A3B8)
-                                            : const Color(0xFF64748B),
-                                  ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 44,
+                              child: Text(
+                                '#',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
                                 ),
                               ),
-                              Expanded(
-                                flex: 3,
+                            ),
+                            SizedBox(
+                              width: 70,
+                              child: Text(
+                                'CÓDIGO',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 4,
+                              child: Text(
+                                'NOMBRE DEL PRODUCTO',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                'DESPACHADOS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                'FACTURACIÓN',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 100,
+                              child: Text(
+                                'ESTADO',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Table Rows con hover reactivo idéntico a TopCustomersCard
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: products.length,
+                        separatorBuilder:
+                            (context, index) => Divider(
+                              height: 1,
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFF1F5F9),
+                            ),
+                        itemBuilder: (context, index) {
+                          final p = products[index];
+                          final rank = index + 1;
+                          final isHovered = _hoveredRank == rank;
+
+                          return MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            onEnter: (_) {
+                              if (_hoveredRank != rank) {
+                                setState(() => _hoveredRank = rank);
+                              }
+                            },
+                            child: GestureDetector(
+                              onTap: () {
+                                final prodId = p['productId'] as String?;
+                                if (prodId != null && prodId.isNotEmpty) {
+                                  context.go('/product/$prodId');
+                                } else {
+                                  context.go('/inventory');
+                                }
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                curve: Curves.easeOutCubic,
+                                decoration: BoxDecoration(
+                                  color:
+                                      isHovered
+                                          ? (isDark
+                                              ? AppColors.darkSurfaceElevated
+                                              : AppColors.primaryLight.withValues(
+                                                alpha: 0.45,
+                                              ))
+                                          : (index.isOdd
+                                              ? (isDark
+                                                  ? AppColors.darkSurface.withValues(
+                                                    alpha: 0.35,
+                                                  )
+                                                  : const Color(0xFFF8FAFC))
+                                              : Colors.transparent),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 11,
+                                ),
                                 child: Row(
                                   children: [
-                                    _buildProductThumbnail(
-                                      imageUrl: p['imageUrl'] as String?,
-                                      rank: index + 1,
-                                      size: 32,
-                                      isDark: isDark,
+                                    // Rank
+                                    SizedBox(
+                                      width: 44,
+                                      child: Row(
+                                        children: [
+                                          if (rank <= 3) ...[
+                                            Icon(
+                                              Icons.workspace_premium_rounded,
+                                              size: 16,
+                                              color:
+                                                  rank == 1
+                                                      ? const Color(0xFFF59E0B)
+                                                      : rank == 2
+                                                      ? const Color(0xFF64748B)
+                                                      : const Color(0xFFB45309),
+                                            ),
+                                            const SizedBox(width: 4),
+                                          ],
+                                          Text(
+                                            '$rank',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  rank == 1
+                                                      ? const Color(0xFFF59E0B)
+                                                      : rank == 2
+                                                      ? const Color(0xFF64748B)
+                                                      : rank == 3
+                                                      ? const Color(0xFFB45309)
+                                                      : (isDark
+                                                          ? const Color(0xFF94A3B8)
+                                                          : const Color(0xFF64748B)),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
+
+                                    // Código
+                                    SizedBox(
+                                      width: 70,
                                       child: Text(
-                                        p['name'] as String,
+                                        p['id'] as String,
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w600,
                                           color:
                                               isDark
-                                                  ? const Color(0xFFF8FAFC)
-                                                  : const Color(0xFF0F172A),
+                                                  ? const Color(0xFF94A3B8)
+                                                  : const Color(0xFF64748B),
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                    ),
+
+                                    // Thumbnail + Nombre
+                                    Expanded(
+                                      flex: 4,
+                                      child: Row(
+                                        children: [
+                                          _buildProductThumbnail(
+                                            imageUrl: p['imageUrl'] as String?,
+                                            size: 32,
+                                            isDark: isDark,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              p['name'] as String,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                color:
+                                                    isDark
+                                                        ? const Color(0xFFF8FAFC)
+                                                        : const Color(0xFF0F172A),
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    // Despachados
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        p['sold'] as String,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF94A3B8)
+                                                  : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Facturación
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        p['revenue'] as String,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Estado
+                                    SizedBox(
+                                      width: 100,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: ((p['statusColor'] is Color
+                                                  ? p['statusColor'] as Color
+                                                  : (p['status'] == 'Alta Rotación'
+                                                      ? const Color(0xFF16A34A)
+                                                      : const Color(0xFF2563EB))))
+                                              .withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          p['status'] as String,
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w700,
+                                            color:
+                                                (p['statusColor'] is Color
+                                                    ? p['statusColor'] as Color
+                                                    : (p['status'] == 'Alta Rotación'
+                                                        ? const Color(0xFF16A34A)
+                                                        : const Color(0xFF2563EB))),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 10),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 16,
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF64748B)
+                                              : const Color(0xFF94A3B8),
                                     ),
                                   ],
                                 ),
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  p['sold'] as String,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF94A3B8)
-                                            : const Color(0xFF64748B),
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  p['revenue'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(
-                                width: 100,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ((p['statusColor'] is Color
-                                            ? p['statusColor'] as Color
-                                            : (p['status'] == 'Alta Rotación'
-                                                ? const Color(0xFF16A34A)
-                                                : const Color(0xFF2563EB))))
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    p['status'] as String,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          (p['statusColor'] is Color
-                                              ? p['statusColor'] as Color
-                                              : (p['status'] == 'Alta Rotación'
-                                                  ? const Color(0xFF16A34A)
-                                                  : const Color(0xFF2563EB))),
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 12,
-                                color: Color(0xFF94A3B8),
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ],
             ],

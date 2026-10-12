@@ -1374,17 +1374,17 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: isDesktop ? MainAxisSize.min : MainAxisSize.max,
         children: [
           // Left: Calendar Picker Trigger
-          Flexible(
-            child: InkWell(
+          if (isDesktop)
+            InkWell(
               onTap: () => _openCustomDatePicker(context, state),
               borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(10),
               ),
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: isDesktop ? 12 : 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1406,26 +1406,72 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                         color: Color(0xFF64748B),
                       ),
                     const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        rangeLabel,
-                        style: TextStyle(
-                          fontSize: isDesktop ? 12 : 11,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isDark
-                                  ? const Color(0xFFF8FAFC)
-                                  : const Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      rangeLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : const Color(0xFF0F172A),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+            )
+          else
+            Expanded(
+              child: InkWell(
+                onTap: () => _openCustomDatePicker(context, state),
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    children: [
+                      if (state.isSalesLoading)
+                        const SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF2563EB),
+                            ),
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          rangeLabel,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : const Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
 
           // Divider
           Container(
@@ -1802,14 +1848,22 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
   }
 }
 
-class ExpiringBatchesCard extends StatelessWidget {
+class ExpiringBatchesCard extends StatefulWidget {
   final List<Map<String, dynamic>> batches;
   final VoidCallback? onHide;
 
   const ExpiringBatchesCard({super.key, required this.batches, this.onHide});
 
   @override
+  State<ExpiringBatchesCard> createState() => _ExpiringBatchesCardState();
+}
+
+class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
+  int? _hoveredIndex;
+
+  @override
   Widget build(BuildContext context) {
+    final batches = widget.batches;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (batches.isEmpty) {
@@ -2076,222 +2130,239 @@ class ExpiringBatchesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: urgent.length,
-            separatorBuilder:
-                (context, index) => Divider(
-                  height: 1,
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
-                ),
-            itemBuilder: (context, index) {
-              final b = urgent[index];
-
-              // Mapeo defensivo de campos (PostgreSQL vs Dart)
-              final expiryStr = b['expiry_date'] as String?;
-              final expiryDate =
-                  expiryStr != null ? DateTime.tryParse(expiryStr) : null;
-              final days =
-                  expiryDate != null
-                      ? expiryDate.difference(DateTime.now()).inDays
-                      : (b['days_until_expiration'] as int? ?? 0);
-
-              final code =
-                  (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
-              final prod =
-                  (b['products'] is Map
-                          ? b['products']['name']
-                          : (b['product_name'] ?? 'Insumo'))
-                      .toString();
-
-              String? imgUrl;
-              if (b['products'] is Map) {
-                final prodImgs =
-                    b['products']['product_images'] as List<dynamic>?;
-                if (prodImgs != null && prodImgs.isNotEmpty) {
-                  final mainImg =
-                      prodImgs.firstWhere(
-                            (img) =>
-                                (img as Map<String, dynamic>)['is_main'] ==
-                                true,
-                            orElse: () => prodImgs.first,
-                          )
-                          as Map<String, dynamic>?;
-                  imgUrl = mainImg?['image_url'] as String?;
-                }
+          MouseRegion(
+            onExit: (_) {
+              if (_hoveredIndex != null) {
+                setState(() => _hoveredIndex = null);
               }
-              if (imgUrl == null && b['product_variants'] is Map) {
-                final varImgs =
-                    b['product_variants']['product_images'] as List<dynamic>?;
-                if (varImgs != null && varImgs.isNotEmpty) {
-                  final mainImg =
-                      varImgs.firstWhere(
-                            (img) =>
-                                (img as Map<String, dynamic>)['is_main'] ==
-                                true,
-                            orElse: () => varImgs.first,
-                          )
-                          as Map<String, dynamic>?;
-                  imgUrl = mainImg?['image_url'] as String?;
-                }
-              }
+            },
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: urgent.length,
+              separatorBuilder:
+                  (context, index) => Divider(
+                    height: 1,
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                  ),
+              itemBuilder: (context, index) {
+                final b = urgent[index];
+                final isHovered = _hoveredIndex == index;
 
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 2),
-                decoration: BoxDecoration(
-                  color:
-                      index.isOdd
-                          ? (isDark
-                              ? AppColors.darkSurfaceElevated.withValues(
-                                alpha: 0.5,
-                              )
-                              : const Color(0xFFF8FAFC))
-                          : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  hoverColor:
-                      isDark
-                          ? AppColors.darkSurfaceElevated
-                          : AppColors.primaryLight.withValues(alpha: 0.45),
-                  onTap: () {
-                    context.go('/inventory?tab=batches');
+                // Mapeo defensivo de campos (PostgreSQL vs Dart)
+                final expiryStr = b['expiry_date'] as String?;
+                final expiryDate =
+                    expiryStr != null ? DateTime.tryParse(expiryStr) : null;
+                final days =
+                    expiryDate != null
+                        ? expiryDate.difference(DateTime.now()).inDays
+                        : (b['days_until_expiration'] as int? ?? 0);
+
+                final code =
+                    (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
+                final prod =
+                    (b['products'] is Map
+                            ? b['products']['name']
+                            : (b['product_name'] ?? 'Insumo'))
+                        .toString();
+
+                String? imgUrl;
+                if (b['products'] is Map) {
+                  final prodImgs =
+                      b['products']['product_images'] as List<dynamic>?;
+                  if (prodImgs != null && prodImgs.isNotEmpty) {
+                    final mainImg =
+                        prodImgs.firstWhere(
+                              (img) =>
+                                  (img as Map<String, dynamic>)['is_main'] ==
+                                  true,
+                              orElse: () => prodImgs.first,
+                            )
+                            as Map<String, dynamic>?;
+                    imgUrl = mainImg?['image_url'] as String?;
+                  }
+                }
+                if (imgUrl == null && b['product_variants'] is Map) {
+                  final varImgs =
+                      b['product_variants']['product_images'] as List<dynamic>?;
+                  if (varImgs != null && varImgs.isNotEmpty) {
+                    final mainImg =
+                        varImgs.firstWhere(
+                              (img) =>
+                                  (img as Map<String, dynamic>)['is_main'] ==
+                                  true,
+                              orElse: () => varImgs.first,
+                            )
+                            as Map<String, dynamic>?;
+                    imgUrl = mainImg?['image_url'] as String?;
+                  }
+                }
+
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onEnter: (_) {
+                    if (_hoveredIndex != index) {
+                      setState(() => _hoveredIndex = index);
+                    }
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 9,
-                      horizontal: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color:
-                                isDark
-                                    ? const Color(0xFF1E293B)
-                                    : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
+                  child: GestureDetector(
+                    onTap: () {
+                      context.go('/inventory?tab=batches');
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      decoration: BoxDecoration(
+                        color:
+                            isHovered
+                                ? (isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : AppColors.primaryLight.withValues(
+                                      alpha: 0.45,
+                                    ))
+                                : (index.isOdd
+                                    ? (isDark
+                                        ? AppColors.darkSurfaceElevated.withValues(
+                                          alpha: 0.5,
+                                        )
+                                        : const Color(0xFFF8FAFC))
+                                    : Colors.transparent),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 9,
+                        horizontal: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
                               color:
                                   isDark
-                                      ? AppColors.darkBorder
-                                      : AppColors.border,
-                              width: 0.8,
+                                      ? const Color(0xFF1E293B)
+                                      : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.border,
+                                width: 0.8,
+                              ),
                             ),
+                            clipBehavior: Clip.antiAlias,
+                            child:
+                                imgUrl != null && imgUrl.isNotEmpty
+                                    ? CachedNetworkImage(
+                                      imageUrl: imgUrl,
+                                      fit: BoxFit.cover,
+                                      placeholder:
+                                          (context, url) => Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 16,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.textSecondary,
+                                          ),
+                                      errorWidget:
+                                          (context, url, error) => Icon(
+                                            Icons.inventory_2_outlined,
+                                            size: 16,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.textSecondary,
+                                          ),
+                                    )
+                                    : Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 16,
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : AppColors.textSecondary,
+                                    ),
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child:
-                              imgUrl != null && imgUrl.isNotEmpty
-                                  ? CachedNetworkImage(
-                                    imageUrl: imgUrl,
-                                    fit: BoxFit.cover,
-                                    placeholder:
-                                        (context, url) => Icon(
-                                          Icons.inventory_2_outlined,
-                                          size: 16,
-                                          color:
-                                              isDark
-                                                  ? const Color(0xFF94A3B8)
-                                                  : AppColors.textSecondary,
-                                        ),
-                                    errorWidget:
-                                        (context, url, error) => Icon(
-                                          Icons.inventory_2_outlined,
-                                          size: 16,
-                                          color:
-                                              isDark
-                                                  ? const Color(0xFF94A3B8)
-                                                  : AppColors.textSecondary,
-                                        ),
-                                  )
-                                  : Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 16,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  prod,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFF8FAFC)
+                                            : AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  'Lote: $code · Click para revisar stock',
+                                  style: TextStyle(
+                                    fontSize: 11,
                                     color:
                                         isDark
                                             ? const Color(0xFF94A3B8)
                                             : AppColors.textSecondary,
                                   ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                prod,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color:
-                                      isDark
-                                          ? const Color(0xFFF8FAFC)
-                                          : AppColors.textPrimary,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                'Lote: $code · Click para revisar stock',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF94A3B8)
-                                          : AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                days <= 0
-                                    ? AppColors.error.withValues(alpha: 0.15)
-                                    : days <= 7
-                                    ? AppColors.error.withValues(alpha: 0.12)
-                                    : AppColors.warning.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            days < 0
-                                ? 'Vencido (${days.abs()}d)'
-                                : days == 0
-                                ? 'Vence hoy'
-                                : days == 1
-                                ? '1 día'
-                                : '$days días',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  days <= 7
-                                      ? AppColors.error
-                                      : AppColors.warning,
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  days <= 0
+                                      ? AppColors.error.withValues(alpha: 0.15)
+                                      : days <= 7
+                                      ? AppColors.error.withValues(alpha: 0.12)
+                                      : AppColors.warning.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              days < 0
+                                  ? 'Vencido (${days.abs()}d)'
+                                  : days == 0
+                                  ? 'Vence hoy'
+                                  : days == 1
+                                  ? '1 día'
+                                  : '$days días',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    days <= 7
+                                        ? AppColors.error
+                                        : AppColors.warning,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
           const SizedBox(height: 12),
           Center(

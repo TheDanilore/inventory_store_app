@@ -617,25 +617,6 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!item.isComingSoon)
-            Padding(
-              padding: const EdgeInsets.only(top: 8, right: 6),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.grab,
-                child: Tooltip(
-                  message: 'Arrastrar al lienzo del Dashboard',
-                  child: Icon(
-                    Icons.drag_indicator_rounded,
-                    size: 18,
-                    color:
-                        isDark
-                            ? const Color(0xFF64748B)
-                            : const Color(0xFF94A3B8),
-                  ),
-                ),
-              ),
-            ),
-
           // Left: Micro-mockup Vectorial
           item.previewMockup,
           const SizedBox(width: 14),
@@ -829,74 +810,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
       ),
     );
 
-    if (item.isComingSoon) {
-      return cardWidget;
-    }
-
-    return Draggable<String>(
-      data: item.id,
-      feedback: Material(
-        color: Colors.transparent,
-        elevation: 12,
-        child: Container(
-          width: 300,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF38BDF8), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.drag_indicator_rounded,
-                color: Color(0xFF38BDF8),
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Soltar aquí',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      childWhenDragging: Opacity(opacity: 0.45, child: cardWidget),
-      child: cardWidget,
-    );
+    return cardWidget;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
