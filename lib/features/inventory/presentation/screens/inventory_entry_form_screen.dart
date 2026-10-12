@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -437,9 +438,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Izquierda: Datos, Finanzas, Documento
+                                // Izquierda: Datos, Finanzas, Documento (40%)
                                 Expanded(
-                                  flex: 5,
+                                  flex: 4,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       border: Border(
@@ -479,9 +480,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     ),
                                   ),
                                 ),
-                                // Derecha: Productos y Botón Guardar
+                                // Derecha: Productos y Botón Guardar (60%)
                                 Expanded(
-                                  flex: 4,
+                                  flex: 6,
                                   child: Column(
                                     children: [
                                       Expanded(
@@ -491,6 +492,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                             context,
                                             state,
                                             cubit,
+                                            isDesktop: true,
                                           ),
                                         ),
                                       ),
@@ -1075,8 +1077,29 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   Widget _buildProductsSection(
     BuildContext context,
     InventoryEntryFormState state,
-    InventoryEntryFormCubit cubit,
-  ) {
+    InventoryEntryFormCubit cubit, {
+    bool isDesktop = false,
+  }) {
+    if (isDesktop) {
+      return BlocSelector<
+        InventoryEntryFormCubit,
+        InventoryEntryFormState,
+        List<InventoryEntryItemEntity>
+      >(
+        selector: (state) => state.items,
+        builder: (context, items) {
+          return PurchaseOrderItemsTable(
+            items: items,
+            onRemoveItem: (index) => cubit.removeItem(index),
+            onUpdateQuantity:
+                (index, qty) => cubit.updateItemQuantity(index, qty),
+            onUpdateCost: (index, cost) => cubit.updateItemCost(index, cost),
+            onAddNewRow: () => _showAddProductSheet(context),
+          );
+        },
+      );
+    }
+
     return _SectionCard(
       child: BlocSelector<
         InventoryEntryFormCubit,

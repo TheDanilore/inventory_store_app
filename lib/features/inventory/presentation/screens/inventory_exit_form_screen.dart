@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -481,9 +482,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Izquierda: Datos de Origen y Justificación
+                            // Izquierda: Datos de Origen y Justificación (40%)
                             Expanded(
-                              flex: 5,
+                              flex: 4,
                               child: Container(
                                 decoration: BoxDecoration(
                                   border: Border(
@@ -501,9 +502,9 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                 ),
                               ),
                             ),
-                            // Derecha: Productos y Botón Guardar
+                            // Derecha: Tabla de Productos y Botón Guardar (60%)
                             Expanded(
-                              flex: 4,
+                              flex: 6,
                               child: Column(
                                 children: [
                                   Expanded(
@@ -512,6 +513,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                       child: _buildProductsSection(
                                         context,
                                         state,
+                                        isDesktop: true,
                                       ),
                                     ),
                                   ),
@@ -710,8 +712,20 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
   Widget _buildProductsSection(
     BuildContext context,
-    InventoryExitFormState state,
-  ) {
+    InventoryExitFormState state, {
+    bool isDesktop = false,
+  }) {
+    final cubit = context.read<InventoryExitFormCubit>();
+
+    if (isDesktop) {
+      return InventoryExitItemsTable(
+        items: state.items,
+        onRemoveItem: (index) => cubit.removeItem(index),
+        onUpdateQuantity: (index, qty) => cubit.updateQuantity(index, qty),
+        onAddNewRow: () => _showAddProductSheet(context),
+      );
+    }
+
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -269,7 +269,7 @@ class PurchaseOrderItemsTable extends StatelessWidget {
                     Row(
                       children: [
                         _StatBadge(
-                          label: 'Líneas',
+                          label: 'Items',
                           value: '${items.length}',
                           isDark: isDark,
                         ),
