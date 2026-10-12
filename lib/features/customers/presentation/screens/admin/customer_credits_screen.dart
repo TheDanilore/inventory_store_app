@@ -334,7 +334,6 @@ class _CustomerCreditsScreenContentState
                     ),
                   ),
 
-
                   // --- 3. CONTENIDO: CARDS O TABLA ---
                   if (state.isLoading && state.accounts.isEmpty)
                     (isWide && _isTableView)
@@ -538,7 +537,7 @@ class _CustomerCreditsScreenContentState
     required bool isLoading,
     required BuildContext context,
   }) {
-    if (totalPages <= 1 || isLoading || totalItems == 0) {
+    if (isLoading || totalItems == 0) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(

@@ -646,7 +646,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     BuildContext context,
     bool isMobile,
   ) {
-    if (state.totalPages <= 1 || state.products.isEmpty) {
+    if (state.products.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(
@@ -658,10 +658,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           32.0,
         ),
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
@@ -673,6 +670,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             totalPages: state.totalPages,
             onPageChanged: cubit.setPage,
             totalItems: state.totalCount,
+            itemsPerPage: state.itemsPerPage,
+            onItemsPerPageChanged: cubit.setItemsPerPage,
             itemName: 'productos',
           ),
         ),
@@ -804,7 +803,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               // ── 0. Cabecera Ejecutiva Stripe / Linear (Arriba de Métricas) ──
                               SliverToBoxAdapter(
                                 child: AdminPageHeader(
-                                  breadcrumb: 'Inicio > Catálogo Maestro',
                                   title: 'Catálogo de Productos',
                                   subtitle:
                                       'Administra precios, márgenes brutos, inventario en tiempo real y visibilidad multicanal.',
@@ -824,8 +822,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       label: 'Exportar CSV',
                                       icon: Icons.table_chart_outlined,
                                       iconColor: const Color(0xFF10B981),
-                                      tooltip:
-                                          'Exportar catálogo en PDF / CSV',
+                                      tooltip: 'Exportar catálogo en PDF / CSV',
                                       onPressed:
                                           () => _handleExportPdf(cubit, state),
                                     ),

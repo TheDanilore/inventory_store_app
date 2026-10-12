@@ -5,17 +5,15 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 ///
 /// Se ubica en la parte superior de las pantallas administrativas (arriba de las métricas).
 /// En Desktop / Tablet (>= 720dp):
-/// - Muestra migas de pan (Breadcrumb: Inicio > Catálogo Maestro)
-/// - Título de sección en tipografía de alto impacto
-/// - Subtítulo descriptivo de contexto
-/// - Acciones principales a la derecha (Importar, Exportar, Nuevo...)
+/// - Título de sección en tipografía de alto impacto (26dp)
+/// - Subtítulo descriptivo de contexto (14dp)
+/// - Acciones principales a la derecha con botones simétricos de 44dp de altura
 ///
 /// En Móvil (< 720dp):
 /// - Oculta la cabecera por defecto para evitar duplicar el AppBar del Scaffold.
 class AdminPageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
-  final String? breadcrumb;
   final List<Widget>? actions;
   final bool isDesktop;
   final bool showOnMobile;
@@ -25,11 +23,12 @@ class AdminPageHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    this.breadcrumb,
     this.actions,
     required this.isDesktop,
     this.showOnMobile = false,
     this.padding,
+    // Parámetro obsoleto mantenido temporalmente por retrocompatibilidad
+    String? breadcrumb,
   });
 
   @override
@@ -42,75 +41,34 @@ class AdminPageHeader extends StatelessWidget {
         padding ??
         EdgeInsets.fromLTRB(
           isDesktop ? 24 : 16,
-          isDesktop ? 20 : 14,
+          isDesktop ? 18 : 12,
           isDesktop ? 24 : 16,
           isDesktop ? 12 : 8,
         );
 
     return Padding(
       padding: effectivePadding,
-      child: isDesktop ? _buildDesktopHeader(context) : _buildMobileHeader(context),
-    );
-  }
-
-  Widget _buildBreadcrumb(BuildContext context) {
-    if (breadcrumb == null || breadcrumb!.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final parts =
-        breadcrumb!.contains('>')
-            ? breadcrumb!.split('>').map((s) => s.trim()).toList()
-            : ['Inicio', breadcrumb!.trim()];
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (int i = 0; i < parts.length; i++) ...[
-            if (i > 0) ...[
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 15,
-                color: Color(0xFF94A3B8),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              parts[i],
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight:
-                    i == parts.length - 1 ? FontWeight.w600 : FontWeight.w500,
-                color:
-                    i == parts.length - 1
-                        ? const Color(0xFF475569)
-                        : const Color(0xFF94A3B8),
-              ),
-            ),
-          ],
-        ],
-      ),
+      child:
+          isDesktop
+              ? _buildDesktopHeader(context)
+              : _buildMobileHeader(context),
     );
   }
 
   Widget _buildDesktopHeader(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Columna Izquierda: Breadcrumb + Título + Subtítulo
+        // Columna Izquierda: Título + Subtítulo
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildBreadcrumb(context),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
                   letterSpacing: -0.5,
@@ -133,14 +91,14 @@ class AdminPageHeader extends StatelessWidget {
           ),
         ),
 
-        // Columna Derecha: Acciones
+        // Columna Derecha: Acciones ampliadas y simétricas
         if (actions != null && actions!.isNotEmpty) ...[
-          const SizedBox(width: 20),
+          const SizedBox(width: 24),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               for (int i = 0; i < actions!.length; i++) ...[
-                if (i > 0) const SizedBox(width: 10),
+                if (i > 0) const SizedBox(width: 12),
                 actions![i],
               ],
             ],
@@ -155,7 +113,6 @@ class AdminPageHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildBreadcrumb(context),
         Text(
           title,
           style: const TextStyle(
@@ -181,7 +138,7 @@ class AdminPageHeader extends StatelessWidget {
   }
 }
 
-/// Botones de acción auxiliares con estilo coherente para [AdminPageHeader].
+/// Botones de acción ejecutivos con ergonomía de 44dp para [AdminPageHeader].
 class AdminHeaderButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -210,57 +167,91 @@ class AdminHeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = isPrimary
-        ? FilledButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon, size: 17, color: Colors.white),
-            label: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                letterSpacing: -0.1,
-              ),
+    final Widget button;
+
+    if (isPrimary) {
+      button = Container(
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.28),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              minimumSize: const Size(0, 38),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+          ],
+        ),
+        child: FilledButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 19, color: Colors.white),
+          label: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              letterSpacing: -0.2,
             ),
-          )
-        : OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(
-              icon,
-              size: 16,
-              color: iconColor ?? const Color(0xFF475569),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            minimumSize: const Size(0, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            label: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Color(0xFF334155),
-              ),
+          ),
+        ),
+      );
+    } else {
+      button = Container(
+        height: 44,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size(0, 38),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+          ],
+        ),
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(
+            icon,
+            size: 18,
+            color: iconColor ?? const Color(0xFF334155),
+          ),
+          label: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13.5,
+              color: Color(0xFF1E293B),
             ),
-          );
+          ),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            minimumSize: const Size(0, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      );
+    }
 
     if (tooltip != null) {
-      return Tooltip(message: tooltip!, child: button);
+      return Tooltip(
+        message: tooltip!,
+        waitDuration: const Duration(milliseconds: 400),
+        child: button,
+      );
     }
     return button;
   }

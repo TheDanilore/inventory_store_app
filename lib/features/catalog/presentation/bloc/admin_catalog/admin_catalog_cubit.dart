@@ -29,7 +29,8 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Timer? _debounce;
   int _loadRequestId = 0;
   static const int _maxCacheEntries = 10;
-  final Map<String, ({List<ProductEntity> products, int totalCount})> _productsCache = {};
+  final Map<String, ({List<ProductEntity> products, int totalCount})>
+  _productsCache = {};
 
   String _buildCacheKey() {
     return '${state.searchTerm}_${state.selectedCategoryId}_${state.selectedBrandId}_${state.filterIsActive}_${state.searchByIngredient}_${state.stockFilter}_${state.sortOption}_${state.currentPage}';
@@ -47,10 +48,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   }) : super(const AdminCatalogState());
 
   Future<void> loadInitialData() async {
-    await Future.wait([
-      _fetchCategories(),
-      _fetchBrands(),
-    ]);
+    await Future.wait([_fetchCategories(), _fetchBrands()]);
     await refreshProducts();
   }
 
@@ -72,17 +70,14 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   Future<void> _fetchBrands() async {
     final result = await getBrandsUC(activeOnly: true);
-    result.fold(
-      (failure) {
-        LoggerService.e(
-          'Error al cargar marcas: ${failure.message}',
-          tag: 'ADMIN_CATALOG_CUBIT',
-          error: failure,
-          stackTrace: StackTrace.current,
-        );
-      },
-      (brands) => emit(state.copyWith(brands: brands)),
-    );
+    result.fold((failure) {
+      LoggerService.e(
+        'Error al cargar marcas: ${failure.message}',
+        tag: 'ADMIN_CATALOG_CUBIT',
+        error: failure,
+        stackTrace: StackTrace.current,
+      );
+    }, (brands) => emit(state.copyWith(brands: brands)));
   }
 
   // Filters
@@ -188,6 +183,12 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     refreshProducts();
   }
 
+  void setItemsPerPage(int count) {
+    if (state.itemsPerPage == count) return;
+    emit(state.copyWith(itemsPerPage: count, currentPage: 0));
+    refreshProducts(forceRefresh: true);
+  }
+
   Future<void> refreshProducts({bool forceRefresh = false}) async {
     if (forceRefresh) {
       _productsCache.clear();
@@ -248,7 +249,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
     emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
 
-    final offset = state.currentPage * AdminCatalogState.pageSize;
+    final offset = state.currentPage * state.itemsPerPage;
 
     final result = await getProductsUC(
       searchQuery: state.searchTerm,
@@ -256,7 +257,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       brandId: state.selectedBrandId,
       isActive: state.filterIsActive,
       searchByIngredient: state.searchByIngredient,
-      limit: AdminCatalogState.pageSize,
+      limit: state.itemsPerPage,
       offset: offset,
       sortByPriceAsc: state.sortOption == CatalogSortOption.priceAsc,
       stockFilter: state.stockFilter,
@@ -345,17 +346,20 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       (_) async {
         _productsCache.clear();
         // Borrado optimista para ahorrar Data Egress
-        final updatedProducts = state.products.map((p) {
-          if (p.id == product.id) {
-            return p.copyWith(isActive: willActivate);
-          }
-          return p;
-        }).toList();
+        final updatedProducts =
+            state.products.map((p) {
+              if (p.id == product.id) {
+                return p.copyWith(isActive: willActivate);
+              }
+              return p;
+            }).toList();
 
-        emit(state.copyWith(
-          actionState: ViewState.success,
-          products: updatedProducts,
-        ));
+        emit(
+          state.copyWith(
+            actionState: ViewState.success,
+            products: updatedProducts,
+          ),
+        );
         return true;
       },
     );
@@ -363,7 +367,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   Future<bool> deleteProduct(String productId) async {
     if (state.isLoadingAction) return false;
-    
+
     emit(state.copyWith(actionState: ViewState.loading));
     final result = await deleteProductUC(productId);
 
@@ -387,15 +391,17 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         _productsCache.clear();
         // Optimización Data Egress: remover localmente en lugar de llamar refreshProducts()
         final updatedProducts = List<ProductEntity>.from(state.products)
-            ..removeWhere((p) => p.id == productId);
+          ..removeWhere((p) => p.id == productId);
 
-        emit(state.copyWith(
-          actionState: ViewState.success,
-          products: updatedProducts,
-          totalCount: (state.totalCount > 0) ? state.totalCount - 1 : 0,
-        ));
+        emit(
+          state.copyWith(
+            actionState: ViewState.success,
+            products: updatedProducts,
+            totalCount: (state.totalCount > 0) ? state.totalCount - 1 : 0,
+          ),
+        );
         return true;
-      }
+      },
     );
   }
 
@@ -431,24 +437,21 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         sortOption: state.sortOption,
       );
 
-      final allProducts = result.fold(
-        (failure) {
-          LoggerService.e(
-            'Error al cargar productos para PDF: ${failure.message}',
-            tag: 'ADMIN_CATALOG_CUBIT',
-            error: failure,
-            stackTrace: StackTrace.current,
-          );
-          emit(
-            state.copyWith(
-              actionState: ViewState.error,
-              errorMessage: 'Error al cargar productos: ${failure.message}',
-            ),
-          );
-          return null;
-        },
-        (data) => data.products,
-      );
+      final allProducts = result.fold((failure) {
+        LoggerService.e(
+          'Error al cargar productos para PDF: ${failure.message}',
+          tag: 'ADMIN_CATALOG_CUBIT',
+          error: failure,
+          stackTrace: StackTrace.current,
+        );
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'Error al cargar productos: ${failure.message}',
+          ),
+        );
+        return null;
+      }, (data) => data.products);
 
       if (allProducts == null) return;
       if (allProducts.isEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -34,12 +35,19 @@ class AdminDesktopTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -56,10 +64,13 @@ class AdminDesktopTopBar extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 320),
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
                     letterSpacing: -0.2,
                   ),
                   maxLines: 1,
@@ -67,7 +78,14 @@ class AdminDesktopTopBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              Container(width: 1, height: 20, color: const Color(0xFFE2E8F0)),
+              Container(
+                width: 1,
+                height: 20,
+                color:
+                    isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFE2E8F0),
+              ),
               const SizedBox(width: 14),
             ],
           ],
@@ -82,24 +100,39 @@ class AdminDesktopTopBar extends StatelessWidget {
                 width: 320,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? AppColors.darkBorderSubtle
+                            : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(
                       Icons.search_rounded,
                       size: 18,
-                      color: Color(0xFF94A3B8),
+                      color:
+                          isDark
+                              ? AppColors.darkTextMuted
+                              : const Color(0xFF94A3B8),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Buscar en el ERP...',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF94A3B8),
+                          color:
+                              isDark
+                                  ? AppColors.darkTextMuted
+                                  : const Color(0xFF94A3B8),
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -121,17 +154,23 @@ class AdminDesktopTopBar extends StatelessWidget {
               actions!.where((a) => !_isRefreshWidget(a)).isNotEmpty)
             const SizedBox(width: 12),
 
-          // ── Theme Mode Indicator Toggle ───────────────────────────
-          _TopBarIconButton(
-            icon: Icons.light_mode_outlined,
-            tooltip: 'Modo Claro Ejecutivo',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tema ejecutivo claro activo'),
-                  duration: Duration(seconds: 1),
-                  behavior: SnackBarBehavior.floating,
-                ),
+          // ── Theme Mode Toggle ───────────────────────────────────────
+          BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, themeMode) {
+              final isCurrentlyDark =
+                  Theme.of(context).brightness == Brightness.dark;
+              return _TopBarIconButton(
+                icon:
+                    isCurrentlyDark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                tooltip:
+                    isCurrentlyDark
+                        ? 'Modo Claro Ejecutivo'
+                        : 'Modo Oscuro Midnight Slate',
+                onTap: () {
+                  context.read<ThemeCubit>().toggleTheme();
+                },
               );
             },
           ),
@@ -275,8 +314,7 @@ class AdminDesktopTopBar extends StatelessWidget {
     if (w is IconButton) {
       final icon = w.icon;
       if (icon is Icon &&
-          (icon.icon == Icons.refresh_rounded ||
-           icon.icon == Icons.refresh)) {
+          (icon.icon == Icons.refresh_rounded || icon.icon == Icons.refresh)) {
         return true;
       }
       final tooltip = w.tooltip?.toLowerCase() ?? '';
@@ -303,6 +341,8 @@ class _TopBarIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -310,16 +350,30 @@ class _TopBarIconButton extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
-          hoverColor: const Color(0xFFF1F5F9),
+          hoverColor:
+              isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
           child: Container(
             width: 38,
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+              border: Border.all(
+                color:
+                    isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 19, color: const Color(0xFF475569)),
+            child: Icon(
+              icon,
+              size: 19,
+              color:
+                  isDark
+                      ? AppColors.darkTextSecondary
+                      : const Color(0xFF475569),
+            ),
           ),
         ),
       ),

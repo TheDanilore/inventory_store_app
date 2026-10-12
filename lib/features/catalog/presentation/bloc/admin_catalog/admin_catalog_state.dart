@@ -39,11 +39,14 @@ class AdminCatalogState extends Equatable {
     this.stockFilter = CatalogStockFilter.all,
     this.totalCount = 0,
     this.currentPage = 0,
+    this.itemsPerPage = 24,
     this.errorMessage,
   });
 
+  final int itemsPerPage;
   static const int pageSize = 24;
-  int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
+  int get totalPages =>
+      totalCount == 0 ? 1 : (totalCount / itemsPerPage).ceil();
   bool get isLoading => catalogState == ViewState.loading;
   bool get isLoadingAction => actionState == ViewState.loading;
 
@@ -63,6 +66,7 @@ class AdminCatalogState extends Equatable {
     CatalogStockFilter? stockFilter,
     int? totalCount,
     int? currentPage,
+    int? itemsPerPage,
     String? errorMessage,
     bool clearCategory = false,
     bool clearBrand = false,
@@ -90,6 +94,7 @@ class AdminCatalogState extends Equatable {
       stockFilter: stockFilter ?? this.stockFilter,
       totalCount: totalCount ?? this.totalCount,
       currentPage: currentPage ?? this.currentPage,
+      itemsPerPage: itemsPerPage ?? this.itemsPerPage,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -111,6 +116,7 @@ class AdminCatalogState extends Equatable {
     stockFilter,
     totalCount,
     currentPage,
+    itemsPerPage,
     errorMessage,
   ];
 }

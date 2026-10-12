@@ -682,7 +682,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     InventoryExitsState state,
     InventoryExitsCubit cubit,
   ) {
-    if (state.totalPages <= 1 || state.isLoading || state.exits.isEmpty) {
+    if (state.isLoading || state.exits.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(

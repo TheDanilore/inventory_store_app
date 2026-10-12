@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class AdminCommandPaletteItem {
   final String title;
@@ -222,6 +223,13 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkSurface : Colors.white;
+    final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
+    final textPrimary = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final textSecondary = isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+    final footerBg = isDark ? const Color(0xFF0D1424) : const Color(0xFFF8FAFC);
+
     return Center(
       child: Material(
         color: Colors.transparent,
@@ -229,12 +237,12 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
           width: 600,
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: bgColor,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+            border: Border.all(color: borderColor, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.14),
+                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.14),
                 blurRadius: 36,
                 offset: const Offset(0, 14),
               ),
@@ -249,16 +257,16 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                   horizontal: 18,
                   vertical: 14,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    bottom: BorderSide(color: borderColor, width: 1),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.search_rounded,
-                      color: Color(0xFF64748B),
+                      color: textSecondary,
                       size: 22,
                     ),
                     const SizedBox(width: 14),
@@ -267,16 +275,16 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                         controller: _searchController,
                         focusNode: _focusNode,
                         autofocus: true,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF0F172A),
+                          color: textPrimary,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Buscar pantalla, reporte o módulo...',
                           hintStyle: TextStyle(
                             fontSize: 15,
-                            color: Color(0xFF94A3B8),
+                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                             fontWeight: FontWeight.w400,
                           ),
                           border: InputBorder.none,
@@ -297,16 +305,16 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: borderColor),
                       ),
-                      child: const Text(
+                      child: Text(
                         'ESC',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF64748B),
+                          color: textSecondary,
                         ),
                       ),
                     ),
@@ -322,21 +330,21 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                         ? Container(
                           padding: const EdgeInsets.all(32),
                           alignment: Alignment.center,
-                          child: const Column(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.search_off_rounded,
                                 size: 40,
-                                color: Color(0xFF94A3B8),
+                                color: textSecondary,
                               ),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Text(
                                 'No se encontraron coincidencias',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
+                                  color: textSecondary,
                                 ),
                               ),
                             ],
@@ -369,7 +377,9 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                 decoration: BoxDecoration(
                                   color:
                                       isSelected
-                                          ? const Color(0xFFEFF6FF)
+                                          ? (isDark
+                                              ? AppColors.primary.withValues(alpha: 0.18)
+                                              : const Color(0xFFEFF6FF))
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -381,10 +391,12 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                       decoration: BoxDecoration(
                                         color:
                                             isSelected
-                                                ? const Color(
-                                                  0xFF2563EB,
-                                                ).withValues(alpha: 0.12)
-                                                : const Color(0xFFF1F5F9),
+                                                ? AppColors.primary.withValues(
+                                                  alpha: isDark ? 0.3 : 0.12,
+                                                )
+                                                : (isDark
+                                                    ? AppColors.darkSurfaceElevated
+                                                    : const Color(0xFFF1F5F9)),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -392,8 +404,8 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                         size: 19,
                                         color:
                                             isSelected
-                                                ? const Color(0xFF2563EB)
-                                                : const Color(0xFF64748B),
+                                                ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+                                                : textSecondary,
                                       ),
                                     ),
                                     const SizedBox(width: 14),
@@ -412,16 +424,16 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                                       : FontWeight.w600,
                                               color:
                                                   isSelected
-                                                      ? const Color(0xFF1E40AF)
-                                                      : const Color(0xFF0F172A),
+                                                      ? (isDark ? Colors.white : const Color(0xFF1E40AF))
+                                                      : textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
                                             item.subtitle,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontSize: 12,
-                                              color: Color(0xFF64748B),
+                                              color: textSecondary,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
@@ -435,18 +447,18 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF8FAFC),
+                                        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: const Color(0xFFE2E8F0),
+                                          color: borderColor,
                                         ),
                                       ),
                                       child: Text(
                                         item.category,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFF64748B),
+                                          color: textSecondary,
                                         ),
                                       ),
                                     ),
@@ -464,52 +476,52 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                   horizontal: 18,
                   vertical: 10,
                 ),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.vertical(
+                decoration: BoxDecoration(
+                  color: footerBg,
+                  borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(20),
                   ),
                   border: Border(
-                    top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    top: BorderSide(color: borderColor, width: 1),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.keyboard_return_rounded,
                       size: 14,
-                      color: Color(0xFF94A3B8),
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
+                    Text(
                       'para seleccionar',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: Color(0xFF64748B),
+                        color: textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Icon(
+                    Icon(
                       Icons.swap_vert_rounded,
                       size: 15,
-                      color: Color(0xFF94A3B8),
+                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                     ),
                     const SizedBox(width: 4),
-                    const Text(
+                    Text(
                       'para navegar',
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: Color(0xFF64748B),
+                        color: textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const Spacer(),
-                    const Text(
+                    Text(
                       'DANILORE ONE Command Bar',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF94A3B8),
+                        color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
                         fontWeight: FontWeight.w600,
                       ),
                     ),

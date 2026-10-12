@@ -929,7 +929,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     InventoryEntriesLoaded state,
     bool isLoading,
   ) {
-    if (state.totalPages <= 1 || isLoading || state.entries.isEmpty) {
+    if (isLoading || state.entries.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(

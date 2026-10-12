@@ -493,7 +493,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     required bool isLoading,
     required BuildContext context,
   }) {
-    if (totalPages <= 1 || isLoading || totalItems == 0) {
+    if (isLoading || totalItems == 0) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(

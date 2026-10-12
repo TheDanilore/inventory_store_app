@@ -363,15 +363,20 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
             },
             child: AppPopScope(
               onCustomBack: _headerNotifier.value.onBack,
-              child: AnnotatedRegion<SystemUiOverlayStyle>(
-                value: const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.dark,
-                  statusBarBrightness: Brightness.light,
-                ),
-                child: Scaffold(
-                  backgroundColor: AppColors.background,
-                  body: Row(
+              child: Builder(
+                builder: (context) {
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  return AnnotatedRegion<SystemUiOverlayStyle>(
+                    value: SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness:
+                          isDark ? Brightness.light : Brightness.dark,
+                      statusBarBrightness:
+                          isDark ? Brightness.dark : Brightness.light,
+                    ),
+                    child: Scaffold(
+                      backgroundColor: AppColors.bg(context),
+                      body: Row(
                     children: [
                       // ── Left Sidebar (Desktop, MONTADO UNA SOLA VEZ) ─────────
                       RepaintBoundary(
@@ -437,11 +442,13 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
                     ],
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
+  },
+);
   }
 }

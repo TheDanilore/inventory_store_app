@@ -480,7 +480,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   String _getStatusLabel(String status) {
     switch (status) {
       case 'PENDING':
-        return 'Borradores';
+        return 'Pendientes';
       case 'COMPLETED':
         return 'Completados';
       case 'CANCELLED':
@@ -549,7 +549,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                   SizedBox(width: 8),
                   Text(
-                    'Borradores',
+                    'Pendientes',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -954,7 +954,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ),
                       ),
 
-
                       // --- 3. LISTADO O TABLA PRO ---
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -1113,8 +1112,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     OrdersState state,
     OrdersCubit cubit,
   ) {
-    if (state.totalPages <= 1 ||
-        state.isLoading ||
+    if (state.isLoading ||
         state.errorMessage.isNotEmpty ||
         state.orders.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));

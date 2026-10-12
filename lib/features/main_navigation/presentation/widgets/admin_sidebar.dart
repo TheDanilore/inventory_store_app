@@ -74,29 +74,41 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final width = widget.isCollapsed ? 72.0 : 260.0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
       width: width,
-      decoration: const BoxDecoration(
-        color: AppColors.sidebarBg,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSidebarBg : AppColors.sidebarBg,
         border: Border(
-          right: BorderSide(color: AppColors.sidebarBorder, width: 1),
+          right: BorderSide(
+            color:
+                isDark ? AppColors.darkSidebarBorder : AppColors.sidebarBorder,
+            width: 1,
+          ),
         ),
       ),
       child: Column(
         children: [
           // ── Brand / Header ─────────────────────────────────────────
           _buildBrandHeader(context),
-          const Divider(height: 1, color: AppColors.sidebarBorder),
+          Divider(
+            height: 1,
+            color:
+                isDark ? AppColors.darkSidebarBorder : AppColors.sidebarBorder,
+          ),
 
           // ── Items List con Scroll Persistente y Barra Estilizada ─────
           Expanded(
             child: RawScrollbar(
               controller: _scrollController,
-              thumbColor: AppColors.sidebarText.withValues(alpha: 0.22),
+              thumbColor: (isDark
+                      ? AppColors.darkSidebarText
+                      : AppColors.sidebarText)
+                  .withValues(alpha: 0.22),
               radius: const Radius.circular(4),
               thickness: 4,
               padding: const EdgeInsets.only(right: 2),
@@ -105,7 +117,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
                   if (!widget.isCollapsed)
-                    _buildSectionHeader('MENÚ PRINCIPAL'),
+                    _buildSectionHeader(context, 'MENÚ PRINCIPAL'),
                   _buildSidebarTile(
                     context,
                     const AdminSidebarItem(
@@ -125,13 +137,16 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                   if (!widget.isCollapsed) ...[
                     const SizedBox(height: 12),
-                    const Divider(
+                    Divider(
                       height: 1,
                       indent: 16,
                       endIndent: 16,
-                      color: AppColors.sidebarBorder,
+                      color:
+                          isDark
+                              ? AppColors.darkSidebarBorder
+                              : AppColors.sidebarBorder,
                     ),
-                    _buildSectionHeader('GESTIÓN COMERCIAL'),
+                    _buildSectionHeader(context, 'GESTIÓN COMERCIAL'),
                   ],
 
                   BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
@@ -244,13 +259,16 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                   if (!widget.isCollapsed) ...[
                     const SizedBox(height: 12),
-                    const Divider(
+                    Divider(
                       height: 1,
                       indent: 16,
                       endIndent: 16,
-                      color: AppColors.sidebarBorder,
+                      color:
+                          isDark
+                              ? AppColors.darkSidebarBorder
+                              : AppColors.sidebarBorder,
                     ),
-                    _buildSectionHeader('CONFIGURACIÓN ERP'),
+                    _buildSectionHeader(context, 'CONFIGURACIÓN ERP'),
                   ],
 
                   _buildSidebarTile(
@@ -338,7 +356,11 @@ class _AdminSidebarState extends State<AdminSidebar> {
           ),
 
           // ── Pinned Bottom Actions: Settings & Help (Shopeers Style) ──
-          const Divider(height: 1, color: AppColors.sidebarBorder),
+          Divider(
+            height: 1,
+            color:
+                isDark ? AppColors.darkSidebarBorder : AppColors.sidebarBorder,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
@@ -358,7 +380,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
               ],
             ),
           ),
-
         ],
       ),
     );
@@ -370,6 +391,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
     required String title,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: Material(
@@ -377,7 +400,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
-          hoverColor: const Color(0xFFF1F5F9),
+          hoverColor:
+              isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
           child: Container(
             height: 38,
             padding: EdgeInsets.symmetric(
@@ -390,7 +414,14 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         ? MainAxisAlignment.center
                         : MainAxisAlignment.start,
                 children: [
-                  Icon(icon, size: 19, color: const Color(0xFF64748B)),
+                  Icon(
+                    icon,
+                    size: 19,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
+                  ),
                   if (!widget.isCollapsed) ...[
                     const SizedBox(width: 12),
                     Expanded(
@@ -398,10 +429,13 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF475569),
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF475569),
                         ),
                       ),
                     ),
@@ -415,8 +449,9 @@ class _AdminSidebarState extends State<AdminSidebar> {
     );
   }
 
-
   Widget _buildBrandHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 64,
       padding: EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 16),
@@ -428,7 +463,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   : MainAxisAlignment.start,
           children: [
             Tooltip(
-              message: widget.isCollapsed ? 'Expandir menú' : 'DANILORE ONE ERP',
+              message:
+                  widget.isCollapsed ? 'Expandir menú' : 'DANILORE ONE ERP',
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -439,11 +475,23 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     height: 38,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFDBEAFE), width: 1),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFDBEAFE),
+                        width: 1,
+                      ),
                     ),
-                    child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
+                    child: Image.asset(
+                      'assets/logo_icon.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -467,23 +515,26 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (isDefault)
-                          const Row(
+                          Row(
                             children: [
                               Text(
                                 'DANILORE ',
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : const Color(0xFF0F172A),
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                              Text(
+                              const Text(
                                 'ONE',
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xFF2563EB),
+                                  color: Color(0xFF3B82F6),
                                   letterSpacing: 0.3,
                                 ),
                               ),
@@ -494,20 +545,26 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
                             ),
                           ),
                         Text(
                           isDefault
                               ? 'Todo tu negocio en un solo lugar'
                               : 'DANILORE ONE ERP',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? AppColors.darkTextMuted
+                                    : const Color(0xFF64748B),
                             letterSpacing: 0.1,
                           ),
                           maxLines: 1,
@@ -526,19 +583,30 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   child: InkWell(
                     onTap: widget.onToggleCollapse,
                     borderRadius: BorderRadius.circular(8),
-                    hoverColor: const Color(0xFFF1F5F9),
+                    hoverColor:
+                        isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9),
                     child: Container(
                       width: 32,
                       height: 32,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0),
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.view_sidebar_outlined,
                         size: 16,
-                        color: Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -551,15 +619,20 @@ class _AdminSidebarState extends State<AdminSidebar> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: Color(0xFF94A3B8),
+          color:
+              isDark
+                  ? AppColors.darkSidebarSectionHeader
+                  : const Color(0xFF94A3B8),
           letterSpacing: 1.2,
         ),
       ),
@@ -569,7 +642,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath == '/' && (currentPath == '/dashboard' || currentPath == '/')) {
+    if (routePath == '/' &&
+        (currentPath == '/dashboard' || currentPath == '/')) {
       return true;
     }
     if (routePath == '/catalog' &&
@@ -587,6 +661,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
       builder: (context) {
         final currentPath = GoRouterState.of(context).uri.path;
         final isActive = _isItemActive(item.routePath, currentPath);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         Widget tileContent(FollowLink? followLink) {
           return Padding(
@@ -602,18 +677,29 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     context.go(item.routePath);
                   }
                 },
-                hoverColor: const Color(0xFFF1F5F9),
+                hoverColor:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
                   height: 40,
                   decoration: BoxDecoration(
                     color:
-                        isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+                        isActive
+                            ? (isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFEFF6FF))
+                            : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                     border:
                         isActive
-                            ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                            ? Border.all(
+                              color:
+                                  isDark
+                                      ? const Color(0xFF334155)
+                                      : const Color(0xFFDBEAFE),
+                              width: 1,
+                            )
                             : Border.all(color: Colors.transparent, width: 1),
                   ),
                   padding: EdgeInsets.symmetric(
@@ -633,12 +719,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             height: 18,
                             margin: const EdgeInsets.only(right: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2563EB),
+                              color: const Color(0xFF3B82F6),
                               borderRadius: BorderRadius.circular(3),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(
-                                    0xFF2563EB,
+                                    0xFF3B82F6,
                                   ).withValues(alpha: 0.4),
                                   blurRadius: 4,
                                 ),
@@ -650,8 +736,12 @@ class _AdminSidebarState extends State<AdminSidebar> {
                           size: 20,
                           color:
                               isActive
-                                  ? const Color(0xFF2563EB)
-                                  : const Color(0xFF64748B),
+                                  ? (isDark
+                                      ? const Color(0xFF60A5FA)
+                                      : const Color(0xFF2563EB))
+                                  : (isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF64748B)),
                         ),
                         if (!widget.isCollapsed) ...[
                           const SizedBox(width: 10),
@@ -664,11 +754,17 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                 fontSize: 13,
                                 letterSpacing: -0.2,
                                 fontWeight:
-                                    isActive ? FontWeight.w700 : FontWeight.w500,
+                                    isActive
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
                                 color:
                                     isActive
-                                        ? const Color(0xFF1E40AF)
-                                        : const Color(0xFF475569),
+                                        ? (isDark
+                                            ? const Color(0xFF93C5FD)
+                                            : const Color(0xFF1E40AF))
+                                        : (isDark
+                                            ? AppColors.darkTextSecondary
+                                            : const Color(0xFF475569)),
                               ),
                             ),
                           ),
@@ -769,6 +865,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
   Widget _buildSidebarTile(BuildContext context, AdminSidebarItem item) {
     final currentPath = GoRouterState.of(context).uri.path;
     final isActive = _isItemActive(item.routePath, currentPath);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget tileContent(FollowLink? followLink) {
       return Padding(
@@ -784,17 +881,29 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                 context.go(item.routePath);
               }
             },
-            hoverColor: const Color(0xFFF1F5F9),
+            hoverColor:
+                isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
               height: 38,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFEFF6FF) : Colors.transparent,
+                color:
+                    isActive
+                        ? (isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFEFF6FF))
+                        : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border:
                     isActive
-                        ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                        ? Border.all(
+                          color:
+                              isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFDBEAFE),
+                          width: 1,
+                        )
                         : Border.all(color: Colors.transparent, width: 1),
               ),
               padding: EdgeInsets.symmetric(
@@ -813,12 +922,12 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                         height: 16,
                         margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB),
+                          color: const Color(0xFF3B82F6),
                           borderRadius: BorderRadius.circular(3),
                           boxShadow: [
                             BoxShadow(
                               color: const Color(
-                                0xFF2563EB,
+                                0xFF3B82F6,
                               ).withValues(alpha: 0.4),
                               blurRadius: 4,
                             ),
@@ -830,8 +939,12 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                       size: 19,
                       color:
                           isActive
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFF64748B),
+                              ? (isDark
+                                  ? const Color(0xFF60A5FA)
+                                  : const Color(0xFF2563EB))
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B)),
                     ),
                     if (!widget.isCollapsed) ...[
                       const SizedBox(width: 10),
@@ -847,8 +960,12 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                                 isActive ? FontWeight.w700 : FontWeight.w500,
                             color:
                                 isActive
-                                    ? const Color(0xFF1E40AF)
-                                    : const Color(0xFF475569),
+                                    ? (isDark
+                                        ? const Color(0xFF93C5FD)
+                                        : const Color(0xFF1E40AF))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF475569)),
                           ),
                         ),
                       ),
@@ -883,6 +1000,7 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
   @override
   Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).uri.path;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasActiveChild = widget.item.children.any(
       (sub) => _isItemActive(sub.routePath, currentPath),
     );
@@ -910,7 +1028,10 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                             Icon(
                               sub.icon,
                               size: 18,
-                              color: const Color(0xFF64748B),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF64748B),
                             ),
                             const SizedBox(width: 10),
                             Text(sub.title),
@@ -926,11 +1047,21 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color:
-                  hasActiveChild ? const Color(0xFFEFF6FF) : Colors.transparent,
+                  hasActiveChild
+                      ? (isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFEFF6FF))
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               border:
                   hasActiveChild
-                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
+                      ? Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF334155)
+                                : const Color(0xFFDBEAFE),
+                        width: 1,
+                      )
                       : null,
             ),
             child: Icon(
@@ -938,8 +1069,12 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
               size: 20,
               color:
                   hasActiveChild
-                      ? const Color(0xFF2563EB)
-                      : const Color(0xFF64748B),
+                      ? (isDark
+                          ? const Color(0xFF60A5FA)
+                          : const Color(0xFF2563EB))
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B)),
             ),
           ),
         ),
@@ -971,7 +1106,8 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                   }
                 });
               },
-              hoverColor: const Color(0xFFF1F5F9),
+              hoverColor:
+                  isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               child: Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -982,8 +1118,12 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                       size: 20,
                       color:
                           hasActiveChild
-                              ? const Color(0xFF2563EB)
-                              : const Color(0xFF64748B),
+                              ? (isDark
+                                  ? const Color(0xFF60A5FA)
+                                  : const Color(0xFF2563EB))
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B)),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1000,18 +1140,25 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
                                   : FontWeight.w500,
                           color:
                               hasActiveChild
-                                  ? const Color(0xFF1E40AF)
-                                  : const Color(0xFF475569),
+                                  ? (isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : const Color(0xFF1E40AF))
+                                  : (isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF475569)),
                         ),
                       ),
                     ),
                     AnimatedRotation(
                       turns: isOpen ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
-                      child: const Icon(
+                      child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 18,
-                        color: Color(0xFF94A3B8),
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : const Color(0xFF94A3B8),
                       ),
                     ),
                   ],
@@ -1028,9 +1175,15 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
           secondChild: Container(
             margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
             padding: const EdgeInsets.only(left: 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                left: BorderSide(
+                  color:
+                      isDark
+                          ? AppColors.darkBorderSubtle
+                          : const Color(0xFFE2E8F0),
+                  width: 1.5,
+                ),
               ),
             ),
             child: Column(

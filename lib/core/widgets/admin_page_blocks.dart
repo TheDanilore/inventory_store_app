@@ -7,11 +7,12 @@ import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 /// Componente de Paginación Adaptativo de Nivel Internacional (Stripe / Linear / Apple HIG).
 ///
 /// Cambia de personalidad según el dispositivo:
-/// - **Desktop / Tablet (>= 600dp)**: Alta densidad de información (34dp de alto),
-///   resumen contextual a la izquierda ("Mostrando 1 - 8 de 34 variantes"), y controles
-///   numéricos agrupados contiguamente a la derecha con cursores pointer y hover pro.
-/// - **Mobile (< 600dp)**: Filosofía Apple HIG con botones táctiles ergonómicos
-///   (touch targets de 44-48dp), haptic feedback y navegación ágil en el thumb zone.
+/// - **Desktop / Tablet (>= 640dp)**: Alta densidad de información (34dp de alto).
+///   A la izquierda: Selector de registros por página ("Mostrar [ 10 ⌄ ] de 1,240 productos").
+///   A la derecha: Controles numéricos y chevrons independientes sin clúster gris encerrado,
+///   con botón activo sólido de alto contraste y hover sutil sin superposición de sombras.
+/// - **Mobile (< 640dp)**: Filosofía Apple HIG con botones táctiles ergonómicos
+///   (touch targets de 44dp), haptic feedback e indicador numérico central ("1 / 3 • 57").
 class AdminPageBlocks extends StatelessWidget {
   final int currentPage;
   final int totalPages;
@@ -20,14 +21,23 @@ class AdminPageBlocks extends StatelessWidget {
   /// Número total de registros de la consulta (opcional).
   final int? totalItems;
 
-  /// Número de registros por página (opcional, ej. 8 o 10).
+  /// Número de registros por página (opcional, ej. 10, 20, 24).
   final int? itemsPerPage;
 
-  /// Nombre del item para el resumen (opcional, ej. "variantes", "productos", "lotes").
+  /// Lista de opciones para el selector de registros por página.
+  final List<int> availableItemsPerPage;
+
+  /// Callback cuando el usuario cambia el número de registros por página.
+  final ValueChanged<int>? onItemsPerPageChanged;
+
+  /// Nombre del item para el resumen (opcional, ej. "productos", "órdenes", "variantes").
   final String? itemName;
 
   /// Forzar modo compacto móvil independientemente del ancho de pantalla.
   final bool? isCompact;
+
+  /// Si es true, el componente siempre se visualiza incluso si solo hay 1 página.
+  final bool alwaysShow;
 
   const AdminPageBlocks({
     super.key,
@@ -36,19 +46,38 @@ class AdminPageBlocks extends StatelessWidget {
     required this.onPageChanged,
     this.totalItems,
     this.itemsPerPage,
+    this.availableItemsPerPage = const [10, 20, 24, 50, 100],
+    this.onItemsPerPageChanged,
     this.itemName,
     this.isCompact,
+    this.alwaysShow = true,
   });
 
-  List<int?> _buildPages() {
-    if (totalPages <= 1) return [0];
+  static String formatNumber(int number) {
+    final str = number.toString();
+    final buffer = StringBuffer();
+    final len = str.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) {
+        buffer.write(',');
+      }
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
+  }
+
+  List<int?> _buildPages(int effectiveTotalPages, int effectiveCurrentPage) {
+    if (effectiveTotalPages <= 1) return [0];
+    if (effectiveTotalPages <= 7) {
+      return List.generate(effectiveTotalPages, (i) => i);
+    }
 
     final pages = <int?>[0];
-    final start = (currentPage - 1) < 1 ? 1 : currentPage - 1;
+    final start = (effectiveCurrentPage - 1) < 1 ? 1 : effectiveCurrentPage - 1;
     final end =
-        (currentPage + 1) > (totalPages - 2)
-            ? (totalPages - 2)
-            : currentPage + 1;
+        (effectiveCurrentPage + 1) > (effectiveTotalPages - 2)
+            ? (effectiveTotalPages - 2)
+            : effectiveCurrentPage + 1;
 
     if (start > 1) {
       pages.add(null);
@@ -58,17 +87,24 @@ class AdminPageBlocks extends StatelessWidget {
       pages.add(i);
     }
 
-    if (end < totalPages - 2) {
+    if (end < effectiveTotalPages - 2) {
       pages.add(null);
     }
 
-    pages.add(totalPages - 1);
+    pages.add(effectiveTotalPages - 1);
     return pages;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (totalPages <= 0) return const SizedBox.shrink();
+    final effectiveTotalPages = math.max(1, totalPages);
+    final effectiveCurrentPage = currentPage.clamp(0, effectiveTotalPages - 1);
+
+    if (!alwaysShow &&
+        totalPages <= 0 &&
+        (totalItems == null || totalItems == 0)) {
+      return const SizedBox.shrink();
+    }
 
     return Focus(
       onKeyEvent: (node, event) {
@@ -78,14 +114,14 @@ class AdminPageBlocks extends StatelessWidget {
           final isMeta = HardwareKeyboard.instance.isMetaPressed;
           final isModifier = isAlt || isControl || isMeta;
           if (isModifier && event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-            if (currentPage > 0) {
-              onPageChanged(currentPage - 1);
+            if (effectiveCurrentPage > 0) {
+              onPageChanged(effectiveCurrentPage - 1);
               return KeyEventResult.handled;
             }
           }
           if (isModifier && event.logicalKey == LogicalKeyboardKey.arrowRight) {
-            if (currentPage < totalPages - 1) {
-              onPageChanged(currentPage + 1);
+            if (effectiveCurrentPage < effectiveTotalPages - 1) {
+              onPageChanged(effectiveCurrentPage + 1);
               return KeyEventResult.handled;
             }
           }
@@ -97,22 +133,34 @@ class AdminPageBlocks extends StatelessWidget {
           final compact = isCompact ?? (constraints.maxWidth < 640);
 
           if (compact) {
-            return _buildMobileLayout(context);
+            return _buildMobileLayout(
+              context,
+              effectiveTotalPages: effectiveTotalPages,
+              effectiveCurrentPage: effectiveCurrentPage,
+            );
           }
 
-          return _buildDesktopLayout(context);
+          return _buildDesktopLayout(
+            context,
+            effectiveTotalPages: effectiveTotalPages,
+            effectiveCurrentPage: effectiveCurrentPage,
+          );
         },
       ),
     );
   }
 
   // ── 1. PERSONALIDAD MOBILE (Apple HIG) ──
-  Widget _buildMobileLayout(BuildContext context) {
-    final canPrev = currentPage > 0;
-    final canNext = currentPage < totalPages - 1;
+  Widget _buildMobileLayout(
+    BuildContext context, {
+    required int effectiveTotalPages,
+    required int effectiveCurrentPage,
+  }) {
+    final canPrev = effectiveCurrentPage > 0;
+    final canNext = effectiveCurrentPage < effectiveTotalPages - 1;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -123,13 +171,13 @@ class AdminPageBlocks extends StatelessWidget {
             enabled: canPrev,
             onTap: () {
               HapticFeedback.lightImpact();
-              onPageChanged(currentPage - 1);
+              onPageChanged(effectiveCurrentPage - 1);
             },
           ),
 
-          // Indicador Central de Página
+          // Indicador Central de Página (1 / 3 • 57)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(20),
@@ -139,26 +187,28 @@ class AdminPageBlocks extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${currentPage + 1}',
+                  '${effectiveCurrentPage + 1}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 Text(
-                  ' / $totalPages',
+                  ' / $effectiveTotalPages',
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 if (totalItems != null) ...[
                   const SizedBox(width: 6),
                   Container(
-                    width: 3,
-                    height: 3,
+                    width: 3.5,
+                    height: 3.5,
                     decoration: const BoxDecoration(
                       color: AppColors.textMuted,
                       shape: BoxShape.circle,
@@ -166,11 +216,12 @@ class AdminPageBlocks extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '$totalItems',
+                    formatNumber(totalItems!),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textSecondary,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -186,7 +237,7 @@ class AdminPageBlocks extends StatelessWidget {
             enabled: canNext,
             onTap: () {
               HapticFeedback.lightImpact();
-              onPageChanged(currentPage + 1);
+              onPageChanged(effectiveCurrentPage + 1);
             },
           ),
         ],
@@ -194,128 +245,238 @@ class AdminPageBlocks extends StatelessWidget {
     );
   }
 
-  // ── 2. PERSONALIDAD DESKTOP (Power User / Stripe & Linear) ──
-  Widget _buildDesktopLayout(BuildContext context) {
-    final pages = _buildPages();
-    final canPrev = currentPage > 0;
-    final canNext = currentPage < totalPages - 1;
+  // ── 2. PERSONALIDAD DESKTOP (Stripe & Linear Reference) ──
+  Widget _buildDesktopLayout(
+    BuildContext context, {
+    required int effectiveTotalPages,
+    required int effectiveCurrentPage,
+  }) {
+    final pages = _buildPages(effectiveTotalPages, effectiveCurrentPage);
+    final canPrev = effectiveCurrentPage > 0;
+    final canNext = effectiveCurrentPage < effectiveTotalPages - 1;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Meta-Información Izquierda
-        _buildInfoText(),
+        // Meta-Información Izquierda: "Mostrar [ 10 ⌄ ] de 1,240 productos"
+        _buildLeftInfo(context, effectiveTotalPages, effectiveCurrentPage),
 
-        // Clúster de Controles Agrupados (Derecha)
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Chevron Anterior
-              _DesktopChevronButton(
-                icon: Icons.chevron_left_rounded,
-                tooltip: 'Página anterior (${AppShortcutLabels.modPlus}←)',
-                enabled: canPrev,
-                onTap: () => onPageChanged(currentPage - 1),
-              ),
+        // Controles de Navegación Independientes (Derecha)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Chevron Anterior
+            _DesktopChevronButton(
+              icon: Icons.chevron_left_rounded,
+              tooltip: 'Página anterior (${AppShortcutLabels.modPlus}←)',
+              enabled: canPrev,
+              onTap: () => onPageChanged(effectiveCurrentPage - 1),
+            ),
 
-              const SizedBox(width: 4),
+            const SizedBox(width: 4),
 
-              // Botones Numéricos
-              ...pages.map((page) {
-                if (page == null) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4),
+            // Botones Numéricos individuales (sin contenedor gris envolvente)
+            ...pages.map((page) {
+              if (page == null) {
+                return const SizedBox(
+                  width: 32,
+                  height: 34,
+                  child: Center(
                     child: Text(
                       '•••',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textMuted,
+                        color: Color(0xFF94A3B8),
                         letterSpacing: 1.5,
                       ),
                     ),
-                  );
-                }
-
-                final isSelected = page == currentPage;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: _DesktopNumberButton(
-                    pageNumber: page + 1,
-                    isSelected: isSelected,
-                    onTap: () => onPageChanged(page),
                   ),
                 );
-              }),
+              }
 
-              const SizedBox(width: 4),
+              final isSelected = page == effectiveCurrentPage;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: _DesktopNumberButton(
+                  pageNumber: page + 1,
+                  isSelected: isSelected,
+                  onTap: () => onPageChanged(page),
+                ),
+              );
+            }),
 
-              // Chevron Siguiente
-              _DesktopChevronButton(
-                icon: Icons.chevron_right_rounded,
-                tooltip: 'Página siguiente (${AppShortcutLabels.modPlus}→)',
-                enabled: canNext,
-                onTap: () => onPageChanged(currentPage + 1),
-              ),
-            ],
-          ),
+            const SizedBox(width: 4),
+
+            // Chevron Siguiente
+            _DesktopChevronButton(
+              icon: Icons.chevron_right_rounded,
+              tooltip: 'Página siguiente (${AppShortcutLabels.modPlus}→)',
+              enabled: canNext,
+              onTap: () => onPageChanged(effectiveCurrentPage + 1),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildInfoText() {
-    if (totalItems != null && itemsPerPage != null && totalItems! > 0) {
-      final start = (currentPage * itemsPerPage!) + 1;
-      final end = math.min((currentPage + 1) * itemsPerPage!, totalItems!);
-      final label = itemName ?? 'registros';
+  Widget _buildLeftInfo(
+    BuildContext context,
+    int effectiveTotalPages,
+    int effectiveCurrentPage,
+  ) {
+    final label = itemName ?? 'resultados';
+    final currentSize = itemsPerPage ?? 10;
 
-      return RichText(
-        text: TextSpan(
-          style: const TextStyle(
-            fontSize: 12.5,
-            color: AppColors.textSecondary,
-            fontFamily: 'Inter',
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text(
+          'Mostrar',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
           ),
-          children: [
-            const TextSpan(text: 'Mostrando '),
-            TextSpan(
-              text: '$start - $end',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            const TextSpan(text: ' de '),
-            TextSpan(
-              text: '$totalItems',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-            TextSpan(text: ' $label'),
-          ],
         ),
-      );
+        const SizedBox(width: 8),
+
+        // Selector / Dropdown de Items por Página
+        _buildItemsPerPageDropdown(context, currentSize),
+
+        const SizedBox(width: 8),
+        const Text(
+          'de',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 6),
+
+        if (totalItems != null) ...[
+          Text(
+            formatNumber(totalItems!),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ] else ...[
+          Text(
+            'página ${effectiveCurrentPage + 1} de $effectiveTotalPages',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildItemsPerPageDropdown(BuildContext context, int currentSize) {
+    final options =
+        availableItemsPerPage.contains(currentSize)
+            ? availableItemsPerPage
+            : ([currentSize, ...availableItemsPerPage]..sort());
+
+    final dropdownChild = Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$currentSize',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 16,
+            color: Color(0xFF64748B),
+          ),
+        ],
+      ),
+    );
+
+    if (onItemsPerPageChanged == null) {
+      return dropdownChild;
     }
 
-    return Text(
-      'Página ${currentPage + 1} de $totalPages',
-      style: const TextStyle(
-        fontSize: 12.5,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
+    return PopupMenuButton<int>(
+      initialValue: currentSize,
+      tooltip: 'Elementos por página',
+      offset: const Offset(0, 36),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
+      elevation: 4,
+      color: Colors.white,
+      onSelected: (val) {
+        if (val != currentSize) {
+          onItemsPerPageChanged!(val);
+        }
+      },
+      itemBuilder: (context) {
+        return options.map((opt) {
+          final isSelected = opt == currentSize;
+          return PopupMenuItem<int>(
+            value: opt,
+            height: 38,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '$opt $itemName',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color:
+                        isSelected
+                            ? AppColors.primary
+                            : const Color(0xFF1E293B),
+                  ),
+                ),
+                if (isSelected)
+                  const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+              ],
+            ),
+          );
+        }).toList();
+      },
+      child: dropdownChild,
     );
   }
 }
@@ -353,45 +514,40 @@ class _DesktopNumberButtonState extends State<_DesktopNumberButton> {
       child: GestureDetector(
         onTap: isSelected ? null : widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 32,
-          height: 32,
+          duration: const Duration(milliseconds: 140),
+          width: 34,
+          height: 34,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary
-                : (_isHovered
-                    ? AppColors.surfaceDark
-                    : Colors.transparent),
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: isSelected
-                  ? AppColors.primary
-                  : (_isHovered
-                      ? AppColors.border
-                      : Colors.transparent),
-              width: 1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+            color:
+                isSelected
+                    ? AppColors.primary
+                    : (_isHovered
+                        ? const Color(0xFFF1F5F9)
+                        : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                    : null,
           ),
           child: Text(
             '${widget.pageNumber}',
             style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              color: isSelected
-                  ? Colors.white
-                  : (_isHovered
-                      ? AppColors.textPrimary
-                      : AppColors.textSecondary),
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color:
+                  isSelected
+                      ? Colors.white
+                      : (_isHovered
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFF475569)),
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -434,28 +590,26 @@ class _DesktopChevronButtonState extends State<_DesktopChevronButton> {
         child: GestureDetector(
           onTap: enabled ? widget.onTap : null,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 32,
-            height: 32,
+            duration: const Duration(milliseconds: 140),
+            width: 34,
+            height: 34,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: enabled && _isHovered
-                  ? AppColors.surfaceDark
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: enabled && _isHovered
-                    ? AppColors.border
-                    : Colors.transparent,
-                width: 1,
-              ),
+              color:
+                  enabled && _isHovered
+                      ? const Color(0xFFF1F5F9)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               widget.icon,
-              size: 18,
-              color: enabled
-                  ? AppColors.textPrimary
-                  : AppColors.textMuted.withValues(alpha: 0.5),
+              size: 20,
+              color:
+                  enabled
+                      ? (_isHovered
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFF475569))
+                      : const Color(0xFFCBD5E1),
             ),
           ),
         ),

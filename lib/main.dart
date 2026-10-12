@@ -12,11 +12,10 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/network/network_cubit.dart';
 import 'package:inventory_store_app/core/router/app_router.dart';
 import 'package:inventory_store_app/core/theme/app_theme.dart';
+import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/core/localization/app_localizations.dart';
-import 'package:inventory_store_app/core/localization/bloc/locale_cubit.dart';
-import 'package:inventory_store_app/core/localization/bloc/locale_state.dart';
 import 'package:inventory_store_app/core/widgets/fatal_error_app.dart';
 import 'dart:developer' as developer;
 
@@ -25,7 +24,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Optimización estricta de memoria de imágenes (evita picos de memoria en Web CanvasKit)
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 25 * 1024 * 1024; // 25 MB
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      25 * 1024 * 1024; // 25 MB
   PaintingBinding.instance.imageCache.maximumSize = 60;
 
   // Optimización web/desktop de URLs
@@ -86,7 +86,7 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider.value(value: authCubit),
         BlocProvider(create: (_) => sl<NetworkCubit>()),
-        BlocProvider(create: (_) => sl<LocaleCubit>()),
+        BlocProvider(create: (_) => sl<ThemeCubit>()),
         BlocProvider(
           create:
               (_) =>
@@ -95,35 +95,23 @@ class MyApp extends StatelessWidget {
                     ..loadBusinessInfo(),
         ),
       ],
-      child: BlocBuilder<LocaleCubit, LocaleState>(
-        builder: (context, localeState) {
-          // Si el idioma es Quechua (qu), usamos fallback de widgets Material a 'es' para compatibilidad nativa
-          final materialLocale = localeState.locale.languageCode == 'qu'
-              ? const Locale('es')
-              : localeState.locale;
-
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
           return MaterialApp.router(
             restorationScopeId: 'app',
             title: 'Danilore One',
             theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeMode,
             debugShowCheckedModeBanner: false,
-            locale: materialLocale,
-            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('es'),
+            supportedLocales: const [Locale('es')],
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            localeResolutionCallback: (locale, supportedLocales) {
-              if (locale == null) return const Locale('es');
-              for (final supported in supportedLocales) {
-                if (supported.languageCode == locale.languageCode) {
-                  return supported;
-                }
-              }
-              return const Locale('es');
-            },
             routerConfig: router,
           );
         },

@@ -184,14 +184,16 @@ class _AdminLayoutState extends State<AdminLayout> {
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     // ── Fallback: Standalone Desktop o Mobile/Tablet ──────────────────────────
     // Cuando no hay AdminShellLayout (p. ej. pantalla autónoma o mobile),
     // se construye la estructura completa con Sidebar/AppBar propios.
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -202,7 +204,7 @@ class _AdminLayoutState extends State<AdminLayout> {
             return AppPopScope(
               onCustomBack: widget.onBack,
               child: Scaffold(
-                backgroundColor: AppColors.background,
+                backgroundColor: AppColors.bg(context),
                 body: Row(
                 children: [
                   AdminSidebar(
@@ -241,13 +243,13 @@ class _AdminLayoutState extends State<AdminLayout> {
           return AppPopScope(
             onCustomBack: widget.onBack,
             child: Scaffold(
-              backgroundColor: AppColors.background,
+              backgroundColor: AppColors.bg(context),
               endDrawer:
                   widget.showDrawerButton ? const AppDrawer(isAdmin: true) : null,
             appBar:
                 widget.showAppBar
                     ? AppBar(
-                      backgroundColor: AppColors.surface,
+                      backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
                       elevation: 0,
                       shadowColor: Colors.black.withValues(alpha: 0.06),
                       surfaceTintColor: Colors.transparent,
@@ -274,10 +276,10 @@ class _AdminLayoutState extends State<AdminLayout> {
                                     height: 32,
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEFF6FF),
+                                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: const Color(0xFFDBEAFE),
+                                        color: isDark ? const Color(0xFF334155) : const Color(0xFFDBEAFE),
                                         width: 1,
                                       ),
                                     ),
@@ -294,16 +296,16 @@ class _AdminLayoutState extends State<AdminLayout> {
                                 padding: const EdgeInsets.only(left: 4),
                                 child: Text(
                                   widget.title,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                     letterSpacing: -0.3,
                                   ),
                                 ),
                               )
-                              : const Padding(
-                                padding: EdgeInsets.only(left: 4),
+                              : Padding(
+                                padding: const EdgeInsets.only(left: 4),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -312,12 +314,12 @@ class _AdminLayoutState extends State<AdminLayout> {
                                       style: TextStyle(
                                         fontSize: 16.5,
                                         fontWeight: FontWeight.w900,
-                                        color: Color(0xFF0F172A),
+                                        color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
                                         letterSpacing: -0.5,
                                       ),
                                     ),
-                                    SizedBox(width: 4),
-                                    Text(
+                                    const SizedBox(width: 4),
+                                    const Text(
                                       'ONE',
                                       style: TextStyle(
                                         fontSize: 16.5,

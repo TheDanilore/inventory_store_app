@@ -513,9 +513,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _PurchaseOrdersViewModel viewModel,
     BuildContext context,
   ) {
-    if (viewModel.totalPages <= 1 ||
-        viewModel.isLoading ||
-        viewModel.orders.isEmpty) {
+    if (viewModel.isLoading || viewModel.orders.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox(height: 24));
     }
     return SliverToBoxAdapter(
@@ -534,6 +532,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             totalPages: viewModel.totalPages,
             onPageChanged: (p) => viewModel.setPage(p),
             totalItems: viewModel.totalCount,
+            itemsPerPage: PurchaseOrdersState.pageSize,
             itemName: 'órdenes',
           ),
         ),
@@ -978,7 +977,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
                             SliverToBoxAdapter(
                               child: AdminPageHeader(
-                                breadcrumb: 'Inicio > Compras',
                                 title: 'Órdenes de Compra',
                                 subtitle:
                                     'Gestiona pedidos a proveedores, recepción de mercancía y cuentas por pagar.',
@@ -996,9 +994,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     tooltip:
                                         'Crear o continuar orden (Atajo: N)',
                                     onPressed:
-                                        () => context.go(
-                                          '/purchase-orders/form',
-                                        ),
+                                        () =>
+                                            context.go('/purchase-orders/form'),
                                   ),
                                 ],
                               ),

@@ -17,7 +17,6 @@ import 'package:inventory_store_app/features/auth/presentation/widgets/profile/p
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_action_buttons_section.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_shimmer.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/agronomic_avatar_picker_dialog.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/profile/system_language_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool openedFromAdmin;
@@ -68,9 +67,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _openAvatarPicker() async {
     final user = context.read<AuthCubit>().state.currentUser;
-    final initial = (user != null && user.fullName.isNotEmpty)
-        ? user.fullName[0].toUpperCase()
-        : 'U';
+    final initial =
+        (user != null && user.fullName.isNotEmpty)
+            ? user.fullName[0].toUpperCase()
+            : 'U';
 
     await AgronomicAvatarPickerDialog.show(
       context,
@@ -111,9 +111,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               });
               AppSnackbar.show(
                 context,
-                message: newAvatarUrl.isEmpty
-                    ? 'Avatar restablecido a iniciales'
-                    : 'Avatar agrícola actualizado',
+                message:
+                    newAvatarUrl.isEmpty
+                        ? 'Avatar restablecido a iniciales'
+                        : 'Avatar agrícola actualizado',
                 type: SnackbarType.success,
               );
             }
@@ -122,9 +123,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (success && mounted) {
               AppSnackbar.show(
                 context,
-                message: newAvatarUrl.isEmpty
-                    ? 'Avatar restablecido a iniciales'
-                    : 'Avatar agrícola actualizado',
+                message:
+                    newAvatarUrl.isEmpty
+                        ? 'Avatar restablecido a iniciales'
+                        : 'Avatar agrícola actualizado',
                 type: SnackbarType.success,
               );
             }
@@ -491,8 +493,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ],
                               ),
                     ),
-                    const SizedBox(height: 24),
-                    const SystemLanguageCard(),
                   ],
                 ),
               ),
@@ -635,11 +635,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: SystemLanguageCard(),
                 ),
                 const SizedBox(height: 20),
                 ProfileActionButtonsSection(
