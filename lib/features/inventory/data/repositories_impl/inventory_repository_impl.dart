@@ -10,7 +10,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
   /// Retorna las métricas globales para Stock (Stock total, Variantes, Low stock)
   @override
-  Future<Map<String, dynamic>> getGeneralStockMetrics({String? warehouseId}) async {
+  Future<Map<String, dynamic>> getGeneralStockMetrics({
+    String? warehouseId,
+  }) async {
     try {
       final response = await _supabase
           .from('product_variants')
@@ -61,7 +63,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
         'totalCost': totalCost,
       };
     } catch (e, stack) {
-      LoggerService.e('Error en getGeneralStockMetrics', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en getGeneralStockMetrics',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
@@ -109,15 +115,21 @@ class InventoryRepositoryImpl implements InventoryRepository {
           variantStock += (b['available_quantity'] as num?)?.toInt() ?? 0;
         }
 
-        if (status == 'low_stock' || status == 'bajo_stock' || status == 'bajo stock') {
+        if (status == 'low_stock' ||
+            status == 'bajo_stock' ||
+            status == 'bajo stock') {
           if (stockControl && variantStock <= reorderPoint) {
             matchingIds.add(variantId);
           }
-        } else if (status == 'out_of_stock' || status == 'agotado' || status == 'agotados') {
+        } else if (status == 'out_of_stock' ||
+            status == 'agotado' ||
+            status == 'agotados') {
           if (stockControl && variantStock <= 0) {
             matchingIds.add(variantId);
           }
-        } else if (status == 'in_stock' || status == 'con_stock' || status == 'disponible') {
+        } else if (status == 'in_stock' ||
+            status == 'con_stock' ||
+            status == 'disponible') {
           if (!stockControl || variantStock > reorderPoint) {
             matchingIds.add(variantId);
           }
@@ -126,7 +138,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
       return matchingIds;
     } catch (e, stack) {
-      LoggerService.e('Error obteniendo IDs para filtro de stock: $stockStatus', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error obteniendo IDs para filtro de stock: $stockStatus',
+        error: e,
+        stackTrace: stack,
+      );
       return [];
     }
   }
@@ -200,7 +216,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
     );
     if (matchingStatusIds != null) {
       if (matchingStatusIds.isEmpty) {
-        query = query.inFilter('id', const ['00000000-0000-0000-0000-000000000000']);
+        query = query.inFilter('id', const [
+          '00000000-0000-0000-0000-000000000000',
+        ]);
       } else {
         query = query.inFilter('id', matchingStatusIds);
       }
@@ -353,13 +371,12 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .select('''
       id, batch_number, expiry_date, available_quantity,
       variant_id, warehouse_id, product_id, supplier_id,
-      products!inner(id, name, uses_batches, product_images(image_url, is_main, variant_id)),
+      products(id, name, uses_batches, product_images(image_url, is_main, variant_id)),
       product_variants(id, sku, variant_attribute_values(attribute_values(value))),
       warehouses(name),
       suppliers(name)
     ''')
-        .gt('available_quantity', 0)
-        .eq('products.uses_batches', true);
+        .gt('available_quantity', 0);
 
     if (warehouseId != null && warehouseId.isNotEmpty) {
       query = query.eq('warehouse_id', warehouseId);
@@ -489,10 +506,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
           .from('warehouse_stock_batches')
           .select('''
         expiry_date,
-        products!inner(uses_batches)
+        products(uses_batches)
       ''')
-          .gt('available_quantity', 0)
-          .eq('products.uses_batches', true);
+          .gt('available_quantity', 0);
 
       if (warehouseId != null && warehouseId.isNotEmpty) {
         query = query.eq('warehouse_id', warehouseId);
@@ -625,7 +641,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final response = await query.count(CountOption.exact);
       return response.count;
     } catch (e, stack) {
-      LoggerService.e('Error en getTotalGeneralStockCount', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en getTotalGeneralStockCount',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
@@ -640,10 +660,9 @@ class InventoryRepositoryImpl implements InventoryRepository {
         .from('warehouse_stock_batches')
         .select('''
       id,
-      products!inner(uses_batches)
+      products(uses_batches)
     ''')
-        .gt('available_quantity', 0)
-        .eq('products.uses_batches', true);
+        .gt('available_quantity', 0);
 
     if (warehouseId != null && warehouseId.isNotEmpty) {
       query = query.eq('warehouse_id', warehouseId);
@@ -694,13 +713,19 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final response = await query.count(CountOption.exact);
       return response.count;
     } catch (e, stack) {
-      LoggerService.e('Error en getTotalBatchesCount', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en getTotalBatchesCount',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }
 
   @override
-  Future<List<InventoryStockItem>> getAllStockForExport({String? warehouseId}) async {
+  Future<List<InventoryStockItem>> getAllStockForExport({
+    String? warehouseId,
+  }) async {
     try {
       const chunkSize = 1000;
       int from = 0;
@@ -835,7 +860,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
 
       return result;
     } catch (e, stack) {
-      LoggerService.e('Error en getAllStockForExport', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en getAllStockForExport',
+        error: e,
+        stackTrace: stack,
+      );
       rethrow;
     }
   }

@@ -1760,9 +1760,9 @@ class DashboardBestSellersTable extends StatelessWidget {
                         onTap: () {
                           final prodId = p['productId'] as String?;
                           if (prodId != null && prodId.isNotEmpty) {
-                            context.push('/product/$prodId');
+                            context.go('/product/$prodId');
                           } else {
-                            context.push('/inventory');
+                            context.go('/inventory');
                           }
                         },
                         child: Padding(
@@ -2022,9 +2022,9 @@ class DashboardBestSellersTable extends StatelessWidget {
                         onTap: () {
                           final prodId = p['productId'] as String?;
                           if (prodId != null && prodId.isNotEmpty) {
-                            context.push('/product/$prodId');
+                            context.go('/product/$prodId');
                           } else {
-                            context.push('/inventory');
+                            context.go('/inventory');
                           }
                         },
                         child: Padding(

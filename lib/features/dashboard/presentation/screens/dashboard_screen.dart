@@ -23,6 +23,8 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/agro
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/services/dashboard_export_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -215,6 +217,45 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       onToggleWidget: _toggleWidget,
       onResetDefaults: _resetWidgetsToDefault,
     );
+  }
+
+  Future<void> _handleExportReport() async {
+    final cubit = context.read<DashboardCubit>();
+    final state = cubit.state;
+    if (state is DashboardLoaded) {
+      AppSnackbar.show(
+        context,
+        message: 'Generando reporte consolidado del dashboard...',
+        type: SnackbarType.info,
+        duration: const Duration(seconds: 2),
+      );
+      try {
+        await DashboardExportService.exportConsolidatedReport(state);
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Reporte consolidado descargado exitosamente.',
+            type: SnackbarType.success,
+            duration: const Duration(seconds: 3),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al exportar reporte consolidado: $e',
+            type: SnackbarType.error,
+            duration: const Duration(seconds: 4),
+          );
+        }
+      }
+    } else {
+      AppSnackbar.show(
+        context,
+        message: 'Espere a que carguen las métricas para exportar',
+        type: SnackbarType.warning,
+      );
+    }
   }
 
   bool _isTextFieldFocused() {
@@ -451,17 +492,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               SizedBox(
                 height: 34,
                 child: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Generando reporte consolidado del dashboard...',
-                        ),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
+                  onPressed: _handleExportReport,
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
@@ -675,17 +706,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             SizedBox(
               height: 38,
               child: FilledButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Generando reporte consolidado del dashboard...',
-                      ),
-                      duration: Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                onPressed: _handleExportReport,
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
@@ -1758,9 +1779,9 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
           TextButton.icon(
             onPressed: () {
               if (widget.criticalBatchesCount > 0) {
-                context.push('/inventory?tab=batches');
+                context.go('/inventory?tab=batches');
               } else {
-                context.push('/inventory');
+                context.go('/inventory');
               }
             },
             style: TextButton.styleFrom(
@@ -1933,7 +1954,7 @@ class ExpiringBatchesCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => context.push('/inventory?tab=batches'),
+              onTap: () => context.go('/inventory?tab=batches'),
               borderRadius: BorderRadius.circular(8),
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
@@ -2136,7 +2157,7 @@ class ExpiringBatchesCard extends StatelessWidget {
                           ? AppColors.darkSurfaceElevated
                           : AppColors.primaryLight.withValues(alpha: 0.45),
                   onTap: () {
-                    context.push('/inventory?tab=batches');
+                    context.go('/inventory?tab=batches');
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -2275,7 +2296,7 @@ class ExpiringBatchesCard extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: TextButton.icon(
-              onPressed: () => context.push('/inventory?tab=batches'),
+              onPressed: () => context.go('/inventory?tab=batches'),
               style: TextButton.styleFrom(
                 backgroundColor:
                     isDark

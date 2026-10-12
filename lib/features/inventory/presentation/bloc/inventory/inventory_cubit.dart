@@ -40,7 +40,10 @@ class InventoryCubit extends Cubit<InventoryState> {
        _getWarehouses = getWarehouses,
        super(const InventoryInitial());
 
-  InventoryLoaded _getLoadedState({String? defaultSearchText, String? defaultStatusFilter}) {
+  InventoryLoaded _getLoadedState({
+    String? defaultSearchText,
+    String? defaultStatusFilter,
+  }) {
     if (state is InventoryLoaded) {
       return state as InventoryLoaded;
     }
@@ -71,7 +74,10 @@ class InventoryCubit extends Cubit<InventoryState> {
     );
   }
 
-  Future<void> initStockTab({String? initialSearch, String? initialStatusFilter}) async {
+  Future<void> initStockTab({
+    String? initialSearch,
+    String? initialStatusFilter,
+  }) async {
     final requestId = ++_stockRequestId;
     final sanitizedSearch = initialSearch?.trim() ?? '';
     final sanitizedStatus = initialStatusFilter?.trim() ?? '';
@@ -81,48 +87,62 @@ class InventoryCubit extends Cubit<InventoryState> {
     } else {
       final currentState = _getLoadedState(
         defaultSearchText: sanitizedSearch,
-        defaultStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
+        defaultStatusFilter:
+            sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
       );
-      emit(currentState.copyWith(
-        isSearchingStock: true,
-        stockSearchText: sanitizedSearch.isNotEmpty ? sanitizedSearch : currentState.stockSearchText,
-        stockStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : currentState.stockStatusFilter,
-      ));
+      emit(
+        currentState.copyWith(
+          isSearchingStock: true,
+          stockSearchText:
+              sanitizedSearch.isNotEmpty
+                  ? sanitizedSearch
+                  : currentState.stockSearchText,
+          stockStatusFilter:
+              sanitizedStatus.isNotEmpty
+                  ? sanitizedStatus
+                  : currentState.stockStatusFilter,
+        ),
+      );
     }
 
     try {
       var currentState = _getLoadedState(
         defaultSearchText: sanitizedSearch,
-        defaultStatusFilter: sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
+        defaultStatusFilter:
+            sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
       );
       if (sanitizedSearch.isNotEmpty) {
         currentState = currentState.copyWith(stockSearchText: sanitizedSearch);
       }
       if (sanitizedStatus.isNotEmpty) {
-        currentState = currentState.copyWith(stockStatusFilter: sanitizedStatus);
+        currentState = currentState.copyWith(
+          stockStatusFilter: sanitizedStatus,
+        );
       }
 
-      final warehousesFuture = currentState.warehouses.isEmpty
-          ? _getWarehouses(start: 0, end: 100)
-              .then((res) => res.data.where((w) => w.isActive).toList())
-              .catchError((e, stack) {
-                LoggerService.e(
-                  'Error cargando almacenes en InventoryCubit',
-                  error: e,
-                  stackTrace: stack,
-                );
-                return <WarehouseEntity>[];
-              })
-          : Future.value(currentState.warehouses);
+      final warehousesFuture =
+          currentState.warehouses.isEmpty
+              ? _getWarehouses(start: 0, end: 100)
+                  .then((res) => res.data.where((w) => w.isActive).toList())
+                  .catchError((e, stack) {
+                    LoggerService.e(
+                      'Error cargando almacenes en InventoryCubit',
+                      error: e,
+                      stackTrace: stack,
+                    );
+                    return <WarehouseEntity>[];
+                  })
+              : Future.value(currentState.warehouses);
 
-      final categoriesFuture = currentState.categories.length <= 1
-          ? _getCategories().then(
-              (res) => res.fold(
-                (l) => <String>['Todos'],
-                (r) => <String>['Todos', ...r.map((c) => c.name)],
-              ),
-            )
-          : Future.value(currentState.categories);
+      final categoriesFuture =
+          currentState.categories.length <= 1
+              ? _getCategories().then(
+                (res) => res.fold(
+                  (l) => <String>['Todos'],
+                  (r) => <String>['Todos', ...r.map((c) => c.name)],
+                ),
+              )
+              : Future.value(currentState.categories);
 
       final metricsFuture = _getGeneralStockMetrics(
         currentState.selectedWarehouseId,
@@ -181,7 +201,11 @@ class InventoryCubit extends Cubit<InventoryState> {
       );
     } catch (e, stack) {
       if (requestId != _stockRequestId) return;
-      LoggerService.e('Error en initStockTab de InventoryCubit', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en initStockTab de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       if (isInitial) {
         emit(InventoryError(e.toString()));
       } else {
@@ -233,7 +257,11 @@ class InventoryCubit extends Cubit<InventoryState> {
         ),
       );
     } catch (e, stack) {
-      LoggerService.e('Error en fetchStockPage de InventoryCubit', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en fetchStockPage de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       final stateNow = _getLoadedState();
       emit(stateNow.copyWith(isSearchingStock: false));
     }
@@ -272,6 +300,7 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void refreshAll() {
     initStockTab();
+    initBatchesTab();
   }
 
   Future<void> initBatchesTab() async {
@@ -280,6 +309,20 @@ class InventoryCubit extends Cubit<InventoryState> {
     emit(currentState.copyWith(isSearchingBatches: true));
 
     try {
+      final warehousesFuture =
+          currentState.warehouses.isEmpty
+              ? _getWarehouses(start: 0, end: 100)
+                  .then((res) => res.data.where((w) => w.isActive).toList())
+                  .catchError((e, stack) {
+                    LoggerService.e(
+                      'Error cargando almacenes en InventoryCubit (initBatchesTab)',
+                      error: e,
+                      stackTrace: stack,
+                    );
+                    return <WarehouseEntity>[];
+                  })
+              : Future.value(currentState.warehouses);
+
       final results = await Future.wait([
         _getBatchMetrics(
           search: currentState.batchSearchText,
@@ -297,11 +340,13 @@ class InventoryCubit extends Cubit<InventoryState> {
           statusFilter: currentState.batchStatusFilter,
           warehouseId: currentState.selectedWarehouseId,
         ),
+        warehousesFuture,
       ]);
 
       final metrics = results[0] as Map<String, dynamic>;
       final totalBatchCount = results[1] as int;
       final batchItems = results[2] as List<InventoryBatchItem>;
+      final warehouses = results[3] as List<WarehouseEntity>;
 
       if (requestId != _batchRequestId) return;
 
@@ -318,12 +363,18 @@ class InventoryCubit extends Cubit<InventoryState> {
           currentBatchPage: 0,
           totalBatchPages: totalPages,
           batchItems: batchItems,
+          warehouses:
+              warehouses.isNotEmpty ? warehouses : updatedState.warehouses,
           isSearchingBatches: false,
         ),
       );
     } catch (e, stack) {
       if (requestId != _batchRequestId) return;
-      LoggerService.e('Error en initBatchesTab de InventoryCubit', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en initBatchesTab de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       final stateNow = _getLoadedState();
       emit(stateNow.copyWith(isSearchingBatches: false));
     }
@@ -369,7 +420,11 @@ class InventoryCubit extends Cubit<InventoryState> {
         ),
       );
     } catch (e, stack) {
-      LoggerService.e('Error en fetchBatchPage de InventoryCubit', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en fetchBatchPage de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       final stateNow = _getLoadedState();
       emit(stateNow.copyWith(isSearchingBatches: false));
     }
@@ -387,11 +442,13 @@ class InventoryCubit extends Cubit<InventoryState> {
     final requestId = ++_batchRequestId;
     final cleanText = text.trim();
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(
-      batchSearchText: cleanText,
-      currentBatchPage: 0,
-      isSearchingBatches: true,
-    ));
+    emit(
+      currentState.copyWith(
+        batchSearchText: cleanText,
+        currentBatchPage: 0,
+        isSearchingBatches: true,
+      ),
+    );
 
     try {
       final metricsFuture = _getBatchMetrics(
@@ -441,7 +498,11 @@ class InventoryCubit extends Cubit<InventoryState> {
       );
     } catch (e, stack) {
       if (requestId != _batchRequestId) return;
-      LoggerService.e('Error en setBatchSearch de InventoryCubit', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en setBatchSearch de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       final updatedState = _getLoadedState();
       emit(updatedState.copyWith(isSearchingBatches: false));
     }
@@ -449,11 +510,13 @@ class InventoryCubit extends Cubit<InventoryState> {
 
   void setBatchStatus(String status) {
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(
-      batchStatusFilter: status,
-      currentBatchPage: 0,
-      isSearchingBatches: true,
-    ));
+    emit(
+      currentState.copyWith(
+        batchStatusFilter: status,
+        currentBatchPage: 0,
+        isSearchingBatches: true,
+      ),
+    );
     fetchBatchPage(page: 0);
   }
 
@@ -534,7 +597,9 @@ class InventoryCubit extends Cubit<InventoryState> {
       final totalBatchPages =
           totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
 
-      if (stockReqId != _stockRequestId || batchReqId != _batchRequestId) return;
+      if (stockReqId != _stockRequestId || batchReqId != _batchRequestId) {
+        return;
+      }
 
       final updatedState = _getLoadedState();
       emit(
@@ -559,14 +624,17 @@ class InventoryCubit extends Cubit<InventoryState> {
         ),
       );
     } catch (e, stack) {
-      if (stockReqId != _stockRequestId || batchReqId != _batchRequestId) return;
-      LoggerService.e('Error en setWarehouseFilter de InventoryCubit', error: e, stackTrace: stack);
+      if (stockReqId != _stockRequestId || batchReqId != _batchRequestId) {
+        return;
+      }
+      LoggerService.e(
+        'Error en setWarehouseFilter de InventoryCubit',
+        error: e,
+        stackTrace: stack,
+      );
       final stateNow = _getLoadedState();
       emit(
-        stateNow.copyWith(
-          isSearchingStock: false,
-          isSearchingBatches: false,
-        ),
+        stateNow.copyWith(isSearchingStock: false, isSearchingBatches: false),
       );
     }
   }

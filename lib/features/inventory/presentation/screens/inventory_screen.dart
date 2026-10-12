@@ -46,12 +46,17 @@ class _InventoryScreenState extends State<InventoryScreen>
   @override
   void initState() {
     super.initState();
-    final startIdx = (widget.initialTabIndex != null &&
-            widget.initialTabIndex! >= 0 &&
-            widget.initialTabIndex! < 2)
-        ? widget.initialTabIndex!
-        : 0;
-    _tabController = TabController(length: 2, vsync: this, initialIndex: startIdx);
+    final startIdx =
+        (widget.initialTabIndex != null &&
+                widget.initialTabIndex! >= 0 &&
+                widget.initialTabIndex! < 2)
+            ? widget.initialTabIndex!
+            : 0;
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: startIdx,
+    );
     _tabController.addListener(_handleTabSelection);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -59,8 +64,10 @@ class _InventoryScreenState extends State<InventoryScreen>
         if (startIdx == 1) {
           final cubit = context.read<InventoryCubit>();
           final state = cubit.state;
-          if (state is InventoryLoaded && state.batchItems.isEmpty) {
-            cubit.initBatchesTab();
+          if (state is InventoryLoaded) {
+            if (state.batchItems.isEmpty && !state.isSearchingBatches) {
+              cubit.initBatchesTab();
+            }
           }
         }
       }
@@ -73,7 +80,9 @@ class _InventoryScreenState extends State<InventoryScreen>
       // Lazy load de la pestaña de lotes evitando llamadas duplicadas
       final cubit = context.read<InventoryCubit>();
       final state = cubit.state;
-      if (state is InventoryLoaded && state.batchItems.isEmpty) {
+      if (state is InventoryLoaded &&
+          state.batchItems.isEmpty &&
+          !state.isSearchingBatches) {
         cubit.initBatchesTab();
       }
     }
@@ -130,18 +139,21 @@ class _InventoryScreenState extends State<InventoryScreen>
 
     // Atajo [B] o [Alt+B] -> Alternar filtro de Bajo Stock (cuando foco no está en input)
     if ((key == LogicalKeyboardKey.keyB && !isModifier) ||
-        (HardwareKeyboard.instance.isAltPressed && key == LogicalKeyboardKey.keyB)) {
+        (HardwareKeyboard.instance.isAltPressed &&
+            key == LogicalKeyboardKey.keyB)) {
       final cubit = context.read<InventoryCubit>();
       final state = cubit.state;
       if (state is InventoryLoaded) {
-        final isLowStock = state.stockStatusFilter == 'low_stock' ||
+        final isLowStock =
+            state.stockStatusFilter == 'low_stock' ||
             state.stockStatusFilter == 'bajo_stock';
         cubit.setStockStatusFilter(isLowStock ? 'all' : 'low_stock');
         AppSnackbar.show(
           context,
-          message: isLowStock
-              ? 'Mostrando todo el inventario'
-              : 'Filtrando: Solo productos con bajo stock',
+          message:
+              isLowStock
+                  ? 'Mostrando todo el inventario'
+                  : 'Filtrando: Solo productos con bajo stock',
           type: SnackbarType.info,
           duration: const Duration(seconds: 2),
         );
@@ -173,10 +185,7 @@ class _InventoryScreenState extends State<InventoryScreen>
     return KeyEventResult.ignored;
   }
 
-  void _showWarehouseBottomSheet(
-    BuildContext context,
-    InventoryLoaded? state,
-  ) {
+  void _showWarehouseBottomSheet(BuildContext context, InventoryLoaded? state) {
     FocusManager.instance.primaryFocus?.unfocus();
     final cubit = context.read<InventoryCubit>();
     _WarehousePickerBottomSheet.show(
@@ -198,7 +207,17 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<InventoryCubit, InventoryState>(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BlocConsumer<InventoryCubit, InventoryState>(
+      listenWhen: (previous, current) {
+        return current is InventoryLoaded &&
+            _tabController.index == 1 &&
+            current.batchItems.isEmpty &&
+            !current.isSearchingBatches;
+      },
+      listener: (context, state) {
+        context.read<InventoryCubit>().initBatchesTab();
+      },
       buildWhen: (previous, current) {
         if (previous.runtimeType != current.runtimeType) return true;
         if (previous is InventoryLoaded && current is InventoryLoaded) {
@@ -225,7 +244,8 @@ class _InventoryScreenState extends State<InventoryScreen>
               loadedState: loadedState,
               urgentCount: urgentCount,
               onOpenExport: () => _openExportModal(loadedState),
-              onOpenWarehousePickerMobile: () => _showWarehouseBottomSheet(context, loadedState),
+              onOpenWarehousePickerMobile:
+                  () => _showWarehouseBottomSheet(context, loadedState),
             ),
 
             // ── Contenido de Pestañas / Vistas ──
@@ -249,12 +269,16 @@ class _InventoryScreenState extends State<InventoryScreen>
           autofocus: true,
           onKeyEvent: _handleKeyEvent,
           child: FocusTraversalGroup(
-            child: widget.isEmbedded
-                ? Material(color: AppColors.background, child: inventoryBody)
-                : AdminLayout(
-                    title: 'Inventario',
-                    body: inventoryBody,
-                  ),
+            child:
+                widget.isEmbedded
+                    ? Material(
+                      color:
+                          isDark
+                              ? AppColors.darkBackground
+                              : AppColors.background,
+                      child: inventoryBody,
+                    )
+                    : AdminLayout(title: 'Inventario', body: inventoryBody),
           ),
         );
 
@@ -285,14 +309,18 @@ class _AdaptiveInventoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: AppColors.border.withValues(alpha: 0.8),
+            color:
+                isDark
+                    ? AppColors.darkBorder
+                    : AppColors.border.withValues(alpha: 0.8),
           ),
         ),
       ),
@@ -308,14 +336,18 @@ class _AdaptiveInventoryHeader extends StatelessWidget {
             isMobile: isMobile,
           );
 
-          final warehouseSelector = isMobile
-              ? _MobileWarehouseSelectorButton(
-                  selectedName: loadedState?.selectedWarehouseName ?? 'Todos los almacenes',
-                  isSelected: loadedState?.selectedWarehouseId != null &&
-                      loadedState!.selectedWarehouseId!.isNotEmpty,
-                  onTap: onOpenWarehousePickerMobile,
-                )
-              : _DesktopWarehouseDropdown(state: loadedState);
+          final warehouseSelector =
+              isMobile
+                  ? _MobileWarehouseSelectorButton(
+                    selectedName:
+                        loadedState?.selectedWarehouseName ??
+                        'Todos los almacenes',
+                    isSelected:
+                        loadedState?.selectedWarehouseId != null &&
+                        loadedState!.selectedWarehouseId!.isNotEmpty,
+                    onTap: onOpenWarehousePickerMobile,
+                  )
+                  : _DesktopWarehouseDropdown(state: loadedState);
 
           final exportButton = _AdaptiveExportButton(
             onPressed: onOpenExport,
@@ -402,26 +434,46 @@ class _SegmentedTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      constraints: BoxConstraints(maxWidth: isMobile ? double.infinity : (isDesktop ? 460 : 410)),
+      constraints: BoxConstraints(
+        maxWidth: isMobile ? double.infinity : (isDesktop ? 460 : 410),
+      ),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: isDark ? AppColors.darkBackground : AppColors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: TabBar(
         controller: controller,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: AppColors.surface,
+          color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: AppColors.cardShadow(opacity: 0.05),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+          boxShadow:
+              isDark
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                  : AppColors.cardShadow(opacity: 0.05),
+          border: Border.all(
+            color:
+                isDark
+                    ? AppColors.darkBorder
+                    : AppColors.border.withValues(alpha: 0.6),
+          ),
         ),
         dividerColor: Colors.transparent,
-        labelColor: AppColors.textPrimary,
-        unselectedLabelColor: AppColors.textSecondary,
+        labelColor: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+        unselectedLabelColor:
+            isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
         labelStyle: const TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 13,
@@ -496,19 +548,22 @@ class _ShortcutKeyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: AppColors.textMuted,
+          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
         ),
       ),
     );
@@ -523,10 +578,7 @@ class _HealthUrgentBadge extends StatefulWidget {
   final int urgentCount;
   final VoidCallback onTap;
 
-  const _HealthUrgentBadge({
-    required this.urgentCount,
-    required this.onTap,
-  });
+  const _HealthUrgentBadge({required this.urgentCount, required this.onTap});
 
   @override
   State<_HealthUrgentBadge> createState() => _HealthUrgentBadgeState();
@@ -538,7 +590,8 @@ class _HealthUrgentBadgeState extends State<_HealthUrgentBadge> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Hay ${widget.urgentCount} lotes que requieren retiro o revisión urgente',
+      message:
+          'Hay ${widget.urgentCount} lotes que requieren retiro o revisión urgente',
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
@@ -549,14 +602,16 @@ class _HealthUrgentBadgeState extends State<_HealthUrgentBadge> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? AppColors.danger.withValues(alpha: 0.14)
-                  : AppColors.danger.withValues(alpha: 0.08),
+              color:
+                  _isHovered
+                      ? AppColors.danger.withValues(alpha: 0.14)
+                      : AppColors.danger.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _isHovered
-                    ? AppColors.danger
-                    : AppColors.danger.withValues(alpha: 0.35),
+                color:
+                    _isHovered
+                        ? AppColors.danger
+                        : AppColors.danger.withValues(alpha: 0.35),
               ),
             ),
             child: Row(
@@ -613,6 +668,7 @@ class _DesktopWarehouseDropdownState extends State<_DesktopWarehouseDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final warehouses = widget.state?.warehouses ?? [];
     final selectedId = widget.state?.selectedWarehouseId;
     final isSelected = selectedId != null && selectedId.isNotEmpty;
@@ -625,16 +681,26 @@ class _DesktopWarehouseDropdownState extends State<_DesktopWarehouseDropdown> {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.04)
-              : (_isHovered
-                  ? AppColors.surfaceDark
-                  : AppColors.background),
+          color:
+              isSelected
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.primary.withValues(alpha: 0.04))
+                  : (_isHovered
+                      ? (isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.surfaceDark)
+                      : (isDark
+                          ? AppColors.darkSurface
+                          : AppColors.background)),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.45)
-                : (_isHovered ? AppColors.primary.withValues(alpha: 0.25) : AppColors.border),
+            color:
+                isSelected
+                    ? AppColors.primary.withValues(alpha: 0.45)
+                    : (_isHovered
+                        ? AppColors.primary.withValues(alpha: 0.25)
+                        : (isDark ? AppColors.darkBorder : AppColors.border)),
           ),
           boxShadow: AppColors.cardShadow(opacity: 0.02),
         ),
@@ -644,32 +710,47 @@ class _DesktopWarehouseDropdownState extends State<_DesktopWarehouseDropdown> {
             Icon(
               Icons.warehouse_rounded,
               size: 17,
-              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              color:
+                  isSelected
+                      ? AppColors.primary
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Almacén:',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color:
+                    isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
               ),
             ),
             const SizedBox(width: 6),
             DropdownButtonHideUnderline(
               child: DropdownButton<String?>(
                 value: selectedId,
-                icon: const Icon(
+                icon: Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.textSecondary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                   size: 19,
                 ),
                 borderRadius: BorderRadius.circular(10),
-                dropdownColor: AppColors.surface,
-                style: const TextStyle(
+                dropdownColor:
+                    isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
+                style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                 ),
                 items: [
                   const DropdownMenuItem<String?>(
@@ -698,16 +779,17 @@ class _DesktopWarehouseDropdownState extends State<_DesktopWarehouseDropdown> {
                 onChanged: (newWarehouseId) {
                   String whName = 'Todos los almacenes';
                   if (newWarehouseId != null) {
-                    final found =
-                        warehouses.where((w) => w.id == newWarehouseId);
+                    final found = warehouses.where(
+                      (w) => w.id == newWarehouseId,
+                    );
                     if (found.isNotEmpty) {
                       whName = found.first.name;
                     }
                   }
                   context.read<InventoryCubit>().setWarehouseFilter(
-                        newWarehouseId,
-                        whName,
-                      );
+                    newWarehouseId,
+                    whName,
+                  );
                 },
               ),
             ),
@@ -735,6 +817,7 @@ class _MobileWarehouseSelectorButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -742,14 +825,18 @@ class _MobileWarehouseSelectorButton extends StatelessWidget {
         height: 44, // Target táctil mínimo de 44-48dp
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : AppColors.background,
+          color:
+              isSelected
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.primary.withValues(alpha: 0.05))
+                  : (isDark ? AppColors.darkSurface : AppColors.background),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : AppColors.border,
+            color:
+                isSelected
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
           ),
         ),
         child: Row(
@@ -768,9 +855,7 @@ class _MobileWarehouseSelectorButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                  color: isSelected
-                      ? AppColors.primary
-                      : AppColors.textPrimary,
+                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
                 ),
               ),
             ),
@@ -792,7 +877,8 @@ class _MobileWarehouseSelectorButton extends StatelessWidget {
 
 class _WarehousePickerBottomSheet extends StatelessWidget {
   final InventoryLoaded? state;
-  final void Function(String? warehouseId, String warehouseName) onWarehouseSelected;
+  final void Function(String? warehouseId, String warehouseName)
+  onWarehouseSelected;
 
   const _WarehousePickerBottomSheet({
     required this.state,
@@ -803,25 +889,28 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
     BuildContext context, {
     required InventoryLoaded? state,
     required InventoryCubit cubit,
-    required void Function(String? warehouseId, String warehouseName) onWarehouseSelected,
+    required void Function(String? warehouseId, String warehouseName)
+    onWarehouseSelected,
   }) {
     FocusManager.instance.primaryFocus?.unfocus();
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => BlocProvider.value(
-        value: cubit,
-        child: _WarehousePickerBottomSheet(
-          state: state,
-          onWarehouseSelected: onWarehouseSelected,
-        ),
-      ),
+      builder:
+          (ctx) => BlocProvider.value(
+            value: cubit,
+            child: _WarehousePickerBottomSheet(
+              state: state,
+              onWarehouseSelected: onWarehouseSelected,
+            ),
+          ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final warehouses = state?.warehouses ?? [];
     final selectedId = state?.selectedWarehouseId;
 
@@ -829,10 +918,10 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: const [
           BoxShadow(
             color: Color(0x1A0F172A),
             blurRadius: 20,
@@ -922,9 +1011,10 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
                   ),
                   ...warehouses.map((wh) {
                     final isSelected = selectedId == wh.id;
-                    final address = (wh.address != null && wh.address!.isNotEmpty)
-                        ? wh.address!
-                        : 'Sede operativa registrada';
+                    final address =
+                        (wh.address != null && wh.address!.isNotEmpty)
+                            ? wh.address!
+                            : 'Sede operativa registrada';
                     return _WarehouseOptionTile(
                       title: wh.name,
                       subtitle: address,
@@ -960,14 +1050,18 @@ class _WarehouseOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : Colors.transparent,
+          color:
+              isSelected
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.primary.withValues(alpha: 0.05))
+                  : Colors.transparent,
         ),
         child: Row(
           children: [
@@ -975,18 +1069,29 @@ class _WarehouseOptionTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.background,
+                color:
+                    isSelected
+                        ? AppColors.primary
+                        : (isDark
+                            ? AppColors.darkSurfaceElevated
+                            : AppColors.background),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
+                  color:
+                      isSelected
+                          ? AppColors.primary
+                          : (isDark ? AppColors.darkBorder : AppColors.border),
                 ),
               ),
               child: Icon(
                 Icons.store_rounded,
                 size: 18,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color:
+                    isSelected
+                        ? Colors.white
+                        : (isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary),
               ),
             ),
             const SizedBox(width: 14),
@@ -998,18 +1103,25 @@ class _WarehouseOptionTile extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textPrimary,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color:
+                          isSelected
+                              ? AppColors.primary
+                              : (isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary),
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -1050,6 +1162,7 @@ class _AdaptiveExportButtonState extends State<_AdaptiveExportButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: 'Exportar Inventario a Excel (Ctrl + E o presiona E)',
       child: MouseRegion(
@@ -1066,12 +1179,16 @@ class _AdaptiveExportButtonState extends State<_AdaptiveExportButton> {
               horizontal: widget.isCompact ? 12 : 14,
             ),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? AppColors.teal.withValues(alpha: 0.1)
-                  : AppColors.background,
+              color:
+                  _isHovered
+                      ? AppColors.teal.withValues(alpha: 0.15)
+                      : (isDark ? AppColors.darkSurface : AppColors.background),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: _isHovered ? AppColors.teal : AppColors.border,
+                color:
+                    _isHovered
+                        ? AppColors.teal
+                        : (isDark ? AppColors.darkBorder : AppColors.border),
               ),
               boxShadow: AppColors.cardShadow(opacity: 0.02),
             ),
@@ -1085,12 +1202,15 @@ class _AdaptiveExportButtonState extends State<_AdaptiveExportButton> {
                 ),
                 if (!widget.isCompact) ...[
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Exportar Excel',
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1100,16 +1220,24 @@ class _AdaptiveExportButtonState extends State<_AdaptiveExportButton> {
                       vertical: 1.5,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : AppColors.surface,
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Ctrl+E',
                       style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textMuted,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                       ),
                     ),
                   ),
@@ -1141,6 +1269,7 @@ class _QuickRefreshButtonState extends State<_QuickRefreshButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: 'Recargar existencias y lotes (presiona R)',
       child: MouseRegion(
@@ -1155,21 +1284,28 @@ class _QuickRefreshButtonState extends State<_QuickRefreshButton> {
             height: 40,
             width: 40,
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? AppColors.primary.withValues(alpha: 0.08)
-                  : AppColors.background,
+              color:
+                  _isHovered
+                      ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.08)
+                      : (isDark ? AppColors.darkSurface : AppColors.background),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: _isHovered
-                    ? AppColors.primary.withValues(alpha: 0.3)
-                    : AppColors.border,
+                color:
+                    _isHovered
+                        ? AppColors.primary.withValues(alpha: 0.3)
+                        : (isDark ? AppColors.darkBorder : AppColors.border),
               ),
               boxShadow: AppColors.cardShadow(opacity: 0.02),
             ),
             child: Icon(
               Icons.refresh_rounded,
               size: 18,
-              color: _isHovered ? AppColors.primary : AppColors.textSecondary,
+              color:
+                  _isHovered
+                      ? AppColors.primary
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
           ),
         ),

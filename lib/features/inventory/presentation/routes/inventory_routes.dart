@@ -86,10 +86,17 @@ class InventoryRoutes {
         final tabStr = state.uri.queryParameters['tab'];
         final tabIndex = tabStr == 'batches' || tabStr == '1' ? 1 : 0;
         return BlocProvider(
-          create: (_) => sl<InventoryCubit>()..initStockTab(
-            initialSearch: search,
-            initialStatusFilter: filter,
-          ),
+          create: (_) {
+            final cubit = sl<InventoryCubit>();
+            cubit.initStockTab(
+              initialSearch: search,
+              initialStatusFilter: filter,
+            );
+            if (tabIndex == 1) {
+              cubit.initBatchesTab();
+            }
+            return cubit;
+          },
           child: InventoryScreen(
             initialSearch: search,
             initialStatusFilter: filter,
