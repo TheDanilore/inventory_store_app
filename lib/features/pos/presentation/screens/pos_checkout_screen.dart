@@ -201,7 +201,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     try {
       await _processSaleInternal(posCubit, cartCubit, isDraft: isDraft);
     } finally {
-      _isProcessing = false; // Sin setState para no re-renderizar todo el widget
+      _isProcessing =
+          false; // Sin setState para no re-renderizar todo el widget
     }
   }
 
@@ -470,7 +471,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             barrierDismissible: false,
             builder:
                 (dialogContext) => PosSuccessDialog(
-                  isDraft: false,
+                  isDraft: _lastSaleWasDraft,
                   onPrint: () async {
                     try {
                       final detailsRes = await posCubit
@@ -546,201 +547,202 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth >= 900;
 
-                    if (isWide) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Izquierda: Carrito
-                          Expanded(
-                            flex: 5,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  right: BorderSide(
-                                    color: Colors.grey.shade200,
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Izquierda: Carrito
+                            Expanded(
+                              flex: 5,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    right: BorderSide(
+                                      color: Colors.grey.shade200,
+                                    ),
                                   ),
                                 ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        16,
+                                        16,
+                                        8,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          PosSectionLabel('Productos en caja'),
+                                          BlocBuilder<CartCubit, CartState>(
+                                            builder: (context, cartState) {
+                                              if (cartState.items.isEmpty) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return TextButton.icon(
+                                                onPressed: _onClearCart,
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: AppColors.error,
+                                                  size: 20,
+                                                ),
+                                                label: const Text(
+                                                  'Vaciar Todo',
+                                                  style: TextStyle(
+                                                    color: AppColors.error,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                style: TextButton.styleFrom(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 8,
+                                                      ),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        child: Builder(
+                                          builder: (context) {
+                                            return PosCartItemsSection(
+                                              onShowBatchEditSheet:
+                                                  _showBatchEditSheet,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Derecha: Pago, Cliente, Resumen, Action Bar
+                            Expanded(
+                              flex: 4,
+                              child: _buildRightPanel(
+                                pointsToSolesRatio,
+                                earningRate,
+                                isLoyaltyEnabled,
+                                isWide: true,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      // Móvil (Columna única pero con Action Bar pegajoso al fondo)
+                      return Column(
+                        children: [
+                          // Cliente Sticky en la parte superior para selección inmediata
+                          _buildClientHeader(isLoyaltyEnabled),
+
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      16,
-                                      16,
-                                      8,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        PosSectionLabel('Productos en caja'),
-                                        BlocBuilder<CartCubit, CartState>(
-                                          builder: (context, cartState) {
-                                            if (cartState.items.isEmpty) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            return TextButton.icon(
-                                              onPressed: _onClearCart,
-                                              icon: const Icon(
-                                                Icons.delete_outline,
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      PosSectionLabel('Productos en caja'),
+                                      BlocBuilder<CartCubit, CartState>(
+                                        builder: (context, cartState) {
+                                          if (cartState.items.isEmpty) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return TextButton.icon(
+                                            onPressed: _onClearCart,
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              color: AppColors.error,
+                                              size: 20,
+                                            ),
+                                            label: const Text(
+                                              'Vaciar Todo',
+                                              style: TextStyle(
                                                 color: AppColors.error,
-                                                size: 20,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                              label: const Text(
-                                                'Vaciar Todo',
-                                                style: TextStyle(
-                                                  color: AppColors.error,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 8,
-                                                    ),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: SingleChildScrollView(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
-                                      ),
-                                      child: Builder(
-                                        builder: (context) {
-                                          return PosCartItemsSection(
-                                            onShowBatchEditSheet:
-                                                _showBatchEditSheet,
+                                            ),
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                              minimumSize: Size.zero,
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
                                           );
                                         },
                                       ),
-                                    ),
+                                    ],
+                                  ),
+                                  PosCartItemsSection(
+                                    onShowBatchEditSheet: _showBatchEditSheet,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _buildPaymentAndConfigSection(
+                                    pointsToSolesRatio,
+                                    isLoyaltyEnabled,
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ListenableBuilder(
+                                    listenable: Listenable.merge([
+                                      _descuentoCtrl,
+                                      _isDiscountPercentageNotifier,
+                                    ]),
+                                    builder: (context, _) {
+                                      return _buildSummarySection(
+                                        pointsToSolesRatio,
+                                        earningRate,
+                                        isLoyaltyEnabled,
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          // Derecha: Pago, Cliente, Resumen, Action Bar
-                          Expanded(
-                            flex: 4,
-                            child: _buildRightPanel(
-                              pointsToSolesRatio,
-                              earningRate,
-                              isLoyaltyEnabled,
-                              isWide: true,
-                            ),
+                          ListenableBuilder(
+                            listenable: Listenable.merge([
+                              _descuentoCtrl,
+                              _isDiscountPercentageNotifier,
+                            ]),
+                            builder:
+                                (context, _) =>
+                                    _buildStickyActionBar(pointsToSolesRatio),
                           ),
                         ],
                       );
-                    }
-
-                    // Móvil (Columna única pero con Action Bar pegajoso al fondo)
-                    return Column(
-                      children: [
-                        // Cliente Sticky en la parte superior para selección inmediata
-                        _buildClientHeader(isLoyaltyEnabled),
-
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    PosSectionLabel('Productos en caja'),
-                                    BlocBuilder<CartCubit, CartState>(
-                                      builder: (context, cartState) {
-                                        if (cartState.items.isEmpty) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return TextButton.icon(
-                                          onPressed: _onClearCart,
-                                          icon: const Icon(
-                                            Icons.delete_outline,
-                                            color: AppColors.error,
-                                            size: 20,
-                                          ),
-                                          label: const Text(
-                                            'Vaciar Todo',
-                                            style: TextStyle(
-                                              color: AppColors.error,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8,
-                                            ),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize:
-                                                MaterialTapTargetSize
-                                                    .shrinkWrap,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                PosCartItemsSection(
-                                  onShowBatchEditSheet: _showBatchEditSheet,
-                                ),
-                                const SizedBox(height: 20),
-                                _buildPaymentAndConfigSection(
-                                  pointsToSolesRatio,
-                                  isLoyaltyEnabled,
-                                ),
-                                const SizedBox(height: 24),
-                                ListenableBuilder(
-                                  listenable: Listenable.merge([
-                                    _descuentoCtrl,
-                                    _isDiscountPercentageNotifier,
-                                  ]),
-                                  builder: (context, _) {
-                                    return _buildSummarySection(
-                                      pointsToSolesRatio,
-                                      earningRate,
-                                      isLoyaltyEnabled,
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        ListenableBuilder(
-                          listenable: Listenable.merge([
-                            _descuentoCtrl,
-                            _isDiscountPercentageNotifier,
-                          ]),
-                          builder:
-                              (context, _) =>
-                                  _buildStickyActionBar(pointsToSolesRatio),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                    },
+                  ),
         ),
       ),
     );
@@ -793,7 +795,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  Widget _buildClientHeader(bool isLoyaltyEnabled, {bool showCajaHeader = false}) {
+  Widget _buildClientHeader(
+    bool isLoyaltyEnabled, {
+    bool showCajaHeader = false,
+  }) {
     return BlocBuilder<PosCubit, PosState>(
       buildWhen:
           (prev, curr) =>
@@ -806,10 +811,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       builder: (context, posState) {
         final isCredito = posState.paymentMethod == 'CRÉDITO';
         return BlocSelector<CartCubit, CartState, (int, bool)>(
-          selector: (cart) => (
-            cart.items.values.fold<int>(0, (sum, item) => sum + item.quantity),
-            cart.items.isEmpty,
-          ),
+          selector:
+              (cart) => (
+                cart.items.values.fold<int>(
+                  0,
+                  (sum, item) => sum + item.quantity,
+                ),
+                cart.items.isEmpty,
+              ),
           builder: (context, cartTuple) {
             final (itemCount, isCartEmpty) = cartTuple;
             return PosClientHeaderBar(
@@ -890,13 +899,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         const SizedBox(height: 24),
         PosSectionLabel('Configuración de venta'),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.warehouses != curr.warehouses ||
-              prev.selectedWarehouseId != curr.selectedWarehouseId ||
-              prev.accounts != curr.accounts ||
-              prev.selectedAccountId != curr.selectedAccountId ||
-              prev.activeShift != curr.activeShift,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.warehouses != curr.warehouses ||
+                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                  prev.accounts != curr.accounts ||
+                  prev.selectedAccountId != curr.selectedAccountId ||
+                  prev.activeShift != curr.activeShift,
           builder: (context, posState) {
             final posCubit = context.read<PosCubit>();
             final isCredito = posState.paymentMethod == 'CRÉDITO';
@@ -956,12 +966,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     bool isLoyaltyEnabled,
   ) {
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, curr) =>
-          prev.paymentMethod != curr.paymentMethod ||
-          prev.puntosAUsar != curr.puntosAUsar ||
-          prev.selectedClientId != curr.selectedClientId ||
-          prev.saldoActualCliente != curr.saldoActualCliente ||
-          prev.creditInfo != curr.creditInfo,
+      buildWhen:
+          (prev, curr) =>
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.puntosAUsar != curr.puntosAUsar ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.saldoActualCliente != curr.saldoActualCliente ||
+              prev.creditInfo != curr.creditInfo,
       builder: (context, posState) {
         return BlocBuilder<CartCubit, CartState>(
           buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
@@ -1013,7 +1024,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                   puntosAplicables:
                       isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
                   descuentoPuntos:
-                      isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros * ratio,
+                      isCredito || !isLoyaltyEnabled
+                          ? 0
+                          : puntosSeguros * ratio,
                   isLoyaltyEnabled: isLoyaltyEnabled,
                   descuentoExtra:
                       isCredito
@@ -1271,19 +1284,21 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       ),
       child: SafeArea(
         child: BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.puntosAUsar != curr.puntosAUsar ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.selectedAccountId != curr.selectedAccountId ||
-              prev.activeShift != curr.activeShift ||
-              prev.creditInfo != curr.creditInfo ||
-              prev.status != curr.status,
+          buildWhen:
+              (prev, curr) =>
+                  prev.paymentMethod != curr.paymentMethod ||
+                  prev.puntosAUsar != curr.puntosAUsar ||
+                  prev.selectedClientId != curr.selectedClientId ||
+                  prev.selectedAccountId != curr.selectedAccountId ||
+                  prev.activeShift != curr.activeShift ||
+                  prev.creditInfo != curr.creditInfo ||
+                  prev.status != curr.status,
           builder: (context, posState) {
             return BlocBuilder<CartCubit, CartState>(
-              buildWhen: (prev, curr) =>
-                  prev.totalAmount != curr.totalAmount ||
-                  prev.items.isEmpty != curr.items.isEmpty,
+              buildWhen:
+                  (prev, curr) =>
+                      prev.totalAmount != curr.totalAmount ||
+                      prev.items.isEmpty != curr.items.isEmpty,
               builder: (context, cartState) {
                 final posCubit = context.read<PosCubit>();
                 final cartCubit = context.read<CartCubit>();
@@ -1294,23 +1309,20 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                   cartState,
                   ratio,
                 );
-                final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
-                  discountText: _descuentoCtrl.text,
-                  isDiscountPercentage: _isDiscountPercentageNotifier.value,
-                  pos: posState,
-                  cart: cartState,
-                  ratio: ratio,
-                );
+                final descuentoExtra =
+                    PosCalculatorUtils.getCustomDiscountAmount(
+                      discountText: _descuentoCtrl.text,
+                      isDiscountPercentage: _isDiscountPercentageNotifier.value,
+                      pos: posState,
+                      cart: cartState,
+                      ratio: ratio,
+                    );
                 final descuentoExcedido =
                     descuentoExtra >
                     (cartState.totalAmount - (puntosSeguros * ratio));
 
                 // Usa el helper _calcTotal para no recalcular el total 3 veces por frame.
-                final totalFinal = _calcTotal(
-                  posState,
-                  cartState,
-                  ratio,
-                );
+                final totalFinal = _calcTotal(posState, cartState, ratio);
 
                 final disp = PosCalculatorUtils.getCreditDisponible(
                   posState.creditInfo,
@@ -1443,10 +1455,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          valueColor:
-                                              AlwaysStoppedAnimation(
-                                                Colors.white,
-                                              ),
+                                          valueColor: AlwaysStoppedAnimation(
+                                            Colors.white,
+                                          ),
                                         ),
                                       )
                                       : Row(
@@ -1598,7 +1609,11 @@ class _CreditWarningCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                insuficiente ? 'Crédito insuficiente' : (isUnlimited ? 'Crédito ilimitado disponible' : 'Crédito disponible'),
+                insuficiente
+                    ? 'Crédito insuficiente'
+                    : (isUnlimited
+                        ? 'Crédito ilimitado disponible'
+                        : 'Crédito disponible'),
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -1622,7 +1637,9 @@ class _CreditWarningCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      isUnlimited ? 'Sin límite (∞)' : 'S/ ${limit.toStringAsFixed(2)}',
+                      isUnlimited
+                          ? 'Sin límite (∞)'
+                          : 'S/ ${limit.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1668,7 +1685,9 @@ class _CreditWarningCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      isUnlimited ? 'Ilimitado' : 'S/ ${creditDisponible.toStringAsFixed(2)}',
+                      isUnlimited
+                          ? 'Ilimitado'
+                          : 'S/ ${creditDisponible.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,

@@ -214,21 +214,18 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
     final activeBatch =
         (_selectedBatch != null &&
-                state.batchItems.any(
-                  (b) => b.id == _selectedBatch!.id,
-                ))
+                state.batchItems.any((b) => b.id == _selectedBatch!.id))
             ? _selectedBatch
-            : (state.batchItems.isNotEmpty
-                ? state.batchItems.first
-                : null);
+            : (state.batchItems.isNotEmpty ? state.batchItems.first : null);
 
     return Focus(
       focusNode: _tabFocusNode,
       autofocus: true,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent) {
-          final isInputFocused =
-              FocusUtils.isInputFieldFocused(_searchFocusNode);
+          final isInputFocused = FocusUtils.isInputFieldFocused(
+            _searchFocusNode,
+          );
           if (isInputFocused) {
             if (event.logicalKey == LogicalKeyboardKey.escape) {
               _searchFocusNode.unfocus();
@@ -280,20 +277,25 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
           // Flechas ↑ y ↓ para navegar la lista de lotes
           if (state.batchItems.isNotEmpty) {
-            final currentIndex = activeBatch != null
-                ? state.batchItems.indexWhere((b) => b.id == activeBatch.id)
-                : -1;
+            final currentIndex =
+                activeBatch != null
+                    ? state.batchItems.indexWhere((b) => b.id == activeBatch.id)
+                    : -1;
 
             if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-              final nextIndex =
-                  (currentIndex + 1).clamp(0, state.batchItems.length - 1);
+              final nextIndex = (currentIndex + 1).clamp(
+                0,
+                state.batchItems.length - 1,
+              );
               setState(() => _selectedBatch = state.batchItems[nextIndex]);
               return KeyEventResult.handled;
             }
 
             if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-              final prevIndex =
-                  (currentIndex - 1).clamp(0, state.batchItems.length - 1);
+              final prevIndex = (currentIndex - 1).clamp(
+                0,
+                state.batchItems.length - 1,
+              );
               setState(() => _selectedBatch = state.batchItems[prevIndex]);
               return KeyEventResult.handled;
             }
@@ -520,7 +522,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                 child: AdminPageBlocks(
                   currentPage: state.currentBatchPage,
                   totalPages: state.totalBatchPages,
-                  itemsPerPage: 24,
+                  itemsPerPage: 15,
                   itemName: 'lotes',
                   onPageChanged: (page) => cubit.setBatchPage(page),
                 ),

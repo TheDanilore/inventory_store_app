@@ -166,24 +166,28 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               }
 
               // [B] o [Alt+B] -> Conmuta filtro de productos bajo stock
-              if ((event.logicalKey == LogicalKeyboardKey.keyB && !isModifier) ||
+              if ((event.logicalKey == LogicalKeyboardKey.keyB &&
+                      !isModifier) ||
                   (isAlt && event.logicalKey == LogicalKeyboardKey.keyB)) {
                 final cubit = context.read<InventoryCubit>();
-                final isLow = currentState.stockStatusFilter == 'low_stock' ||
+                final isLow =
+                    currentState.stockStatusFilter == 'low_stock' ||
                     currentState.stockStatusFilter == 'bajo_stock';
                 cubit.setStockStatusFilter(isLow ? 'all' : 'low_stock');
                 AppSnackbar.show(
                   context,
-                  message: isLow
-                      ? 'Mostrando todo el inventario'
-                      : 'Filtrando: Solo productos bajo stock',
+                  message:
+                      isLow
+                          ? 'Mostrando todo el inventario'
+                          : 'Filtrando: Solo productos bajo stock',
                   type: SnackbarType.info,
                 );
                 return KeyEventResult.handled;
               }
 
               // [T] o [Alt+T] -> Restablece filtro a Todos
-              if ((event.logicalKey == LogicalKeyboardKey.keyT && !isModifier) ||
+              if ((event.logicalKey == LogicalKeyboardKey.keyT &&
+                      !isModifier) ||
                   (isAlt && event.logicalKey == LogicalKeyboardKey.keyT)) {
                 final cubit = context.read<InventoryCubit>();
                 cubit.setStockStatusFilter('all');
@@ -236,24 +240,31 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               // Flechas arriba y abajo para navegar productos/variantes
               final stockItems = currentState.stockItems;
               if (stockItems.isNotEmpty) {
-                final currentIndex = _selectedItem != null
-                    ? stockItems.indexWhere((it) =>
-                        (it.variantId.isNotEmpty &&
-                            it.variantId == _selectedItem!.variantId) ||
-                        (it.productId == _selectedItem!.productId &&
-                            it.variantId == _selectedItem!.variantId))
-                    : -1;
+                final currentIndex =
+                    _selectedItem != null
+                        ? stockItems.indexWhere(
+                          (it) =>
+                              (it.variantId.isNotEmpty &&
+                                  it.variantId == _selectedItem!.variantId) ||
+                              (it.productId == _selectedItem!.productId &&
+                                  it.variantId == _selectedItem!.variantId),
+                        )
+                        : -1;
 
                 if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                  final nextIndex =
-                      (currentIndex + 1).clamp(0, stockItems.length - 1);
+                  final nextIndex = (currentIndex + 1).clamp(
+                    0,
+                    stockItems.length - 1,
+                  );
                   setState(() => _selectedItem = stockItems[nextIndex]);
                   return KeyEventResult.handled;
                 }
 
                 if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                  final prevIndex =
-                      (currentIndex - 1).clamp(0, stockItems.length - 1);
+                  final prevIndex = (currentIndex - 1).clamp(
+                    0,
+                    stockItems.length - 1,
+                  );
                   setState(() => _selectedItem = stockItems[prevIndex]);
                   return KeyEventResult.handled;
                 }
@@ -331,12 +342,14 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             icon: Icons.inventory_rounded,
                             color: AppColors.teal,
                             isSelected: state.stockStatusFilter == 'in_stock',
-                            tooltip: 'Filtrar solo productos con stock disponible',
-                            onTap: () => cubit.setStockStatusFilter(
-                              state.stockStatusFilter == 'in_stock'
-                                  ? 'all'
-                                  : 'in_stock',
-                            ),
+                            tooltip:
+                                'Filtrar solo productos con stock disponible',
+                            onTap:
+                                () => cubit.setStockStatusFilter(
+                                  state.stockStatusFilter == 'in_stock'
+                                      ? 'all'
+                                      : 'in_stock',
+                                ),
                           ),
                           const SizedBox(width: 12),
                           _MetricCard(
@@ -349,12 +362,14 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                     : AppColors.success,
                             highlight: state.globalLowStockCount > 0,
                             isSelected: state.stockStatusFilter == 'low_stock',
-                            tooltip: 'Clic para alternar filtro de bajo stock [B]',
-                            onTap: () => cubit.setStockStatusFilter(
-                              state.stockStatusFilter == 'low_stock'
-                                  ? 'all'
-                                  : 'low_stock',
-                            ),
+                            tooltip:
+                                'Clic para alternar filtro de bajo stock [B]',
+                            onTap:
+                                () => cubit.setStockStatusFilter(
+                                  state.stockStatusFilter == 'low_stock'
+                                      ? 'all'
+                                      : 'low_stock',
+                                ),
                           ),
                         ],
                       ),
@@ -418,39 +433,53 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                     // ── Segmented Control de Estados Operativos ──
                                     _StatusPill(
                                       label: 'Todos',
-                                      isSelected: state.stockStatusFilter == 'all',
-                                      onTap: () => cubit.setStockStatusFilter('all'),
+                                      isSelected:
+                                          state.stockStatusFilter == 'all',
+                                      onTap:
+                                          () =>
+                                              cubit.setStockStatusFilter('all'),
                                     ),
                                     const SizedBox(width: 6),
                                     _StatusPill(
-                                      label: 'Bajo Stock (${state.globalLowStockCount})',
+                                      label:
+                                          'Bajo Stock (${state.globalLowStockCount})',
                                       icon: Icons.warning_amber_rounded,
                                       color: AppColors.warning,
-                                      isSelected: state.stockStatusFilter == 'low_stock',
-                                      onTap: () => cubit.setStockStatusFilter(
-                                        state.stockStatusFilter == 'low_stock'
-                                            ? 'all'
-                                            : 'low_stock',
-                                      ),
+                                      isSelected:
+                                          state.stockStatusFilter ==
+                                          'low_stock',
+                                      onTap:
+                                          () => cubit.setStockStatusFilter(
+                                            state.stockStatusFilter ==
+                                                    'low_stock'
+                                                ? 'all'
+                                                : 'low_stock',
+                                          ),
                                     ),
                                     const SizedBox(width: 6),
                                     _StatusPill(
                                       label: 'Agotados',
                                       icon: Icons.highlight_off_rounded,
                                       color: AppColors.danger,
-                                      isSelected: state.stockStatusFilter == 'out_of_stock',
-                                      onTap: () => cubit.setStockStatusFilter(
-                                        state.stockStatusFilter == 'out_of_stock'
-                                            ? 'all'
-                                            : 'out_of_stock',
-                                      ),
+                                      isSelected:
+                                          state.stockStatusFilter ==
+                                          'out_of_stock',
+                                      onTap:
+                                          () => cubit.setStockStatusFilter(
+                                            state.stockStatusFilter ==
+                                                    'out_of_stock'
+                                                ? 'all'
+                                                : 'out_of_stock',
+                                          ),
                                     ),
                                     if (state.categories.isNotEmpty) ...[
                                       // Divisor sutil
                                       Container(
                                         height: 18,
                                         width: 1,
-                                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                        ),
                                         color: const Color(0xFFE2E8F0),
                                       ),
                                       // ── Categorías ──
@@ -458,17 +487,22 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                         final isSelected =
                                             cat == state.stockCategoryFilter;
                                         return Padding(
-                                          padding: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.only(
+                                            right: 6,
+                                          ),
                                           child: _CategoryPill(
                                             label: cat,
                                             isSelected: isSelected,
-                                            onTap: () => cubit.setStockCategory(cat),
+                                            onTap:
+                                                () =>
+                                                    cubit.setStockCategory(cat),
                                           ),
                                         );
                                       }),
                                     ],
                                     if (state.stockStatusFilter != 'all' ||
-                                        state.stockCategoryFilter != 'Todos') ...[
+                                        state.stockCategoryFilter !=
+                                            'Todos') ...[
                                       const SizedBox(width: 6),
                                       _ClearFilterPill(
                                         onTap: () {
@@ -483,10 +517,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             ),
                             const SizedBox(width: 8),
                             IconButton(
-                              icon: const Icon(
-                                Icons.refresh_rounded,
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.refresh_rounded, size: 20),
                               color: AppColors.textSecondary,
                               tooltip: 'Refrescar inventario [R]',
                               onPressed: () => cubit.refreshAll(),
@@ -503,37 +534,39 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: (isLoading || state.isSearchingStock) &&
-                          state.stockItems.isEmpty
-                      ? const SizedBox(
-                          height: 300,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.teal,
-                            ),
-                          ),
-                        )
-                      : state.stockItems.isEmpty
-                          ? SizedBox(
-                              height: 320,
-                              child: _buildEmptyState(state, cubit),
-                            )
-                          : InventoryStockTable(
-                              items: state.stockItems,
-                              selectedItem: _selectedItem,
-                              isLoading: state.isSearchingStock,
-                              onQuickView: (item) {
-                                setState(() => _selectedItem = item);
-                                _showQuickView(item, state);
-                              },
-                              onOpenDetail: (item) {
-                                setState(() => _selectedItem = item);
-                                _openProductDetail(item);
-                              },
-                              onKardex: (item) => context.push(
-                                '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                  child:
+                      (isLoading || state.isSearchingStock) &&
+                              state.stockItems.isEmpty
+                          ? const SizedBox(
+                            height: 300,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.teal,
                               ),
                             ),
+                          )
+                          : state.stockItems.isEmpty
+                          ? SizedBox(
+                            height: 320,
+                            child: _buildEmptyState(state, cubit),
+                          )
+                          : InventoryStockTable(
+                            items: state.stockItems,
+                            selectedItem: _selectedItem,
+                            isLoading: state.isSearchingStock,
+                            onQuickView: (item) {
+                              setState(() => _selectedItem = item);
+                              _showQuickView(item, state);
+                            },
+                            onOpenDetail: (item) {
+                              setState(() => _selectedItem = item);
+                              _openProductDetail(item);
+                            },
+                            onKardex:
+                                (item) => context.push(
+                                  '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+                                ),
+                          ),
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -553,7 +586,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           state.stockCategoryFilter.isEmpty)
                       ? state.globalTotalVariants
                       : null,
-              itemsPerPage: 24,
+              itemsPerPage: 15,
               itemName: 'variantes',
               onPageChanged: (page) => cubit.setStockPage(page),
             ),
@@ -567,7 +600,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
   Widget _buildEmptyState(InventoryLoaded state, InventoryCubit cubit) {
     final bool hasSearch = state.stockSearchText.trim().isNotEmpty;
-    final bool hasCategory = state.stockCategoryFilter.isNotEmpty &&
+    final bool hasCategory =
+        state.stockCategoryFilter.isNotEmpty &&
         state.stockCategoryFilter != 'Todos';
     final bool hasStatus = state.stockStatusFilter != 'all';
 
@@ -588,7 +622,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else if (state.stockStatusFilter == 'out_of_stock') {
@@ -603,7 +639,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else if (hasSearch) {
@@ -621,7 +659,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else if (hasCategory) {
@@ -636,7 +676,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else if (hasStatus) {
@@ -647,7 +689,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -666,7 +710,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     BoxConstraints? constraints,
   }) {
     final cubit = context.read<InventoryCubit>();
-    final isTablet = constraints != null &&
+    final isTablet =
+        constraints != null &&
         constraints.maxWidth >= 600 &&
         constraints.maxWidth < 900;
     return CustomScrollView(
@@ -694,9 +739,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   isCompact: true,
                   isSelected: state.stockStatusFilter == 'in_stock',
                   tooltip: 'Filtrar con stock',
-                  onTap: () => cubit.setStockStatusFilter(
-                    state.stockStatusFilter == 'in_stock' ? 'all' : 'in_stock',
-                  ),
+                  onTap:
+                      () => cubit.setStockStatusFilter(
+                        state.stockStatusFilter == 'in_stock'
+                            ? 'all'
+                            : 'in_stock',
+                      ),
                 ),
                 const SizedBox(width: 8),
                 _MetricCard(
@@ -711,9 +759,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   isCompact: true,
                   isSelected: state.stockStatusFilter == 'low_stock',
                   tooltip: 'Filtrar bajo stock [B]',
-                  onTap: () => cubit.setStockStatusFilter(
-                    state.stockStatusFilter == 'low_stock' ? 'all' : 'low_stock',
-                  ),
+                  onTap:
+                      () => cubit.setStockStatusFilter(
+                        state.stockStatusFilter == 'low_stock'
+                            ? 'all'
+                            : 'low_stock',
+                      ),
                 ),
               ],
             ),
@@ -742,7 +793,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           onSubmitted: _onSearchSubmitted,
                           isLoading: state.isSearchingStock,
                           onClear: () {
-                            if (_debounce?.isActive ?? false) _debounce!.cancel();
+                            if (_debounce?.isActive ?? false) {
+                              _debounce!.cancel();
+                            }
                             _searchCtrl.clear();
                             cubit.setStockSearch('');
                           },
@@ -783,11 +836,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           icon: Icons.warning_amber_rounded,
                           color: AppColors.warning,
                           isSelected: state.stockStatusFilter == 'low_stock',
-                          onTap: () => cubit.setStockStatusFilter(
-                            state.stockStatusFilter == 'low_stock'
-                                ? 'all'
-                                : 'low_stock',
-                          ),
+                          onTap:
+                              () => cubit.setStockStatusFilter(
+                                state.stockStatusFilter == 'low_stock'
+                                    ? 'all'
+                                    : 'low_stock',
+                              ),
                         ),
                         const SizedBox(width: 6),
                         _StatusPill(
@@ -795,11 +849,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           icon: Icons.highlight_off_rounded,
                           color: AppColors.danger,
                           isSelected: state.stockStatusFilter == 'out_of_stock',
-                          onTap: () => cubit.setStockStatusFilter(
-                            state.stockStatusFilter == 'out_of_stock'
-                                ? 'all'
-                                : 'out_of_stock',
-                          ),
+                          onTap:
+                              () => cubit.setStockStatusFilter(
+                                state.stockStatusFilter == 'out_of_stock'
+                                    ? 'all'
+                                    : 'out_of_stock',
+                              ),
                         ),
                         if (state.categories.isNotEmpty) ...[
                           Container(
@@ -909,7 +964,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               ),
               delegate: SliverChildBuilderDelegate((context, i) {
                 final item = state.stockItems[i];
-                final isItemSelected = _selectedItem != null &&
+                final isItemSelected =
+                    _selectedItem != null &&
                     ((_selectedItem!.variantId.isNotEmpty &&
                             _selectedItem!.variantId == item.variantId) ||
                         (_selectedItem!.productId == item.productId &&
@@ -938,7 +994,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, i) {
                 final item = state.stockItems[i];
-                final isItemSelected = _selectedItem != null &&
+                final isItemSelected =
+                    _selectedItem != null &&
                     ((_selectedItem!.variantId.isNotEmpty &&
                             _selectedItem!.variantId == item.variantId) ||
                         (_selectedItem!.productId == item.productId &&
@@ -973,7 +1030,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             state.stockCategoryFilter.isEmpty)
                         ? state.globalTotalVariants
                         : null,
-                itemsPerPage: 24,
+                itemsPerPage: 15,
                 itemName: 'variantes',
                 onPageChanged: (page) => cubit.setStockPage(page),
               ),
@@ -1044,14 +1101,18 @@ class _MetricCardState extends State<_MetricCard> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBorder = widget.isSelected
-        ? widget.color
-        : (_isHovered
-            ? widget.color.withValues(alpha: 0.5)
-            : (widget.highlight ? widget.color : AppColors.border));
-    final effectiveBg = widget.isSelected
-        ? widget.color.withValues(alpha: 0.08)
-        : (_isHovered ? widget.color.withValues(alpha: 0.03) : AppColors.surface);
+    final effectiveBorder =
+        widget.isSelected
+            ? widget.color
+            : (_isHovered
+                ? widget.color.withValues(alpha: 0.5)
+                : (widget.highlight ? widget.color : AppColors.border));
+    final effectiveBg =
+        widget.isSelected
+            ? widget.color.withValues(alpha: 0.08)
+            : (_isHovered
+                ? widget.color.withValues(alpha: 0.03)
+                : AppColors.surface);
 
     final cardWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -1066,24 +1127,26 @@ class _MetricCardState extends State<_MetricCard> {
           color: effectiveBorder,
           width: widget.isSelected ? 2 : (widget.highlight ? 1.5 : 1),
         ),
-        boxShadow: widget.isSelected
-            ? [
-                BoxShadow(
-                  color: widget.color.withValues(alpha: 0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : AppColors.cardShadow(opacity: _isHovered ? 0.05 : 0.02),
+        boxShadow:
+            widget.isSelected
+                ? [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+                : AppColors.cardShadow(opacity: _isHovered ? 0.05 : 0.02),
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(widget.isCompact ? 5 : 7),
             decoration: BoxDecoration(
-              color: widget.isSelected
-                  ? widget.color
-                  : widget.color.withValues(alpha: 0.1),
+              color:
+                  widget.isSelected
+                      ? widget.color
+                      : widget.color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -1114,7 +1177,10 @@ class _MetricCardState extends State<_MetricCard> {
                     ),
                     if (widget.isSelected)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: widget.color,
                           borderRadius: BorderRadius.circular(4),
@@ -1137,9 +1203,10 @@ class _MetricCardState extends State<_MetricCard> {
                   style: TextStyle(
                     fontSize: widget.isCompact ? 13 : 15,
                     fontWeight: FontWeight.w900,
-                    color: (widget.highlight || widget.isSelected)
-                        ? widget.color
-                        : AppColors.textPrimary,
+                    color:
+                        (widget.highlight || widget.isSelected)
+                            ? widget.color
+                            : AppColors.textPrimary,
                     height: 1.1,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
@@ -1168,10 +1235,7 @@ class _MetricCardState extends State<_MetricCard> {
     }
 
     if (widget.tooltip != null) {
-      interactive = Tooltip(
-        message: widget.tooltip!,
-        child: interactive,
-      );
+      interactive = Tooltip(message: widget.tooltip!, child: interactive);
     }
 
     return Expanded(child: interactive);
@@ -1203,19 +1267,22 @@ class _StatusPillState extends State<_StatusPill> {
   @override
   Widget build(BuildContext context) {
     final activeColor = widget.color ?? AppColors.primary;
-    final bg = widget.isSelected
-        ? activeColor
-        : (_isHovered
-            ? activeColor.withValues(alpha: 0.08)
-            : AppColors.surface);
-    final border = widget.isSelected
-        ? activeColor
-        : (_isHovered
-            ? activeColor.withValues(alpha: 0.3)
-            : AppColors.border);
-    final textCol = widget.isSelected
-        ? Colors.white
-        : (_isHovered ? activeColor : AppColors.textPrimary);
+    final bg =
+        widget.isSelected
+            ? activeColor
+            : (_isHovered
+                ? activeColor.withValues(alpha: 0.08)
+                : AppColors.surface);
+    final border =
+        widget.isSelected
+            ? activeColor
+            : (_isHovered
+                ? activeColor.withValues(alpha: 0.3)
+                : AppColors.border);
+    final textCol =
+        widget.isSelected
+            ? Colors.white
+            : (_isHovered ? activeColor : AppColors.textPrimary);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1236,15 +1303,16 @@ class _StatusPillState extends State<_StatusPill> {
                 color: border,
                 width: widget.isSelected ? 1.5 : 1,
               ),
-              boxShadow: widget.isSelected
-                  ? [
-                      BoxShadow(
-                        color: activeColor.withValues(alpha: 0.25),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+              boxShadow:
+                  widget.isSelected
+                      ? [
+                        BoxShadow(
+                          color: activeColor.withValues(alpha: 0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1261,7 +1329,8 @@ class _StatusPillState extends State<_StatusPill> {
                   widget.label,
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight:
+                        widget.isSelected ? FontWeight.w700 : FontWeight.w600,
                     color: textCol,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),

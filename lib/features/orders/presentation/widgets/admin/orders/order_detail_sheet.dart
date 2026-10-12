@@ -344,7 +344,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.tealDark),
+          const Icon(
+            Icons.edit_note_rounded,
+            size: 18,
+            color: AppColors.tealDark,
+          ),
           const SizedBox(width: 8),
           const Text(
             'Modo Edición',
@@ -386,28 +390,66 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       state.order,
     );
     final isRegistered =
-        state.selectedCustomerId != null && state.selectedCustomerId!.isNotEmpty;
-    final cleanName = selectedCustomerLabel.trim().isNotEmpty
-        ? selectedCustomerLabel.trim()
-        : 'Cliente mostrador';
+        state.selectedCustomerId != null &&
+        state.selectedCustomerId!.isNotEmpty;
+    final cleanName =
+        selectedCustomerLabel.trim().isNotEmpty
+            ? selectedCustomerLabel.trim()
+            : 'Cliente mostrador';
     final parts = cleanName.split(' ').where((p) => p.isNotEmpty).toList();
-    final initials = parts.isNotEmpty
-        ? parts.take(2).map((p) => p[0]).join().toUpperCase()
-        : '?';
+    final initials =
+        parts.isNotEmpty
+            ? parts.take(2).map((p) => p[0]).join().toUpperCase()
+            : '?';
 
     final order = state.order ?? displayOrder;
+    final orderStatus = order.status.toUpperCase();
+    final isCancelled = orderStatus == 'CANCELLED';
+    final isReturned = orderStatus == 'RETURNED';
+    final isDraft = orderStatus == 'PENDING' || orderStatus == 'DRAFT';
     final safePaymentMethod =
         state.paymentMethod.isNotEmpty ? state.paymentMethod : 'POR ACORDAR';
     final isPaid = order.paymentStatus.toUpperCase() == 'PAID';
     final pending = order.totalAmount - order.amountPaid;
 
+    final Color paymentStatusDotColor;
+    final String paymentStatusText;
+    final Color paymentStatusTextColor;
+
+    if (isCancelled) {
+      paymentStatusDotColor = AppColors.danger;
+      paymentStatusText = 'Anulado / Cancelado';
+      paymentStatusTextColor = AppColors.danger;
+    } else if (isReturned) {
+      paymentStatusDotColor = const Color(0xFF6D28D9);
+      paymentStatusText = 'Devuelto';
+      paymentStatusTextColor = const Color(0xFF6D28D9);
+    } else if (isDraft) {
+      paymentStatusDotColor = AppColors.warningDark;
+      paymentStatusText = 'Sin pago (Borrador)';
+      paymentStatusTextColor = AppColors.warningDark;
+    } else if (isPaid) {
+      paymentStatusDotColor = AppColors.successDark;
+      paymentStatusText = 'Pagado';
+      paymentStatusTextColor = AppColors.successDark;
+    } else {
+      paymentStatusDotColor = AppColors.warningDark;
+      paymentStatusText =
+          pending > 0
+              ? 'Por Cobrar: S/ ${pending.toStringAsFixed(2)}'
+              : 'Pendiente';
+      paymentStatusTextColor = AppColors.warningDark;
+    }
+
     IconData paymentIcon;
     Color paymentColor;
     if (state.accounts.any((a) => a['name'] == safePaymentMethod)) {
-      final accType = state.accounts.firstWhere(
-        (a) => a['name'] == safePaymentMethod,
-        orElse: () => {'type': 'OTRO'},
-      )['type'] as String;
+      final accType =
+          state.accounts.firstWhere(
+                (a) => a['name'] == safePaymentMethod,
+                orElse: () => {'type': 'OTRO'},
+              )['type']
+              as String;
       switch (accType) {
         case 'CAJA':
           paymentIcon = Icons.point_of_sale_rounded;
@@ -426,9 +468,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           paymentColor = const Color(0xFF6B7280);
       }
     } else {
-      paymentIcon = safePaymentMethod == 'CRÉDITO'
-          ? Icons.handshake_rounded
-          : Icons.payment_rounded;
+      paymentIcon =
+          safePaymentMethod == 'CRÉDITO'
+              ? Icons.handshake_rounded
+              : Icons.payment_rounded;
       paymentColor =
           safePaymentMethod == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted;
     }
@@ -458,18 +501,20 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: isRegistered
-                        ? AppColors.teal.withValues(alpha: 0.12)
-                        : const Color(0xFFF1F5F9),
+                    color:
+                        isRegistered
+                            ? AppColors.teal.withValues(alpha: 0.12)
+                            : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
                       initials,
                       style: TextStyle(
-                        color: isRegistered
-                            ? AppColors.tealDark
-                            : AppColors.textSecondary,
+                        color:
+                            isRegistered
+                                ? AppColors.tealDark
+                                : AppColors.textSecondary,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -495,13 +540,16 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isRegistered ? 'Cliente registrado' : 'Cliente mostrador',
+                        isRegistered
+                            ? 'Cliente registrado'
+                            : 'Cliente mostrador',
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
-                          color: isRegistered
-                              ? AppColors.tealDark
-                              : AppColors.textMuted,
+                          color:
+                              isRegistered
+                                  ? AppColors.tealDark
+                                  : AppColors.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -532,11 +580,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                     color: paymentColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    paymentIcon,
-                    size: 17,
-                    color: paymentColor,
-                  ),
+                  child: Icon(paymentIcon, size: 17, color: paymentColor),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -563,25 +607,17 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             height: 6,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isPaid
-                                  ? AppColors.successDark
-                                  : AppColors.warningDark,
+                              color: paymentStatusDotColor,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              isPaid
-                                  ? 'Pagado'
-                                  : (pending > 0
-                                      ? 'Por Cobrar: S/ ${pending.toStringAsFixed(2)}'
-                                      : 'Pendiente'),
+                              paymentStatusText,
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
-                                color: isPaid
-                                    ? AppColors.successDark
-                                    : AppColors.warningDark,
+                                color: paymentStatusTextColor,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -600,7 +636,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           if (state.canToggleEdit) ...[
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.teal),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 16,
+                color: AppColors.teal,
+              ),
               tooltip: 'Editar datos del pedido',
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.tealLight.withValues(alpha: 0.5),
@@ -648,9 +688,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   : (isDesktopOrDialog
                       ? double.infinity
                       : MediaQuery.of(context).size.height * 0.9),
-          decoration: const BoxDecoration(
-            color: Color(0xFFF8FAFC),
-          ),
+          decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
           child: SafeArea(
             top: false,
             child: Column(
@@ -705,19 +743,27 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                       (p, c) =>
                                           p.canToggleEdit != c.canToggleEdit ||
                                           p.isCompleted != c.isCompleted ||
-                                          p.pointsUsed != c.pointsUsed,
+                                          p.pointsUsed != c.pointsUsed ||
+                                          p.currentStatus != c.currentStatus ||
+                                          p.order != c.order,
                                   builder: (context, state) {
                                     return OrderDetailHeaderRow(
                                       orderId: (state.order ?? displayOrder).id,
+                                      orderStatus:
+                                          (state.order ?? displayOrder).status,
                                       isCompleted: state.isCompleted,
                                       isEditing: _isEditing,
                                       canToggleEdit: state.canToggleEdit,
-                                      onToggleEditing: () => _toggleEditing(state),
-                                      onClose: Navigator.of(context).canPop()
-                                          ? () => _handlePop(
-                                              _isEditing ? false : state.wasModified,
-                                            )
-                                          : null,
+                                      onToggleEditing:
+                                          () => _toggleEditing(state),
+                                      onClose:
+                                          Navigator.of(context).canPop()
+                                              ? () => _handlePop(
+                                                _isEditing
+                                                    ? false
+                                                    : state.wasModified,
+                                              )
+                                              : null,
                                       onShare:
                                           () => OrderPdfGenerator.shareTicket(
                                             state.order!,
@@ -781,11 +827,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                             _manualNameCtrl.text.isNotEmpty,
                                         manualNameController: _manualNameCtrl,
                                         profiles: state.profiles,
-                                        selectedCustomerLabel: _getCustomerLabel(
-                                          state.selectedCustomerId,
-                                          state.profiles,
-                                          state.order,
-                                        ),
+                                        selectedCustomerLabel:
+                                            _getCustomerLabel(
+                                              state.selectedCustomerId,
+                                              state.profiles,
+                                              state.order,
+                                            ),
                                         selectedCustomerId:
                                             state.selectedCustomerId,
                                         onSelectCustomer: (id) {
@@ -1176,8 +1223,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                     onPressed:
                                         state.isSaving
                                             ? null
-                                            : () =>
-                                                _saveChanges(pointsToSolesRatio),
+                                            : () => _saveChanges(
+                                              pointsToSolesRatio,
+                                            ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
@@ -1200,9 +1248,13 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                               ),
                                             )
                                             : const Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
                                               children: [
-                                                Icon(Icons.save_rounded, size: 17),
+                                                Icon(
+                                                  Icons.save_rounded,
+                                                  size: 17,
+                                                ),
                                                 SizedBox(width: 6),
                                                 Text(
                                                   'Guardar',
@@ -1223,12 +1275,17 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   cursor: SystemMouseCursors.click,
                                   child: OutlinedButton.icon(
                                     onPressed:
-                                        state.isReturning ? null : _confirmReturn,
+                                        state.isReturning
+                                            ? null
+                                            : _confirmReturn,
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: AppColors.error,
-                                      backgroundColor: AppColors.error.withValues(alpha: 0.04),
+                                      backgroundColor: AppColors.error
+                                          .withValues(alpha: 0.04),
                                       side: BorderSide(
-                                        color: AppColors.error.withValues(alpha: 0.35),
+                                        color: AppColors.error.withValues(
+                                          alpha: 0.35,
+                                        ),
                                       ),
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 13,
@@ -1280,8 +1337,9 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                           ),
                                           padding: const EdgeInsets.all(8),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                         ),
                                         onPressed: () => _toggleEditing(state),
@@ -1296,7 +1354,8 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                             if (_scrollController.hasClients) {
                                               _scrollController.animateTo(
                                                 _scrollController
-                                                    .position.maxScrollExtent,
+                                                    .position
+                                                    .maxScrollExtent,
                                                 duration: const Duration(
                                                   milliseconds: 320,
                                                 ),

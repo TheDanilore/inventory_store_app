@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/core/errors/app_exception.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Representa un fallo en la capa de dominio.
@@ -44,7 +45,7 @@ sealed class Failure {
     }
     if (error is PostgrestException) {
       return ServerFailure(
-        message: 'Error en base de datos: ${error.message}',
+        message: FriendlyErrorMessage.format(error),
         code: error.code ?? 'POSTGREST_ERROR',
       );
     }

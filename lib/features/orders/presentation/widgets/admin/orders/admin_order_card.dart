@@ -382,7 +382,14 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                                 const SizedBox(height: 8),
                                 _StatusTag(status: status),
                                 const SizedBox(height: 6),
-                                _PaymentStatusTag(paymentStatus: paymentStatus),
+                                _PaymentStatusTag(
+                                  paymentStatus:
+                                      status == 'CANCELLED'
+                                          ? 'CANCELLED'
+                                          : (status == 'RETURNED'
+                                              ? 'RETURNED'
+                                              : paymentStatus),
+                                ),
                               ],
                             ),
                           ],
@@ -609,6 +616,18 @@ class _PaymentStatusTag extends StatelessWidget {
         textColor = Colors.orange.shade800;
         label = 'POR COBRAR';
         icon = Icons.hourglass_empty_rounded;
+        break;
+      case 'CANCELLED':
+        bgColor = Colors.red.shade50;
+        textColor = Colors.red.shade700;
+        label = 'ANULADO';
+        icon = Icons.money_off_rounded;
+        break;
+      case 'RETURNED':
+        bgColor = Colors.purple.shade50;
+        textColor = Colors.purple.shade700;
+        label = 'DEVUELTO';
+        icon = Icons.assignment_return_rounded;
         break;
       default:
         bgColor = Colors.grey.shade100;

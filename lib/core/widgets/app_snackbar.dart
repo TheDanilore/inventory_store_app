@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 
 enum SnackbarType { success, error, warning, info }
 
@@ -35,6 +36,11 @@ class AppSnackbar {
     Color? backgroundColor,
     Duration duration = const Duration(milliseconds: 5000),
   }) {
+    final cleanMessage =
+        type == SnackbarType.error
+            ? FriendlyErrorMessage.format(message)
+            : message;
+
     // Mantenemos tus colores e iconos originales intactos
     final resolvedBackgroundColor =
         backgroundColor ??
@@ -53,7 +59,7 @@ class AppSnackbar {
 
     final newSnackbar = _SnackbarModel(
       id: UniqueKey().toString(),
-      message: message,
+      message: cleanMessage,
       type: type,
       backgroundColor: resolvedBackgroundColor,
       iconData: iconData,
@@ -111,6 +117,11 @@ class AppSnackbar {
     Color? backgroundColor,
     Duration duration = const Duration(milliseconds: 2500),
   }) {
+    final cleanMessage =
+        type == SnackbarType.error
+            ? FriendlyErrorMessage.format(message)
+            : message;
+
     final resolvedBackgroundColor =
         backgroundColor ??
         switch (type) {
@@ -128,7 +139,7 @@ class AppSnackbar {
 
     final newSnackbar = _SnackbarModel(
       id: UniqueKey().toString(),
-      message: message,
+      message: cleanMessage,
       type: type,
       backgroundColor: resolvedBackgroundColor,
       iconData: iconData,

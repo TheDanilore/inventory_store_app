@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
@@ -103,8 +104,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       if (mounted) {
         AppSnackbar.show(
           context,
-          message:
-              'Error al guardar cuenta: ${e.toString().replaceAll('Exception: ', '')}',
+          message: FriendlyErrorMessage.format(e),
           type: SnackbarType.error,
         );
       }

@@ -162,7 +162,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   }
 
   void _onFocusChange() {
-    if (!_tableFocusNode.hasFocus && (_focusedRowIndex != -1 || _hoveredItemId != null)) {
+    if (!_tableFocusNode.hasFocus &&
+        (_focusedRowIndex != -1 || _hoveredItemId != null)) {
       setState(() {
         _focusedRowIndex = -1;
         _hoveredItemId = null;
@@ -361,7 +362,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                               return SizedBox(
                                 width: tableWidth,
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     _buildTableHeader(),
                                     _buildTableRows(),
@@ -373,7 +375,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                         ),
 
                         // Pie de Tabla (Paginación y conteo)
-                        if (widget.paginationConfig != null) _buildTableFooter(),
+                        if (widget.paginationConfig != null)
+                          _buildTableFooter(),
                       ],
                     ),
                   ),

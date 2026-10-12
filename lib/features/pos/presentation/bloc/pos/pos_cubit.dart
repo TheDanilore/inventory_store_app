@@ -48,7 +48,8 @@ class PosCubit extends Cubit<PosState> {
         emit(state.copyWith(accounts: accounts));
         final cashAcc = accounts.firstWhere(
           (a) => PosCalculatorUtils.accountRequiresShift(a),
-          orElse: () => accounts.isNotEmpty ? accounts.first : <String, dynamic>{},
+          orElse:
+              () => accounts.isNotEmpty ? accounts.first : <String, dynamic>{},
         );
         final cashAccId = cashAcc['id'] as String?;
         if (cashAccId != null) {
@@ -72,7 +73,11 @@ class PosCubit extends Cubit<PosState> {
     );
     res.fold(
       (failure) {
-        LoggerService.e('Error loading initial POS data', tag: 'PosCubit', error: failure.message);
+        LoggerService.e(
+          'Error loading initial POS data',
+          tag: 'PosCubit',
+          error: failure.message,
+        );
         emit(
           state.copyWith(
             isLoading: false,
@@ -116,7 +121,11 @@ class PosCubit extends Cubit<PosState> {
         // Monitorear siempre el turno de la caja física de la tienda
         final cashAcc = data.accounts.firstWhere(
           (a) => PosCalculatorUtils.accountRequiresShift(a),
-          orElse: () => data.accounts.isNotEmpty ? data.accounts.first : <String, dynamic>{},
+          orElse:
+              () =>
+                  data.accounts.isNotEmpty
+                      ? data.accounts.first
+                      : <String, dynamic>{},
         );
         final cashAccId = cashAcc['id'] as String?;
         if (cashAccId != null) {
@@ -170,7 +179,9 @@ class PosCubit extends Cubit<PosState> {
     emit(
       state.copyWith(
         selectedAccountId: accountId,
-        paymentMethod: resolvedPaymentMethod ?? (accountId == null ? state.paymentMethod : 'EFECTIVO'),
+        paymentMethod:
+            resolvedPaymentMethod ??
+            (accountId == null ? state.paymentMethod : 'EFECTIVO'),
       ),
     );
 
@@ -187,15 +198,16 @@ class PosCubit extends Cubit<PosState> {
     required String accountId,
     required double deltaAmount,
   }) {
-    final updated = state.accounts.map((acc) {
-      if (acc['id'] == accountId) {
-        final currentBal = (acc['balance'] as num?)?.toDouble() ?? 0.0;
-        final newMap = Map<String, dynamic>.from(acc);
-        newMap['balance'] = currentBal + deltaAmount;
-        return newMap;
-      }
-      return acc;
-    }).toList();
+    final updated =
+        state.accounts.map((acc) {
+          if (acc['id'] == accountId) {
+            final currentBal = (acc['balance'] as num?)?.toDouble() ?? 0.0;
+            final newMap = Map<String, dynamic>.from(acc);
+            newMap['balance'] = currentBal + deltaAmount;
+            return newMap;
+          }
+          return acc;
+        }).toList();
     emit(state.copyWith(accounts: updated));
   }
 
@@ -357,7 +369,11 @@ class PosCubit extends Cubit<PosState> {
 
       response.fold(
         (failure) {
-          LoggerService.e('Error searching clients', tag: 'PosCubit', error: failure.message);
+          LoggerService.e(
+            'Error searching clients',
+            tag: 'PosCubit',
+            error: failure.message,
+          );
         },
         (matches) {
           emit(state.copyWith(clientMatches: matches));
@@ -391,7 +407,11 @@ class PosCubit extends Cubit<PosState> {
       final shiftRes = await _checkActiveShiftUc.call(accountId);
       shiftRes.fold(
         (failure) {
-          LoggerService.e('Error checking active shift', tag: 'PosCubit', error: failure.message);
+          LoggerService.e(
+            'Error checking active shift',
+            tag: 'PosCubit',
+            error: failure.message,
+          );
           emit(
             state.copyWith(
               status: PosStatus.error,
@@ -423,7 +443,11 @@ class PosCubit extends Cubit<PosState> {
       final response = await _posRepository.fetchClientCredit(clientId);
       response.fold(
         (failure) {
-          LoggerService.e('Error fetching client credit', tag: 'PosCubit', error: failure.message);
+          LoggerService.e(
+            'Error fetching client credit',
+            tag: 'PosCubit',
+            error: failure.message,
+          );
         },
         (creditInfo) {
           emit(state.copyWith(creditInfo: creditInfo));
@@ -531,25 +555,36 @@ class PosCubit extends Cubit<PosState> {
         totalProfit: totalProfit,
         customerId: state.selectedClientId,
         customerName: state.selectedClientName ?? customClientName,
-        accountId: accountId,
+        accountId: isDraft ? null : accountId,
         paymentStatus:
-            isCredito ? SalePaymentStatus.pending : SalePaymentStatus.paid,
+            isDraft
+                ? SalePaymentStatus.pending
+                : (isCredito
+                    ? SalePaymentStatus.pending
+                    : SalePaymentStatus.paid),
         discountAmount: descuentoExtra,
-        amountPaid: isCredito ? 0 : totalFinal,
-        pointsUsed: puntosUsados,
-        pointsEarned: PosCalculatorUtils.calcularPuntosGanados(
-          total: totalFinal,
-          rate: earningRate,
-        ),
+        amountPaid: (isDraft || isCredito) ? 0.0 : totalFinal,
+        pointsUsed: isDraft ? 0 : puntosUsados,
+        pointsEarned:
+            isDraft
+                ? 0
+                : PosCalculatorUtils.calcularPuntosGanados(
+                  total: totalFinal,
+                  rate: earningRate,
+                ),
         isDraft: isDraft,
         isCredit: isCredito,
-        activeShift: activeShift,
+        activeShift: isDraft ? null : activeShift,
       );
 
       final result = await _posRepository.processSale(sale);
       result.fold(
         (failure) {
-          LoggerService.e('Error processing sale', tag: 'PosCubit', error: failure.message);
+          LoggerService.e(
+            'Error processing sale',
+            tag: 'PosCubit',
+            error: failure.message,
+          );
           emit(
             state.copyWith(
               status: PosStatus.error,

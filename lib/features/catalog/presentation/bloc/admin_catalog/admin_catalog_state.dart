@@ -39,7 +39,7 @@ class AdminCatalogState extends Equatable {
     this.stockFilter = CatalogStockFilter.all,
     this.totalCount = 0,
     this.currentPage = 0,
-    this.itemsPerPage = 24,
+    this.itemsPerPage = 15,
     this.errorMessage,
   });
 

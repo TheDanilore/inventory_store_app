@@ -144,17 +144,37 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     );
   }
 
-  Widget _buildPaymentBadge(String paymentStatus, String method, double pending) {
+  Widget _buildPaymentBadge(String paymentStatus, String method, double pending, {String? orderStatus}) {
+    final isCancelled = orderStatus?.toUpperCase() == 'CANCELLED';
+    final isReturned = orderStatus?.toUpperCase() == 'RETURNED';
     final isPaid = paymentStatus.toUpperCase() == 'PAID';
-    final Color bg = isPaid
-        ? const Color(0xFFECFDF5)
-        : (pending > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9));
-    final Color border = isPaid
-        ? const Color(0xFFA7F3D0)
-        : (pending > 0 ? const Color(0xFFFDE68A) : const Color(0xFFCBD5E1));
-    final Color text = isPaid
-        ? const Color(0xFF047857)
-        : (pending > 0 ? const Color(0xFFB45309) : const Color(0xFF475569));
+
+    final Color bg;
+    final Color border;
+    final Color text;
+    final String label;
+
+    if (isCancelled) {
+      bg = const Color(0xFFFEF2F2);
+      border = const Color(0xFFFECACA);
+      text = const Color(0xFFDC2626);
+      label = 'Anulado';
+    } else if (isReturned) {
+      bg = const Color(0xFFF5F3FF);
+      border = const Color(0xFFDDD6FE);
+      text = const Color(0xFF6D28D9);
+      label = 'Devuelto';
+    } else if (isPaid) {
+      bg = const Color(0xFFECFDF5);
+      border = const Color(0xFFA7F3D0);
+      text = const Color(0xFF047857);
+      label = 'Pagado';
+    } else {
+      bg = pending > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9);
+      border = pending > 0 ? const Color(0xFFFDE68A) : const Color(0xFFCBD5E1);
+      text = pending > 0 ? const Color(0xFFB45309) : const Color(0xFF475569);
+      label = pending > 0 ? 'Por Cobrar' : 'Pendiente';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +188,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
             border: Border.all(color: border, width: 1),
           ),
           child: Text(
-            isPaid ? 'Pagado' : (pending > 0 ? 'Por Cobrar' : 'Pendiente'),
+            label,
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
@@ -401,6 +421,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               order.paymentStatus,
               order.paymentMethod,
               pending,
+              orderStatus: order.status,
             );
           },
         ),
@@ -601,7 +622,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                       children: [
                         _buildStatusBadge(order.status),
                         const SizedBox(width: 6),
-                        _buildPaymentBadge(order.paymentStatus, order.paymentMethod, pending),
+                        _buildPaymentBadge(order.paymentStatus, order.paymentMethod, pending, orderStatus: order.status),
                       ],
                     ),
                     RichText(

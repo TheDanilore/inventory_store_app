@@ -5,6 +5,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class OrderDetailHeaderRow extends StatelessWidget {
   final String orderId;
+  final String? orderStatus;
   final bool isCompleted;
   final bool isEditing;
   final bool canToggleEdit;
@@ -15,6 +16,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
   const OrderDetailHeaderRow({
     super.key,
     required this.orderId,
+    this.orderStatus,
     required this.isCompleted,
     required this.isEditing,
     this.canToggleEdit = true,
@@ -34,7 +36,8 @@ class OrderDetailHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortId = orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
+    final shortId =
+        orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -53,50 +56,61 @@ class OrderDetailHeaderRow extends StatelessWidget {
                   letterSpacing: -0.4,
                 ),
               ),
-              const SizedBox(height: 4),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => _copyOrderId(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.copy_rounded,
-                          size: 11,
-                          color: AppColors.textSecondary,
+              const SizedBox(height: 5),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => _copyOrderId(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'ID: $shortId',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.border),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '(Copiar)',
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: AppColors.tealDark,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.copy_rounded,
+                              size: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'ID: $shortId',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(Copiar)',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: AppColors.tealDark,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  _buildStatusBadge(orderStatus),
+                ],
               ),
             ],
           ),
@@ -112,7 +126,10 @@ class OrderDetailHeaderRow extends StatelessWidget {
                   onTap: onShare,
                   borderRadius: BorderRadius.circular(10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(10),
@@ -153,20 +170,23 @@ class OrderDetailHeaderRow extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: isEditing
-                            ? AppColors.error.withValues(alpha: 0.1)
-                            : const Color(0xFFF1F5F9),
+                        color:
+                            isEditing
+                                ? AppColors.error.withValues(alpha: 0.1)
+                                : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isEditing
-                              ? AppColors.error.withValues(alpha: 0.3)
-                              : AppColors.border,
+                          color:
+                              isEditing
+                                  ? AppColors.error.withValues(alpha: 0.3)
+                                  : AppColors.border,
                         ),
                       ),
                       child: Icon(
                         isEditing ? Icons.close_rounded : Icons.edit_rounded,
                         size: 16,
-                        color: isEditing ? AppColors.error : AppColors.textPrimary,
+                        color:
+                            isEditing ? AppColors.error : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -206,6 +226,79 @@ class OrderDetailHeaderRow extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusBadge(String? status) {
+    final rawStatus =
+        status?.toUpperCase() ?? (isCompleted ? 'COMPLETED' : 'PENDING');
+    final Color bg;
+    final Color border;
+    final Color text;
+    final String label;
+    final IconData icon;
+
+    switch (rawStatus) {
+      case 'COMPLETED':
+        bg = const Color(0xFFECFDF5);
+        border = const Color(0xFFA7F3D0);
+        text = const Color(0xFF047857);
+        label = 'COMPLETADO';
+        icon = Icons.check_circle_rounded;
+        break;
+      case 'DRAFT':
+      case 'PENDING':
+        bg = const Color(0xFFFFFBEB);
+        border = const Color(0xFFFDE68A);
+        text = const Color(0xFFB45309);
+        label = 'BORRADOR';
+        icon = Icons.edit_note_rounded;
+        break;
+      case 'CANCELLED':
+        bg = const Color(0xFFFEF2F2);
+        border = const Color(0xFFFECACA);
+        text = const Color(0xFFDC2626);
+        label = 'CANCELADO';
+        icon = Icons.cancel_rounded;
+        break;
+      case 'RETURNED':
+        bg = const Color(0xFFF5F3FF);
+        border = const Color(0xFFDDD6FE);
+        text = const Color(0xFF6D28D9);
+        label = 'DEVUELTO';
+        icon = Icons.rotate_left_rounded;
+        break;
+      default:
+        bg = const Color(0xFFF1F5F9);
+        border = const Color(0xFFCBD5E1);
+        text = const Color(0xFF475569);
+        label = rawStatus;
+        icon = Icons.info_outline_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: text),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: text,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
