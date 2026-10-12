@@ -761,7 +761,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     ? '${state.inventory.lowStockProducts} alertas'
                     : 'Óptimo',
             isPositiveDelta: state.inventory.lowStockProducts == 0,
-            subtitle: '${state.inventory.totalProducts} productos registrados',
+            subtitle: '${state.inventory.totalProducts} prods.',
             icon: Icons.inventory_2_rounded,
             accentColor: const Color(0xFF0EA5E9),
           ),
@@ -774,7 +774,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             deltaText: '${state.sales.salesMargin.toStringAsFixed(1)}%',
             isPositiveDelta: true,
             subtitle:
-                'Reposición: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
+                'Fondo: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
             icon: Icons.trending_up_rounded,
             accentColor: const Color(0xFF10B981),
           ),

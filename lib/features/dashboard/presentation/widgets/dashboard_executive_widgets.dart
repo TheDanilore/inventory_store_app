@@ -196,18 +196,21 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                   ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                      widget.subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color:
-                            isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF94A3B8),
+                    child: FittedBox(
+                      alignment: Alignment.centerLeft,
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF94A3B8),
+                        ),
+                        maxLines: 1,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -464,25 +467,31 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         liveBadge,
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        Text(
-                          'S/ ${revenue.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color:
-                                isDark
-                                    ? AppColors.darkTextPrimary
-                                    : const Color(0xFF0F172A),
-                            letterSpacing: -0.6,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'S/ ${revenue.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
+                              letterSpacing: -0.6,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         deltaPill,
                       ],
                     ),
@@ -494,41 +503,51 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ingresos & Ganancia Total',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Text(
-                            'S/ ${revenue.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color:
-                                  isDark
-                                      ? AppColors.darkTextPrimary
-                                      : const Color(0xFF0F172A),
-                              letterSpacing: -0.7,
-                            ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ingresos & Ganancia Total',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isDark
+                                    ? AppColors.darkTextSecondary
+                                    : const Color(0xFF64748B),
                           ),
-                          const SizedBox(width: 10),
-                          deltaPill,
-                        ],
-                      ),
-                    ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 10,
+                          runSpacing: 4,
+                          children: [
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'S/ ${revenue.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : const Color(0xFF0F172A),
+                                  letterSpacing: -0.7,
+                                ),
+                              ),
+                            ),
+                            deltaPill,
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
                   liveBadge,
                 ],
               );
@@ -642,50 +661,87 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
           ),
           const SizedBox(height: 20),
 
-          // Bottom Segmented Breakdown Strip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildBreakdownItem(
-                  color: const Color(0xFF2563EB),
-                  label: 'Ventas Realizadas',
-                  value: '$totalSales transacciones',
-                  isDark: isDark,
+          // Bottom Segmented Breakdown Strip (Adaptativo sin desbordes)
+          LayoutBuilder(
+            builder: (context, bConstraints) {
+              final isCompact = bConstraints.maxWidth < 460;
+
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 10 : 14,
+                  vertical: 12,
                 ),
-                Container(
-                  width: 1,
-                  height: 26,
-                  color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
                 ),
-                _buildBreakdownItem(
-                  color: const Color(0xFF10B981),
-                  label: 'Ganancia Bruta',
-                  value: 'S/ ${widget.sales.totalProfit.toStringAsFixed(2)}',
-                  isDark: isDark,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildBreakdownItem(
+                        color: const Color(0xFF2563EB),
+                        label: isCompact ? 'Ventas' : 'Ventas Realizadas',
+                        value:
+                            isCompact
+                                ? '$totalSales transac.'
+                                : '$totalSales transacciones',
+                        isDark: isDark,
+                        isCompact: isCompact,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 26,
+                      margin: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 4 : 8,
+                      ),
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
+                    Expanded(
+                      child: _buildBreakdownItem(
+                        color: const Color(0xFF10B981),
+                        label: isCompact ? 'Ganancia' : 'Ganancia Bruta',
+                        value:
+                            'S/ ${widget.sales.totalProfit.toStringAsFixed(2)}',
+                        isDark: isDark,
+                        isCompact: isCompact,
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 26,
+                      margin: EdgeInsets.symmetric(
+                        horizontal: isCompact ? 4 : 8,
+                      ),
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
+                    Expanded(
+                      child: _buildBreakdownItem(
+                        color: const Color(0xFFF59E0B),
+                        label: isCompact ? 'Reposición' : 'Fondo Reposición',
+                        value:
+                            'S/ ${widget.sales.replacementFund.toStringAsFixed(2)}',
+                        isDark: isDark,
+                        isCompact: isCompact,
+                      ),
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 1,
-                  height: 26,
-                  color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-                ),
-                _buildBreakdownItem(
-                  color: const Color(0xFFF59E0B),
-                  label: 'Fondo Reposición',
-                  value:
-                      'S/ ${widget.sales.replacementFund.toStringAsFixed(2)}',
-                  isDark: isDark,
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -697,35 +753,54 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
     required String label,
     required String value,
     required bool isDark,
+    bool isCompact = false,
   }) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: isCompact ? 6 : 8,
+          height: isCompact ? 6 : 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
+        SizedBox(width: isCompact ? 5 : 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: isCompact ? 10 : 11,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+              const SizedBox(height: 1),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: isCompact ? 11.5 : 12.5,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
