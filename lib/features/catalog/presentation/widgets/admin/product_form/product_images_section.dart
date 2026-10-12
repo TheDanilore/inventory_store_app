@@ -446,6 +446,8 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     ProductFormCubit cubit,
     ProductFormState state,
   ) {
+    final isMobile = MediaQuery.sizeOf(context).width < 720;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
@@ -457,7 +459,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         color: _isDragging
             ? AppColors.primary.withValues(alpha: 0.08)
             : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _isDragging ? AppColors.primary : const Color(0xFFCBD5E1),
           width: _isDragging ? 2.0 : 1.5,
@@ -480,7 +482,9 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
               child: Icon(
                 _isDragging
                     ? Icons.file_download_rounded
-                    : Icons.cloud_upload_outlined,
+                    : (isMobile
+                        ? Icons.add_a_photo_outlined
+                        : Icons.cloud_upload_outlined),
                 size: 32,
                 color: AppColors.primary,
               ),
@@ -490,9 +494,11 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
           Text(
             _isDragging
                 ? '¡Suelta los archivos aquí para añadirlos!'
-                : 'Arrastra imágenes desde tu equipo o súbelas',
+                : (isMobile
+                    ? 'Sube fotos del producto'
+                    : 'Arrastra imágenes desde tu equipo o súbelas'),
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: FontWeight.w700,
               color: _isDragging ? AppColors.primary : AppColors.textPrimary,
             ),
@@ -500,7 +506,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Formatos JPG, PNG o WEBP (hasta 8 fotos). La primera foto será la portada.',
+            'Formatos JPG, PNG, WEBP o HEIC (máx. 5 MB por foto, hasta 8 fotos).',
             style: TextStyle(
               fontSize: 11.5,
               color: AppColors.textSecondary,
@@ -508,49 +514,86 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FilledButton.icon(
+          if (isMobile) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
                 onPressed: state.isSaving ? null : () => cubit.pickImages(),
                 icon: const Icon(
-                  Icons.add_photo_alternate_rounded,
-                  size: 16,
+                  Icons.add_a_photo_rounded,
+                  size: 18,
                 ),
-                label: const Text('Subir Archivos'),
+                label: const Text('Tomar Foto / Seleccionar de Galería'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: state.isSaving
-                    ? null
-                    : () => _promptForImageUrl(context, cubit),
-                icon: const Icon(Icons.link_rounded, size: 16),
-                label: const Text('Por URL'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: state.isSaving
+                  ? null
+                  : () => _promptForImageUrl(context, cubit),
+              icon: const Icon(Icons.link_rounded, size: 16),
+              label: const Text('O ingresar URL web'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+              ),
+            ),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: state.isSaving ? null : () => cubit.pickImages(),
+                  icon: const Icon(
+                    Icons.add_photo_alternate_rounded,
+                    size: 16,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
+                  label: const Text('Subir Archivos'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radius),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: state.isSaving
+                      ? null
+                      : () => _promptForImageUrl(context, cubit),
+                  icon: const Icon(Icons.link_rounded, size: 16),
+                  label: const Text('Por URL'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radius),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

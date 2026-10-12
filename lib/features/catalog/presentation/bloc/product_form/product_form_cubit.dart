@@ -68,6 +68,19 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   List<VariantDraftFormModel> _variantDrafts = [];
   final List<String> _removedVariantIds = [];
 
+  // Omnicanalidad, Estado y SEO
+  String _publicationStatus = 'active';
+  Map<String, bool> _salesChannels = const {
+    'web': true,
+    'pos': true,
+    'mercadolibre': true,
+    'social': true,
+  };
+  String _slug = '';
+  String _seoTitle = '';
+  String _seoDescription = '';
+  List<Map<String, dynamic>> _changelog = [];
+
   ProductFormCubit(
     this._getCategoriesUC,
     this._getBrandsUC,
@@ -124,6 +137,66 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
     markAsDirty();
     _syncState();
+  }
+
+  // ── Omnicanalidad, Estado y SEO ──────────────────────────────────────────
+  void setPublicationStatus(String status) {
+    if (_publicationStatus == status) return;
+    _publicationStatus = status;
+    markAsDirty();
+    _syncState();
+  }
+
+  void toggleSalesChannel(String channelKey) {
+    final channels = Map<String, bool>.from(_salesChannels);
+    channels[channelKey] = !(channels[channelKey] ?? false);
+    _salesChannels = channels;
+    markAsDirty();
+    _syncState();
+  }
+
+  void setSlug(String slug) {
+    final clean = slug.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\-]'), '-');
+    _slug = clean;
+    markAsDirty();
+    _syncState();
+  }
+
+  void setSeoTitle(String title) {
+    _seoTitle = title;
+    markAsDirty();
+    _syncState();
+  }
+
+  void setSeoDescription(String desc) {
+    _seoDescription = desc;
+    markAsDirty();
+    _syncState();
+  }
+
+  void autoGenerateSlug(String name) {
+    final slug = _slugify(name);
+    _slug = slug;
+    if (_seoTitle.isEmpty) {
+      _seoTitle = '$name | Tienda Oficial';
+    }
+    markAsDirty();
+    _syncState();
+  }
+
+  String _slugify(String text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[áàäâã]'), 'a')
+        .replaceAll(RegExp(r'[éèëê]'), 'e')
+        .replaceAll(RegExp(r'[íìïî]'), 'i')
+        .replaceAll(RegExp(r'[óòöôõ]'), 'o')
+        .replaceAll(RegExp(r'[úùüû]'), 'u')
+        .replaceAll(RegExp(r'[ñ]'), 'n')
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
+        .replaceAll(RegExp(r'[\s-]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   /// Actualiza los campos comerciales de la variante base (variante #0)
@@ -229,6 +302,12 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         batchManagementEnabled: _batchManagementEnabled,
         ingredientsEnabled: _ingredientsEnabled,
         hasMultipleVariants: _hasMultipleVariants,
+        publicationStatus: _publicationStatus,
+        salesChannels: _salesChannels,
+        slug: _slug,
+        seoTitle: _seoTitle,
+        seoDescription: _seoDescription,
+        changelog: List.of(_changelog),
         detailRows: List.of(_detailRows),
         ingredientRows: List.of(_ingredientRows),
         formImages: List.of(_formImages),
@@ -305,8 +384,48 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         _batchManagementEnabled = targetProduct.usesBatches;
 
         targetProduct.details.forEach((key, value) {
-          _detailRows.add(DetailModel(key: key, value: value.toString()));
+          if (!['publication_status', 'sales_channels', 'slug', 'seo_title', 'seo_description', 'changelog'].contains(key)) {
+            _detailRows.add(DetailModel(key: key, value: value.toString()));
+          }
         });
+
+        // Hidratar Omnicanalidad, Estado y SEO
+        final d = targetProduct.details;
+        _publicationStatus = (d['publication_status'] as String?) ?? (targetProduct.isActive ? 'active' : 'draft');
+        if (d['sales_channels'] is Map) {
+          final rawCh = d['sales_channels'] as Map;
+          _salesChannels = {
+            'web': rawCh['web'] != false,
+            'pos': rawCh['pos'] != false,
+            'mercadolibre': rawCh['mercadolibre'] != false,
+            'social': rawCh['social'] != false,
+          };
+        } else {
+          _salesChannels = const {
+            'web': true,
+            'pos': true,
+            'mercadolibre': true,
+            'social': true,
+          };
+        }
+        _slug = (d['slug'] as String?) ?? _slugify(nombre);
+        _seoTitle = (d['seo_title'] as String?) ?? (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
+        _seoDescription = (d['seo_description'] as String?) ?? (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
+        if (d['changelog'] is List) {
+          _changelog = (d['changelog'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        } else {
+          _changelog = [
+            {
+              'action': 'Ficha creada e inventario registrado',
+              'time': targetProduct.createdAt != null
+                  ? '${targetProduct.createdAt!.day}/${targetProduct.createdAt!.month}/${targetProduct.createdAt!.year}'
+                  : 'Fecha inicial',
+              'author': targetProduct.createdBy ?? 'Admin',
+            },
+          ];
+        }
 
         // Cargar imágenes precargadas
         final productImagesOnly =
@@ -336,6 +455,23 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } else {
         _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
         _hasMultipleVariants = false;
+        _publicationStatus = 'active';
+        _salesChannels = const {
+          'web': true,
+          'pos': true,
+          'mercadolibre': true,
+          'social': true,
+        };
+        _slug = '';
+        _seoTitle = '';
+        _seoDescription = '';
+        _changelog = [
+          {
+            'action': 'Borrador iniciado',
+            'time': 'Ahora',
+            'author': 'Usuario actual',
+          },
+        ];
         await Future.wait([_fetchCategories(), _fetchBrands()]);
       }
     } catch (e) {
@@ -499,6 +635,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     if (archivos.isEmpty) return;
 
     const maxImages = 8;
+    const maxSizeBytes = 5 * 1024 * 1024; // 5 MB
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
+
     final currentCount = _formImages.length;
 
     if (currentCount >= maxImages) {
@@ -513,15 +652,29 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     var duplicadas = 0;
     var excedidas = 0;
+    var formatoInvalido = 0;
+    var pesoExcedido = 0;
     final nuevosItems = <FormImageItem>[];
 
     for (final archivo in archivos) {
+      final nombre = _normalizarNombreArchivo(archivo);
+      final extension = nombre.contains('.')
+          ? nombre.split('.').last.toLowerCase()
+          : '';
+
+      // Validación 1: Formatos válidos de imagen
+      if (!allowedExtensions.contains(extension)) {
+        formatoInvalido++;
+        continue;
+      }
+
+      // Validación 2: Capacidad máxima
       if (currentCount + nuevosItems.length >= maxImages) {
         excedidas++;
         continue;
       }
 
-      final nombre = _normalizarNombreArchivo(archivo);
+      // Validación 3: Duplicados
       if (_formImages.any((img) => !img.isExisting && img.newName == nombre)) {
         duplicadas++;
         continue;
@@ -529,6 +682,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       try {
         final bytesOriginales = await archivo.readAsBytes();
+
+        // Validación 4: Peso máximo de 5MB y archivos vacíos
+        if (bytesOriginales.isEmpty) continue;
+        if (bytesOriginales.lengthInBytes > maxSizeBytes) {
+          pesoExcedido++;
+          continue;
+        }
+
         final bytesOptimizados = await _optimizarImagen(bytesOriginales);
         nuevosItems.add(
           FormImageItem(newBytes: bytesOptimizados, newName: nombre),
@@ -546,21 +707,33 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _formImages = [..._formImages, ...nuevosItems];
     markAsDirty();
 
-    String? snackMsg;
-    if (duplicadas > 0 || excedidas > 0) {
-      String msg = '';
-      if (duplicadas > 0) msg += '$duplicadas repetida(s). ';
-      if (excedidas > 0) {
-        msg += '$excedidas exceden el límite de $maxImages fotos.';
-      }
-      snackMsg = msg.trim();
+    final List<String> feedbackMessages = [];
+    if (formatoInvalido > 0) {
+      feedbackMessages.add(
+        '$formatoInvalido archivo(s) no son imágenes válidas (solo JPG, PNG, WEBP, HEIC).',
+      );
+    }
+    if (pesoExcedido > 0) {
+      feedbackMessages.add(
+        '$pesoExcedido imagen(es) superan el peso máximo permitido (5 MB).',
+      );
+    }
+    if (duplicadas > 0) {
+      feedbackMessages.add('$duplicadas imagen(es) repetidas omitidas.');
+    }
+    if (excedidas > 0) {
+      feedbackMessages.add(
+        '$excedidas exceden el cupo de $maxImages fotos.',
+      );
     }
 
     emit(
       state.copyWith(
         formImages: List.of(_formImages),
         isDirty: _isDirty,
-        snackMessage: snackMsg,
+        snackMessage: feedbackMessages.isNotEmpty
+            ? feedbackMessages.join(' ')
+            : null,
       ),
     );
   }
@@ -864,17 +1037,30 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final profileIdRes = await _getCurrentProfileIdUC.call();
       final profileId = profileIdRes.fold((l) => null, (r) => r);
 
+      final updatedChangelog = List<Map<String, dynamic>>.from(_changelog);
+      updatedChangelog.insert(0, {
+        'action': isUpdating ? 'Ficha y datos actualizados' : 'Ficha creada e inventario registrado',
+        'time': 'Hace unos momentos',
+        'author': 'Usuario actual',
+      });
+      _changelog = updatedChangelog;
+
       final productEntity = ProductEntity(
         id: isUpdating ? _productToEdit!.id : '',
         name: nombre.trim(),
-
-        isActive: isUpdating ? _productToEdit!.isActive : true,
+        isActive: _publicationStatus == 'active',
         description: desc.trim().isEmpty ? null : desc.trim(),
         categoryId: _selectedCategoryId,
         brandId: _selectedBrandId,
         details: {
           for (final d in _detailRows)
             if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),
+          'publication_status': _publicationStatus,
+          'sales_channels': _salesChannels,
+          'slug': _slug.trim().isEmpty ? _slugify(nombre) : _slug.trim(),
+          'seo_title': _seoTitle.trim().isEmpty ? '$nombre | Tienda Oficial' : _seoTitle.trim(),
+          'seo_description': _seoDescription.trim(),
+          'changelog': _changelog,
         },
         productType: _productType,
         stockControl: _stockControl,

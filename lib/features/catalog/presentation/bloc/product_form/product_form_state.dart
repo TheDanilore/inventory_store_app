@@ -26,6 +26,25 @@ class ProductFormState extends Equatable {
   final bool batchManagementEnabled;
   final bool ingredientsEnabled;
 
+  // ── Omnicanalidad, Estado y SEO ──────────────────────────────────────────
+  /// Estado actual del producto: 'active', 'draft', 'archived'
+  final String publicationStatus;
+
+  /// Canales de venta activos: {'web': bool, 'pos': bool, 'mercadolibre': bool, 'social': bool}
+  final Map<String, bool> salesChannels;
+
+  /// Enlace permanente (slug) para la tienda web
+  final String slug;
+
+  /// Título para indexación SEO
+  final String seoTitle;
+
+  /// Meta descripción para indexación SEO
+  final String seoDescription;
+
+  /// Historial de cambios y auditoría
+  final List<Map<String, dynamic>> changelog;
+
   // ── Colecciones dinámicas (datos puros, sin TextEditingController) ──────────
   final List<DetailModel> detailRows;
   final List<IngredientRowModel> ingredientRows;
@@ -61,6 +80,17 @@ class ProductFormState extends Equatable {
     this.batchManagementEnabled = false,
     this.ingredientsEnabled = false,
     this.hasMultipleVariants = false,
+    this.publicationStatus = 'active',
+    this.salesChannels = const {
+      'web': true,
+      'pos': true,
+      'mercadolibre': true,
+      'social': true,
+    },
+    this.slug = '',
+    this.seoTitle = '',
+    this.seoDescription = '',
+    this.changelog = const [],
     this.detailRows = const [],
     this.ingredientRows = const [],
     this.formImages = const [],
@@ -93,6 +123,12 @@ class ProductFormState extends Equatable {
     bool? batchManagementEnabled,
     bool? ingredientsEnabled,
     bool? hasMultipleVariants,
+    String? publicationStatus,
+    Map<String, bool>? salesChannels,
+    String? slug,
+    String? seoTitle,
+    String? seoDescription,
+    List<Map<String, dynamic>>? changelog,
     List<DetailModel>? detailRows,
     List<IngredientRowModel>? ingredientRows,
     List<FormImageItem>? formImages,
@@ -122,6 +158,12 @@ class ProductFormState extends Equatable {
           batchManagementEnabled ?? this.batchManagementEnabled,
       ingredientsEnabled: ingredientsEnabled ?? this.ingredientsEnabled,
       hasMultipleVariants: hasMultipleVariants ?? this.hasMultipleVariants,
+      publicationStatus: publicationStatus ?? this.publicationStatus,
+      salesChannels: salesChannels ?? this.salesChannels,
+      slug: slug ?? this.slug,
+      seoTitle: seoTitle ?? this.seoTitle,
+      seoDescription: seoDescription ?? this.seoDescription,
+      changelog: changelog ?? this.changelog,
       detailRows: detailRows ?? this.detailRows,
       ingredientRows: ingredientRows ?? this.ingredientRows,
       formImages: formImages ?? this.formImages,
@@ -152,6 +194,12 @@ class ProductFormState extends Equatable {
     batchManagementEnabled,
     ingredientsEnabled,
     hasMultipleVariants,
+    publicationStatus,
+    salesChannels,
+    slug,
+    seoTitle,
+    seoDescription,
+    changelog,
     detailRows,
     ingredientRows,
     formImages,

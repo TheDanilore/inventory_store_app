@@ -23,6 +23,12 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_details_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_ingredients_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_batch_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_status_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_sales_channels_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_changelog_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_seo_section.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_variants_table_view.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_preview_modal.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? productToEdit;
@@ -209,6 +215,16 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     _handleExit();
   }
 
+  void _openPreview() {
+    final cubit = context.read<ProductFormCubit>();
+    ProductPreviewModal.show(
+      context,
+      state: cubit.state,
+      productName: _nombreCtrl.text,
+      productDesc: _descCtrl.text,
+    );
+  }
+
   Future<void> _guardar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -306,6 +322,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     _guardar,
                 const SingleActivator(LogicalKeyboardKey.keyG, alt: true):
                     _guardar,
+                const SingleActivator(LogicalKeyboardKey.keyP, control: true):
+                    _openPreview,
+                const SingleActivator(LogicalKeyboardKey.keyP, meta: true):
+                    _openPreview,
                 const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () {
                   final cubit = context.read<ProductFormCubit>();
                   if (!cubit.state.hasMultipleVariants) {
@@ -502,6 +522,30 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               ),
             ),
             const SizedBox(width: 12),
+            Tooltip(
+              message: 'Vista previa de la ficha en tienda (Ctrl + P / ⌘ + P)',
+              child: OutlinedButton.icon(
+                onPressed: _openPreview,
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('Vista Previa'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF4F46E5),
+                  side: const BorderSide(color: Color(0xFFC7D2FE)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radius),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
             BlocSelector<ProductFormCubit, ProductFormState, bool>(
               selector: (s) => s.isSaving,
               builder: (context, isSaving) {
@@ -597,17 +641,20 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                   if (!state.hasMultipleVariants) {
                                     return const SizedBox.shrink();
                                   }
-                                  return Column(
+                                  return const Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      const SizedBox(height: 20),
-                                      _buildVariantsHeader(cubit),
-                                      const SizedBox(height: 12),
-                                      _buildVariantsList(cubit),
+                                      SizedBox(height: 20),
+                                      ProductVariantsTableView(),
                                     ],
                                   );
                                 },
+                              ),
+                              const SizedBox(height: 20),
+                              ProductSeoSection(
+                                nombreCtrl: _nombreCtrl,
+                                descCtrl: _descCtrl,
                               ),
                               const SizedBox(height: 20),
                               const ProductDetailsSection(),
@@ -625,9 +672,15 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const ProductStatusCard(),
+                              const SizedBox(height: 20),
+                              const ProductSalesChannelsCard(),
+                              const SizedBox(height: 20),
                               const ProductImagesSection(),
                               const SizedBox(height: 20),
                               const ProductConfigSection(),
+                              const SizedBox(height: 20),
+                              const ProductChangelogCard(),
                               const SizedBox(height: 20),
                               _buildDesktopJumpNav(cubit, isEdit),
                             ],
@@ -1092,6 +1145,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  const ProductStatusCard(),
+                  const SizedBox(height: 16),
+                  const ProductSalesChannelsCard(),
+                  const SizedBox(height: 16),
                   const ProductImagesSection(),
                   const SizedBox(height: 16),
                   ProductBasicInfoSection(
@@ -1120,6 +1177,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  ProductSeoSection(
+                    nombreCtrl: _nombreCtrl,
+                    descCtrl: _descCtrl,
+                  ),
+                  const SizedBox(height: 16),
                   const ProductConfigSection(),
                   const SizedBox(height: 16),
                   const ProductDetailsSection(),
@@ -1127,6 +1189,8 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   const ProductIngredientsSection(),
                   const SizedBox(height: 16),
                   const ProductBatchSection(),
+                  const SizedBox(height: 16),
+                  const ProductChangelogCard(),
                 ]),
               ),
             ),
@@ -1230,6 +1294,18 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           },
                         ),
                         const Spacer(),
+                        Tooltip(
+                          message: 'Vista previa (Ctrl + P)',
+                          child: IconButton(
+                            onPressed: _openPreview,
+                            icon: const Icon(
+                              Icons.visibility_outlined,
+                              size: 20,
+                              color: Color(0xFF4F46E5),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         Tooltip(
                           message: 'Descartar cambios y salir (Esc)',
                           child: OutlinedButton(
