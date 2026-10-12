@@ -29,6 +29,7 @@ class ProductGallerySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveUrls = <String>[];
     if (variantImageOverrideUrl != null) {
       effectiveUrls.add(variantImageOverrideUrl!);
@@ -48,7 +49,7 @@ class ProductGallerySection extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Container(color: Colors.white),
+        Container(color: isDark ? AppColors.darkSurface : Colors.white),
         PageView.builder(
           controller: pageController,
           itemCount: effectiveUrls.isNotEmpty ? effectiveUrls.length : 1,
@@ -76,11 +77,16 @@ class ProductGallerySection extends StatelessWidget {
                   fit: BoxFit.contain,
                   placeholder:
                       (context, url) => Shimmer.fromColors(
-                        baseColor: Colors.grey.shade200,
-                        highlightColor: Colors.grey.shade100,
+                        baseColor:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : Colors.grey.shade200,
+                        highlightColor:
+                            isDark ? AppColors.darkBorder : Colors.grey.shade100,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color:
+                                isDark ? AppColors.darkSurface : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),

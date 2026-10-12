@@ -10,6 +10,7 @@ class ProductAdminInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = context.watch<ProductDetailCubit>().state;
     final cubit = context.read<ProductDetailCubit>();
     if (!cubit.isAdmin) return const SizedBox.shrink();
@@ -39,18 +40,22 @@ class ProductAdminInfoCard extends StatelessWidget {
     final projectedRetail = retailProfitUnit * effectiveStock;
     final projectedWholesale = wholesaleProfitUnit * effectiveStock;
     return Material(
-      color: const Color(0xFFF8FAFC),
+      color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radius),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: initiallyExpanded,
-          collapsedIconColor: AppColors.slate,
-          iconColor: AppColors.slate,
+          collapsedIconColor:
+              isDark ? const Color(0xFF94A3B8) : AppColors.slate,
+          iconColor: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           title: Row(
             children: [
@@ -58,22 +63,26 @@ class ProductAdminInfoCard extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: AppColors.slate.withValues(alpha: 0.1),
+                  color:
+                      isDark
+                          ? const Color(0xFF334155).withValues(alpha: 0.5)
+                          : AppColors.slate.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.analytics_outlined,
-                  color: AppColors.slate,
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
                   size: 16,
                 ),
               ),
               const SizedBox(width: 9),
-              const Text(
+              Text(
                 'Métricas Avanzadas y Proyecciones',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.slate,
+                  color:
+                      isDark ? const Color(0xFFF8FAFC) : AppColors.slate,
                 ),
               ),
             ],
@@ -84,7 +93,11 @@ class ProductAdminInfoCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  Divider(
+                    height: 1,
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
                   const SizedBox(height: 12),
                   _AdminRow(
                     Icons.receipt_long_rounded,
@@ -120,7 +133,11 @@ class ProductAdminInfoCard extends StatelessWidget {
                     '$rPoint unds.',
                   ),
                   const SizedBox(height: 12),
-                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  Divider(
+                    height: 1,
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
                   const SizedBox(height: 12),
                   _AdminRow(
                     Icons.bar_chart_rounded,
@@ -167,13 +184,14 @@ class _AdminRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
           width: 28,
           height: 28,
           decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
+            color: iconColor.withValues(alpha: isDark ? 0.2 : 0.1),
             borderRadius: BorderRadius.circular(7),
           ),
           child: Icon(icon, size: 14, color: iconColor),
@@ -182,9 +200,9 @@ class _AdminRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppColors.textSecondary,
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
             ),
           ),
         ),
@@ -193,7 +211,9 @@ class _AdminRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: valueColor ?? AppColors.textPrimary,
+            color:
+                valueColor ??
+                (isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary),
           ),
         ),
         if (badge != null) ...[
@@ -201,14 +221,15 @@ class _AdminRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.slateLight,
+              color:
+                  isDark ? AppColors.darkSurfaceElevated : AppColors.slateLight,
               borderRadius: BorderRadius.circular(5),
             ),
             child: Text(
               badge!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
-                color: AppColors.slate,
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
                 fontWeight: FontWeight.w700,
               ),
             ),

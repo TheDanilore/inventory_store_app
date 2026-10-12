@@ -10,6 +10,7 @@ class ProductBatchesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = context.watch<ProductDetailCubit>().state;
     final isLoading = state.viewState == ViewState.loading;
 
@@ -25,15 +26,15 @@ class ProductBatchesCard extends StatelessWidget {
                 .toList();
 
     return Container(
-      decoration: AppColors.card(),
+      decoration: AppColors.cardAdaptive(context),
       child: Material(
         color: Colors.transparent,
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
             initiallyExpanded: initiallyExpanded,
-            collapsedIconColor: AppColors.slate,
-            iconColor: AppColors.slate,
+            collapsedIconColor: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
+            iconColor: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
             tilePadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 8,
@@ -44,7 +45,10 @@ class ProductBatchesCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
+                    color:
+                        isDark
+                            ? const Color(0xFF78350F).withValues(alpha: 0.4)
+                            : const Color(0xFFFEF3C7),
                     borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                   child: const Icon(
@@ -54,12 +58,15 @@ class ProductBatchesCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Lotes y Vencimientos',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -78,11 +85,14 @@ class ProductBatchesCard extends StatelessWidget {
                         ),
                       )
                     else if (filteredBatches.isEmpty)
-                      const Text(
+                      Text(
                         'No hay lotes registrados para esta variante.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textMuted,
+                          color:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textMuted,
                         ),
                       )
                     else
@@ -108,25 +118,37 @@ class ProductBatchesCard extends StatelessWidget {
 
                         // Lógica de semáforo de colores
                         Color statusColor = AppColors.success;
-                        Color statusBg = AppColors.successLight;
+                        Color statusBg =
+                            isDark
+                                ? AppColors.success.withValues(alpha: 0.2)
+                                : AppColors.successLight;
                         String statusLabel = 'OK';
                         IconData statusIcon =
                             Icons.check_circle_outline_rounded;
 
                         if (stock <= 0 && daysRemaining >= 0) {
                           statusColor = AppColors.slate;
-                          statusBg = AppColors.slate.withValues(alpha: 0.15);
+                          statusBg =
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : AppColors.slate.withValues(alpha: 0.15);
                           statusLabel = 'Sin stock';
                           statusIcon = Icons.remove_circle_outline_rounded;
                         } else if (expDate != null) {
                           if (daysRemaining < 0) {
                             statusColor = AppColors.danger;
-                            statusBg = AppColors.dangerLight;
+                            statusBg =
+                                isDark
+                                    ? AppColors.danger.withValues(alpha: 0.2)
+                                    : AppColors.dangerLight;
                             statusLabel = 'Vencido';
                             statusIcon = Icons.warning_rounded;
                           } else if (daysRemaining <= 30) {
                             statusColor = AppColors.amberDark;
-                            statusBg = AppColors.amberLight;
+                            statusBg =
+                                isDark
+                                    ? AppColors.amberDark.withValues(alpha: 0.2)
+                                    : AppColors.amberLight;
                             statusLabel = 'Vence pronto';
                             statusIcon = Icons.info_outline_rounded;
                           }
@@ -142,11 +164,19 @@ class ProductBatchesCard extends StatelessWidget {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.background,
+                            color:
+                                isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : AppColors.background,
                             borderRadius: BorderRadius.circular(
                               AppColors.radiusSm + 2,
                             ),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.border,
+                            ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -172,10 +202,13 @@ class ProductBatchesCard extends StatelessWidget {
                                       children: [
                                         Text(
                                           batchNum,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFFF8FAFC)
+                                                    : AppColors.textPrimary,
                                           ),
                                         ),
                                         const SizedBox(width: 6),
@@ -204,24 +237,33 @@ class ProductBatchesCard extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.location_on_outlined,
                                           size: 12,
-                                          color: AppColors.textMuted,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF64748B)
+                                                  : AppColors.textMuted,
                                         ),
                                         const SizedBox(width: 2),
                                         Text(
                                           whName,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11,
-                                            color: AppColors.textSecondary,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.textSecondary,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        const Icon(
+                                        Icon(
                                           Icons.event_rounded,
                                           size: 12,
-                                          color: AppColors.textMuted,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF64748B)
+                                                  : AppColors.textMuted,
                                         ),
                                         const SizedBox(width: 2),
                                         Text(
@@ -232,6 +274,8 @@ class ProductBatchesCard extends StatelessWidget {
                                                 expDate != null &&
                                                         daysRemaining <= 30
                                                     ? statusColor
+                                                    : isDark
+                                                    ? const Color(0xFF94A3B8)
                                                     : AppColors.textSecondary,
                                             fontWeight:
                                                 expDate != null &&
@@ -254,12 +298,18 @@ class ProductBatchesCard extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color:
                                       stock <= 0
-                                          ? AppColors.slate.withValues(
-                                            alpha: 0.1,
-                                          )
-                                          : AppColors.primary.withValues(
-                                            alpha: 0.1,
-                                          ),
+                                          ? (isDark
+                                              ? AppColors.darkBorder
+                                              : AppColors.slate.withValues(
+                                                alpha: 0.1,
+                                              ))
+                                          : (isDark
+                                              ? AppColors.primary.withValues(
+                                                alpha: 0.2,
+                                              )
+                                              : AppColors.primary.withValues(
+                                                alpha: 0.1,
+                                              )),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(
@@ -271,7 +321,9 @@ class ProductBatchesCard extends StatelessWidget {
                                         fontWeight: FontWeight.w900,
                                         color:
                                             stock <= 0
-                                                ? AppColors.slate
+                                                ? (isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.slate)
                                                 : AppColors.primary,
                                       ),
                                     ),
@@ -282,7 +334,9 @@ class ProductBatchesCard extends StatelessWidget {
                                         fontWeight: FontWeight.w600,
                                         color:
                                             stock <= 0
-                                                ? AppColors.slate
+                                                ? (isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : AppColors.slate)
                                                 : AppColors.primary,
                                       ),
                                     ),

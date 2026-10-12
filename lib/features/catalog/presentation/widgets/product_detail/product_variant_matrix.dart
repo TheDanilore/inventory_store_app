@@ -63,13 +63,16 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
 
   Widget _buildDesktopMatrix(BuildContext context) {
     final filtered = _filteredVariants;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(opacity: 0.02),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+        boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.02),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,8 +340,12 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                           ),
                           color:
                               isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.05)
-                                  : Colors.white,
+                                  ? AppColors.primary.withValues(
+                                    alpha: isDark ? 0.2 : 0.05,
+                                  )
+                                  : (isDark
+                                      ? AppColors.darkSurface
+                                      : Colors.white),
                           child: Row(
                             children: [
                               // Presentation / Label with avatar
@@ -356,22 +363,23 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                                 height: 34,
                                                 fit: BoxFit.cover,
                                                 errorWidget:
-                                                    (context, url, error) =>
-                                                        Container(
-                                                          width: 34,
-                                                          height: 34,
-                                                          color:
-                                                              AppColors
-                                                                  .background,
-                                                          child: const Icon(
-                                                            Icons
-                                                                .image_not_supported,
-                                                            size: 14,
-                                                            color:
-                                                                AppColors
-                                                                    .textMuted,
-                                                          ),
-                                                        ),
+                                                    (
+                                                      context,
+                                                      url,
+                                                      error,
+                                                    ) => Container(
+                                                      width: 34,
+                                                      height: 34,
+                                                      color:
+                                                          AppColors.background,
+                                                      child: const Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                        size: 14,
+                                                        color:
+                                                            AppColors.textMuted,
+                                                      ),
+                                                    ),
                                               )
                                               : Container(
                                                 width: 34,
@@ -397,7 +405,9 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                           color:
                                               isSelected
                                                   ? AppColors.primary
-                                                  : AppColors.textPrimary,
+                                                  : (isDark
+                                                      ? const Color(0xFFF8FAFC)
+                                                      : AppColors.textPrimary),
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -554,18 +564,19 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
   }
 
   Widget _buildMobileChips(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Presentaciones y Variantes',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
               ),
             ),
             if (widget.onOpenSelectorModal != null)
@@ -605,14 +616,14 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                       decoration: BoxDecoration(
                         color:
                             isSelected
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : Colors.white,
+                                ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.08)
+                                : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color:
                               isSelected
                                   ? AppColors.primary
-                                  : AppColors.border,
+                                  : (isDark ? AppColors.darkBorder : AppColors.border),
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -643,7 +654,9 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                       isSelected
                                           ? FontWeight.w800
                                           : FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                               Row(

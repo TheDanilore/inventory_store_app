@@ -209,12 +209,15 @@ class _ProductDetailScreenContentState
     if (_variants.isEmpty) return;
 
     final isDesktop = MediaQuery.of(context).size.width >= 700;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isDesktop) {
       showDialog<void>(
         context: context,
         builder:
             (dialogCtx) => Dialog(
+              backgroundColor:
+                  isDark ? AppColors.darkSurfaceElevated : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusLg),
               ),
@@ -237,9 +240,11 @@ class _ProductDetailScreenContentState
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(sheetCtx).size.height * 0.75,
               ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
               ),
               child: _buildVariantPickerContent(sheetCtx),
             ),
@@ -248,6 +253,7 @@ class _ProductDetailScreenContentState
   }
 
   Widget _buildVariantPickerContent(BuildContext modalContext) {
+    final isDark = Theme.of(modalContext).brightness == Brightness.dark;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -256,7 +262,7 @@ class _ProductDetailScreenContentState
           height: 4,
           margin: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade300,
+            color: isDark ? AppColors.darkBorder : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -265,22 +271,30 @@ class _ProductDetailScreenContentState
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Catálogo de Variantes',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color:
+                      isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close_rounded, size: 20),
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: isDark ? const Color(0xFF94A3B8) : null,
+                ),
                 onPressed: () => Navigator.pop(modalContext),
               ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        Divider(
+          height: 1,
+          color: isDark ? AppColors.darkBorder : AppColors.divider,
+        ),
         Flexible(
           child: ListView.separated(
             shrinkWrap: true,
@@ -304,12 +318,20 @@ class _ProductDetailScreenContentState
                   decoration: BoxDecoration(
                     color:
                         isSelected
-                            ? AppColors.primary.withValues(alpha: 0.06)
-                            : AppColors.surface,
+                            ? AppColors.primary.withValues(
+                              alpha: isDark ? 0.2 : 0.06,
+                            )
+                            : (isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.surface),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color:
-                          isSelected ? AppColors.primary : AppColors.border,
+                          isSelected
+                              ? AppColors.primary
+                              : (isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.border),
                       width: isSelected ? 1.5 : 1,
                     ),
                   ),
@@ -360,7 +382,10 @@ class _ProductDetailScreenContentState
                                     isSelected
                                         ? FontWeight.w800
                                         : FontWeight.w600,
-                                color: AppColors.textPrimary,
+                                color:
+                                    isDark
+                                        ? const Color(0xFFF8FAFC)
+                                        : AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 3),
@@ -419,6 +444,7 @@ class _ProductDetailScreenContentState
     final commentCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
     bool isSubmitting = false;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
@@ -427,7 +453,8 @@ class _ProductDetailScreenContentState
           (dialogCtx) => StatefulBuilder(
             builder:
                 (ctx, setS) => Dialog(
-                  backgroundColor: Colors.white,
+                  backgroundColor:
+                      isDark ? AppColors.darkSurfaceElevated : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppColors.radiusXl),
                   ),
@@ -440,7 +467,10 @@ class _ProductDetailScreenContentState
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.amberLight,
+                            color:
+                                isDark
+                                    ? AppColors.amber.withValues(alpha: 0.15)
+                                    : AppColors.amberLight,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
@@ -450,12 +480,15 @@ class _ProductDetailScreenContentState
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Registrar Opinión de Cliente',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color:
+                                isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -603,10 +636,7 @@ class _ProductDetailScreenContentState
       builder: (context, _) {
         final content = _buildShortcutsWrapper(context);
         if (widget.isEmbedded) {
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            body: content,
-          );
+          return Scaffold(backgroundColor: AppColors.background, body: content);
         }
 
         final isDesktop = MediaQuery.of(context).size.width >= 1024;
@@ -637,6 +667,7 @@ class _ProductDetailScreenContentState
     BuildContext context, {
     required bool isDesktop,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (isDesktop) {
       return [
         Tooltip(
@@ -649,21 +680,21 @@ class _ProductDetailScreenContentState
               size: 16,
               color: AppColors.primary,
             ),
-            label: const Text(
+            label: Text(
               'Exportar PDF',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
               ),
             ),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              backgroundColor: Colors.white,
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
             ),
           ),
         ),
@@ -678,10 +709,7 @@ class _ProductDetailScreenContentState
             icon: const Icon(Icons.edit_outlined, size: 16),
             label: const Text(
               'Editar Producto',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -721,6 +749,7 @@ class _ProductDetailScreenContentState
   }
 
   Widget _buildMobileStickyActionBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -734,17 +763,22 @@ class _ProductDetailScreenContentState
                 : 14,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.94),
-            border: const Border(
-              top: BorderSide(color: AppColors.border, width: 1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, -3),
+            color: (isDark ? AppColors.darkSurface : Colors.white).withValues(alpha: 0.94),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+                width: 1,
               ),
-            ],
+            ),
+            boxShadow: isDark
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
           ),
           child: Row(
             children: [
@@ -756,15 +790,20 @@ class _ProductDetailScreenContentState
                     icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
                     label: const Text(
                       'Ficha PDF',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.border),
+                      foregroundColor: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      backgroundColor: Colors.white,
+                      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
                     ),
                   ),
                 ),
@@ -781,7 +820,10 @@ class _ProductDetailScreenContentState
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     label: const Text(
                       'Editar Producto',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -818,21 +860,24 @@ class _ProductDetailScreenContentState
 
         // E o Alt+E -> Editar
         if (event.logicalKey == LogicalKeyboardKey.keyE ||
-            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyE)) {
+            ((isAlt || isControl) &&
+                event.logicalKey == LogicalKeyboardKey.keyE)) {
           context.push('/products/product-form/${product.id}');
           return KeyEventResult.handled;
         }
 
         // P o Alt+P -> Exportar PDF
         if (event.logicalKey == LogicalKeyboardKey.keyP ||
-            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyP)) {
+            ((isAlt || isControl) &&
+                event.logicalKey == LogicalKeyboardKey.keyP)) {
           _exportPdf();
           return KeyEventResult.handled;
         }
 
         // V o Alt+V -> Abrir selector de variantes
         if (event.logicalKey == LogicalKeyboardKey.keyV ||
-            ((isAlt || isControl) && event.logicalKey == LogicalKeyboardKey.keyV)) {
+            ((isAlt || isControl) &&
+                event.logicalKey == LogicalKeyboardKey.keyV)) {
           _showVariantPickerModal();
           return KeyEventResult.handled;
         }
@@ -864,25 +909,36 @@ class _ProductDetailScreenContentState
 
   // ── Banda Financiera Compacta (Reemplazo moderno del Bento Grid) ───────────
   Widget _buildFinancialStrip({required bool isCompact}) {
-    final retailProfit = _effectivePrice > _cost ? _effectivePrice - _cost : 0.0;
-    final retailMargin = _effectivePrice > 0 ? (retailProfit / _effectivePrice) * 100 : 0.0;
-    final reorderPoint = _selectedVariant?.reorderPoint ?? product.defaultVariant?.reorderPoint ?? 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final retailProfit =
+        _effectivePrice > _cost ? _effectivePrice - _cost : 0.0;
+    final retailMargin =
+        _effectivePrice > 0 ? (retailProfit / _effectivePrice) * 100 : 0.0;
+    final reorderPoint =
+        _selectedVariant?.reorderPoint ??
+        product.defaultVariant?.reorderPoint ??
+        0;
     final isLowStock = reorderPoint > 0 && _effectiveStock <= reorderPoint;
 
     if (isCompact) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Column(
           children: [
@@ -892,43 +948,69 @@ class _ProductDetailScreenContentState
                   child: _buildMetricItem(
                     label: 'PRECIO VENTA',
                     value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
-                    subValue: _baseWholesalePrice != null
-                        ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)}'
-                        : null,
+                    subValue:
+                        _baseWholesalePrice != null
+                            ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)}'
+                            : null,
                     valueColor: AppColors.primary,
                   ),
                 ),
-                Container(width: 1, height: 44, color: AppColors.border.withValues(alpha: 0.6)),
+                Container(
+                  width: 1,
+                  height: 44,
+                  color: (isDark ? AppColors.darkBorder : AppColors.border)
+                      .withValues(alpha: 0.6),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricItem(
                     label: 'STOCK TOTAL',
                     value: '$_effectiveStock uds',
-                    subValue: isLowStock ? 'Bajo punto de reorden' : 'Stock óptimo',
-                    valueColor: isLowStock ? AppColors.error : AppColors.success,
+                    subValue:
+                        isLowStock ? 'Bajo punto de reorden' : 'Stock óptimo',
+                    valueColor:
+                        isLowStock ? AppColors.error : AppColors.success,
                   ),
                 ),
               ],
             ),
-            const Divider(height: 18, color: AppColors.border),
+            Divider(
+              height: 18,
+              color: isDark ? AppColors.darkBorder : AppColors.border,
+            ),
             Row(
               children: [
                 Expanded(
                   child: _buildMetricItem(
                     label: 'COSTO ERP',
-                    value: _cost > 0 ? 'S/ ${_cost.toStringAsFixed(2)}' : 'S/ 0.00',
-                    subValue: '${retailMargin.toStringAsFixed(1)}% margen bruto',
-                    valueColor: AppColors.textPrimary,
+                    value:
+                        _cost > 0
+                            ? 'S/ ${_cost.toStringAsFixed(2)}'
+                            : 'S/ 0.00',
+                    subValue:
+                        '${retailMargin.toStringAsFixed(1)}% margen bruto',
+                    valueColor:
+                        isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                   ),
                 ),
-                Container(width: 1, height: 44, color: AppColors.border.withValues(alpha: 0.6)),
+                Container(
+                  width: 1,
+                  height: 44,
+                  color: (isDark ? AppColors.darkBorder : AppColors.border)
+                      .withValues(alpha: 0.6),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricItem(
                     label: 'VALOR INVENTARIO',
                     value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
-                    subValue: reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
-                    valueColor: const Color(0xFF0F172A),
+                    subValue:
+                        reorderPoint > 0
+                            ? 'Mínimo: $reorderPoint u.'
+                            : 'Sin reorden',
+                    valueColor: isDark
+                        ? const Color(0xFFF8FAFC)
+                        : const Color(0xFF0F172A),
                   ),
                 ),
               ],
@@ -941,16 +1023,21 @@ class _ProductDetailScreenContentState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+          width: 1,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         children: [
@@ -959,45 +1046,69 @@ class _ProductDetailScreenContentState
             child: _buildMetricItem(
               label: 'PRECIO DE VENTA',
               value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
-              subValue: _baseWholesalePrice != null
-                  ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)} (Min ${_baseWholesaleMinQty}u)'
-                  : null,
+              subValue:
+                  _baseWholesalePrice != null
+                      ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)} (Min ${_baseWholesaleMinQty}u)'
+                      : null,
               valueColor: AppColors.primary,
             ),
           ),
-          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          Container(
+            width: 1,
+            height: 46,
+            color: (isDark ? AppColors.darkBorder : AppColors.border)
+                .withValues(alpha: 0.7),
+          ),
           const SizedBox(width: 18),
           Expanded(
             flex: 3,
             child: _buildMetricItem(
               label: 'COSTO & RENTABILIDAD',
               value: _cost > 0 ? 'S/ ${_cost.toStringAsFixed(2)}' : 'S/ 0.00',
-              subValue: '${retailMargin.toStringAsFixed(1)}% margen bruto (S/ ${retailProfit.toStringAsFixed(2)})',
-              valueColor: const Color(0xFF0F172A),
-              badgeColor: retailMargin > 20 ? AppColors.success : AppColors.warning,
+              subValue:
+                  '${retailMargin.toStringAsFixed(1)}% margen bruto (S/ ${retailProfit.toStringAsFixed(2)})',
+              valueColor:
+                  isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+              badgeColor:
+                  retailMargin > 20 ? AppColors.success : AppColors.warning,
             ),
           ),
-          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          Container(
+            width: 1,
+            height: 46,
+            color: (isDark ? AppColors.darkBorder : AppColors.border)
+                .withValues(alpha: 0.7),
+          ),
           const SizedBox(width: 18),
           Expanded(
             flex: 3,
             child: _buildMetricItem(
               label: 'STOCK TOTAL DISPONIBLE',
               value: '$_effectiveStock unidades',
-              subValue: isLowStock ? 'Alerta: Bajo punto de reorden' : 'Existencias saludables',
+              subValue:
+                  isLowStock
+                      ? 'Alerta: Bajo punto de reorden'
+                      : 'Existencias saludables',
               valueColor: isLowStock ? AppColors.error : AppColors.success,
               isPill: true,
             ),
           ),
-          Container(width: 1, height: 46, color: AppColors.border.withValues(alpha: 0.7)),
+          Container(
+            width: 1,
+            height: 46,
+            color: (isDark ? AppColors.darkBorder : AppColors.border)
+                .withValues(alpha: 0.7),
+          ),
           const SizedBox(width: 18),
           Expanded(
             flex: 2,
             child: _buildMetricItem(
               label: 'VALORIZACIÓN TOTAL',
               value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
-              subValue: reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
-              valueColor: const Color(0xFF0F172A),
+              subValue:
+                  reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
+              valueColor:
+                  isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
             ),
           ),
         ],
@@ -1044,7 +1155,10 @@ class _ProductDetailScreenContentState
               Container(
                 width: 7,
                 height: 7,
-                decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                ),
               ),
             ],
           ],
@@ -1058,7 +1172,10 @@ class _ProductDetailScreenContentState
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: isPill && valueColor == AppColors.error ? AppColors.error : AppColors.textSecondary,
+              color:
+                  isPill && valueColor == AppColors.error
+                      ? AppColors.error
+                      : AppColors.textSecondary,
             ),
           ),
         ],
@@ -1071,6 +1188,7 @@ class _ProductDetailScreenContentState
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildDesktopLayout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final gallery = _galleryImages;
     final Map<String, dynamic> mergedDetails = Map.from(product.details);
     if (product.brandName != null && product.brandName!.isNotEmpty) {
@@ -1121,10 +1239,12 @@ class _ProductDetailScreenContentState
                             children: [
                               Card(
                                 elevation: 0,
-                                color: Colors.white,
+                                color: isDark ? AppColors.darkSurface : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
-                                  side: const BorderSide(color: AppColors.border),
+                                  side: BorderSide(
+                                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                                  ),
                                 ),
                                 child: Padding(
                                   padding: const EdgeInsets.all(16.0),
@@ -1136,12 +1256,17 @@ class _ProductDetailScreenContentState
                                       selectedIndex: _selectedImageIndex,
                                       onPageChanged: _onGalleryChanged,
                                       variantImageOverrideUrl:
-                                          (_showVariantImage && _selectedVariant != null)
+                                          (_showVariantImage &&
+                                                  _selectedVariant != null)
                                               ? _selectedVariantImageUrl
                                               : null,
                                       variantLabelOverride:
-                                          (_showVariantImage && _selectedVariant != null)
-                                              ? _selectedVariant!.attributeMap.values.join(' - ')
+                                          (_showVariantImage &&
+                                                  _selectedVariant != null)
+                                              ? _selectedVariant!
+                                                  .attributeMap
+                                                  .values
+                                                  .join(' - ')
                                               : null,
                                       fallbackImageUrl: product.primaryImageUrl,
                                     ),
@@ -1187,6 +1312,7 @@ class _ProductDetailScreenContentState
   }
 
   Widget _buildDesktopTabs() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final tabs = [
       (0, 'Variantes (${_variants.length})', Icons.style_outlined),
       (1, 'Almacenes y Lotes', Icons.warehouse_outlined),
@@ -1197,53 +1323,68 @@ class _ProductDetailScreenContentState
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
       ),
       child: Row(
-        children: tabs.map((t) {
-          final isSelected = _desktopSelectedTab == t.$1;
-          return Expanded(
-            child: InkWell(
-              onTap: () => setState(() => _desktopSelectedTab = t.$1),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 9,
-                  horizontal: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : Colors.transparent,
+        children:
+            tabs.map((t) {
+              final isSelected = _desktopSelectedTab == t.$1;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _desktopSelectedTab = t.$1),
                   borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      t.$3,
-                      size: 15,
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 9,
+                      horizontal: 8,
                     ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        t.$2,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                          color: isSelected ? Colors.white : AppColors.textSecondary,
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          t.$3,
+                          size: 15,
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textSecondary,
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            t.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
       ),
     );
   }
@@ -1254,7 +1395,8 @@ class _ProductDetailScreenContentState
       switchInCurve: Curves.easeOutQuad,
       switchOutCurve: Curves.easeInQuad,
       transitionBuilder:
-          (child, animation) => FadeTransition(opacity: animation, child: child),
+          (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
       child: KeyedSubtree(
         key: ValueKey<int>(_desktopSelectedTab),
         child: _buildDesktopSelectedTabBody(mergedDetails),
@@ -1303,9 +1445,7 @@ class _ProductDetailScreenContentState
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProductDescriptionCard(
-              description: product.description ?? '',
-            ),
+            ProductDescriptionCard(description: product.description ?? ''),
             const SizedBox(height: 16),
             ProductReviewsCard(
               averageRating: _averageRating,
@@ -1323,6 +1463,7 @@ class _ProductDetailScreenContentState
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildTabletLayout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final gallery = _galleryImages;
     final Map<String, dynamic> mergedDetails = Map.from(product.details);
     if (product.brandName != null && product.brandName!.isNotEmpty) {
@@ -1360,10 +1501,12 @@ class _ProductDetailScreenContentState
                   children: [
                     Card(
                       elevation: 0,
-                      color: Colors.white,
+                      color: isDark ? AppColors.darkSurface : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(color: AppColors.border),
+                        side: BorderSide(
+                          color: isDark ? AppColors.darkBorder : AppColors.border,
+                        ),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -1418,6 +1561,7 @@ class _ProductDetailScreenContentState
   // ═════════════════════════════════════════════════════════════════════════════
 
   Widget _buildMobileLayout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final gallery = _galleryImages;
     final Map<String, dynamic> mergedDetails = Map.from(product.details);
     if (product.brandName != null && product.brandName!.isNotEmpty) {
@@ -1444,7 +1588,7 @@ class _ProductDetailScreenContentState
             borderRadius: BorderRadius.circular(16),
             child: Container(
               height: 280,
-              color: Colors.white,
+              color: isDark ? AppColors.darkSurface : Colors.white,
               child: ProductGallerySection(
                 images: gallery.toList(),
                 pageController: _pageController,
@@ -1480,37 +1624,56 @@ class _ProductDetailScreenContentState
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: mobileTabs.map((t) {
-                final isSelected = _mobileSelectedTab == t.$1;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    avatar: Icon(
-                      t.$3,
-                      size: 15,
-                      color: isSelected ? Colors.white : AppColors.textSecondary,
-                    ),
-                    label: Text(
-                      t.$2,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                        color: isSelected ? Colors.white : AppColors.textPrimary,
+              children:
+                  mobileTabs.map((t) {
+                    final isSelected = _mobileSelectedTab == t.$1;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        avatar: Icon(
+                          t.$3,
+                          size: 15,
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textSecondary,
+                        ),
+                        label: Text(
+                          t.$2,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight:
+                                isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color:
+                                isSelected
+                                    ? Colors.white
+                                    : isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : AppColors.textPrimary,
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedColor: AppColors.primary,
+                        backgroundColor:
+                            isDark ? AppColors.darkSurface : Colors.white,
+                        side: BorderSide(
+                          color:
+                              isSelected
+                                  ? AppColors.primary
+                                  : isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.border,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        onSelected:
+                            (_) => setState(() => _mobileSelectedTab = t.$1),
                       ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: Colors.white,
-                    side: BorderSide(
-                      color: isSelected ? AppColors.primary : AppColors.border,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    onSelected: (_) => setState(() => _mobileSelectedTab = t.$1),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
           ),
           const SizedBox(height: 14),

@@ -307,25 +307,37 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
 
   /// Dock flotante elegante que emerge solo cuando hay cambios pendientes
   Widget _buildFloatingDock(bool isSaving, bool isDesktop) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       constraints: const BoxConstraints(maxWidth: 520),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+        ),
+        boxShadow: isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                ),
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(
         mainAxisSize: isDesktop ? MainAxisSize.min : MainAxisSize.max,
@@ -352,7 +364,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
+                color: isDark ? const Color(0xFFF8FAFC) : Colors.grey.shade800,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -361,7 +373,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
           TextButton(
             onPressed: isSaving ? null : _discardChanges,
             style: TextButton.styleFrom(
-              foregroundColor: Colors.grey.shade600,
+              foregroundColor: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -529,19 +541,25 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
     String supabaseUrl, {
     required bool isDesktop,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: EdgeInsets.all(isDesktop ? 28 : 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Form(
         key: _formKey,
@@ -568,19 +586,19 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Datos del Negocio',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
-                          color: AppColors.textPrimary,
+                          color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Esta información aparece en comprobantes, reportes y la vista del cliente.',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
+                          color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
                           fontSize: 12,
                         ),
                       ),
@@ -590,7 +608,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            const Divider(height: 1),
+            Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.divider),
             const SizedBox(height: 24),
 
             // Campos del Formulario
@@ -795,9 +813,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: isDark ? AppColors.darkSurfaceElevated : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade200),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,9 +830,9 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                             width: 60,
                             height: 60,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark ? AppColors.darkSurface : Colors.white,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.grey.shade300),
+                              border: Border.all(color: isDark ? AppColors.darkBorder : Colors.grey.shade300),
                             ),
                             clipBehavior: Clip.antiAlias,
                             child: logoUrl.isNotEmpty
@@ -845,12 +863,12 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Logo Comercial',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black87,
+                                color: isDark ? const Color(0xFFF8FAFC) : Colors.black87,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -858,7 +876,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                               'Recomendado: PNG o WebP cuadrado con fondo transparente.',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
                               ),
                             ),
                           ],
@@ -898,7 +916,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                             _showManualUrlInput
                                 ? Icons.arrow_drop_up_rounded
                                 : Icons.arrow_drop_down_rounded,
-                            color: Colors.grey.shade600,
+                            color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
                             size: 20,
                           ),
                           Text(
@@ -907,7 +925,7 @@ class _BusinessInfoScreenState extends State<BusinessInfoScreen> {
                                 : 'Ingresar URL pública manualmente',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade700,
+                              color: isDark ? const Color(0xFFCBD5E1) : Colors.grey.shade700,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1015,18 +1033,23 @@ class _BusinessPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1035,39 +1058,43 @@ class _BusinessPreviewCard extends StatelessWidget {
           // Titular de la vista previa
           Row(
             children: [
-              const Text(
+              Text(
                 'Identidad de Marca',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
-                  color: AppColors.textPrimary,
+                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
+                  color: isDark
+                      ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                      : const Color(0xFFECFDF5),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: const Color(0xFFA7F3D0),
+                    color: isDark
+                        ? const Color(0xFF059669).withValues(alpha: 0.4)
+                        : const Color(0xFFA7F3D0),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.visibility_rounded,
                       size: 12,
-                      color: Color(0xFF059669),
+                      color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
                       'En vivo',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF059669),
+                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                       ),
                     ),
                   ],
@@ -1319,21 +1346,26 @@ class _ConnectionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isConnected = supabaseUrl.isNotEmpty && supabaseUrl != 'Desconocida';
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+        ),
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1343,22 +1375,28 @@ class _ConnectionSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.dns_rounded,
-                  color: AppColors.textPrimary,
+                  color: isDark
+                      ? const Color(0xFFF8FAFC)
+                      : AppColors.textPrimary,
                   size: 18,
                 ),
               ),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Infraestructura',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
-                  color: AppColors.textPrimary,
+                  color: isDark
+                      ? const Color(0xFFF8FAFC)
+                      : AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
@@ -1366,8 +1404,12 @@ class _ConnectionSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isConnected
-                      ? const Color(0xFFECFDF5)
-                      : Colors.grey.shade100,
+                      ? (isDark
+                          ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                          : const Color(0xFFECFDF5))
+                      : (isDark
+                          ? const Color(0xFF1E293B)
+                          : Colors.grey.shade100),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(
@@ -1379,7 +1421,9 @@ class _ConnectionSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isConnected
                             ? const Color(0xFF10B981)
-                            : Colors.grey.shade500,
+                            : (isDark
+                                ? const Color(0xFF64748B)
+                                : Colors.grey.shade500),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -1390,8 +1434,12 @@ class _ConnectionSection extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isConnected
-                            ? const Color(0xFF065F46)
-                            : Colors.grey.shade700,
+                            ? (isDark
+                                ? const Color(0xFF34D399)
+                                : const Color(0xFF065F46))
+                            : (isDark
+                                ? const Color(0xFF94A3B8)
+                                : Colors.grey.shade700),
                       ),
                     ),
                   ],
@@ -1405,16 +1453,20 @@ class _ConnectionSection extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.grey.shade500,
+              color: isDark
+                  ? const Color(0xFF94A3B8)
+                  : Colors.grey.shade500,
             ),
           ),
           const SizedBox(height: 4),
           SelectableText(
             supabaseUrl,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: isDark
+                  ? const Color(0xFFF8FAFC)
+                  : AppColors.textPrimary,
               fontFamily: 'monospace',
             ),
           ),
@@ -1426,8 +1478,12 @@ class _ConnectionSection extends StatelessWidget {
               icon: const Icon(Icons.sync_alt_rounded, size: 16),
               label: const Text('Cambiar Servidor (Multi-Tenant)'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey.shade700,
-                side: BorderSide(color: Colors.grey.shade300),
+                foregroundColor: isDark
+                    ? const Color(0xFFCBD5E1)
+                    : Colors.grey.shade700,
+                side: BorderSide(
+                  color: isDark ? AppColors.darkBorder : Colors.grey.shade300,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1550,7 +1606,10 @@ class _FeatureToggleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = isEnabled ? Colors.white : Colors.grey.shade50;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = isEnabled
+        ? (isDark ? AppColors.darkSurface : Colors.white)
+        : (isDark ? AppColors.darkSurfaceElevated : Colors.grey.shade50);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1560,7 +1619,7 @@ class _FeatureToggleCard extends StatelessWidget {
         border: Border.all(
           color: (value && isEnabled)
               ? AppColors.primary.withValues(alpha: 0.3)
-              : Colors.grey.shade200,
+              : (isDark ? AppColors.darkBorder : Colors.grey.shade200),
         ),
       ),
       child: Row(
@@ -1568,12 +1627,16 @@ class _FeatureToggleCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isEnabled ? iconBackground : Colors.grey.shade100,
+              color: isEnabled
+                  ? (isDark ? iconColor.withValues(alpha: 0.15) : iconBackground)
+                  : (isDark ? const Color(0xFF1E293B) : Colors.grey.shade100),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
-              color: isEnabled ? iconColor : Colors.grey.shade400,
+              color: isEnabled
+                  ? iconColor
+                  : (isDark ? const Color(0xFF64748B) : Colors.grey.shade400),
               size: 20,
             ),
           ),
@@ -1587,7 +1650,9 @@ class _FeatureToggleCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: isEnabled ? Colors.black87 : Colors.grey.shade500,
+                    color: isEnabled
+                        ? (isDark ? const Color(0xFFF8FAFC) : Colors.black87)
+                        : (isDark ? const Color(0xFF64748B) : Colors.grey.shade500),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -1595,7 +1660,9 @@ class _FeatureToggleCard extends StatelessWidget {
                   description,
                   style: TextStyle(
                     fontSize: 12,
-                    color: isEnabled ? Colors.grey.shade600 : Colors.grey.shade400,
+                    color: isEnabled
+                        ? (isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600)
+                        : (isDark ? const Color(0xFF64748B) : Colors.grey.shade400),
                   ),
                 ),
               ],
@@ -1619,6 +1686,7 @@ class _BusinessInfoSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Row(
@@ -1628,30 +1696,32 @@ class _BusinessInfoSkeleton extends StatelessWidget {
             flex: 4,
             child: Column(
               children: [
-                _buildBox(height: 240),
+                _buildBox(isDark, height: 240),
                 const SizedBox(height: 16),
-                _buildBox(height: 140),
+                _buildBox(isDark, height: 140),
               ],
             ),
           ),
           const SizedBox(width: 24),
           Expanded(
             flex: 6,
-            child: _buildBox(height: 480),
+            child: _buildBox(isDark, height: 480),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBox({required double height}) {
+  Widget _buildBox(bool isDark, {required double height}) {
     return Container(
       width: double.infinity,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
+        ),
       ),
     );
   }

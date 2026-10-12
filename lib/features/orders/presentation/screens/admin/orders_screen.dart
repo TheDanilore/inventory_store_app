@@ -512,14 +512,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
     OrdersState state,
     OrdersCubit cubit,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isFiltered = state.statusFilter != 'ALL';
 
     return PopupMenuButton<String>(
       initialValue: state.statusFilter,
       offset: const Offset(0, 44),
+      color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
       ),
       onSelected: (val) => cubit.setStatusFilter(val),
       itemBuilder:
@@ -617,11 +621,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
         decoration: BoxDecoration(
           color:
               isFiltered
-                  ? AppColors.tealLight.withValues(alpha: 0.7)
-                  : Colors.white,
+                  ? (isDark
+                      ? AppColors.tealDark.withValues(alpha: 0.3)
+                      : AppColors.tealLight.withValues(alpha: 0.7))
+                  : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFCBD5E1),
+            color:
+                isFiltered
+                    ? (isDark ? const Color(0xFF2DD4BF) : AppColors.teal)
+                    : (isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFCBD5E1)),
             width: isFiltered ? 1.5 : 1,
           ),
         ),
@@ -631,7 +642,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
             Icon(
               Icons.filter_list_rounded,
               size: 15,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+              color:
+                  isFiltered
+                      ? (isDark ? const Color(0xFF2DD4BF) : AppColors.teal)
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
             const SizedBox(width: 6),
             Text(
@@ -639,14 +655,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
+                color:
+                    isFiltered
+                        ? (isDark
+                            ? const Color(0xFF2DD4BF)
+                            : AppColors.tealDark)
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 4),
             Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 16,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
+              color:
+                  isFiltered
+                      ? (isDark ? const Color(0xFF2DD4BF) : AppColors.teal)
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
           ],
         ),
@@ -659,17 +687,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
     OrdersState state,
     OrdersCubit cubit,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isPaymentFiltered = state.paymentStatusFilter != 'ALL';
     final bool isCreditFiltered = state.paymentStatusFilter == 'CREDIT';
     final Color activePaymentColor =
-        isCreditFiltered ? AppColors.warning : AppColors.teal;
+        isCreditFiltered
+            ? AppColors.warning
+            : (isDark ? const Color(0xFF2DD4BF) : AppColors.teal);
 
     return PopupMenuButton<String>(
       initialValue: state.paymentStatusFilter,
       offset: const Offset(0, 44),
+      color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
       ),
       onSelected: (val) => cubit.setPaymentStatusFilter(val),
       itemBuilder:
@@ -758,14 +792,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
         decoration: BoxDecoration(
           color:
               isPaymentFiltered
-                  ? activePaymentColor.withValues(alpha: 0.12)
-                  : Colors.white,
+                  ? activePaymentColor.withValues(alpha: isDark ? 0.22 : 0.12)
+                  : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color:
                 isPaymentFiltered
                     ? activePaymentColor
-                    : const Color(0xFFCBD5E1),
+                    : (isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFCBD5E1)),
             width: isPaymentFiltered ? 1.5 : 1,
           ),
         ),
@@ -780,7 +816,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
               color:
                   isPaymentFiltered
                       ? activePaymentColor
-                      : AppColors.textSecondary,
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
             const SizedBox(width: 6),
             Text(
@@ -792,7 +830,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 color:
                     isPaymentFiltered
                         ? activePaymentColor
-                        : AppColors.textPrimary,
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 4),
@@ -802,7 +842,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
               color:
                   isPaymentFiltered
                       ? activePaymentColor
-                      : AppColors.textSecondary,
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
           ],
         ),
@@ -1121,31 +1163,45 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.03),
-          ),
-          child: AdminPageBlocks(
-            currentPage: state.currentPage,
-            totalPages: state.totalPages,
-            onPageChanged: (page) {
-              cubit.goToPage(page);
-              if (_scrollController.hasClients) {
-                _scrollController.animateTo(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOutCubic,
-                );
-              }
-            },
-            totalItems: state.totalRecords,
-            itemsPerPage: OrdersState.pageSize,
-            itemName: 'pedidos',
-          ),
+        child: Builder(
+          builder: (ctx) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? AppColors.darkSurface
+                        : Theme.of(ctx).colorScheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
+                boxShadow:
+                    isDark
+                        ? AppColors.darkCardShadow(opacity: 0.1)
+                        : AppColors.cardShadow(opacity: 0.03),
+              ),
+              child: AdminPageBlocks(
+                currentPage: state.currentPage,
+                totalPages: state.totalPages,
+                onPageChanged: (page) {
+                  cubit.goToPage(page);
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+                totalItems: state.totalRecords,
+                itemsPerPage: state.pageSize,
+                onItemsPerPageChanged: (size) => cubit.setPageSize(size),
+                itemName: 'pedidos',
+              ),
+            );
+          },
         ),
       ),
     );

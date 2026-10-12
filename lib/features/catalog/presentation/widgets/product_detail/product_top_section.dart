@@ -23,12 +23,13 @@ class ProductTopSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final (statusLabel, statusColor, statusBg) =
         !isActive
-            ? ('No disponible', AppColors.textSecondary, AppColors.slateLight)
+            ? ('No disponible', isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary, isDark ? AppColors.darkSurfaceElevated : AppColors.slateLight)
             : effectiveStock > 0
-            ? ('En stock', AppColors.success, AppColors.successLight)
-            : ('Agotado', AppColors.danger, AppColors.dangerLight);
+            ? ('En stock', AppColors.success, isDark ? AppColors.success.withValues(alpha: 0.15) : AppColors.successLight)
+            : ('Agotado', AppColors.danger, isDark ? AppColors.danger.withValues(alpha: 0.15) : AppColors.dangerLight);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,9 +87,9 @@ class ProductTopSection extends StatelessWidget {
             if (sku != null && sku!.isNotEmpty)
               Text(
                 'SKU $sku',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: AppColors.textMuted,
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
                 ),
               ),
           ],
@@ -96,10 +97,10 @@ class ProductTopSection extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           name,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
             letterSpacing: -0.4,
             height: 1.15,
           ),
@@ -121,18 +122,18 @@ class ProductTopSection extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 averageRating.toStringAsFixed(1),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
                 '($totalReviews reseñas)',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textMuted,
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
                 ),
               ),
             ],

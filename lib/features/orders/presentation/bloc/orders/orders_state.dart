@@ -15,6 +15,7 @@ class OrdersState extends Equatable {
   final DateTime? endDate;
   final String searchQuery;
   final int currentPage;
+  final int pageSize;
   final String? customerIdFilter;
   final String? actionError;
 
@@ -33,6 +34,7 @@ class OrdersState extends Equatable {
     this.endDate,
     this.searchQuery = '',
     this.currentPage = 0,
+    this.pageSize = 15,
     this.customerIdFilter,
   });
 
@@ -54,6 +56,7 @@ class OrdersState extends Equatable {
     bool clearDates = false,
     String? searchQuery,
     int? currentPage,
+    int? pageSize,
     String? customerIdFilter,
     bool clearCustomerId = false,
   }) {
@@ -75,6 +78,7 @@ class OrdersState extends Equatable {
       endDate: clearDates ? null : (endDate ?? this.endDate),
       searchQuery: searchQuery ?? this.searchQuery,
       currentPage: currentPage ?? this.currentPage,
+      pageSize: pageSize ?? this.pageSize,
       customerIdFilter:
           clearCustomerId ? null : (customerIdFilter ?? this.customerIdFilter),
     );
@@ -96,10 +100,11 @@ class OrdersState extends Equatable {
     endDate,
     searchQuery,
     currentPage,
+    pageSize,
     customerIdFilter,
   ];
 
-  static const int pageSize = 24;
+  static const int defaultPageSize = 15;
 
   int get totalPages =>
       totalRecords == 0 ? 1 : (totalRecords / pageSize).ceil();

@@ -49,20 +49,24 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     if (reset) {
       if (state.orders.isEmpty) {
-        emit(state.copyWith(
-          currentPage: 0,
-          orders: const [],
-          totalRecords: 0,
-          isLoading: true,
-          isBackgroundLoading: false,
-          errorMessage: '',
-        ));
+        emit(
+          state.copyWith(
+            currentPage: 0,
+            orders: const [],
+            totalRecords: 0,
+            isLoading: true,
+            isBackgroundLoading: false,
+            errorMessage: '',
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          currentPage: 0,
-          isBackgroundLoading: true,
-          errorMessage: '',
-        ));
+        emit(
+          state.copyWith(
+            currentPage: 0,
+            isBackgroundLoading: true,
+            errorMessage: '',
+          ),
+        );
       }
     } else if (background) {
       emit(state.copyWith(isBackgroundLoading: true, errorMessage: ''));
@@ -70,7 +74,7 @@ class OrdersCubit extends Cubit<OrdersState> {
       emit(state.copyWith(isLoading: true, errorMessage: ''));
     }
 
-    final startRow = state.currentPage * OrdersState.pageSize;
+    final startRow = state.currentPage * state.pageSize;
 
     final result = await _getFilteredOrdersUc(
       GetFilteredOrdersParams(
@@ -80,7 +84,7 @@ class OrdersCubit extends Cubit<OrdersState> {
         startDate: state.startDate,
         endDate: state.endDate,
         searchQuery: state.searchQuery,
-        limit: OrdersState.pageSize,
+        limit: state.pageSize,
         offset: startRow,
         forceRefresh: forceRefresh,
       ),
@@ -130,6 +134,12 @@ class OrdersCubit extends Cubit<OrdersState> {
     }
     emit(state.copyWith(currentPage: page));
     loadOrders();
+  }
+
+  void setPageSize(int size) {
+    if (state.pageSize == size) return;
+    emit(state.copyWith(pageSize: size, currentPage: 0));
+    loadOrders(reset: true);
   }
 
   void setStatusFilter(String val) {

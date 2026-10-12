@@ -289,32 +289,49 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveAccent =
         widget.isAlert
             ? AppColors.danger
-            : (widget.accentColor ?? AppColors.primary);
+            : (widget.accentColor ??
+                (isDark ? const Color(0xFF60A5FA) : AppColors.primary));
 
     final effectiveGradient =
-        widget.gradientColors ??
-        [Colors.white, effectiveAccent.withValues(alpha: 0.04)];
+        isDark
+            ? [
+              AppColors.darkSurfaceElevated,
+              effectiveAccent.withValues(alpha: 0.12),
+            ]
+            : (widget.gradientColors ??
+                [Colors.white, effectiveAccent.withValues(alpha: 0.04)]);
 
     final effectiveBorder =
-        widget.isAlert
-            ? AppColors.danger.withValues(alpha: 0.35)
-            : (widget.borderColor ?? effectiveAccent.withValues(alpha: 0.22));
+        isDark
+            ? (widget.isAlert
+                ? AppColors.danger.withValues(alpha: 0.5)
+                : AppColors.darkBorder)
+            : (widget.isAlert
+                ? AppColors.danger.withValues(alpha: 0.35)
+                : (widget.borderColor ??
+                    effectiveAccent.withValues(alpha: 0.22)));
 
     final effectiveGlow =
-        widget.glowColor ?? effectiveAccent.withValues(alpha: 0.18);
+        widget.glowColor ??
+        effectiveAccent.withValues(alpha: isDark ? 0.28 : 0.18);
 
     final effectiveValueColor =
         widget.isAlert
             ? AppColors.danger
-            : (widget.valueColor ?? AppColors.textPrimary);
+            : (widget.valueColor ??
+                (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary));
 
     final effectiveSubtitleColor =
         widget.isAlert
             ? AppColors.danger.withValues(alpha: 0.85)
-            : (widget.subtitleColor ?? AppColors.textSecondary);
+            : (widget.subtitleColor ??
+                (isDark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textSecondary));
 
     final isInteractive = widget.onTap != null;
 

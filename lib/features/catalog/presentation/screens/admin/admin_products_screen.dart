@@ -851,65 +851,48 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
                               // ── 2. Toolbar Pro Unificado (Fila Única Desktop & 44dp Mobile) ──
                               SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: EdgeInsets.fromLTRB(
-                                    isMobile ? 16.0 : 24.0,
-                                    8.0,
-                                    isMobile ? 16.0 : 24.0,
-                                    14.0,
-                                  ),
-                                  child: AdminProToolbar(
-                                    isDesktop: !isMobile,
-                                    searchController: _searchCtrl,
-                                    searchFocusNode: _searchFocusNode,
-                                    searchHint:
-                                        state.searchByIngredient
-                                            ? 'Buscar por principio activo / fórmula farmacéutica...'
-                                            : 'Buscar por título, SKU, código de barras o etiqueta...',
-                                    onSearchChanged: cubit.setSearchTerm,
-                                    onClearSearch: () {
-                                      _searchCtrl.clear();
-                                      cubit.clearSearch();
-                                    },
-                                    onSearchSubmitted:
-                                        (val) => cubit.submitSearch(val),
-                                    searchKeyHint: '/',
-                                    filterWidgets: [
-                                      _buildCategoryDropdown(
-                                        context,
-                                        state,
-                                        cubit,
-                                      ),
-                                      _buildStatusDropdown(
-                                        context,
-                                        state,
-                                        cubit,
-                                      ),
-                                      _buildStockDropdown(
-                                        context,
-                                        state,
-                                        cubit,
-                                      ),
-                                      _buildSortDropdown(context, state, cubit),
-                                    ],
-                                    viewToggleConfig: AdminProViewToggleConfig(
-                                      isTableView: _isTableView,
-                                      onToggleTableView:
-                                          (val) => setState(
-                                            () => _isTableView = val,
-                                          ),
-                                    ),
-                                    onRefresh: () => cubit.refreshProducts(),
-                                    refreshTooltip:
-                                        'Recargar catálogo (Atajo: R)',
-                                    onOpenMobileFilters:
-                                        () => ProductsMobileFiltersSheet.show(
-                                          context,
-                                          cubit,
-                                        ),
-                                    activeFiltersCount: _countActiveFilters(
+                                child: AdminProToolbar(
+                                  isDesktop: !isMobile,
+                                  searchController: _searchCtrl,
+                                  searchFocusNode: _searchFocusNode,
+                                  searchHint:
+                                      state.searchByIngredient
+                                          ? 'Buscar por principio activo / fórmula farmacéutica...'
+                                          : 'Buscar por título, SKU, código de barras o etiqueta...',
+                                  onSearchChanged: cubit.setSearchTerm,
+                                  onClearSearch: () {
+                                    _searchCtrl.clear();
+                                    cubit.clearSearch();
+                                  },
+                                  onSearchSubmitted:
+                                      (val) => cubit.submitSearch(val),
+                                  searchKeyHint: '/',
+                                  filterWidgets: [
+                                    _buildCategoryDropdown(
+                                      context,
                                       state,
+                                      cubit,
                                     ),
+                                    _buildStatusDropdown(context, state, cubit),
+                                    _buildStockDropdown(context, state, cubit),
+                                    _buildSortDropdown(context, state, cubit),
+                                  ],
+                                  viewToggleConfig: AdminProViewToggleConfig(
+                                    isTableView: _isTableView,
+                                    onToggleTableView:
+                                        (val) =>
+                                            setState(() => _isTableView = val),
+                                  ),
+                                  onRefresh: () => cubit.refreshProducts(),
+                                  refreshTooltip:
+                                      'Recargar catálogo (Atajo: R)',
+                                  onOpenMobileFilters:
+                                      () => ProductsMobileFiltersSheet.show(
+                                        context,
+                                        cubit,
+                                      ),
+                                  activeFiltersCount: _countActiveFilters(
+                                    state,
                                   ),
                                 ),
                               ),

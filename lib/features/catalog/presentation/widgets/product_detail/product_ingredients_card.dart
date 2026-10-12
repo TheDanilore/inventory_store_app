@@ -8,17 +8,24 @@ class ProductIngredientsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+        boxShadow:
+            isDark
+                ? []
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,7 +38,10 @@ class ProductIngredientsCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
+                    color:
+                        isDark
+                            ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                            : const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -41,12 +51,15 @@ class ProductIngredientsCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Ingredientes Activos',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                   ),
                 ),
                 const Spacer(),
@@ -56,7 +69,10 @@ class ProductIngredientsCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEF2FF),
+                    color:
+                        isDark
+                            ? const Color(0xFF6366F1).withValues(alpha: 0.2)
+                            : const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -71,7 +87,12 @@ class ProductIngredientsCard extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: isDark ? AppColors.darkBorder : AppColors.divider,
+          ),
           const SizedBox(height: 8),
           ListView.separated(
             shrinkWrap: true,
@@ -97,9 +118,16 @@ class ProductIngredientsCard extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FF),
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF8F9FF),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E7FF), width: 1),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE0E7FF),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,10 +153,13 @@ class ProductIngredientsCard extends StatelessWidget {
                         children: [
                           Text(
                             _titleCase(name),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : AppColors.textPrimary,
                             ),
                           ),
                           if (description != null &&

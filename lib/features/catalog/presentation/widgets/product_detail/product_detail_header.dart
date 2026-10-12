@@ -55,12 +55,18 @@ class ProductDetailHeader extends StatelessWidget {
             : effectiveStock > 0
             ? 'En Stock ($effectiveStock unds)'
             : 'Agotado';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -91,14 +97,14 @@ class ProductDetailHeader extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 7,
-                            height: 7,
+                            width: 6,
+                            height: 6,
                             decoration: BoxDecoration(
                               color: statusColor,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: statusColor.withValues(alpha: 0.4),
+                                  color: statusColor.withValues(alpha: 0.5),
                                   blurRadius: 4,
                                   spreadRadius: 1,
                                 ),
@@ -124,25 +130,37 @@ class ProductDetailHeader extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.slateLight.withValues(alpha: 0.6),
+                        color:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.slateLight.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(
+                          color:
+                              isDark ? AppColors.darkBorder : AppColors.border,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.inventory_2_outlined,
                             size: 12,
-                            color: AppColors.textSecondary,
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _humanizeProductType(product.productType),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textSecondary,
                               letterSpacing: 0.3,
                             ),
                           ),
@@ -156,10 +174,13 @@ class ProductDetailHeader extends StatelessWidget {
                 // Row 2: Big Product Name
                 Text(
                   product.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                     letterSpacing: -0.6,
                     height: 1.15,
                   ),
@@ -195,7 +216,9 @@ class ProductDetailHeader extends StatelessWidget {
                           Clipboard.setData(ClipboardData(text: sku!));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('SKU "$sku" copiado al portapapeles'),
+                              content: Text(
+                                'SKU "$sku" copiado al portapapeles',
+                              ),
                               duration: const Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                               width: 320,
@@ -240,8 +263,13 @@ class ProductDetailHeader extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onExportPdf,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.border),
+                    foregroundColor:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
+                    side: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
@@ -249,7 +277,8 @@ class ProductDetailHeader extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    backgroundColor: Colors.white,
+                    backgroundColor:
+                        isDark ? AppColors.darkSurface : Colors.white,
                   ),
                   icon: const Icon(
                     Icons.picture_as_pdf_outlined,
@@ -259,15 +288,19 @@ class ProductDetailHeader extends StatelessWidget {
                   label: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Exportar PDF',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
+                          color:
+                              isDark
+                                  ? const Color(0xFFF8FAFC)
+                                  : AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _buildKbdBadge('Alt + P'),
+                      _buildKbdBadge('Alt + P', isDark: isDark),
                     ],
                   ),
                 ),
@@ -367,9 +400,18 @@ class ProductDetailHeader extends StatelessWidget {
   }
 
   Widget _buildMobileHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      color: Colors.white,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -383,7 +425,11 @@ class ProductDetailHeader extends StatelessWidget {
                     context.go('/');
                   }
                 },
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: isDark ? const Color(0xFFF8FAFC) : null,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -393,10 +439,13 @@ class ProductDetailHeader extends StatelessWidget {
                   product.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -493,9 +542,7 @@ class ProductDetailHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.25)
-                  : AppColors.border,
+              isDark ? Colors.white.withValues(alpha: 0.25) : AppColors.border,
         ),
       ),
       child: Text(

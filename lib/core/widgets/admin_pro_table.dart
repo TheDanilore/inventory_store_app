@@ -63,7 +63,7 @@ class AdminTablePaginationConfig {
     required this.totalItems,
     required this.onPageChanged,
     required this.onPageSizeChanged,
-    this.pageSizeOptions = const [10, 25, 50, 100],
+    this.pageSizeOptions = const [15, 25, 50, 100],
   });
 
   int get totalPages =>
@@ -207,16 +207,19 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     if (key == LogicalKeyboardKey.arrowDown) {
       setState(() {
         _focusedRowIndex =
-            _focusedRowIndex == -1 ? 0 : (_focusedRowIndex + 1).clamp(0, count - 1);
+            _focusedRowIndex == -1
+                ? 0
+                : (_focusedRowIndex + 1).clamp(0, count - 1);
       });
       return KeyEventResult.handled;
     }
 
     if (key == LogicalKeyboardKey.arrowUp) {
       setState(() {
-        _focusedRowIndex = _focusedRowIndex <= 0
-            ? 0
-            : (_focusedRowIndex - 1).clamp(0, count - 1);
+        _focusedRowIndex =
+            _focusedRowIndex <= 0
+                ? 0
+                : (_focusedRowIndex - 1).clamp(0, count - 1);
       });
       return KeyEventResult.handled;
     }
@@ -276,6 +279,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
       return _buildMobileCardLayout();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     // 4. Modo Desktop & Tablet (Tabla Pro de Alta Densidad con Stack para barra flotante)
     return Stack(
       children: [
@@ -283,10 +288,16 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           padding: widget.margin,
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: isDark ? AppColors.darkSurface : AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border, width: 1.2),
-              boxShadow: AppColors.cardShadow(opacity: 0.04),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+                width: 1.2,
+              ),
+              boxShadow:
+                  isDark
+                      ? AppColors.darkCardShadow(opacity: 0.15)
+                      : AppColors.cardShadow(opacity: 0.04),
             ),
             clipBehavior: Clip.antiAlias,
             child: Focus(
@@ -316,7 +327,10 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                             width: tableWidth,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [_buildTableHeader(), _buildTableRows()],
+                              children: [
+                                _buildTableHeader(),
+                                _buildTableRows(),
+                              ],
                             ),
                           );
                         },
@@ -349,11 +363,17 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         !allSelected &&
         currentPageIds.any((id) => widget.selectedIds.contains(id));
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC), // Slate 50 / Surface Variant
-        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -383,6 +403,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   }
 
   Widget _buildHeaderCell(AdminTableColumn<T> col) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSorted = widget.sortColumnId == col.id;
     final isSortable = col.isSortable && widget.onSort != null;
 
@@ -400,8 +421,12 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                   fontWeight: FontWeight.w800,
                   color:
                       isSorted
-                          ? AppColors.primary
-                          : const Color(0xFF334155), // Slate-700 (WCAG AAA)
+                          ? (isDark
+                              ? const Color(0xFF60A5FA)
+                              : AppColors.primary)
+                          : (isDark
+                              ? AppColors.darkTextSecondary
+                              : const Color(0xFF334155)),
                   letterSpacing: 0.5,
                 ),
                 maxLines: 1,
@@ -416,7 +441,12 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
             child: Icon(
               isSorted ? Icons.arrow_upward_rounded : Icons.unfold_more_rounded,
               size: 14,
-              color: isSorted ? AppColors.primary : const Color(0xFF94A3B8),
+              color:
+                  isSorted
+                      ? (isDark ? const Color(0xFF60A5FA) : AppColors.primary)
+                      : (isDark
+                          ? AppColors.darkTextMuted
+                          : const Color(0xFF94A3B8)),
             ),
           ),
         ],
@@ -457,11 +487,16 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
   // ── FILAS DE LA TABLA (ROWS) ───────────────────────────────────────────────
   Widget _buildTableRows() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         for (int i = 0; i < widget.items.length; i++) ...[
           if (i > 0)
-            const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
+            ),
           _buildTableRow(widget.items[i], index: i),
         ],
       ],
@@ -469,6 +504,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   }
 
   Widget _buildTableRow(T item, {required int index}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final id = widget.itemId(item);
     final isSelected = widget.selectedIds.contains(id);
     final isHovered = _hoveredItemId == id;
@@ -477,19 +513,27 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
     final rowColor =
         isSelected
-            ? AppColors.primary.withValues(alpha: 0.06)
-            : (isHighlighted ? const Color(0xFFF1F5F9) : Colors.white);
+            ? (isDark
+                ? const Color(0xFF2563EB).withValues(alpha: 0.18)
+                : AppColors.primary.withValues(alpha: 0.06))
+            : (isHighlighted
+                ? (isDark
+                    ? AppColors.darkSurfaceHighlight
+                    : const Color(0xFFF1F5F9))
+                : (isDark ? AppColors.darkSurface : Colors.white));
 
     // Subtle shadow on hover/keyboard focus (like Linear/Stripe row lift)
-    final rowShadow = isHighlighted && !isSelected
-        ? [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 1),
-            ),
-          ]
-        : <BoxShadow>[];
+    final rowShadow =
+        isHighlighted && !isSelected
+            ? [
+              BoxShadow(
+                color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                    .withValues(alpha: isDark ? 0.2 : 0.06),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
+              ),
+            ]
+            : <BoxShadow>[];
 
     return MouseRegion(
       cursor:
@@ -514,17 +558,26 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
             boxShadow: rowShadow,
             border:
                 isSelected
-                    ? const Border(
-                      left: BorderSide(color: AppColors.primary, width: 3.5),
+                    ? Border(
+                      left: BorderSide(
+                        color:
+                            isDark
+                                ? const Color(0xFF3B82F6)
+                                : AppColors.primary,
+                        width: 3.5,
+                      ),
                     )
                     : isFocused && !isSelected
-                        ? const Border(
-                          left: BorderSide(
-                            color: Color(0xFF94A3B8),
-                            width: 2,
-                          ),
-                        )
-                        : null,
+                    ? Border(
+                      left: BorderSide(
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF94A3B8),
+                        width: 2,
+                      ),
+                    )
+                    : null,
           ),
           child: Row(
             children: [
@@ -534,12 +587,16 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                   width: 32,
                   child: Checkbox(
                     value: isSelected,
-                    activeColor: AppColors.primary,
+                    activeColor:
+                        isDark ? const Color(0xFF3B82F6) : AppColors.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    side: const BorderSide(
-                      color: Color(0xFFCBD5E1),
+                    side: BorderSide(
+                      color:
+                          isDark
+                              ? AppColors.darkBorderSubtle
+                              : const Color(0xFFCBD5E1),
                       width: 1.5,
                     ),
                     onChanged: (val) => _toggleSelectItem(id, val ?? false),
@@ -573,12 +630,18 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   // ── PIE DE TABLA CON CONTROLES DE PAGINACIÓN (FOOTER) ─────────────────────
   Widget _buildTableFooter() {
     final config = widget.paginationConfig!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -586,29 +649,52 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Mostrar',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(
+                  fontSize: 12,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
                 height: 30,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? AppColors.darkBorderSubtle
+                            : const Color(0xFFCBD5E1),
+                  ),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
                     value: config.pageSize,
+                    dropdownColor:
+                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
                     isDense: true,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                     ),
-                    icon: const Icon(Icons.arrow_drop_down, size: 18),
+                    icon: Icon(
+                      Icons.arrow_drop_down,
+                      size: 18,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textPrimary,
+                    ),
                     items:
                         config.pageSizeOptions
                             .map(
@@ -629,9 +715,12 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               const SizedBox(width: 8),
               Text(
                 'por pág. • Viendo ${config.fromItem} - ${config.toItem} de ${config.totalItems}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -657,9 +746,18 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                     horizontal: 10,
                     vertical: 6,
                   ),
-                  foregroundColor: AppColors.textPrimary,
-                  disabledForegroundColor: AppColors.textMuted,
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  foregroundColor:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
+                  disabledForegroundColor:
+                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  side: BorderSide(
+                    color:
+                        isDark
+                            ? AppColors.darkBorderSubtle
+                            : const Color(0xFFCBD5E1),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -669,16 +767,24 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? AppColors.darkBorderSubtle
+                            : const Color(0xFFE2E8F0),
+                  ),
                 ),
                 child: Text(
                   '${config.currentPage} / ${config.totalPages}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -696,9 +802,18 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                     horizontal: 10,
                     vertical: 6,
                   ),
-                  foregroundColor: AppColors.textPrimary,
-                  disabledForegroundColor: AppColors.textMuted,
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  foregroundColor:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
+                  disabledForegroundColor:
+                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  side: BorderSide(
+                    color:
+                        isDark
+                            ? AppColors.darkBorderSubtle
+                            : const Color(0xFFCBD5E1),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),

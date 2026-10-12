@@ -9,6 +9,7 @@ class ProductAvailabilityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = context.watch<ProductDetailCubit>().state;
     final cubit = context.read<ProductDetailCubit>();
     if (!cubit.isAdmin) return const SizedBox.shrink();
@@ -40,14 +41,17 @@ class ProductAvailabilityCard extends StatelessWidget {
       color: Colors.transparent,
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: AppColors.card(),
+        decoration: AppColors.cardAdaptive(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _CardHeader(
+            _CardHeader(
               icon: Icons.warehouse_rounded,
-              iconColor: Color(0xFF0D9488),
-              iconBg: Color(0xFFCCFBF1),
+              iconColor: const Color(0xFF0D9488),
+              iconBg:
+                  isDark
+                      ? const Color(0xFF134E4A).withValues(alpha: 0.4)
+                      : const Color(0xFFCCFBF1),
               title: 'Stock por almacén',
             ),
             const SizedBox(height: 14),
@@ -59,9 +63,12 @@ class ProductAvailabilityCard extends StatelessWidget {
                 ),
               )
             else if (displayStocks.isEmpty)
-              const Text(
+              Text(
                 'Sin registros.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
+                ),
               )
             else
               ...displayStocks.map((row) {
@@ -75,9 +82,14 @@ class ProductAvailabilityCard extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : AppColors.background,
                     borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -87,8 +99,12 @@ class ProductAvailabilityCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color:
                               ok
-                                  ? AppColors.successLight
-                                  : AppColors.dangerLight,
+                                  ? (isDark
+                                      ? AppColors.success.withValues(alpha: 0.2)
+                                      : AppColors.successLight)
+                                  : (isDark
+                                      ? AppColors.danger.withValues(alpha: 0.2)
+                                      : AppColors.dangerLight),
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Icon(
@@ -101,10 +117,13 @@ class ProductAvailabilityCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           name.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color:
+                                isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -116,8 +135,12 @@ class ProductAvailabilityCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color:
                               ok
-                                  ? AppColors.primary.withValues(alpha: 0.08)
-                                  : AppColors.dangerLight,
+                                  ? (isDark
+                                      ? AppColors.primary.withValues(alpha: 0.2)
+                                      : AppColors.primary.withValues(alpha: 0.08))
+                                  : (isDark
+                                      ? AppColors.danger.withValues(alpha: 0.2)
+                                      : AppColors.dangerLight),
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Text(
@@ -156,6 +179,7 @@ class _CardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -170,10 +194,10 @@ class _CardHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
           ),
         ),
       ],

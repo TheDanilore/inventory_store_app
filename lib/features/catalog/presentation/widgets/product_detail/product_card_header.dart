@@ -17,6 +17,7 @@ class ProductCardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -31,10 +32,10 @@ class ProductCardHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
           ),
         ),
       ],

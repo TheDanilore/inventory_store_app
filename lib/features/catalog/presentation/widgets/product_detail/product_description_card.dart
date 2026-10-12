@@ -9,25 +9,29 @@ class ProductDescriptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (description.trim().isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: AppColors.card(),
+      decoration: AppColors.cardAdaptive(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const ProductCardHeader(
+          ProductCardHeader(
             icon: Icons.description_outlined,
-            iconColor: Color(0xFF3B82F6),
-            iconBg: Color(0xFFEFF6FF),
+            iconColor: const Color(0xFF3B82F6),
+            iconBg:
+                isDark
+                    ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
+                    : const Color(0xFFEFF6FF),
             title: 'Descripción',
           ),
           const SizedBox(height: 12),
           Text(
             description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.7,
-              color: AppColors.textSecondary,
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
               fontWeight: FontWeight.w400,
             ),
           ),

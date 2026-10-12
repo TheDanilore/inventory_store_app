@@ -20,19 +20,29 @@ class TopCustomersCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color:
+            isDark
+                ? AppColors.darkSurface
+                : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(opacity: 0.04),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+        boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.04),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildHeader(context),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
           if (customers.isEmpty)
             _buildEmptyState(context)
           else
@@ -43,6 +53,8 @@ class TopCustomersCard extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -80,17 +92,29 @@ class TopCustomersCard extends StatelessWidget {
                     Text(
                       'Clientes que más compran',
                       style: TextStyle(
-                        fontSize: displayMode == TopCustomersDisplayMode.desktop ? 16 : 15,
+                        fontSize:
+                            displayMode == TopCustomersDisplayMode.desktop
+                                ? 16
+                                : 15,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: AppColors.amberLight,
+                        color:
+                            isDark
+                                ? AppColors.amberDark.withValues(alpha: 0.25)
+                                : AppColors.amberLight,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
@@ -106,11 +130,14 @@ class TopCustomersCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Mayores compradores por volumen de facturación histórica',
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: AppColors.textSecondary,
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -139,6 +166,8 @@ class TopCustomersCard extends StatelessWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       child: Center(
@@ -147,7 +176,10 @@ class TopCustomersCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.slateLight.withValues(alpha: 0.4),
+                color:
+                    isDark
+                        ? const Color(0xFF1E293B)
+                        : AppColors.slateLight.withValues(alpha: 0.4),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -157,10 +189,11 @@ class TopCustomersCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Aún no hay clientes registrados con compras completadas.',
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color:
+                    isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -177,7 +210,8 @@ class TopCustomersCard extends StatelessWidget {
       case TopCustomersDisplayMode.desktop:
         return _DesktopTable(
           customers: customers,
-          onCustomerTap: (customer) => _openCustomerActionSheet(context, customer),
+          onCustomerTap:
+              (customer) => _openCustomerActionSheet(context, customer),
         );
       case TopCustomersDisplayMode.tablet:
         return _buildTabletList(context);
@@ -190,6 +224,8 @@ class TopCustomersCard extends StatelessWidget {
   // TABLET: LISTA EXPANDIDA EN 2 COLUMNAS / TARJETAS ENLAZADAS
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabletList(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ListView.separated(
@@ -200,9 +236,10 @@ class TopCustomersCard extends StatelessWidget {
         itemBuilder: (context, index) {
           final customer = customers[index];
           final rank = index + 1;
-          final averageTicket = customer.orderCount > 0
-              ? customer.totalRevenue / customer.orderCount
-              : 0.0;
+          final averageTicket =
+              customer.orderCount > 0
+                  ? customer.totalRevenue / customer.orderCount
+                  : 0.0;
 
           return Material(
             color: Colors.transparent,
@@ -213,12 +250,17 @@ class TopCustomersCard extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                  color: AppColors.surface,
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                  ),
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.surface,
                 ),
                 child: Row(
                   children: [
-                    _buildRankBadge(rank),
+                    _buildRankBadge(rank, isDark: isDark),
                     const SizedBox(width: 14),
                     _buildAvatar(customer),
                     const SizedBox(width: 12),
@@ -228,10 +270,13 @@ class TopCustomersCard extends StatelessWidget {
                         children: [
                           Text(
                             customer.fullName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : AppColors.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -239,9 +284,12 @@ class TopCustomersCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${customer.orderCount} compras realizadas · Ticket medio S/ ${averageTicket.toStringAsFixed(2)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11.5,
-                              color: AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -253,10 +301,13 @@ class TopCustomersCard extends StatelessWidget {
                       children: [
                         Text(
                           'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.tealDark,
+                            color:
+                                isDark
+                                    ? const Color(0xFF34D399)
+                                    : AppColors.tealDark,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -290,12 +341,17 @@ class TopCustomersCard extends StatelessWidget {
   // MÓVIL: TARJETAS VERTICALES CON TOUCH TARGET DE 48DP Y ACCIÓN DIRECTA
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileList(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: customers.length,
-      separatorBuilder: (_, _) =>
-          const Divider(height: 1, color: AppColors.border),
+      separatorBuilder:
+          (_, _) => Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
       itemBuilder: (context, index) {
         final customer = customers[index];
         final rank = index + 1;
@@ -308,7 +364,7 @@ class TopCustomersCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
-                  _buildRankBadge(rank),
+                  _buildRankBadge(rank, isDark: isDark),
                   const SizedBox(width: 12),
                   _buildAvatar(customer),
                   const SizedBox(width: 12),
@@ -318,10 +374,13 @@ class TopCustomersCard extends StatelessWidget {
                       children: [
                         Text(
                           customer.fullName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color:
+                                isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : AppColors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -335,7 +394,12 @@ class TopCustomersCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryLight,
+                                color:
+                                    isDark
+                                        ? AppColors.primary.withValues(
+                                          alpha: 0.2,
+                                        )
+                                        : AppColors.primaryLight,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -352,9 +416,12 @@ class TopCustomersCard extends StatelessWidget {
                               const SizedBox(width: 6),
                               Text(
                                 customer.phone!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.textSecondary,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : AppColors.textSecondary,
                                 ),
                               ),
                             ],
@@ -369,10 +436,13 @@ class TopCustomersCard extends StatelessWidget {
                     children: [
                       Text(
                         'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.tealDark,
+                          color:
+                              isDark
+                                  ? const Color(0xFF34D399)
+                                  : AppColors.tealDark,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -404,26 +474,26 @@ class TopCustomersCard extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────────
   // COMPONENTES ATÓMICOS: RANK MEDAL & AVATAR
   // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildRankBadge(int rank) {
+  Widget _buildRankBadge(int rank, {bool isDark = false}) {
     Color bg;
     Color fg;
     String text;
 
     if (rank == 1) {
-      bg = const Color(0xFFFEF3C7);
-      fg = const Color(0xFFB45309);
+      bg = isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
+      fg = isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309);
       text = '1';
     } else if (rank == 2) {
-      bg = const Color(0xFFF1F5F9);
-      fg = const Color(0xFF475569);
+      bg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+      fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
       text = '2';
     } else if (rank == 3) {
-      bg = const Color(0xFFFFEDD5);
-      fg = const Color(0xFFC2410C);
+      bg = isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5);
+      fg = isDark ? const Color(0xFFFDBA74) : const Color(0xFFC2410C);
       text = '3';
     } else {
-      bg = AppColors.background;
-      fg = AppColors.textSecondary;
+      bg = isDark ? const Color(0xFF1E293B) : AppColors.background;
+      fg = isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary;
       text = '$rank';
     }
 
@@ -434,26 +504,20 @@ class TopCustomersCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: fg.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: fg.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: fg,
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
+        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w900),
       ),
     );
   }
 
   Widget _buildAvatar(CustomerEntity customer) {
-    final initials = customer.fullName.isNotEmpty
-        ? customer.fullName.substring(0, 1).toUpperCase()
-        : 'C';
+    final initials =
+        customer.fullName.isNotEmpty
+            ? customer.fullName.substring(0, 1).toUpperCase()
+            : 'C';
 
     return Container(
       width: 36,
@@ -486,51 +550,57 @@ class TopCustomersCard extends StatelessWidget {
   // ─────────────────────────────────────────────────────────────────────────────
   void _openCustomerActionSheet(BuildContext context, CustomerEntity customer) {
     final isDesktop = MediaQuery.of(context).size.width >= 720;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final content = _CustomerDetailView(customer: customer);
 
     if (isDesktop) {
       showDialog(
         context: context,
-        builder: (ctx) => Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: content,
-          ),
-        ),
+        builder:
+            (ctx) => Dialog(
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: content,
+              ),
+            ),
       );
     } else {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (ctx) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 10),
-                // Drag handle
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        builder:
+            (ctx) => Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
-                content,
-              ],
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 10),
+                    // Drag handle
+                    Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    content,
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       );
     }
   }
@@ -543,10 +613,7 @@ class _DesktopTable extends StatefulWidget {
   final List<CustomerEntity> customers;
   final ValueChanged<CustomerEntity> onCustomerTap;
 
-  const _DesktopTable({
-    required this.customers,
-    required this.onCustomerTap,
-  });
+  const _DesktopTable({required this.customers, required this.onCustomerTap});
 
   @override
   State<_DesktopTable> createState() => _DesktopTableState();
@@ -557,6 +624,8 @@ class _DesktopTableState extends State<_DesktopTable> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return MouseRegion(
       onExit: (_) {
         if (_hoveredRank != null) {
@@ -568,8 +637,11 @@ class _DesktopTableState extends State<_DesktopTable> {
           // Table Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            color: AppColors.background.withValues(alpha: 0.6),
-            child: const Row(
+            color:
+                isDark
+                    ? AppColors.darkSurfaceElevated
+                    : AppColors.background.withValues(alpha: 0.6),
+            child: Row(
               children: [
                 SizedBox(
                   width: 44,
@@ -578,7 +650,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -589,7 +664,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -600,7 +678,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -611,7 +692,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -623,28 +707,38 @@ class _DesktopTableState extends State<_DesktopTable> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ),
-                SizedBox(width: 80),
+                const SizedBox(width: 80),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
           // Table Rows con exclusión mutua instantánea (sin desvanecimientos solapados)
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: widget.customers.length,
-            separatorBuilder: (_, _) =>
-                const Divider(height: 1, color: AppColors.border),
+            separatorBuilder:
+                (_, _) => Divider(
+                  height: 1,
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
             itemBuilder: (context, index) {
               final customer = widget.customers[index];
               final rank = index + 1;
-              final averageTicket = customer.orderCount > 0
-                  ? customer.totalRevenue / customer.orderCount
-                  : 0.0;
+              final averageTicket =
+                  customer.orderCount > 0
+                      ? customer.totalRevenue / customer.orderCount
+                      : 0.0;
               final isHovered = _hoveredRank == rank;
 
               return MouseRegion(
@@ -657,10 +751,18 @@ class _DesktopTableState extends State<_DesktopTable> {
                 child: GestureDetector(
                   onTap: () => widget.onCustomerTap(customer),
                   child: Container(
-                    color: isHovered
-                        ? AppColors.primaryLight.withValues(alpha: 0.45)
-                        : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    color:
+                        isHovered
+                            ? (isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.primaryLight.withValues(
+                                  alpha: 0.45,
+                                ))
+                            : Colors.transparent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     child: Row(
                       children: [
                         // Rank
@@ -672,9 +774,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                                 Icon(
                                   Icons.workspace_premium_rounded,
                                   size: 16,
-                                  color: rank == 1
-                                      ? const Color(0xFFF59E0B)
-                                      : rank == 2
+                                  color:
+                                      rank == 1
+                                          ? const Color(0xFFF59E0B)
+                                          : rank == 2
                                           ? const Color(0xFF64748B)
                                           : const Color(0xFFB45309),
                                 ),
@@ -685,9 +788,14 @@ class _DesktopTableState extends State<_DesktopTable> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: rank <= 3
-                                      ? AppColors.textPrimary
-                                      : AppColors.textSecondary,
+                                  color:
+                                      rank <= 3
+                                          ? (isDark
+                                              ? const Color(0xFFF8FAFC)
+                                              : AppColors.textPrimary)
+                                          : (isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : AppColors.textSecondary),
                                 ),
                               ),
                             ],
@@ -724,10 +832,13 @@ class _DesktopTableState extends State<_DesktopTable> {
                                   children: [
                                     Text(
                                       customer.fullName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
+                                        color:
+                                            isDark
+                                                ? const Color(0xFFF8FAFC)
+                                                : AppColors.textPrimary,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -736,9 +847,12 @@ class _DesktopTableState extends State<_DesktopTable> {
                                         customer.phone!.isNotEmpty)
                                       Text(
                                         customer.phone!,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.textSecondary,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF94A3B8)
+                                                  : AppColors.textSecondary,
                                         ),
                                       ),
                                   ],
@@ -758,15 +872,23 @@ class _DesktopTableState extends State<_DesktopTable> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.slateLight.withValues(alpha: 0.5),
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF1E293B)
+                                          : AppColors.slateLight.withValues(
+                                            alpha: 0.5,
+                                          ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   '${customer.orderCount} ord.',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.slate,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : AppColors.slate,
                                   ),
                                 ),
                               ),
@@ -778,10 +900,13 @@ class _DesktopTableState extends State<_DesktopTable> {
                           flex: 3,
                           child: Text(
                             'S/ ${averageTicket.toStringAsFixed(2)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -791,10 +916,13 @@ class _DesktopTableState extends State<_DesktopTable> {
                           child: Text(
                             'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
                             textAlign: TextAlign.right,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w900,
-                              color: AppColors.tealDark,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF34D399)
+                                      : AppColors.tealDark,
                               letterSpacing: -0.2,
                             ),
                           ),
@@ -853,6 +981,8 @@ class _CustomerDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
@@ -889,10 +1019,13 @@ class _CustomerDetailView extends StatelessWidget {
                   children: [
                     Text(
                       customer.fullName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -901,9 +1034,12 @@ class _CustomerDetailView extends StatelessWidget {
                               customer.documentNumber!.isNotEmpty
                           ? '${customer.documentType ?? 'DOC'}: ${customer.documentNumber}'
                           : 'Cliente Destacado VIP',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -923,9 +1059,12 @@ class _CustomerDetailView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color:
+                  isDark ? AppColors.darkSurfaceElevated : AppColors.background,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+              ),
             ),
             child: Row(
               children: [
@@ -933,39 +1072,52 @@ class _CustomerDetailView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Total Comprado',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.tealDark,
+                          color:
+                              isDark
+                                  ? const Color(0xFF34D399)
+                                  : AppColors.tealDark,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(width: 1, height: 36, color: AppColors.border),
+                Container(
+                  width: 1,
+                  height: 36,
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Pedidos Despachados',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : AppColors.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -995,6 +1147,9 @@ class _CustomerDetailView extends StatelessWidget {
                     icon: const Icon(Icons.phone_rounded, size: 18),
                     label: const Text('Llamar'),
                     style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -1003,7 +1158,10 @@ class _CustomerDetailView extends StatelessWidget {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () => _openWhatsApp(customer.phone!),
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 18,
+                    ),
                     label: const Text('WhatsApp'),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF25D366),

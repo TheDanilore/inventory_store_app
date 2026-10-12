@@ -51,11 +51,12 @@ class _DashboardScreenContent extends StatefulWidget {
       showDialog(
         context: context,
         builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            backgroundColor: Colors.white,
+            backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
             elevation: 12,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
@@ -73,10 +74,13 @@ class _DashboardScreenContent extends StatefulWidget {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -90,7 +94,10 @@ class _DashboardScreenContent extends StatefulWidget {
                     width: 38,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -148,8 +155,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       final list = prefs.getStringList(_prefsKey);
       if (list != null && list.isNotEmpty && mounted) {
         setState(() {
-          _visibleWidgets =
-              list.where((id) => id != 'ai_assistant').toSet();
+          _visibleWidgets = list.where((id) => id != 'ai_assistant').toSet();
         });
       }
     } catch (e, st) {
@@ -401,6 +407,8 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     DashboardLoaded state, {
     required bool isDesktop,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (!isDesktop) {
       // ── MÓVIL: DISEÑO SIMÉTRICO EN 2 FILAS SHOPEERS ─────────────────────────
       return Column(
@@ -411,7 +419,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -419,16 +427,22 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                      color:
+                          isDark
+                              ? const Color(0xFFF8FAFC)
+                              : const Color(0xFF0F172A),
                       letterSpacing: -0.5,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     'Métricas en tiempo real',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF64748B),
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -489,9 +503,15 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                   height: 34,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color:
+                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -504,10 +524,13 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                       const SizedBox(width: 4),
                       Text(
                         'Widget (${_visibleWidgets.length})',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
+                          color:
+                              isDark
+                                  ? const Color(0xFFF8FAFC)
+                                  : const Color(0xFF0F172A),
                         ),
                       ),
                     ],
@@ -526,7 +549,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Left: Screen Title & Subtitle
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -534,16 +557,18 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF0F172A),
+                color:
+                    isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
                 letterSpacing: -0.6,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               'Métricas clave de rendimiento y control en tiempo real',
               style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF64748B),
+                color:
+                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -554,11 +579,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildShopeersDateRangePill(
-              context,
-              state,
-              isDesktop: true,
-            ),
+            _buildShopeersDateRangePill(context, state, isDesktop: true),
             const SizedBox(width: 10),
 
             // Botón Añadir Widget (Shopeers Style)
@@ -569,9 +590,18 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 child: OutlinedButton.icon(
                   onPressed: _openAddWidgetSheet,
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0F172A),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    backgroundColor:
+                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                    foregroundColor:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF0F172A),
+                    side: BorderSide(
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -607,25 +637,34 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     context.read<DashboardCubit>().refresh();
                   },
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF475569),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    backgroundColor:
+                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                    foregroundColor:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF475569),
+                    side: BorderSide(
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.refresh_rounded,
                     size: 15,
-                    color: Color(0xFF475569),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF475569),
                   ),
                   label: const Text(
                     'Actualizar',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -904,17 +943,16 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             ),
           if (hasWeekly && hasGoal) const SizedBox(width: 20),
           if (hasGoal)
-            const Expanded(
-              flex: 6,
-              child: _DashboardAdminGoalCard(),
-            ),
+            const Expanded(flex: 6, child: _DashboardAdminGoalCard()),
         ],
       );
     }
 
     // ── NIVEL 2: OPERACIONES, ROTACIÓN Y FEFO (SIMETRÍA 1:1) ───────────────
     final hasBestSellers = _visibleWidgets.contains('best_sellers');
-    final hasCustomers = _visibleWidgets.contains('customer_segments') && state.topCustomers.isNotEmpty;
+    final hasCustomers =
+        _visibleWidgets.contains('customer_segments') &&
+        state.topCustomers.isNotEmpty;
     final hasBatches = _visibleWidgets.contains('expiring_batches');
 
     final leftLevel2 = <Widget>[
@@ -931,10 +969,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.desktop,
         ),
-      if (hasBatches)
-        ExpiringBatchesCard(
-          batches: state.criticalBatches,
-        ),
+      if (hasBatches) ExpiringBatchesCard(batches: state.criticalBatches),
     ];
 
     Widget? level2Widget;
@@ -1007,12 +1042,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           padding: EdgeInsets.all(isHovering ? 8 : 0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: isHovering
-                ? Border.all(color: const Color(0xFF2563EB), width: 2)
-                : null,
-            color: isHovering
-                ? const Color(0xFFEFF6FF).withValues(alpha: 0.25)
-                : Colors.transparent,
+            border:
+                isHovering
+                    ? Border.all(color: const Color(0xFF2563EB), width: 2)
+                    : null,
+            color:
+                isHovering
+                    ? const Color(0xFFEFF6FF).withValues(alpha: 0.25)
+                    : Colors.transparent,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1073,10 +1110,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             const Text(
               'Has ocultado los componentes del lienzo. Personaliza tu vista añadiendo widgets clave.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF64748B),
-              ),
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
@@ -1177,9 +1211,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           displayMode: TopCustomersDisplayMode.mobile,
         ),
       if (_visibleWidgets.contains('weekly_activity'))
-        DashboardWeeklyActivityCard(
-          sales: state.sales,
-        ),
+        DashboardWeeklyActivityCard(sales: state.sales),
       if (_visibleWidgets.contains('radial_goal'))
         const _DashboardAdminGoalCard(),
       if (_visibleWidgets.contains('best_sellers'))
@@ -1188,11 +1220,8 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           criticalBatches: state.criticalBatches,
         ),
       if (_visibleWidgets.contains('expiring_batches'))
-        ExpiringBatchesCard(
-          batches: state.criticalBatches,
-        ),
-      if (!_hasAnyWidgetsVisible(state))
-        _buildEmptyWidgetsPlaceholder(),
+        ExpiringBatchesCard(batches: state.criticalBatches),
+      if (!_hasAnyWidgetsVisible(state)) _buildEmptyWidgetsPlaceholder(),
     ];
 
     return CustomScrollView(
@@ -1201,9 +1230,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
           sliver: SliverList(
-            delegate: SliverChildListDelegate(
-              _withSpacers(mobileWidgets, 16),
-            ),
+            delegate: SliverChildListDelegate(_withSpacers(mobileWidgets, 16)),
           ),
         ),
       ],
@@ -1268,9 +1295,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         break;
       case SalesTimeFilter.thisMonth:
         final startOfMonth = DateTime(now.year, now.month, 1);
-        final nextMonth = now.month == 12
-            ? DateTime(now.year + 1, 1, 1)
-            : DateTime(now.year, now.month + 1, 1);
+        final nextMonth =
+            now.month == 12
+                ? DateTime(now.year + 1, 1, 1)
+                : DateTime(now.year, now.month + 1, 1);
         final endOfMonth = nextMonth.subtract(const Duration(days: 1));
         rangeLabel =
             '${DateFormat('d MMM', 'es').format(startOfMonth)} - ${DateFormat('d MMM, yyyy', 'es').format(endOfMonth)}';
@@ -1291,19 +1319,26 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         break;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: isDesktop ? 38 : 34,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
+        boxShadow:
+            isDark
+                ? []
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1344,7 +1379,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                         style: TextStyle(
                           fontSize: isDesktop ? 12 : 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0F172A),
+                          color:
+                              isDark
+                                  ? const Color(0xFFF8FAFC)
+                                  : const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1360,7 +1398,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           Container(
             width: 1,
             height: isDesktop ? 18 : 16,
-            color: const Color(0xFFE2E8F0),
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
           ),
 
           // Right: Presets Dropdown
@@ -1369,9 +1407,11 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             offset: const Offset(0, 40),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              side: BorderSide(
+                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+              ),
             ),
-            color: Colors.white,
+            color: isDark ? AppColors.darkSurface : Colors.white,
             elevation: 8,
             onSelected: (filter) {
               if (filter == SalesTimeFilter.custom) {
@@ -1383,39 +1423,45 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 context.read<DashboardCubit>().updateSalesFilter(filter);
               }
             },
-            itemBuilder: (context) => [
-              _buildFilterMenuItem(
-                value: SalesTimeFilter.today,
-                label: 'Hoy',
-                shortcut: '1',
-                isSelected: state.salesFilter == SalesTimeFilter.today,
-              ),
-              _buildFilterMenuItem(
-                value: SalesTimeFilter.thisWeek,
-                label: 'Esta semana',
-                shortcut: '2',
-                isSelected: state.salesFilter == SalesTimeFilter.thisWeek,
-              ),
-              _buildFilterMenuItem(
-                value: SalesTimeFilter.thisMonth,
-                label: 'Este mes',
-                shortcut: '3',
-                isSelected: state.salesFilter == SalesTimeFilter.thisMonth,
-              ),
-              _buildFilterMenuItem(
-                value: SalesTimeFilter.allTime,
-                label: 'Histórico',
-                shortcut: '4',
-                isSelected: state.salesFilter == SalesTimeFilter.allTime,
-              ),
-              const PopupMenuDivider(height: 1),
-              _buildFilterMenuItem(
-                value: SalesTimeFilter.custom,
-                label: 'Personalizado...',
-                icon: Icons.date_range_outlined,
-                isSelected: state.salesFilter == SalesTimeFilter.custom,
-              ),
-            ],
+            itemBuilder:
+                (context) => [
+                  _buildFilterMenuItem(
+                    value: SalesTimeFilter.today,
+                    label: 'Hoy',
+                    shortcut: '1',
+                    isSelected: state.salesFilter == SalesTimeFilter.today,
+                    isDark: isDark,
+                  ),
+                  _buildFilterMenuItem(
+                    value: SalesTimeFilter.thisWeek,
+                    label: 'Esta semana',
+                    shortcut: '2',
+                    isSelected: state.salesFilter == SalesTimeFilter.thisWeek,
+                    isDark: isDark,
+                  ),
+                  _buildFilterMenuItem(
+                    value: SalesTimeFilter.thisMonth,
+                    label: 'Este mes',
+                    shortcut: '3',
+                    isSelected: state.salesFilter == SalesTimeFilter.thisMonth,
+                    isDark: isDark,
+                  ),
+                  _buildFilterMenuItem(
+                    value: SalesTimeFilter.allTime,
+                    label: 'Histórico',
+                    shortcut: '4',
+                    isSelected: state.salesFilter == SalesTimeFilter.allTime,
+                    isDark: isDark,
+                  ),
+                  PopupMenuDivider(height: 1),
+                  _buildFilterMenuItem(
+                    value: SalesTimeFilter.custom,
+                    label: 'Personalizado...',
+                    icon: Icons.date_range_outlined,
+                    isSelected: state.salesFilter == SalesTimeFilter.custom,
+                    isDark: isDark,
+                  ),
+                ],
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: isDesktop ? 10 : 8),
               child: Row(
@@ -1426,7 +1472,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     style: TextStyle(
                       fontSize: isDesktop ? 12 : 11,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0F172A),
+                      color:
+                          isDark
+                              ? const Color(0xFFF8FAFC)
+                              : const Color(0xFF0F172A),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -1450,6 +1499,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     String? shortcut,
     IconData? icon,
     required bool isSelected,
+    bool isDark = false,
   }) {
     return PopupMenuItem<SalesTimeFilter>(
       value: value,
@@ -1463,9 +1513,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 Icon(
                   icon,
                   size: 16,
-                  color: isSelected
-                      ? const Color(0xFF2563EB)
-                      : const Color(0xFF64748B),
+                  color:
+                      isSelected
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF64748B),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -1474,9 +1525,12 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected
-                      ? const Color(0xFF2563EB)
-                      : const Color(0xFF0F172A),
+                  color:
+                      isSelected
+                          ? const Color(0xFF2563EB)
+                          : (isDark
+                              ? const Color(0xFFF8FAFC)
+                              : const Color(0xFF0F172A)),
                 ),
               ),
             ],
@@ -1485,7 +1539,8 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
+                color:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -1589,7 +1644,11 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
         ),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+            Icon(
+              Icons.check_circle_rounded,
+              color: AppColors.success,
+              size: 20,
+            ),
             SizedBox(width: 10),
             Text(
               'Inventario y Lotes Saludables · Cero Alertas Críticas',
@@ -1687,14 +1746,21 @@ class ExpiringBatchesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (batches.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25), width: 1.2),
-          boxShadow: AppColors.cardShadow(opacity: 0.04),
+          border: Border.all(
+            color: const Color(
+              0xFF10B981,
+            ).withValues(alpha: isDark ? 0.35 : 0.25),
+            width: 1.2,
+          ),
+          boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.04),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1714,7 +1780,7 @@ class ExpiringBatchesCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1723,7 +1789,10 @@ class ExpiringBatchesCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? const Color(0xFFF8FAFC)
+                                  : AppColors.textPrimary,
                           letterSpacing: -0.3,
                         ),
                       ),
@@ -1731,14 +1800,20 @@ class ExpiringBatchesCard extends StatelessWidget {
                         'Control preventivo de caducidad en almacén',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF10B981).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -1758,24 +1833,39 @@ class ExpiringBatchesCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
+                color:
+                    isDark
+                        ? const Color(0xFF064E3B).withValues(alpha: 0.25)
+                        : const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                border: Border.all(
+                  color:
+                      isDark
+                          ? const Color(0xFF059669).withValues(alpha: 0.35)
+                          : const Color(0xFFBBF7D0),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.eco_rounded, color: Color(0xFF16A34A), size: 24),
+                  const Icon(
+                    Icons.eco_rounded,
+                    color: Color(0xFF16A34A),
+                    size: 24,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Salud Fitosanitaria Óptima',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF166534),
+                            color:
+                                isDark
+                                    ? const Color(0xFF34D399)
+                                    : const Color(0xFF166534),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1783,7 +1873,12 @@ class ExpiringBatchesCard extends StatelessWidget {
                           'No hay lotes vencidos ni que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
                           style: TextStyle(
                             fontSize: 11.5,
-                            color: const Color(0xFF166534).withValues(alpha: 0.9),
+                            color:
+                                isDark
+                                    ? const Color(0xFF6EE7B7)
+                                    : const Color(
+                                      0xFF166534,
+                                    ).withValues(alpha: 0.9),
                             height: 1.3,
                           ),
                         ),
@@ -1826,20 +1921,25 @@ class ExpiringBatchesCard extends StatelessWidget {
     }
 
     final urgent = batches.take(3).toList();
-    final expiredCount = batches.where((b) {
-      final expiryStr = b['expiry_date'] as String?;
-      final expiryDate = expiryStr != null ? DateTime.tryParse(expiryStr) : null;
-      return expiryDate != null && expiryDate.isBefore(DateTime.now());
-    }).length;
+    final expiredCount =
+        batches.where((b) {
+          final expiryStr = b['expiry_date'] as String?;
+          final expiryDate =
+              expiryStr != null ? DateTime.tryParse(expiryStr) : null;
+          return expiryDate != null && expiryDate.isBefore(DateTime.now());
+        }).length;
     final expiringSoonCount = batches.length - expiredCount;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.25), width: 1.2),
-        boxShadow: AppColors.cardShadow(opacity: 0.05),
+        border: Border.all(
+          color: AppColors.error.withValues(alpha: isDark ? 0.35 : 0.25),
+          width: 1.2,
+        ),
+        boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.05),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1863,12 +1963,15 @@ class ExpiringBatchesCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Lotes Críticos por Vencer (FEFO)',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -1876,9 +1979,12 @@ class ExpiringBatchesCard extends StatelessWidget {
                       expiredCount > 0
                           ? '$expiredCount vencido(s) · $expiringSoonCount por vencer'
                           : '${batches.length} lote(s) requieren rotación prioritaria en POS',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1886,7 +1992,10 @@ class ExpiringBatchesCard extends StatelessWidget {
               ),
               if (expiredCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3.5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
@@ -1908,42 +2017,58 @@ class ExpiringBatchesCard extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: urgent.length,
             separatorBuilder:
-                (context, index) =>
-                    const Divider(height: 1, color: AppColors.border),
+                (context, index) => Divider(
+                  height: 1,
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
             itemBuilder: (context, index) {
               final b = urgent[index];
 
               // Mapeo defensivo de campos (PostgreSQL vs Dart)
               final expiryStr = b['expiry_date'] as String?;
-              final expiryDate = expiryStr != null ? DateTime.tryParse(expiryStr) : null;
-              final days = expiryDate != null
-                  ? expiryDate.difference(DateTime.now()).inDays
-                  : (b['days_until_expiration'] as int? ?? 0);
+              final expiryDate =
+                  expiryStr != null ? DateTime.tryParse(expiryStr) : null;
+              final days =
+                  expiryDate != null
+                      ? expiryDate.difference(DateTime.now()).inDays
+                      : (b['days_until_expiration'] as int? ?? 0);
 
-              final code = (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
-              final prod = (b['products'] is Map
-                      ? b['products']['name']
-                      : (b['product_name'] ?? 'Insumo'))
-                  .toString();
+              final code =
+                  (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
+              final prod =
+                  (b['products'] is Map
+                          ? b['products']['name']
+                          : (b['product_name'] ?? 'Insumo'))
+                      .toString();
 
               String? imgUrl;
               if (b['products'] is Map) {
-                final prodImgs = b['products']['product_images'] as List<dynamic>?;
+                final prodImgs =
+                    b['products']['product_images'] as List<dynamic>?;
                 if (prodImgs != null && prodImgs.isNotEmpty) {
-                  final mainImg = prodImgs.firstWhere(
-                    (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                    orElse: () => prodImgs.first,
-                  ) as Map<String, dynamic>?;
+                  final mainImg =
+                      prodImgs.firstWhere(
+                            (img) =>
+                                (img as Map<String, dynamic>)['is_main'] ==
+                                true,
+                            orElse: () => prodImgs.first,
+                          )
+                          as Map<String, dynamic>?;
                   imgUrl = mainImg?['image_url'] as String?;
                 }
               }
               if (imgUrl == null && b['product_variants'] is Map) {
-                final varImgs = b['product_variants']['product_images'] as List<dynamic>?;
+                final varImgs =
+                    b['product_variants']['product_images'] as List<dynamic>?;
                 if (varImgs != null && varImgs.isNotEmpty) {
-                  final mainImg = varImgs.firstWhere(
-                    (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                    orElse: () => varImgs.first,
-                  ) as Map<String, dynamic>?;
+                  final mainImg =
+                      varImgs.firstWhere(
+                            (img) =>
+                                (img as Map<String, dynamic>)['is_main'] ==
+                                true,
+                            orElse: () => varImgs.first,
+                          )
+                          as Map<String, dynamic>?;
                   imgUrl = mainImg?['image_url'] as String?;
                 }
               }
@@ -1954,38 +2079,62 @@ class ExpiringBatchesCard extends StatelessWidget {
                   context.push('/inventory?tab=batches');
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 4,
+                  ),
                   child: Row(
                     children: [
                       Container(
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border, width: 0.8),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border,
+                            width: 0.8,
+                          ),
                         ),
                         clipBehavior: Clip.antiAlias,
-                        child: imgUrl != null && imgUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: imgUrl,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => const Icon(
+                        child:
+                            imgUrl != null && imgUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                  imageUrl: imgUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder:
+                                      (context, url) => Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 16,
+                                        color:
+                                            isDark
+                                                ? const Color(0xFF94A3B8)
+                                                : AppColors.textSecondary,
+                                      ),
+                                  errorWidget:
+                                      (context, url, error) => Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 16,
+                                        color:
+                                            isDark
+                                                ? const Color(0xFF94A3B8)
+                                                : AppColors.textSecondary,
+                                      ),
+                                )
+                                : Icon(
                                   Icons.inventory_2_outlined,
                                   size: 16,
-                                  color: AppColors.textSecondary,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : AppColors.textSecondary,
                                 ),
-                                errorWidget: (context, url, error) => const Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.inventory_2_outlined,
-                                size: 16,
-                                color: AppColors.textSecondary,
-                              ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1994,19 +2143,25 @@ class ExpiringBatchesCard extends StatelessWidget {
                           children: [
                             Text(
                               prod,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+                                color:
+                                    isDark
+                                        ? const Color(0xFFF8FAFC)
+                                        : AppColors.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               'Lote: $code · Click para revisar stock',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textSecondary,
+                                color:
+                                    isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -2022,22 +2177,23 @@ class ExpiringBatchesCard extends StatelessWidget {
                               days <= 0
                                   ? AppColors.error.withValues(alpha: 0.15)
                                   : days <= 7
-                                      ? AppColors.error.withValues(alpha: 0.12)
-                                      : AppColors.warning.withValues(alpha: 0.12),
+                                  ? AppColors.error.withValues(alpha: 0.12)
+                                  : AppColors.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           days < 0
                               ? 'Vencido (${days.abs()}d)'
                               : days == 0
-                                  ? 'Vence hoy'
-                                  : days == 1
-                                      ? '1 día'
-                                      : '$days días',
+                              ? 'Vence hoy'
+                              : days == 1
+                              ? '1 día'
+                              : '$days días',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: days <= 7 ? AppColors.error : AppColors.warning,
+                            color:
+                                days <= 7 ? AppColors.error : AppColors.warning,
                           ),
                         ),
                       ),

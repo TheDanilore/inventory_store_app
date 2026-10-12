@@ -26,18 +26,30 @@ class ProductQuickDecisionsCard extends StatelessWidget {
     final double totalCapital = inventoryValue + totalRevenue;
     final bool multiVariant = variantSummaries.length > 1;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
-      color: const Color(0xFFF0FDF4),
+      color:
+          isDark
+              ? const Color(0xFF064E3B).withValues(alpha: 0.25)
+              : const Color(0xFFF0FDF4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: Color(0xFF86EFAC), width: 1.5),
+        side: BorderSide(
+          color:
+              isDark
+                  ? const Color(0xFF059669).withValues(alpha: 0.4)
+                  : const Color(0xFF86EFAC),
+          width: 1.5,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          collapsedIconColor: const Color(0xFF166534),
-          iconColor: const Color(0xFF166534),
+          collapsedIconColor:
+              isDark ? const Color(0xFF34D399) : const Color(0xFF166534),
+          iconColor: isDark ? const Color(0xFF34D399) : const Color(0xFF166534),
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           title: Row(
             children: [
@@ -45,23 +57,32 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.2),
+                  color:
+                      isDark
+                          ? const Color(0xFF22C55E).withValues(alpha: 0.15)
+                          : const Color(0xFF22C55E).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lightbulb_outline_rounded,
-                  color: Color(0xFF166534),
+                  color:
+                      isDark
+                          ? const Color(0xFF34D399)
+                          : const Color(0xFF166534),
                   size: 16,
                 ),
               ),
               const SizedBox(width: 9),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Decisiones rápidas',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF166534),
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF166534),
                   ),
                 ),
               ),
@@ -72,15 +93,21 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                    color:
+                        isDark
+                            ? const Color(0xFF22C55E).withValues(alpha: 0.2)
+                            : const Color(0xFF22C55E).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '$totalSold uds.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF166534),
+                      color:
+                          isDark
+                              ? const Color(0xFF34D399)
+                              : const Color(0xFF166534),
                     ),
                   ),
                 ),
@@ -136,9 +163,12 @@ class ProductQuickDecisionsCard extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFBBF7D0),
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -228,9 +258,12 @@ class ProductQuickDecisionsCard extends StatelessWidget {
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
+                border: Border.all(
+                  color:
+                      isDark ? AppColors.darkBorder : const Color(0xFFBBF7D0),
+                ),
               ),
               child: Column(
                 children: [
@@ -242,9 +275,15 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                       value: 'S/ ${reinvestmentNeeded.toStringAsFixed(2)}',
                       subtitle: 'Para reponer el stock vendido al costo.',
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(height: 1, color: Color(0xFFBBF7D0)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(
+                        height: 1,
+                        color:
+                            isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFBBF7D0),
+                      ),
                     ),
                   ],
                   _DecisionRow(

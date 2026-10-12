@@ -46,7 +46,7 @@ class AdminPageBlocks extends StatelessWidget {
     required this.onPageChanged,
     this.totalItems,
     this.itemsPerPage,
-    this.availableItemsPerPage = const [10, 20, 24, 50, 100],
+    this.availableItemsPerPage = const [15, 25, 50, 100],
     this.onItemsPerPageChanged,
     this.itemName,
     this.isCompact,
@@ -176,57 +176,79 @@ class AdminPageBlocks extends StatelessWidget {
           ),
 
           // Indicador Central de Página (1 / 3 • 57)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${effectiveCurrentPage + 1}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                    fontFeatures: [FontFeature.tabularFigures()],
+          Builder(
+            builder: (ctx) {
+              final isDark = Theme.of(ctx).brightness == Brightness.dark;
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.background,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
                   ),
                 ),
-                Text(
-                  ' / $effectiveTotalPages',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${effectiveCurrentPage + 1}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color:
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : AppColors.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    Text(
+                      ' / $effectiveTotalPages',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (totalItems != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 3.5,
+                        height: 3.5,
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.textMuted,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        formatNumber(totalItems!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (totalItems != null) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 3.5,
-                    height: 3.5,
-                    decoration: const BoxDecoration(
-                      color: AppColors.textMuted,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    formatNumber(totalItems!),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              );
+            },
           ),
 
           // Botón Siguiente
@@ -326,18 +348,20 @@ class AdminPageBlocks extends StatelessWidget {
     int effectiveTotalPages,
     int effectiveCurrentPage,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final label = itemName ?? 'resultados';
-    final currentSize = itemsPerPage ?? 10;
+    final currentSize = itemsPerPage ?? 15;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'Mostrar',
           style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color:
+                isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -347,11 +371,12 @@ class AdminPageBlocks extends StatelessWidget {
         _buildItemsPerPageDropdown(context, currentSize),
 
         const SizedBox(width: 8),
-        const Text(
+        Text(
           'de',
           style: TextStyle(
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color:
+                isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -360,29 +385,34 @@ class AdminPageBlocks extends StatelessWidget {
         if (totalItems != null) ...[
           Text(
             formatNumber(totalItems!),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-              fontFeatures: [FontFeature.tabularFigures()],
+              color:
+                  isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF64748B),
+              color:
+                  isDark
+                      ? AppColors.darkTextSecondary
+                      : const Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),
         ] else ...[
           Text(
             'página ${effectiveCurrentPage + 1} de $effectiveTotalPages',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF0F172A),
+              color:
+                  isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
             ),
           ),
         ],
@@ -391,6 +421,7 @@ class AdminPageBlocks extends StatelessWidget {
   }
 
   Widget _buildItemsPerPageDropdown(BuildContext context, int currentSize) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final options =
         availableItemsPerPage.contains(currentSize)
             ? availableItemsPerPage
@@ -400,27 +431,32 @@ class AdminPageBlocks extends StatelessWidget {
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.1),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFCBD5E1),
+          width: 1.1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '$currentSize',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-              fontFeatures: [FontFeature.tabularFigures()],
+              color:
+                  isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(
+          Icon(
             Icons.keyboard_arrow_down_rounded,
             size: 16,
-            color: Color(0xFF64748B),
+            color:
+                isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
           ),
         ],
       ),
@@ -436,10 +472,12 @@ class AdminPageBlocks extends StatelessWidget {
       offset: const Offset(0, 36),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
       ),
       elevation: 4,
-      color: Colors.white,
+      color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
       onSelected: (val) {
         if (val != currentSize) {
           onItemsPerPageChanged!(val);
@@ -455,21 +493,25 @@ class AdminPageBlocks extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$opt $itemName',
+                  '$opt ${itemName ?? 'items'}',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color:
                         isSelected
-                            ? AppColors.primary
-                            : const Color(0xFF1E293B),
+                            ? (isDark
+                                ? const Color(0xFF60A5FA)
+                                : AppColors.primary)
+                            : (isDark
+                                ? AppColors.darkTextPrimary
+                                : const Color(0xFF1E293B)),
                   ),
                 ),
                 if (isSelected)
-                  const Icon(
+                  Icon(
                     Icons.check_rounded,
                     size: 16,
-                    color: AppColors.primary,
+                    color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
                   ),
               ],
             ),
@@ -513,44 +555,58 @@ class _DesktopNumberButtonState extends State<_DesktopNumberButton> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: isSelected ? null : widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          width: 34,
-          height: 34,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? AppColors.primary
-                    : (_isHovered
-                        ? const Color(0xFFF1F5F9)
-                        : Colors.transparent),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.25),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Text(
-            '${widget.pageNumber}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              color:
-                  isSelected
-                      ? Colors.white
-                      : (_isHovered
-                          ? const Color(0xFF0F172A)
-                          : const Color(0xFF475569)),
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
+        child: Builder(
+          builder: (ctx) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color:
+                    isSelected
+                        ? (isDark ? const Color(0xFF2563EB) : AppColors.primary)
+                        : (_isHovered
+                            ? (isDark
+                                ? AppColors.darkSurfaceHighlight
+                                : const Color(0xFFF1F5F9))
+                            : Colors.transparent),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow:
+                    isSelected
+                        ? [
+                          BoxShadow(
+                            color: (isDark
+                                    ? const Color(0xFF2563EB)
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                        : null,
+              ),
+              child: Text(
+                '${widget.pageNumber}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color:
+                      isSelected
+                          ? Colors.white
+                          : (_isHovered
+                              ? (isDark
+                                  ? AppColors.darkTextPrimary
+                                  : const Color(0xFF0F172A))
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF475569))),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -580,6 +636,7 @@ class _DesktopChevronButtonState extends State<_DesktopChevronButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Tooltip(
       message: widget.tooltip,
@@ -597,7 +654,9 @@ class _DesktopChevronButtonState extends State<_DesktopChevronButton> {
             decoration: BoxDecoration(
               color:
                   enabled && _isHovered
-                      ? const Color(0xFFF1F5F9)
+                      ? (isDark
+                          ? AppColors.darkSurfaceHighlight
+                          : const Color(0xFFF1F5F9))
                       : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -607,9 +666,15 @@ class _DesktopChevronButtonState extends State<_DesktopChevronButton> {
               color:
                   enabled
                       ? (_isHovered
-                          ? const Color(0xFF0F172A)
-                          : const Color(0xFF475569))
-                      : const Color(0xFFCBD5E1),
+                          ? (isDark
+                              ? AppColors.darkTextPrimary
+                              : const Color(0xFF0F172A))
+                          : (isDark
+                              ? AppColors.darkTextSecondary
+                              : const Color(0xFF475569)))
+                      : (isDark
+                          ? AppColors.darkBorderSubtle
+                          : const Color(0xFFCBD5E1)),
             ),
           ),
         ),
@@ -635,18 +700,31 @@ class _MobileNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: enabled ? AppColors.surface : AppColors.background,
+          color:
+              enabled
+                  ? (isDark ? AppColors.darkSurface : AppColors.surface)
+                  : (isDark ? AppColors.darkBackground : AppColors.background),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: enabled ? AppColors.border : Colors.transparent,
+            color:
+                enabled
+                    ? (isDark ? AppColors.darkBorder : AppColors.border)
+                    : Colors.transparent,
           ),
-          boxShadow: enabled ? AppColors.cardShadow(opacity: 0.03) : null,
+          boxShadow:
+              enabled
+                  ? (isDark
+                      ? AppColors.darkCardShadow(opacity: 0.15)
+                      : AppColors.cardShadow(opacity: 0.03))
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -655,7 +733,14 @@ class _MobileNavButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                color:
+                    enabled
+                        ? (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary)
+                        : (isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted),
               ),
               const SizedBox(width: 4),
             ],
@@ -664,7 +749,14 @@ class _MobileNavButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                color:
+                    enabled
+                        ? (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary)
+                        : (isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted),
               ),
             ),
             if (isTrailingIcon) ...[
@@ -672,7 +764,14 @@ class _MobileNavButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: enabled ? AppColors.textPrimary : AppColors.textMuted,
+                color:
+                    enabled
+                        ? (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary)
+                        : (isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted),
               ),
             ],
           ],

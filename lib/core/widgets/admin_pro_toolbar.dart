@@ -261,6 +261,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── BUSCADOR DE ESCRITORIO (DENTRO DE BARRA COHESIVA) ─────────────────────
   Widget _buildDesktopSearchField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final searchTooltipMsg =
         widget.searchKeyHint != null && widget.searchKeyHint!.isNotEmpty
             ? 'Buscar (Atajo: ${widget.searchKeyHint} o Alt+${widget.searchKeyHint})'
@@ -276,22 +277,22 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           focusNode: _effectiveSearchFocusNode,
           onChanged: widget.onSearchChanged,
           onSubmitted: widget.onSearchSubmitted,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
+            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
           ),
           textAlignVertical: TextAlignVertical.center,
           decoration: InputDecoration(
             hintText: widget.searchHint,
-            hintStyle: const TextStyle(
-              color: AppColors.textMuted,
+            hintStyle: TextStyle(
+              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
               fontSize: 13,
               fontWeight: FontWeight.w400,
             ),
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.search_rounded,
-              color: AppColors.teal,
+              color: isDark ? const Color(0xFF60A5FA) : AppColors.teal,
               size: 19,
             ),
             suffixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -319,18 +320,26 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               },
             ),
             filled: true,
-            fillColor: AppColors.background,
+            fillColor:
+                isDark ? AppColors.darkSurfaceElevated : AppColors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.darkBorderSubtle : AppColors.border,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.border),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.darkBorderSubtle : AppColors.border,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+              borderSide: BorderSide(
+                color: isDark ? const Color(0xFF60A5FA) : AppColors.teal,
+                width: 1.5,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
@@ -344,15 +353,21 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── BUSCADOR DE MÓVIL (STANDALONE 44DP ESTILO PRODUCTS) ───────────────────
   Widget _buildMobileSearchField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.15)
+                    : Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -364,11 +379,14 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         onChanged: widget.onSearchChanged,
         onSubmitted: widget.onSearchSubmitted,
         textInputAction: TextInputAction.search,
-        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+        style: TextStyle(
+          fontSize: 14,
+          color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+        ),
         decoration: InputDecoration(
           hintText: widget.searchHint,
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
+          hintStyle: TextStyle(
+            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
             fontSize: 13,
           ),
           prefixIcon: const Icon(
@@ -408,16 +426,21 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── TOGGLE DE VISTA SEGMENTADO ESTILO LINEAR / APPLE ──────────────────────
   Widget _buildViewModeToggle(AdminProViewToggleConfig config) {
-    final activeColor = config.activeColor ?? AppColors.tealDark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor =
+        config.activeColor ??
+        (isDark ? const Color(0xFF60A5FA) : AppColors.tealDark);
 
     return SizedBox(
       height: 40,
       child: Container(
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: isDark ? AppColors.darkSurface : AppColors.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorderSubtle : AppColors.border,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -440,14 +463,18 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                   decoration: BoxDecoration(
                     color:
                         config.isTableView
-                            ? AppColors.surface
+                            ? (isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.surface)
                             : Colors.transparent,
                     borderRadius: BorderRadius.circular(7),
                     boxShadow:
                         config.isTableView
                             ? [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.06,
+                                ),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -458,7 +485,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                     config.tableIcon,
                     size: 18,
                     color:
-                        config.isTableView ? activeColor : AppColors.textMuted,
+                        config.isTableView
+                            ? activeColor
+                            : (isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textMuted),
                   ),
                 ),
               ),
@@ -481,14 +512,18 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                   decoration: BoxDecoration(
                     color:
                         !config.isTableView
-                            ? AppColors.surface
+                            ? (isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.surface)
                             : Colors.transparent,
                     borderRadius: BorderRadius.circular(7),
                     boxShadow:
                         !config.isTableView
                             ? [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.06,
+                                ),
                                 blurRadius: 4,
                                 offset: const Offset(0, 1),
                               ),
@@ -499,7 +534,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                     config.cardsIcon,
                     size: 18,
                     color:
-                        !config.isTableView ? activeColor : AppColors.textMuted,
+                        !config.isTableView
+                            ? activeColor
+                            : (isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textMuted),
                   ),
                 ),
               ),
@@ -561,6 +600,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── BOTÓN DE FILTROS AGRUPADOS PARA MÓVIL (STANDALONE 44X44 ESTILO PRODUCTS)
   Widget _buildMobileFiltersTriggerButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final count = widget.activeFiltersCount ?? 0;
     final hasActive = count > 0;
 
@@ -573,15 +613,20 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           decoration: BoxDecoration(
             color:
                 hasActive
-                    ? AppColors.primary.withValues(alpha: 0.08)
-                    : AppColors.surface,
+                    ? AppColors.primary.withValues(alpha: isDark ? 0.25 : 0.08)
+                    : (isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.surface),
             borderRadius: BorderRadius.circular(AppColors.radius),
             border: Border.all(
-              color: hasActive ? AppColors.primary : AppColors.border,
+              color:
+                  hasActive
+                      ? (isDark ? const Color(0xFF60A5FA) : AppColors.primary)
+                      : (isDark ? AppColors.darkBorder : AppColors.border),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
+                color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.02),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -606,8 +651,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             icon: Icon(
               Icons.tune_rounded,
               size: 20,
-              color:
-                  hasActive ? AppColors.primary : AppColors.textSecondary,
+              color: hasActive ? AppColors.primary : AppColors.textSecondary,
             ),
             tooltip: 'Filtros (Atajo: F)',
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
@@ -645,10 +689,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(
             20,
@@ -749,16 +794,19 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── BOTÓN DE ACCIONES SECUNDARIAS (STANDALONE 44X44 ESTILO PRODUCTS) ──────
   Widget _buildMobileTrailingActionsButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 44,
       width: 44,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -769,10 +817,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         waitDuration: const Duration(milliseconds: 300),
         child: IconButton(
           onPressed: () => _showMobileTrailingActionsSheet(context),
-          icon: const Icon(
+          icon: Icon(
             Icons.more_vert_rounded,
             size: 20,
-            color: AppColors.textSecondary,
+            color:
+                isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           padding: const EdgeInsets.all(10),
@@ -791,10 +840,11 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.fromLTRB(
             20,
@@ -866,16 +916,19 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── BOTÓN DE REFRESCO STANDALONE 44X44 EN MÓVIL ───────────────────────────
   Widget _buildMobileRefreshButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 44,
       width: 44,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -903,26 +956,30 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     // ── DESKTOP & TABLET: Barra unificada en tarjeta de superficie ─────────────
     return Container(
       margin: widget.margin,
       padding: widget.padding,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(useDesktopLayout ? 14 : 16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x050F172A),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.25)
+                    : const Color(0x050F172A),
             blurRadius: 6,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child:
-          useDesktopLayout
-              ? _buildDesktopLayout()
-              : _buildTabletLayout(),
+      child: useDesktopLayout ? _buildDesktopLayout() : _buildTabletLayout(),
     );
   }
 
@@ -931,10 +988,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     final primaryRow = Row(
       children: [
         // 1. Buscador expandido
-        Expanded(
-          flex: widget.searchFlex,
-          child: _buildDesktopSearchField(),
-        ),
+        Expanded(flex: widget.searchFlex, child: _buildDesktopSearchField()),
 
         // 2. Filtros centrales modulares
         for (final filter in widget.filterWidgets) ...[

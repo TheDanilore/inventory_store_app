@@ -9,37 +9,52 @@ class ProductDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (details.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final entries = details.entries.toList();
     return Container(
-      decoration: AppColors.card(),
+      decoration: AppColors.cardAdaptive(context),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(18, 18, 18, 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
             child: ProductCardHeader(
               icon: Icons.list_alt_rounded,
-              iconColor: Color(0xFF8B5CF6),
-              iconBg: Color(0xFFEDE9FE),
+              iconColor: const Color(0xFF8B5CF6),
+              iconBg:
+                  isDark
+                      ? const Color(0xFF8B5CF6).withValues(alpha: 0.15)
+                      : const Color(0xFFEDE9FE),
               title: 'Especificaciones',
             ),
           ),
-          Container(height: 1, color: AppColors.divider),
+          Container(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.divider,
+          ),
           ...entries.asMap().entries.map((e) {
             final isEven = e.key % 2 == 0;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              color: isEven ? AppColors.background : Colors.white,
+              color:
+                  isEven
+                      ? (isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.background)
+                      : (isDark ? AppColors.darkSurface : Colors.white),
               child: Row(
                 children: [
                   Expanded(
                     flex: 2,
                     child: Text(
                       _humanizeKey(e.value.key.toString()),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : AppColors.textMuted,
                       ),
                     ),
                   ),
@@ -47,9 +62,12 @@ class ProductDetailsCard extends StatelessWidget {
                     flex: 3,
                     child: Text(
                       _humanizeValue(e.value.key.toString(), e.value.value),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -95,9 +113,7 @@ class ProductDetailsCard extends StatelessWidget {
             .split(' ')
             .map(
               (w) =>
-                  w.isNotEmpty
-                      ? '${w[0].toUpperCase()}${w.substring(1)}'
-                      : '',
+                  w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '',
             )
             .join(' ');
     }

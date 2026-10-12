@@ -17,19 +17,23 @@ class ProductReviewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: AppColors.card(),
+      decoration: AppColors.cardAdaptive(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const _CardHeader(
+              _CardHeader(
                 icon: Icons.star_rounded,
-                iconColor: Color(0xFFF5A623),
-                iconBg: Color(0xFFFEF3C7),
+                iconColor: const Color(0xFFF5A623),
+                iconBg:
+                    isDark
+                        ? const Color(0xFF78350F).withValues(alpha: 0.4)
+                        : const Color(0xFFFEF3C7),
                 title: 'Reseñas',
               ),
               GestureDetector(
@@ -40,7 +44,10 @@ class ProductReviewsCard extends StatelessWidget {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
+                    color:
+                        isDark
+                            ? AppColors.primary.withValues(alpha: 0.2)
+                            : AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(AppColors.radius),
                   ),
                   child: const Row(
@@ -78,11 +85,14 @@ class ProductReviewsCard extends StatelessWidget {
                     color: AppColors.textMuted.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Sé el primero en opinar',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textMuted,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textMuted,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -96,10 +106,13 @@ class ProductReviewsCard extends StatelessWidget {
               children: [
                 Text(
                   averageRating.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                     letterSpacing: -1,
                     height: 1,
                   ),
@@ -123,9 +136,12 @@ class ProductReviewsCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '$totalReviews calificaciones',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -133,7 +149,10 @@ class ProductReviewsCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(
+              height: 1,
+              color: isDark ? AppColors.darkBorder : AppColors.divider,
+            ),
             const SizedBox(height: 14),
             ...reviews.take(3).map((r) => _ReviewRow(review: r)),
           ],
@@ -149,6 +168,7 @@ class _ReviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final name = review['user_name']?.toString() ?? 'Usuario';
     final rating = (review['rating'] as num?)?.toInt() ?? 5;
     final comment = review['comment'] as String?;
@@ -164,7 +184,10 @@ class _ReviewRow extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color:
+                      isDark
+                          ? AppColors.primary.withValues(alpha: 0.2)
+                          : AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -185,10 +208,13 @@ class _ReviewRow extends StatelessWidget {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : AppColors.textPrimary,
                       ),
                     ),
                     Row(
@@ -212,9 +238,12 @@ class _ReviewRow extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               comment,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textSecondary,
+                color:
+                    isDark
+                        ? const Color(0xFF94A3B8)
+                        : AppColors.textSecondary,
                 height: 1.5,
               ),
               maxLines: 3,
@@ -222,7 +251,10 @@ class _ReviewRow extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 10),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : AppColors.divider,
+          ),
         ],
       ),
     );
@@ -244,6 +276,7 @@ class _CardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -258,10 +291,10 @@ class _CardHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
           ),
         ),
       ],
