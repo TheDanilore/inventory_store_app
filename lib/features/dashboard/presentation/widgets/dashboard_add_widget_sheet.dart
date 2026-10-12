@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Descriptor para los widgets modulares disponibles en el Dashboard
 class DashboardWidgetItem {
@@ -44,6 +45,7 @@ class DashboardAddWidgetSheet extends StatefulWidget {
     required VoidCallback onResetDefaults,
   }) {
     final isDesktop = MediaQuery.of(context).size.width >= 720;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isDesktop) {
       return showGeneralDialog(
@@ -81,7 +83,7 @@ class DashboardAddWidgetSheet extends StatefulWidget {
       return showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -124,73 +126,73 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
   }
 
   static List<DashboardWidgetItem> get allAvailableWidgets => [
-        DashboardWidgetItem(
-          id: 'kpi_strip',
-          title: 'Métricas Principales (KPIs)',
-          description:
-              'Métricas globales de ventas, ticket medio, inventario y utilidad bruta.',
-          categoryTag: '#Rendimiento',
-          previewMockup: _buildKpiMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'profit_spline',
-          title: 'Curva de Utilidad y Ventas',
-          description:
-              'Gráfico de curva continua (Spline) con trayectoria de ganancias netas.',
-          categoryTag: '#Finanzas',
-          previewMockup: _buildSplineMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'best_sellers',
-          title: 'Productos de Mayor Rotación',
-          description:
-              'Artículos con más unidades despachadas y rendimiento financiero por SKU.',
-          categoryTag: '#Operaciones',
-          previewMockup: _buildBestSellersMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'customer_segments',
-          title: 'Segmentación de Clientes',
-          description:
-              'Canales de compradores principales (Minoristas, Distribuidores y Mayoristas).',
-          categoryTag: '#Estrategia',
-          previewMockup: _buildCustomersMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'weekly_activity',
-          title: 'Días de Mayor Actividad',
-          description:
-              'Histograma semanal con picos de mayor demanda y frecuencia comercial.',
-          categoryTag: '#Operaciones',
-          previewMockup: _buildWeeklyActivityMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'radial_goal',
-          title: 'Meta Financiera de Ahorro',
-          description:
-              'Indicador radial porcentual con progreso hacia la meta mensual de la tienda.',
-          categoryTag: '#Finanzas',
-          previewMockup: _buildRadialGoalMockup(),
-        ),
-        DashboardWidgetItem(
-          id: 'ai_assistant',
-          title: 'Asistente IA Predictivo',
-          description:
-              'Predicciones automáticas, alertas de quiebre de stock y consultas inteligentes.',
-          categoryTag: '#InteligenciaArtificial',
-          previewMockup: _buildAiAssistantMockup(),
-          isDefaultVisible: false,
-          isComingSoon: true,
-        ),
-        DashboardWidgetItem(
-          id: 'expiring_batches',
-          title: 'Lotes Críticos por Vencer',
-          description:
-              'Control preventivo de mercancía perecible en fecha de riesgo FEFO.',
-          categoryTag: '#Inventario',
-          previewMockup: _buildExpiringBatchesMockup(),
-        ),
-      ];
+    DashboardWidgetItem(
+      id: 'kpi_strip',
+      title: 'Métricas Principales (KPIs)',
+      description:
+          'Métricas globales de ventas, ticket medio, inventario y utilidad bruta.',
+      categoryTag: '#Rendimiento',
+      previewMockup: _buildKpiMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'profit_spline',
+      title: 'Curva de Utilidad y Ventas',
+      description:
+          'Gráfico de curva continua (Spline) con trayectoria de ganancias netas.',
+      categoryTag: '#Finanzas',
+      previewMockup: _buildSplineMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'best_sellers',
+      title: 'Productos de Mayor Rotación',
+      description:
+          'Artículos con más unidades despachadas y rendimiento financiero por SKU.',
+      categoryTag: '#Operaciones',
+      previewMockup: _buildBestSellersMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'customer_segments',
+      title: 'Segmentación de Clientes',
+      description:
+          'Canales de compradores principales (Minoristas, Distribuidores y Mayoristas).',
+      categoryTag: '#Estrategia',
+      previewMockup: _buildCustomersMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'weekly_activity',
+      title: 'Días de Mayor Actividad',
+      description:
+          'Histograma semanal con picos de mayor demanda y frecuencia comercial.',
+      categoryTag: '#Operaciones',
+      previewMockup: _buildWeeklyActivityMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'radial_goal',
+      title: 'Meta Financiera de Ahorro',
+      description:
+          'Indicador radial porcentual con progreso hacia la meta mensual de la tienda.',
+      categoryTag: '#Finanzas',
+      previewMockup: _buildRadialGoalMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'ai_assistant',
+      title: 'Asistente IA Predictivo',
+      description:
+          'Predicciones automáticas, alertas de quiebre de stock y consultas inteligentes.',
+      categoryTag: '#InteligenciaArtificial',
+      previewMockup: _buildAiAssistantMockup(),
+      isDefaultVisible: false,
+      isComingSoon: true,
+    ),
+    DashboardWidgetItem(
+      id: 'expiring_batches',
+      title: 'Lotes Críticos por Vencer',
+      description:
+          'Control preventivo de mercancía perecible en fecha de riesgo FEFO.',
+      categoryTag: '#Inventario',
+      previewMockup: _buildExpiringBatchesMockup(),
+    ),
+  ];
 
   List<DashboardWidgetItem> get _filteredWidgets {
     return allAvailableWidgets.where((w) {
@@ -228,16 +230,19 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
       Vibration.vibrate(duration: 40, amplitude: 90);
     }
     setState(() {
-      _currentVisible = allAvailableWidgets
-          .where((w) => !w.isComingSoon && w.isDefaultVisible)
-          .map((w) => w.id)
-          .toSet();
+      _currentVisible =
+          allAvailableWidgets
+              .where((w) => !w.isComingSoon && w.isDefaultVisible)
+              .map((w) => w.id)
+              .toSet();
     });
     widget.onResetDefaults();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop = MediaQuery.of(context).size.width >= 720;
     final categories = [
       'Todos',
       '#Rendimiento',
@@ -249,14 +254,26 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
     ];
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius:
+            isDesktop
+                ? const BorderRadius.horizontal(left: Radius.circular(20))
+                : const BorderRadius.vertical(top: Radius.circular(24)),
+        border:
+            isDesktop
+                ? Border(
+                  left: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
+                )
+                : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
             blurRadius: 28,
-            offset: Offset(-4, 0),
+            offset: const Offset(-4, 0),
           ),
         ],
       ),
@@ -264,14 +281,17 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Mobile Drag Handle (solo pantallas móviles) ─────────────
-          if (MediaQuery.of(context).size.width < 720)
+          if (!isDesktop)
             Center(
               child: Container(
                 margin: const EdgeInsets.only(top: 10, bottom: 4),
                 width: 38,
                 height: 4.5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
+                  color:
+                      isDark
+                          ? const Color(0xFF475569)
+                          : const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -286,21 +306,27 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Añadir Widgets',
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
+                        color:
+                            isDark
+                                ? const Color(0xFFF8FAFC)
+                                : const Color(0xFF0F172A),
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${_currentVisible.length} de ${allAvailableWidgets.length} activos en el dashboard',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -309,16 +335,22 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   tooltip: 'Cerrar panel (Esc)',
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
                     size: 20,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
+          ),
 
           // ── Search Bar ──────────────────────────────────────────────
           Padding(
@@ -326,34 +358,60 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
             child: Container(
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color:
+                    isDark
+                        ? AppColors.darkSurfaceElevated
+                        : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(
+                  color:
+                      isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                ),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val),
-                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color:
+                      isDark
+                          ? const Color(0xFFF8FAFC)
+                          : const Color(0xFF0F172A),
+                ),
                 decoration: InputDecoration(
                   hintText: 'Buscar componentes...',
-                  hintStyle: const TextStyle(
+                  hintStyle: TextStyle(
                     fontSize: 12.5,
-                    color: Color(0xFF94A3B8),
+                    color:
+                        isDark
+                            ? const Color(0xFF64748B)
+                            : const Color(0xFF94A3B8),
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.search_rounded,
                     size: 18,
-                    color: Color(0xFF94A3B8),
+                    color:
+                        isDark
+                            ? const Color(0xFF64748B)
+                            : const Color(0xFF94A3B8),
                   ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
+                  suffixIcon:
+                      _searchQuery.isNotEmpty
+                          ? IconButton(
+                            icon: Icon(
+                              Icons.clear_rounded,
+                              size: 16,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                          : null,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 9),
                 ),
@@ -384,10 +442,21 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFFF1F5F9),
+                      color:
+                          isSelected
+                              ? const Color(0xFF2563EB)
+                              : (isDark
+                                  ? AppColors.darkSurfaceElevated
+                                  : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color:
+                            isSelected
+                                ? const Color(0xFF2563EB)
+                                : (isDark
+                                    ? AppColors.darkBorder
+                                    : Colors.transparent),
+                      ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -397,7 +466,11 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                         fontWeight:
                             isSelected ? FontWeight.w700 : FontWeight.w600,
                         color:
-                            isSelected ? Colors.white : const Color(0xFF64748B),
+                            isSelected
+                                ? Colors.white
+                                : (isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B)),
                       ),
                     ),
                   ),
@@ -409,43 +482,56 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
 
           // ── Widgets List ────────────────────────────────────────────
           Expanded(
-            child: _filteredWidgets.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.grid_off_rounded,
-                          size: 40,
-                          color: const Color(0xFF94A3B8).withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'No se encontraron widgets',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w600,
+            child:
+                _filteredWidgets.isEmpty
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.grid_off_rounded,
+                            size: 40,
+                            color:
+                                isDark
+                                    ? const Color(0xFF475569)
+                                    : const Color(
+                                      0xFF94A3B8,
+                                    ).withValues(alpha: 0.5),
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(18, 6, 18, 16),
-                    itemCount: _filteredWidgets.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final item = _filteredWidgets[index];
-                      final isVisible = _currentVisible.contains(item.id);
+                          const SizedBox(height: 8),
+                          Text(
+                            'No se encontraron widgets',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(18, 6, 18, 16),
+                      itemCount: _filteredWidgets.length,
+                      separatorBuilder:
+                          (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = _filteredWidgets[index];
+                        final isVisible = _currentVisible.contains(item.id);
 
-                      return _buildWidgetCatalogCard(item, isVisible);
-                    },
-                  ),
+                        return _buildWidgetCatalogCard(item, isVisible, isDark);
+                      },
+                    ),
           ),
 
           // ── Footer: Restaurar predeterminados y Botón Listo ─────────
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             child: Row(
@@ -459,7 +545,10 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF64748B),
+                    foregroundColor:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                   ),
                 ),
                 FilledButton(
@@ -476,7 +565,10 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                   ),
                   child: const Text(
                     'Listo',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -487,24 +579,36 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
     );
   }
 
-  Widget _buildWidgetCatalogCard(DashboardWidgetItem item, bool isVisible) {
+  Widget _buildWidgetCatalogCard(
+    DashboardWidgetItem item,
+    bool isVisible,
+    bool isDark,
+  ) {
     final cardWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isVisible
-              ? const Color(0xFF2563EB).withValues(alpha: 0.4)
-              : const Color(0xFFE2E8F0),
+          color:
+              isVisible
+                  ? (isDark
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.6)
+                      : const Color(0xFF2563EB).withValues(alpha: 0.4))
+                  : (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
           width: isVisible ? 1.4 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: isVisible
-                ? const Color(0xFF2563EB).withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.02),
+            color:
+                isVisible
+                    ? (isDark
+                        ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+                        : const Color(0xFF2563EB).withValues(alpha: 0.05))
+                    : (isDark
+                        ? Colors.black.withValues(alpha: 0.25)
+                        : Colors.black.withValues(alpha: 0.02)),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -514,8 +618,8 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!item.isComingSoon)
-            const Padding(
-              padding: EdgeInsets.only(top: 8, right: 6),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, right: 6),
               child: MouseRegion(
                 cursor: SystemMouseCursors.grab,
                 child: Tooltip(
@@ -523,7 +627,10 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                   child: Icon(
                     Icons.drag_indicator_rounded,
                     size: 18,
-                    color: Color(0xFF94A3B8),
+                    color:
+                        isDark
+                            ? const Color(0xFF64748B)
+                            : const Color(0xFF94A3B8),
                   ),
                 ),
               ),
@@ -540,19 +647,25 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
               children: [
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF0F172A),
                     letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   item.description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                     height: 1.3,
                   ),
                   maxLines: 2,
@@ -567,16 +680,27 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                         vertical: 2.5,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
+                        color:
+                            isDark
+                                ? AppColors.darkSurface
+                                : const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorder
+                                  : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Text(
                         item.categoryTag,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+                          color:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                         ),
                       ),
                     ),
@@ -590,82 +714,116 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
           // Right: Action Button (+ Añadir o ✓ Activo o Próximamente)
           Align(
             alignment: Alignment.center,
-            child: item.isComingSoon
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 13,
-                          color: Color(0xFF64748B),
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          'Próximamente',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => _handleToggle(item),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
+            child:
+                item.isComingSoon
+                    ? Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: isVisible
-                            ? const Color(0xFFEFF6FF)
-                            : const Color(0xFF2563EB),
+                        color:
+                            isDark
+                                ? AppColors.darkSurface
+                                : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(8),
-                        border: isVisible
-                            ? Border.all(color: const Color(0xFFBFDBFE))
-                            : null,
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorder
+                                  : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isVisible
-                                ? Icons.check_circle_rounded
-                                : Icons.add_rounded,
-                            size: 14,
-                            color: isVisible
-                                ? const Color(0xFF2563EB)
-                                : Colors.white,
+                            Icons.schedule_rounded,
+                            size: 13,
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            isVisible ? 'Activo' : 'Añadir',
+                            'Próximamente',
                             style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                              color: isVisible
-                                  ? const Color(0xFF2563EB)
-                                  : Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
                             ),
                           ),
                         ],
                       ),
+                    )
+                    : InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _handleToggle(item),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isVisible
+                                  ? (isDark
+                                      ? const Color(
+                                        0xFF1E3A8A,
+                                      ).withValues(alpha: 0.45)
+                                      : const Color(0xFFEFF6FF))
+                                  : const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              isVisible
+                                  ? Border.all(
+                                    color:
+                                        isDark
+                                            ? const Color(
+                                              0xFF3B82F6,
+                                            ).withValues(alpha: 0.6)
+                                            : const Color(0xFFBFDBFE),
+                                  )
+                                  : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isVisible
+                                  ? Icons.check_circle_rounded
+                                  : Icons.add_rounded,
+                              size: 14,
+                              color:
+                                  isVisible
+                                      ? (isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : const Color(0xFF2563EB))
+                                      : Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isVisible ? 'Activo' : 'Añadir',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isVisible
+                                        ? (isDark
+                                            ? const Color(0xFF60A5FA)
+                                            : const Color(0xFF2563EB))
+                                        : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
           ),
         ],
       ),
@@ -698,7 +856,11 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.drag_indicator_rounded, color: Color(0xFF38BDF8), size: 20),
+              const Icon(
+                Icons.drag_indicator_rounded,
+                color: Color(0xFF38BDF8),
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -732,10 +894,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
           ),
         ),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.45,
-        child: cardWidget,
-      ),
+      childWhenDragging: Opacity(opacity: 0.45, child: cardWidget),
       child: cardWidget,
     );
   }
@@ -745,382 +904,489 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
   // ─────────────────────────────────────────────────────────────────────────
 
   static Widget _buildKpiMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.all(6),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFF2563EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Container(
+                    width: 10,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
               Container(
-                width: 14,
-                height: 5,
+                width: 32,
+                height: 7,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
+                  color:
+                      isDark
+                          ? const Color(0xFFF1F5F9)
+                          : const Color(0xFF0F172A),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
+              const SizedBox(height: 4),
               Container(
-                width: 10,
-                height: 5,
+                width: 24,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981),
+                  color:
+                      isDark
+                          ? const Color(0xFF64748B)
+                          : const Color(0xFF94A3B8),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 5),
-          Container(
-            width: 32,
-            height: 7,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: 24,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFF94A3B8),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   static Widget _buildSplineMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 44,
-          height: 28,
-          child: CustomPaint(
-            painter: _SplineLinePainter(),
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
           ),
-        ),
-      ),
+          child: Center(
+            child: SizedBox(
+              width: 44,
+              height: 28,
+              child: CustomPaint(
+                painter: _SplineLinePainter(
+                  lineColor:
+                      isDark
+                          ? const Color(0xFF60A5FA)
+                          : const Color(0xFF2563EB),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   static Widget _buildBestSellersMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.all(7),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Row(
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final barBg =
+            isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
+          ),
+          padding: const EdgeInsets.all(7),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFF2563EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: barBg,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: barBg,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: barBg,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   static Widget _buildCustomersMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
-              borderRadius: BorderRadius.circular(3),
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
             ),
           ),
-          Container(
-            width: 26,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981),
-              borderRadius: BorderRadius.circular(3),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 5,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF60A5FA)
+                          : const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              Container(
+                width: 26,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              Container(
+                width: 16,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ],
           ),
-          Container(
-            width: 16,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   static Widget _buildWeeklyActivityMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(
-            width: 5,
-            height: 18,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final inactiveBarBg =
+            isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1);
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
             ),
           ),
-          Container(
-            width: 5,
-            height: 26,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: 5,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: inactiveBarBg,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 5,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: inactiveBarBg,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 6,
+                height: 42,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF60A5FA)
+                          : const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              Container(
+                width: 5,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: inactiveBarBg,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 5,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: inactiveBarBg,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
           ),
-          Container(
-            width: 6,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          Container(
-            width: 5,
-            height: 22,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Container(
-            width: 5,
-            height: 14,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   static Widget _buildRadialGoalMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              CircularProgressIndicator(
-                value: 0.72,
-                strokeWidth: 4,
-                backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF10B981),
-                ),
-              ),
-              const Text(
-                '72%',
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-            ],
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
           ),
-        ),
-      ),
+          child: Center(
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: 0.72,
+                    strokeWidth: 4,
+                    backgroundColor:
+                        isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF10B981),
+                    ),
+                  ),
+                  Text(
+                    '72%',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color:
+                          isDark
+                              ? const Color(0xFFF8FAFC)
+                              : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   static Widget _buildAiAssistantMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Center(
-        child: Container(
-          width: 32,
-          height: 32,
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF60A5FA), Color(0xFF2563EB), Color(0xFF1E3A8A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+          ),
+          child: Center(
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF60A5FA),
+                    Color(0xFF2563EB),
+                    Color(0xFF1E3A8A),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-            ],
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
           ),
-          child: const Icon(
-            Icons.auto_awesome_rounded,
-            size: 16,
-            color: Colors.white,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   static Widget _buildExpiringBatchesMockup() {
-    return Container(
-      width: 62,
-      height: 62,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFECDD3)),
-      ),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(7),
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          width: 62,
+          height: 62,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFE4E6),
-            borderRadius: BorderRadius.circular(10),
+            color:
+                isDark
+                    ? const Color(0xFF450A0A).withValues(alpha: 0.4)
+                    : const Color(0xFFFFF1F2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color:
+                  isDark
+                      ? const Color(0xFF991B1B).withValues(alpha: 0.6)
+                      : const Color(0xFFFECDD3),
+            ),
           ),
-          child: const Icon(
-            Icons.warning_amber_rounded,
-            size: 22,
-            color: Color(0xFFE11D48),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color:
+                    isDark
+                        ? const Color(0xFF7F1D1D).withValues(alpha: 0.6)
+                        : const Color(0xFFFFE4E6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                size: 22,
+                color:
+                    isDark ? const Color(0xFFF87171) : const Color(0xFFE11D48),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _SplineLinePainter extends CustomPainter {
+  final Color lineColor;
+  const _SplineLinePainter({this.lineColor = const Color(0xFF2563EB)});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF2563EB)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final paint =
+        Paint()
+          ..color = lineColor
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
 
     final path = Path();
     path.moveTo(0, size.height * 0.7);
@@ -1137,5 +1403,6 @@ class _SplineLinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SplineLinePainter oldDelegate) =>
+      oldDelegate.lineColor != lineColor;
 }

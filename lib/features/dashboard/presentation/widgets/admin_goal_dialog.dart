@@ -223,11 +223,15 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.transparent,
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
       child: Column(
@@ -241,7 +245,9 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
+                  color: AppColors.success.withValues(
+                    alpha: isDark ? 0.2 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -251,19 +257,23 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Meta de Ahorro',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF0F172A),
                   ),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, size: 20),
-                color: const Color(0xFF64748B),
+                color:
+                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                 splashRadius: 18,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -286,9 +296,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
             controller: _addCtrl,
             focusNode: _addFocusNode,
             autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
             inputFormatters: [_decimalFormatter],
             onSubmitted: (_) => _saveGoal(),
@@ -322,14 +330,23 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                           : amount.toStringAsFixed(2);
                   return ActionChip(
                     label: Text('+S/$label'),
-                    labelStyle: const TextStyle(
+                    labelStyle: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12.5,
-                      color: Color(0xFF15803D),
+                      color:
+                          isDark
+                              ? const Color(0xFF4ADE80)
+                              : const Color(0xFF15803D),
                     ),
-                    backgroundColor: const Color(0xFFDCFCE7),
-                    side: const BorderSide(
-                      color: Color(0xFF86EFAC),
+                    backgroundColor:
+                        isDark
+                            ? const Color(0xFF14532D).withValues(alpha: 0.35)
+                            : const Color(0xFFDCFCE7),
+                    side: BorderSide(
+                      color:
+                          isDark
+                              ? const Color(0xFF15803D)
+                              : const Color(0xFF86EFAC),
                       width: 0.8,
                     ),
                     visualDensity: VisualDensity.compact,
@@ -343,7 +360,10 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
           ),
 
           const SizedBox(height: 14),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          Divider(
+            height: 1,
+            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+          ),
           const SizedBox(height: 4),
 
           // ── Sección avanzada (colapsable) ────────────────────────────
@@ -356,10 +376,13 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.tune_rounded,
                     size: 16,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -367,7 +390,10 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                       'Ajustes avanzados',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                         fontSize: 13,
                       ),
                     ),
@@ -375,9 +401,12 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                   AnimatedRotation(
                     turns: _advancedExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(
+                    child: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF64748B),
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                       size: 20,
                     ),
                   ),
@@ -466,16 +495,22 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(90, 42),
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  side: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 onPressed: _isLoading ? null : () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   'Cancelar',
                   style: TextStyle(
-                    color: Color(0xFF475569),
+                    color:
+                        isDark
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFF475569),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

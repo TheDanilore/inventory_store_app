@@ -122,7 +122,8 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppColors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = iconColor ?? (isDark ? const Color(0xFF60A5FA) : AppColors.primary);
     return Row(
       children: [
         Container(
@@ -133,12 +134,12 @@ class SectionHeader extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withValues(alpha: 0.18),
-                color.withValues(alpha: 0.08),
+                color.withValues(alpha: isDark ? 0.25 : 0.18),
+                color.withValues(alpha: isDark ? 0.12 : 0.08),
               ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.15)),
+            border: Border.all(color: color.withValues(alpha: isDark ? 0.3 : 0.15)),
           ),
           child: Icon(icon, color: color, size: 20),
         ),
@@ -151,16 +152,16 @@ class SectionHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 letterSpacing: -0.2,
               ),
             ),
             const SizedBox(height: 1),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textSecondary,
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -177,23 +178,25 @@ class SubSectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tealColor = isDark ? const Color(0xFF2DD4BF) : Colors.teal;
     return Row(
       children: [
         Container(
           width: 3,
           height: 14,
           decoration: BoxDecoration(
-            color: Colors.teal,
+            color: tealColor,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 8),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: Colors.teal,
+            color: tealColor,
             letterSpacing: 0.5,
           ),
         ),
@@ -224,19 +227,20 @@ class KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = gradient.colors.first;
     final card = Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: baseColor.withValues(alpha: 0.12),
+          color: isDark ? AppColors.darkBorder : baseColor.withValues(alpha: 0.12),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: baseColor.withValues(alpha: 0.07),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : baseColor.withValues(alpha: 0.07),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -272,8 +276,11 @@ class KpiCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.12),
+                      color: AppColors.danger.withValues(alpha: isDark ? 0.25 : 0.12),
                       borderRadius: BorderRadius.circular(10),
+                      border: isDark
+                          ? Border.all(color: AppColors.danger.withValues(alpha: 0.4))
+                          : null,
                     ),
                     child: Text(
                       badge!,
@@ -289,12 +296,14 @@ class KpiCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: baseColor.withValues(alpha: 0.08),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : baseColor.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    color: baseColor.withValues(alpha: 0.6),
+                    color: isDark ? const Color(0xFF94A3B8) : baseColor.withValues(alpha: 0.6),
                     size: 18,
                   ),
                 ),
@@ -308,8 +317,8 @@ class KpiCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: AnimatedNumericText(
                 text: value,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   height: 1.0,
@@ -322,13 +331,17 @@ class KpiCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
             decoration: BoxDecoration(
-              color: baseColor.withValues(alpha: 0.1),
+              color: isDark
+                  ? baseColor.withValues(alpha: 0.2)
+                  : baseColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               title,
               style: TextStyle(
-                color: baseColor,
+                color: isDark && baseColor == AppColors.primary
+                    ? const Color(0xFF60A5FA)
+                    : baseColor,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.1,
@@ -338,8 +351,8 @@ class KpiCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: AppColors.textMuted,
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
               fontSize: 10.5,
               fontWeight: FontWeight.w500,
             ),
@@ -382,14 +395,20 @@ class KpiCardWide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = isDark && color == AppColors.primary ? const Color(0xFF60A5FA) : color;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.12), width: 1.5),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : color.withValues(alpha: 0.12),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.06),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : color.withValues(alpha: 0.06),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -410,7 +429,7 @@ class KpiCardWide extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withValues(alpha: 0.4)],
+                    colors: [effectiveColor, effectiveColor.withValues(alpha: 0.4)],
                   ),
                 ),
               ),
@@ -425,9 +444,9 @@ class KpiCardWide extends StatelessWidget {
                 child: Tooltip(
                   message: 'Tendencia histórica',
                   child: Opacity(
-                    opacity: 0.25,
+                    opacity: isDark ? 0.35 : 0.25,
                     child: CustomPaint(
-                      painter: _SparklinePainter(color, sparklineData!),
+                      painter: _SparklinePainter(effectiveColor, sparklineData!),
                     ),
                   ),
                 ),
@@ -440,11 +459,11 @@ class KpiCardWide extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
+                      color: effectiveColor.withValues(alpha: isDark ? 0.18 : 0.1),
                       shape: BoxShape.circle,
-                      border: Border.all(color: color.withValues(alpha: 0.2)),
+                      border: Border.all(color: effectiveColor.withValues(alpha: isDark ? 0.3 : 0.2)),
                     ),
-                    child: Icon(icon, color: color, size: 22),
+                    child: Icon(icon, color: effectiveColor, size: 22),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -456,7 +475,7 @@ class KpiCardWide extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: color,
+                            color: effectiveColor,
                             letterSpacing: 0.4,
                           ),
                         ),
@@ -468,10 +487,10 @@ class KpiCardWide extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: AnimatedNumericText(
                               text: value,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
+                                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -480,9 +499,9 @@ class KpiCardWide extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.textSecondary,
+                            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -492,7 +511,7 @@ class KpiCardWide extends StatelessWidget {
                   Container(
                     height: 44,
                     width: 1,
-                    color: color.withValues(alpha: 0.15),
+                    color: isDark ? AppColors.darkBorder : color.withValues(alpha: 0.15),
                     margin: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   Column(
@@ -500,10 +519,10 @@ class KpiCardWide extends StatelessWidget {
                     children: [
                       Text(
                         rightLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                          color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -517,7 +536,7 @@ class KpiCardWide extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              color: rightColor ?? color,
+                              color: rightColor ?? effectiveColor,
                             ),
                           ),
                         ),
@@ -550,18 +569,19 @@ class GananciaBrutaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.success.withValues(alpha: 0.18),
+          color: isDark ? AppColors.darkBorder : AppColors.success.withValues(alpha: 0.18),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -577,7 +597,7 @@ class GananciaBrutaCard extends StatelessWidget {
               left: 50,
               height: 50,
               child: Opacity(
-                opacity: 0.12,
+                opacity: isDark ? 0.2 : 0.12,
                 child: CustomPaint(
                   painter: _SparklinePainter(AppColors.success, sparklineData!),
                 ),
@@ -591,7 +611,7 @@ class GananciaBrutaCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.15),
+                      color: AppColors.success.withValues(alpha: isDark ? 0.25 : 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -617,13 +637,18 @@ class GananciaBrutaCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.textMuted.withValues(alpha: 0.12),
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.textMuted.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
+                      border: isDark
+                          ? Border.all(color: AppColors.darkBorder)
+                          : null,
                     ),
-                    child: const Text(
+                    child: Text(
                       'vs precio de compra',
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -637,8 +662,8 @@ class GananciaBrutaCard extends StatelessWidget {
                 child: AnimatedCounter(
                   value: gananciaBruta,
                   formatter: (v) => 'S/ ${v.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
                     height: 1.0,
@@ -649,8 +674,8 @@ class GananciaBrutaCard extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 'Inversión total: S/ ${inversion.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                 ),
@@ -658,10 +683,10 @@ class GananciaBrutaCard extends StatelessWidget {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Margen Bruto Global',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -700,7 +725,7 @@ class GananciaBrutaCard extends StatelessWidget {
                       value: animatedValue,
                       minHeight: 7,
                       backgroundColor: AppColors.success.withValues(
-                        alpha: 0.12,
+                        alpha: isDark ? 0.2 : 0.12,
                       ),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         AppColors.success,
@@ -731,15 +756,21 @@ class MargenBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = isDark && color == AppColors.primary ? const Color(0xFF60A5FA) : color;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? AppColors.darkSurfaceElevated : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1.5),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : effectiveColor.withValues(alpha: 0.15),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.05),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : effectiveColor.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -752,10 +783,10 @@ class MargenBar extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: effectiveColor.withValues(alpha: isDark ? 0.2 : 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.percent_rounded, color: color, size: 16),
+                child: Icon(Icons.percent_rounded, color: effectiveColor, size: 16),
               ),
               const SizedBox(width: 10),
               Text(
@@ -763,7 +794,7 @@ class MargenBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: color,
+                  color: effectiveColor,
                 ),
               ),
               const Spacer(),
@@ -775,7 +806,7 @@ class MargenBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
+                    color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -792,8 +823,8 @@ class MargenBar extends StatelessWidget {
                 return LinearProgressIndicator(
                   value: animatedValue,
                   minHeight: 8,
-                  backgroundColor: color.withValues(alpha: 0.15),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                  backgroundColor: effectiveColor.withValues(alpha: isDark ? 0.2 : 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(effectiveColor),
                 );
               },
             ),
@@ -850,6 +881,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final batches = widget.batches;
     final criticalCount =
         batches.where((b) {
@@ -862,15 +894,15 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: isDark ? AppColors.darkSurface : Theme.of(context).colorScheme.surface,
         border: Border.all(
-          color: AppColors.danger.withValues(alpha: 0.2),
+          color: isDark ? AppColors.darkBorder : AppColors.danger.withValues(alpha: 0.2),
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.danger.withValues(alpha: 0.05),
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : AppColors.danger.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -891,7 +923,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.12),
+                      color: AppColors.danger.withValues(alpha: isDark ? 0.25 : 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -918,7 +950,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                           '${criticalCount > 0 ? " · $criticalCount crítico${criticalCount != 1 ? "s" : ""}" : ""}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -949,15 +981,24 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                     _expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.textSecondary,
+                    color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                     size: 20,
                   ),
                 ],
               ),
             ),
           ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          ...visibleBatches.map((batch) {
+          Divider(
+            height: 1,
+            indent: 16,
+            endIndent: 16,
+            color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9),
+          ),
+          const SizedBox(height: 6),
+          ...visibleBatches.asMap().entries.map((entry) {
+            final index = entry.key;
+            final batch = entry.value;
+            final isRowShaded = index.isOdd;
             final productName =
                 (batch['products'] as Map?)?['name'] as String? ?? '–';
             final warehouseName =
@@ -995,107 +1036,143 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
               message: '$productName\n$detailLine\n$daysLabel · $qty uds.',
               triggerMode: TooltipTriggerMode.longPress,
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
-                  color: urgencyColor.withValues(alpha: 0.08),
+                  color: isRowShaded
+                      ? (isDark
+                          ? AppColors.darkSurfaceElevated.withValues(alpha: 0.5)
+                          : const Color(0xFFF8FAFC))
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: urgencyColor.withValues(alpha: 0.25),
-                  ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: urgencyColor,
-                        borderRadius: BorderRadius.circular(4),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  hoverColor: isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.primaryLight.withValues(alpha: 0.45),
+                  onTap: () {
+                    // Acción opcional al pulsar lote
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: urgencyColor.withValues(alpha: isDark ? 0.12 : 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark
+                            ? urgencyColor.withValues(alpha: 0.35)
+                            : urgencyColor.withValues(alpha: 0.25),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            productName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            detailLine,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
+                          width: 4,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: urgencyColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
+                            color: urgencyColor,
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(urgencyIcon, color: urgencyColor, size: 12),
-                              const SizedBox(width: 4),
                               Text(
-                                daysLabel,
+                                productName,
                                 style: TextStyle(
-                                  color: urgencyColor,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 11,
+                                  fontSize: 13,
+                                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                detailLine,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$qty uds.',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? urgencyColor.withValues(alpha: 0.25)
+                                    : urgencyColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(urgencyIcon, color: urgencyColor, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    daysLabel,
+                                    style: TextStyle(
+                                      color: urgencyColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$qty uds.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );
           }),
           if (batches.length > 3)
-            TextButton(
-              style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
-              onPressed: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? 'Ver menos' : 'Ver ${batches.length - 3} más...',
-                style: const TextStyle(
-                  color: AppColors.danger,
-                  fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(64, 40),
+                  foregroundColor: isDark ? const Color(0xFFF87171) : AppColors.danger,
+                  backgroundColor: isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.danger.withValues(alpha: 0.06),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: Text(
+                  _expanded ? 'Ver menos' : 'Ver ${batches.length - 3} lotes más...',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
                 ),
               ),
             )

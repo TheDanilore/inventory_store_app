@@ -62,7 +62,9 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
               color:
                   _isHovered
                       ? widget.accentColor.withValues(alpha: 0.45)
-                      : (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
+                      : (isDark
+                          ? AppColors.darkBorder
+                          : const Color(0xFFE2E8F0)),
               width: 1.2,
             ),
             boxShadow: [
@@ -92,7 +94,10 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -103,7 +108,9 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: widget.accentColor.withValues(alpha: isDark ? 0.2 : 0.12),
+                      color: widget.accentColor.withValues(
+                        alpha: isDark ? 0.2 : 0.12,
+                      ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -122,7 +129,10 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
                   letterSpacing: -0.6,
                 ),
                 maxLines: 1,
@@ -141,8 +151,16 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                     decoration: BoxDecoration(
                       color:
                           widget.isPositiveDelta
-                              ? (isDark ? const Color(0xFF064E3B).withValues(alpha: 0.6) : const Color(0xFFDCFCE7))
-                              : (isDark ? const Color(0xFF881337).withValues(alpha: 0.6) : const Color(0xFFFFE4E6)),
+                              ? (isDark
+                                  ? const Color(
+                                    0xFF064E3B,
+                                  ).withValues(alpha: 0.6)
+                                  : const Color(0xFFDCFCE7))
+                              : (isDark
+                                  ? const Color(
+                                    0xFF881337,
+                                  ).withValues(alpha: 0.6)
+                                  : const Color(0xFFFFE4E6)),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -165,8 +183,12 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                             fontWeight: FontWeight.w700,
                             color:
                                 widget.isPositiveDelta
-                                    ? (isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D))
-                                    : (isDark ? const Color(0xFFFB7185) : const Color(0xFFBE123C)),
+                                    ? (isDark
+                                        ? const Color(0xFF4ADE80)
+                                        : const Color(0xFF15803D))
+                                    : (isDark
+                                        ? const Color(0xFFFB7185)
+                                        : const Color(0xFFBE123C)),
                           ),
                         ),
                       ],
@@ -179,7 +201,10 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF94A3B8),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF94A3B8),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -194,7 +219,6 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
     );
   }
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE REUTILIZABLE: MENÚ DE OPCIONES CONTEXTUALES DE TARJETA
@@ -229,37 +253,36 @@ class DashboardCardOptionsMenu extends StatelessWidget {
       ),
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 150),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
       onSelected: (val) {
         if (val == 'hide') onHide();
       },
-      itemBuilder: (ctx) => [
-        const PopupMenuItem(
-          value: 'hide',
-          height: 38,
-          child: Row(
-            children: [
-              Icon(
-                Icons.visibility_off_outlined,
-                size: 16,
-                color: Color(0xFFE11D48),
+      itemBuilder:
+          (ctx) => [
+            const PopupMenuItem(
+              value: 'hide',
+              height: 38,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.visibility_off_outlined,
+                    size: 16,
+                    color: Color(0xFFE11D48),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Ocultar widget',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFE11D48),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: 8),
-              Text(
-                'Ocultar widget',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFE11D48),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
     );
   }
 }
@@ -292,19 +315,20 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
     final revenue = widget.sales.totalRevenue;
     final totalSales = widget.sales.totalSales;
 
-    final dataPoints = widget.sales.revenueTrendPoints.isNotEmpty
-        ? widget.sales.revenueTrendPoints
-        : (revenue > 0
-            ? [
-                revenue * 0.15,
-                revenue * 0.28,
-                revenue * 0.42,
-                revenue * 0.58,
-                revenue * 0.72,
-                revenue * 0.88,
-                revenue,
-              ]
-            : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    final dataPoints =
+        widget.sales.revenueTrendPoints.isNotEmpty
+            ? widget.sales.revenueTrendPoints
+            : (revenue > 0
+                ? [
+                  revenue * 0.15,
+                  revenue * 0.28,
+                  revenue * 0.42,
+                  revenue * 0.58,
+                  revenue * 0.72,
+                  revenue * 0.88,
+                  revenue,
+                ]
+                : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
     final dates = [
       '1 Ene',
@@ -329,9 +353,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.03),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -351,14 +376,16 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                   vertical: 4.5,
                 ),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
-                      : const Color(0xFFEFF6FF),
+                  color:
+                      isDark
+                          ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                          : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF1E40AF).withValues(alpha: 0.5)
-                        : const Color(0xFFBFDBFE),
+                    color:
+                        isDark
+                            ? const Color(0xFF1E40AF).withValues(alpha: 0.5)
+                            : const Color(0xFFBFDBFE),
                   ),
                 ),
                 child: Row(
@@ -375,7 +402,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8),
+                        color:
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF1D4ED8),
                       ),
                     ),
                   ],
@@ -383,14 +413,12 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
               );
 
               final deltaPill = Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF064E3B).withValues(alpha: 0.6)
-                      : const Color(0xFFDCFCE7),
+                  color:
+                      isDark
+                          ? const Color(0xFF064E3B).withValues(alpha: 0.6)
+                          : const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -406,7 +434,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                        color:
+                            isDark
+                                ? const Color(0xFF4ADE80)
+                                : const Color(0xFF15803D),
                       ),
                     ),
                   ],
@@ -425,7 +456,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF64748B),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -441,7 +475,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
-                            color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                            color:
+                                isDark
+                                    ? AppColors.darkTextPrimary
+                                    : const Color(0xFF0F172A),
                             letterSpacing: -0.6,
                           ),
                         ),
@@ -465,7 +502,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -476,7 +516,10 @@ class _DashboardSplineChartCardState extends State<DashboardSplineChartCard> {
                             style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w900,
-                              color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
                               letterSpacing: -0.7,
                             ),
                           ),
@@ -796,25 +839,22 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
   final SalesMetricsEntity? sales;
   final VoidCallback? onHide;
 
-  const DashboardWeeklyActivityCard({
-    super.key,
-    this.sales,
-    this.onHide,
-  });
+  const DashboardWeeklyActivityCard({super.key, this.sales, this.onHide});
 
   @override
   Widget build(BuildContext context) {
-    final days = (sales != null && sales!.weeklyActivity.isNotEmpty)
-        ? sales!.weeklyActivity
-        : [
-            {'day': 'Dom', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Lun', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Mar', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Mié', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Jue', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Vie', 'val': 0.0, 'orders': 0, 'active': false},
-            {'day': 'Sáb', 'val': 0.0, 'orders': 0, 'active': false},
-          ];
+    final days =
+        (sales != null && sales!.weeklyActivity.isNotEmpty)
+            ? sales!.weeklyActivity
+            : [
+              {'day': 'Dom', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Lun', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Mar', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Mié', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Jue', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Vie', 'val': 0.0, 'orders': 0, 'active': false},
+              {'day': 'Sáb', 'val': 0.0, 'orders': 0, 'active': false},
+            ];
 
     double maxVal = 1.0;
     for (var d in days) {
@@ -835,9 +875,10 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.03),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -854,18 +895,25 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
                 ),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
-                          : const Color(0xFFEFF6FF),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                              : const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -873,7 +921,10 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                        color:
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF2563EB),
                       ),
                     ),
                   ),
@@ -910,7 +961,9 @@ class DashboardWeeklyActivityCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0),
+                              val >= 1000
+                                  ? '${(val / 1000).toStringAsFixed(1)}k'
+                                  : val.toStringAsFixed(0),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -1003,9 +1056,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.03),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1022,7 +1076,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
                 ),
               ),
               InkWell(
@@ -1034,10 +1091,16 @@ class DashboardRadialGoalCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
                     ),
                   ),
                   child: Row(
@@ -1045,7 +1108,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                       Icon(
                         Icons.tune_rounded,
                         size: 14,
-                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1053,7 +1119,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -1070,7 +1139,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
               width: 140,
               height: 100,
               child: CustomPaint(
-                painter: _AppleRadialGaugePainter(progress: progress, isDark: isDark),
+                painter: _AppleRadialGaugePainter(
+                  progress: progress,
+                  isDark: isDark,
+                ),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 20),
@@ -1082,7 +1154,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                            color:
+                                isDark
+                                    ? AppColors.darkTextPrimary
+                                    : const Color(0xFF0F172A),
                             letterSpacing: -0.6,
                           ),
                         ),
@@ -1107,7 +1182,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+              color:
+                  isDark
+                      ? AppColors.darkSurfaceElevated
+                      : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1120,7 +1198,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                       'Actual',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
                       ),
                     ),
                     Text(
@@ -1128,7 +1209,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : const Color(0xFF0F172A),
                       ),
                     ),
                   ],
@@ -1140,7 +1224,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                       'Restante',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
                       ),
                     ),
                     Text(
@@ -1148,7 +1235,10 @@ class DashboardRadialGoalCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                        color:
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF2563EB),
                       ),
                     ),
                   ],
@@ -1238,9 +1328,10 @@ class DashboardAiAssistantCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.2)
-                : Colors.black.withValues(alpha: 0.03),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1256,18 +1347,25 @@ class DashboardAiAssistantCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
                 ),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
-                          : const Color(0xFFEFF6FF),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                              : const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -1275,7 +1373,10 @@ class DashboardAiAssistantCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                        color:
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF2563EB),
                       ),
                     ),
                   ),
@@ -1318,7 +1419,10 @@ class DashboardAiAssistantCard extends StatelessWidget {
             height: 38,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+              color:
+                  isDark
+                      ? AppColors.darkSurfaceElevated
+                      : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
@@ -1337,7 +1441,10 @@ class DashboardAiAssistantCard extends StatelessWidget {
                     'Preguntar al ERP sobre stock o ventas...',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppColors.darkTextSecondary : const Color(0xFF94A3B8),
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : const Color(0xFF94A3B8),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1401,12 +1508,43 @@ class DashboardBestSellersTable extends StatelessWidget {
             ),
           ),
           clipBehavior: Clip.antiAlias,
-          child: imageUrl != null && imageUrl.trim().isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+          child:
+              imageUrl != null && imageUrl.trim().isNotEmpty
+                  ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder:
+                        (context, url) => Container(
+                          color:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF8FAFC),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            size: size * 0.45,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                    errorWidget:
+                        (context, url, error) => Container(
+                          color:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF1F5F9),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.inventory_2_outlined,
+                            size: size * 0.45,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                  )
+                  : Container(
+                    color:
+                        isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9),
                     alignment: Alignment.center,
                     child: Icon(
                       Icons.inventory_2_outlined,
@@ -1414,25 +1552,6 @@ class DashboardBestSellersTable extends StatelessWidget {
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.inventory_2_outlined,
-                      size: size * 0.45,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
-                )
-              : Container(
-                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    size: size * 0.45,
-                    color: const Color(0xFF94A3B8),
-                  ),
-                ),
         ),
         if (rank > 0)
           Positioned(
@@ -1441,13 +1560,14 @@ class DashboardBestSellersTable extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: rank == 1
-                    ? const Color(0xFFF59E0B)
-                    : rank == 2
+                color:
+                    rank == 1
+                        ? const Color(0xFFF59E0B)
+                        : rank == 2
                         ? const Color(0xFF64748B)
                         : rank == 3
-                            ? const Color(0xFFB45309)
-                            : const Color(0xFF334155),
+                        ? const Color(0xFFB45309)
+                        : const Color(0xFF334155),
                 borderRadius: BorderRadius.circular(5),
                 boxShadow: [
                   BoxShadow(
@@ -1475,9 +1595,10 @@ class DashboardBestSellersTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final products = (bestSellers != null && bestSellers!.isNotEmpty)
-        ? bestSellers!
-        : <Map<String, dynamic>>[];
+    final products =
+        (bestSellers != null && bestSellers!.isNotEmpty)
+            ? bestSellers!
+            : <Map<String, dynamic>>[];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1492,15 +1613,16 @@ class DashboardBestSellersTable extends StatelessWidget {
               color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
               width: 1.2,
             ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            boxShadow:
+                isDark
+                    ? []
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1517,7 +1639,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: isMobile ? 15 : 16,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                            color:
+                                isDark
+                                    ? const Color(0xFFF8FAFC)
+                                    : const Color(0xFF0F172A),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1527,7 +1652,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           'Artículos más despachados y rendimiento financiero',
                           style: TextStyle(
                             fontSize: isMobile ? 11 : 12,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1541,7 +1669,10 @@ class DashboardBestSellersTable extends StatelessWidget {
 
               if (products.isEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 36,
+                    horizontal: 16,
+                  ),
                   alignment: Alignment.center,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1550,7 +1681,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          color:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF1F5F9),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -1565,7 +1699,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF334155),
+                          color:
+                              isDark
+                                  ? const Color(0xFFF1F5F9)
+                                  : const Color(0xFF334155),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1574,7 +1711,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          color:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -1587,121 +1727,165 @@ class DashboardBestSellersTable extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: products.length,
                   separatorBuilder:
-                      (context, index) =>
-                          Divider(height: 1, color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9)),
+                      (context, index) => Divider(
+                        height: 1,
+                        color:
+                            isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFF1F5F9),
+                      ),
                   itemBuilder: (context, index) {
                     final p = products[index];
 
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      hoverColor: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9).withValues(alpha: 0.8),
-                      onTap: () {
-                        final prodId = p['productId'] as String?;
-                        if (prodId != null && prodId.isNotEmpty) {
-                          context.push('/product/$prodId');
-                        } else {
-                          context.push('/inventory');
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                        child: Row(
-                          children: [
-                            _buildProductThumbnail(
-                              imageUrl: p['imageUrl'] as String?,
-                              rank: index + 1,
-                              size: 38,
-                              isDark: isDark,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    return Container(
+                      decoration: BoxDecoration(
+                        color:
+                            index.isOdd
+                                ? (isDark
+                                    ? AppColors.darkSurfaceElevated.withValues(
+                                      alpha: 0.5,
+                                    )
+                                    : const Color(0xFFF8FAFC))
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.primaryLight.withValues(
+                                  alpha: 0.45,
+                                ),
+                        onTap: () {
+                          final prodId = p['productId'] as String?;
+                          if (prodId != null && prodId.isNotEmpty) {
+                            context.push('/product/$prodId');
+                          } else {
+                            context.push('/inventory');
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              _buildProductThumbnail(
+                                imageUrl: p['imageUrl'] as String?,
+                                rank: index + 1,
+                                size: 38,
+                                isDark: isDark,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p['name'] as String,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color:
+                                            isDark
+                                                ? const Color(0xFFF8FAFC)
+                                                : const Color(0xFF0F172A),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          p['category'] as String,
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          '•',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF475569)
+                                                    : const Color(0xFFCBD5E1),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          p['sold'] as String,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w500,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF94A3B8)
+                                                    : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    p['name'] as String,
-                                    style: TextStyle(
+                                    p['revenue'] as String,
+                                    style: const TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF10B981),
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 3),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        p['category'] as String,
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: Color(0xFF94A3B8),
-                                        ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: ((p['statusColor'] is Color
+                                              ? p['statusColor'] as Color
+                                              : (p['status'] == 'Alta Rotación'
+                                                  ? const Color(0xFF16A34A)
+                                                  : const Color(0xFF2563EB))))
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      p['status'] as String,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            (p['statusColor'] is Color
+                                                ? p['statusColor'] as Color
+                                                : (p['status'] ==
+                                                        'Alta Rotación'
+                                                    ? const Color(0xFF16A34A)
+                                                    : const Color(0xFF2563EB))),
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '•',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        p['sold'] as String,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  p['revenue'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF10B981),
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
-                                      alpha: 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    p['status'] as String,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -1715,7 +1899,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -1727,7 +1914,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1738,7 +1928,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1749,7 +1942,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1760,7 +1956,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1771,7 +1970,10 @@ class DashboardBestSellersTable extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1787,119 +1989,159 @@ class DashboardBestSellersTable extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: products.length,
                   separatorBuilder:
-                      (context, index) =>
-                          Divider(height: 1, color: isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9)),
+                      (context, index) => Divider(
+                        height: 1,
+                        color:
+                            isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFF1F5F9),
+                      ),
                   itemBuilder: (context, index) {
                     final p = products[index];
 
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      hoverColor: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9).withValues(alpha: 0.8),
-                      onTap: () {
-                        final prodId = p['productId'] as String?;
-                        if (prodId != null && prodId.isNotEmpty) {
-                          context.push('/product/$prodId');
-                        } else {
-                          context.push('/inventory');
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 70,
-                              child: Text(
-                                p['id'] as String,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color:
+                            index.isOdd
+                                ? (isDark
+                                    ? AppColors.darkSurfaceElevated.withValues(
+                                      alpha: 0.5,
+                                    )
+                                    : const Color(0xFFF8FAFC))
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        hoverColor:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : AppColors.primaryLight.withValues(
+                                  alpha: 0.45,
                                 ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Row(
-                                children: [
-                                  _buildProductThumbnail(
-                                    imageUrl: p['imageUrl'] as String?,
-                                    rank: index + 1,
-                                    size: 32,
-                                    isDark: isDark,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      p['name'] as String,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                p['sold'] as String,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                p['revenue'] as String,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF10B981),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 100,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: ((p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB)))).withValues(
-                                    alpha: 0.12,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                        onTap: () {
+                          final prodId = p['productId'] as String?;
+                          if (prodId != null && prodId.isNotEmpty) {
+                            context.push('/product/$prodId');
+                          } else {
+                            context.push('/inventory');
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 70,
                                 child: Text(
-                                  p['status'] as String,
+                                  p['id'] as String,
                                   style: TextStyle(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: (p['statusColor'] is Color ? p['statusColor'] as Color : (p['status'] == 'Alta Rotación' ? const Color(0xFF16A34A) : const Color(0xFF2563EB))),
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B),
                                   ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 12,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ],
+                              Expanded(
+                                flex: 3,
+                                child: Row(
+                                  children: [
+                                    _buildProductThumbnail(
+                                      imageUrl: p['imageUrl'] as String?,
+                                      rank: index + 1,
+                                      size: 32,
+                                      isDark: isDark,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        p['name'] as String,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFFF8FAFC)
+                                                  : const Color(0xFF0F172A),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  p['sold'] as String,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  p['revenue'] as String,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF10B981),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 100,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: ((p['statusColor'] is Color
+                                            ? p['statusColor'] as Color
+                                            : (p['status'] == 'Alta Rotación'
+                                                ? const Color(0xFF16A34A)
+                                                : const Color(0xFF2563EB))))
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    p['status'] as String,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          (p['statusColor'] is Color
+                                              ? p['statusColor'] as Color
+                                              : (p['status'] == 'Alta Rotación'
+                                                  ? const Color(0xFF16A34A)
+                                                  : const Color(0xFF2563EB))),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 12,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

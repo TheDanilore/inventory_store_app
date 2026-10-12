@@ -1073,12 +1073,15 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   }
 
   Widget _buildEmptyWidgetsPlaceholder() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Center(
         child: Column(
@@ -1088,29 +1091,38 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
+                color:
+                    isDark
+                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
+                        : const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.dashboard_customize_outlined,
                 size: 28,
-                color: Color(0xFF2563EB),
+                color:
+                    isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Lienzo de Dashboard Vacío',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color:
+                    isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Has ocultado los componentes del lienzo. Personaliza tu vista añadiendo widgets clave.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: TextStyle(
+                fontSize: 13,
+                color:
+                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
@@ -1627,33 +1639,46 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (widget.lowStockCount == 0 && widget.criticalBatchesCount == 0) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
+          color:
+              isDark
+                  ? AppColors.darkSurface
+                  : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.success.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(
+            color:
+                isDark
+                    ? const Color(0xFF059669).withValues(alpha: 0.35)
+                    : AppColors.success.withValues(alpha: 0.25),
+          ),
+          boxShadow:
+              isDark
+                  ? []
+                  : [
+                    BoxShadow(
+                      color: AppColors.success.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.check_circle_rounded,
               color: AppColors.success,
               size: 20,
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(
               'Inventario y Lotes Saludables · Cero Alertas Críticas',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -1668,9 +1693,17 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.08),
+        color:
+            isDark
+                ? const Color(0xFF78350F).withValues(alpha: 0.22)
+                : AppColors.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        border: Border.all(
+          color:
+              isDark
+                  ? const Color(0xFFB45309).withValues(alpha: 0.45)
+                  : AppColors.warning.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         children: [
@@ -1679,12 +1712,15 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.2),
+                color:
+                    isDark
+                        ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
+                        : AppColors.warning.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.warning_amber_rounded,
-                color: AppColors.warning,
+                color: Color(0xFFF59E0B),
                 size: 20,
               ),
             ),
@@ -1697,17 +1733,23 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
               children: [
                 Text(
                   '$totalAlerts Alertas de Salud Operativa',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13.5,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                   ),
                 ),
                 Text(
                   '${widget.lowStockCount} stock bajo · ${widget.criticalBatchesCount} lotes en alerta',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -1722,7 +1764,8 @@ class _HealthSummaryBarState extends State<_HealthSummaryBar>
               }
             },
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.warning,
+              foregroundColor:
+                  isDark ? const Color(0xFFFBBF24) : AppColors.warning,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               minimumSize: const Size(44, 38),
             ),
@@ -2073,137 +2116,157 @@ class ExpiringBatchesCard extends StatelessWidget {
                 }
               }
 
-              return InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () {
-                  context.push('/inventory?tab=batches');
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color:
-                              isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      index.isOdd
+                          ? (isDark
+                              ? AppColors.darkSurfaceElevated.withValues(
+                                alpha: 0.5,
+                              )
+                              : const Color(0xFFF8FAFC))
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  hoverColor:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.primaryLight.withValues(alpha: 0.45),
+                  onTap: () {
+                    context.push('/inventory?tab=batches');
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 9,
+                      horizontal: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
                             color:
                                 isDark
-                                    ? AppColors.darkBorder
-                                    : AppColors.border,
-                            width: 0.8,
+                                    ? const Color(0xFF1E293B)
+                                    : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.border,
+                              width: 0.8,
+                            ),
                           ),
+                          clipBehavior: Clip.antiAlias,
+                          child:
+                              imgUrl != null && imgUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                    imageUrl: imgUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder:
+                                        (context, url) => Icon(
+                                          Icons.inventory_2_outlined,
+                                          size: 16,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF94A3B8)
+                                                  : AppColors.textSecondary,
+                                        ),
+                                    errorWidget:
+                                        (context, url, error) => Icon(
+                                          Icons.inventory_2_outlined,
+                                          size: 16,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF94A3B8)
+                                                  : AppColors.textSecondary,
+                                        ),
+                                  )
+                                  : Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 16,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : AppColors.textSecondary,
+                                  ),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child:
-                            imgUrl != null && imgUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                  imageUrl: imgUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder:
-                                      (context, url) => Icon(
-                                        Icons.inventory_2_outlined,
-                                        size: 16,
-                                        color:
-                                            isDark
-                                                ? const Color(0xFF94A3B8)
-                                                : AppColors.textSecondary,
-                                      ),
-                                  errorWidget:
-                                      (context, url, error) => Icon(
-                                        Icons.inventory_2_outlined,
-                                        size: 16,
-                                        color:
-                                            isDark
-                                                ? const Color(0xFF94A3B8)
-                                                : AppColors.textSecondary,
-                                      ),
-                                )
-                                : Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 16,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                prod,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFF8FAFC)
+                                          : AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Lote: $code · Click para revisar stock',
+                                style: TextStyle(
+                                  fontSize: 11,
                                   color:
                                       isDark
                                           ? const Color(0xFF94A3B8)
                                           : AppColors.textSecondary,
                                 ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              prod,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color:
-                                    isDark
-                                        ? const Color(0xFFF8FAFC)
-                                        : AppColors.textPrimary,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'Lote: $code · Click para revisar stock',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color:
-                                    isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              days <= 0
-                                  ? AppColors.error.withValues(alpha: 0.15)
-                                  : days <= 7
-                                  ? AppColors.error.withValues(alpha: 0.12)
-                                  : AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          days < 0
-                              ? 'Vencido (${days.abs()}d)'
-                              : days == 0
-                              ? 'Vence hoy'
-                              : days == 1
-                              ? '1 día'
-                              : '$days días',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                days <= 7 ? AppColors.error : AppColors.warning,
+                            ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                    ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                days <= 0
+                                    ? AppColors.error.withValues(alpha: 0.15)
+                                    : days <= 7
+                                    ? AppColors.error.withValues(alpha: 0.12)
+                                    : AppColors.warning.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            days < 0
+                                ? 'Vencido (${days.abs()}d)'
+                                : days == 0
+                                ? 'Vence hoy'
+                                : days == 1
+                                ? '1 día'
+                                : '$days días',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  days <= 7
+                                      ? AppColors.error
+                                      : AppColors.warning,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -2213,13 +2276,36 @@ class ExpiringBatchesCard extends StatelessWidget {
           Center(
             child: TextButton.icon(
               onPressed: () => context.push('/inventory?tab=batches'),
-              icon: const Icon(Icons.inventory_2_outlined, size: 14),
+              style: TextButton.styleFrom(
+                backgroundColor:
+                    isDark
+                        ? AppColors.darkSurfaceElevated
+                        : const Color(0xFFEFF6FF),
+                foregroundColor:
+                    isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFBFDBFE),
+                  ),
+                ),
+              ),
+              icon: Icon(
+                Icons.inventory_2_outlined,
+                size: 14,
+                color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+              ),
               label: Text(
                 'Gestionar todos los lotes (${batches.length})',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
                 ),
               ),
             ),

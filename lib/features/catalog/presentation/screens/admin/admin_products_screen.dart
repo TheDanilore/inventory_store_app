@@ -972,12 +972,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     return AdminKpiMetricsBar(
       isDesktop: !isMobile,
-      padding: EdgeInsets.fromLTRB(
-        isMobile ? 16 : 24,
-        isMobile ? 12 : 14,
-        isMobile ? 16 : 24,
-        4,
-      ),
       isMobileGrid: true,
       items: [
         AdminKpiItem(
@@ -1063,37 +1057,34 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }) {
     if (state.catalogState == ViewState.loading ||
         state.catalogState == ViewState.initial) {
-      return SliverPadding(
-        padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24.0 : 16.0),
-        sliver: SliverToBoxAdapter(
-          child:
-              isDesktop
-                  ? Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.8),
-                      ),
+      return SliverToBoxAdapter(
+        child:
+            isDesktop
+                ? Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.8),
                     ),
-                    child: const ProductsDesktopShimmer(rows: 6),
-                  )
-                  : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 6,
-                    itemBuilder:
-                        (context, index) => const Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: AppShimmer(
-                            width: double.infinity,
-                            height: 104,
-                            borderRadius: 16,
-                          ),
-                        ),
                   ),
-        ),
+                  child: const ProductsDesktopShimmer(rows: 6),
+                )
+                : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 6,
+                  itemBuilder:
+                      (context, index) => const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: AppShimmer(
+                          width: double.infinity,
+                          height: 104,
+                          borderRadius: 16,
+                        ),
+                      ),
+                ),
       );
     }
 
