@@ -29,29 +29,31 @@ class ProductPreviewModal extends StatefulWidget {
       return showDialog(
         context: context,
         barrierDismissible: true,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(24),
-          child: ProductPreviewModal(
-            state: state,
-            productName: productName,
-            productDesc: productDesc,
-          ),
-        ),
+        builder:
+            (_) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(24),
+              child: ProductPreviewModal(
+                state: state,
+                productName: productName,
+                productDesc: productDesc,
+              ),
+            ),
       );
     } else {
       return showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => FractionallySizedBox(
-          heightFactor: 0.92,
-          child: ProductPreviewModal(
-            state: state,
-            productName: productName,
-            productDesc: productDesc,
-          ),
-        ),
+        builder:
+            (_) => FractionallySizedBox(
+              heightFactor: 0.92,
+              child: ProductPreviewModal(
+                state: state,
+                productName: productName,
+                productDesc: productDesc,
+              ),
+            ),
       );
     }
   }
@@ -84,9 +86,8 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
     if (item.newBytes != null) {
       return Image.memory(item.newBytes!, fit: BoxFit.cover);
     }
-    final rawUrl = item.isExisting
-        ? item.existing!.imageUrl
-        : item.externalUrl ?? '';
+    final rawUrl =
+        item.isExisting ? item.existing!.imageUrl : item.externalUrl ?? '';
     final resolvedUrl = _resolveImageUrl(rawUrl);
 
     if (resolvedUrl.isEmpty) {
@@ -98,12 +99,94 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
     return CachedNetworkImage(
       imageUrl: resolvedUrl,
       fit: BoxFit.cover,
-      placeholder: (context, url) => const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-      errorWidget: (context, url, error) => const Center(
-        child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
-      ),
+      placeholder:
+          (context, url) =>
+              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      errorWidget:
+          (context, url, error) => const Center(
+            child: Icon(
+              Icons.broken_image_rounded,
+              size: 48,
+              color: Colors.grey,
+            ),
+          ),
+    );
+  }
+
+  Widget _buildVariantImageWidget(VariantDraftFormModel variant) {
+    if (variant.nuevasImagenes.isNotEmpty) {
+      return Image.memory(variant.nuevasImagenes.first, fit: BoxFit.cover);
+    }
+    if (variant.urlsExistentes.isNotEmpty) {
+      final resolvedUrl = _resolveImageUrl(variant.urlsExistentes.first);
+      return CachedNetworkImage(
+        imageUrl: resolvedUrl,
+        fit: BoxFit.cover,
+        placeholder:
+            (context, url) =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        errorWidget:
+            (context, url, error) => const Center(
+              child: Icon(
+                Icons.broken_image_rounded,
+                size: 48,
+                color: Colors.grey,
+              ),
+            ),
+      );
+    }
+    if (variant.externalImageUrl != null &&
+        variant.externalImageUrl!.isNotEmpty) {
+      final resolvedUrl = _resolveImageUrl(variant.externalImageUrl!);
+      return CachedNetworkImage(
+        imageUrl: resolvedUrl,
+        fit: BoxFit.cover,
+        placeholder:
+            (context, url) =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        errorWidget:
+            (context, url, error) => const Center(
+              child: Icon(
+                Icons.broken_image_rounded,
+                size: 48,
+                color: Colors.grey,
+              ),
+            ),
+      );
+    }
+    return const Center(
+      child: Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+    );
+  }
+
+  bool _variantHasImage(VariantDraftFormModel v) {
+    return v.nuevasImagenes.isNotEmpty ||
+        v.urlsExistentes.isNotEmpty ||
+        (v.externalImageUrl != null && v.externalImageUrl!.trim().isNotEmpty);
+  }
+
+  Widget _buildVariantMiniThumbnail(VariantDraftFormModel v) {
+    if (v.nuevasImagenes.isNotEmpty) {
+      return Image.memory(v.nuevasImagenes.first, fit: BoxFit.cover);
+    }
+    final rawUrl =
+        v.urlsExistentes.isNotEmpty
+            ? v.urlsExistentes.first
+            : (v.externalImageUrl ?? '');
+    final resolvedUrl = _resolveImageUrl(rawUrl);
+    if (resolvedUrl.isEmpty) {
+      return const Icon(Icons.image_outlined, size: 14, color: Colors.grey);
+    }
+    return CachedNetworkImage(
+      imageUrl: resolvedUrl,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(color: Colors.grey.shade200),
+      errorWidget:
+          (context, url, error) => const Icon(
+            Icons.broken_image_rounded,
+            size: 12,
+            color: Colors.grey,
+          ),
     );
   }
 
@@ -112,31 +195,33 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDesktop = MediaQuery.sizeOf(context).width >= 768;
 
-    final name = widget.productName.trim().isNotEmpty
-        ? widget.productName.trim()
-        : 'Audífonos Nova Pro Wireless';
+    final name =
+        widget.productName.trim().isNotEmpty
+            ? widget.productName.trim()
+            : 'Audífonos Nova Pro Wireless';
 
-    final desc = widget.productDesc.trim().isNotEmpty
-        ? widget.productDesc.trim()
-        : 'Audífonos inalámbricos de alta definición con cancelación activa de ruido (ANC) híbrida y transductores de neodimio de 40 mm.';
+    final desc =
+        widget.productDesc.trim().isNotEmpty
+            ? widget.productDesc.trim()
+            : 'Audífonos inalámbricos de alta definición con cancelación activa de ruido (ANC) híbrida y transductores de neodimio de 40 mm.';
 
-    final images = widget.state.formImages;
+    final productImages = widget.state.formImages;
     final variants = widget.state.variantDrafts;
 
-    final currentVariant = (variants.isNotEmpty &&
-            _selectedVariantIndex < variants.length)
-        ? variants[_selectedVariantIndex]
-        : null;
+    final currentVariant =
+        (variants.isNotEmpty && _selectedVariantIndex < variants.length)
+            ? variants[_selectedVariantIndex]
+            : null;
 
-    final currentPrice = currentVariant != null &&
-            currentVariant.price.trim().isNotEmpty
-        ? '\$${currentVariant.price}'
-        : '\$279.00';
+    final currentPrice =
+        currentVariant != null && currentVariant.price.trim().isNotEmpty
+            ? '\$${currentVariant.price}'
+            : '\$279.00';
 
-    final currentSku = currentVariant != null &&
-            currentVariant.sku.trim().isNotEmpty
-        ? currentVariant.sku
-        : 'NOVA-PRO-WRL';
+    final currentSku =
+        currentVariant != null && currentVariant.sku.trim().isNotEmpty
+            ? currentVariant.sku
+            : 'NOVA-PRO-WRL';
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 960, maxHeight: 820),
@@ -156,22 +241,32 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
         child: Scaffold(
           backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
           appBar: AppBar(
-            backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+            backgroundColor:
+                isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
             elevation: 0,
             automaticallyImplyLeading: false,
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF10B981).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    ),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.visibility_rounded, size: 14, color: Color(0xFF10B981)),
+                      Icon(
+                        Icons.visibility_rounded,
+                        size: 14,
+                        color: Color(0xFF10B981),
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Vista Previa en Vivo · Storefront',
@@ -189,7 +284,10 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
                   widget.state.publicationStatus == 'active'
                       ? '🟢 Visible en tienda'
                       : '⚪ Borrador interno',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
@@ -204,20 +302,47 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: isDesktop
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Galería Izquierda
-                      Expanded(
-                        flex: 5,
-                        child: _buildGallery(images, isDark),
-                      ),
-                      const SizedBox(width: 32),
-                      // Ficha Comercial Derecha
-                      Expanded(
-                        flex: 6,
-                        child: _buildCommerceDetails(
+            child:
+                isDesktop
+                    ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Galería Izquierda
+                        Expanded(
+                          flex: 5,
+                          child: _buildGallery(
+                            productImages: productImages,
+                            currentVariant: currentVariant,
+                            variants: variants,
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: 32),
+                        // Ficha Comercial Derecha
+                        Expanded(
+                          flex: 6,
+                          child: _buildCommerceDetails(
+                            name,
+                            desc,
+                            currentPrice,
+                            currentSku,
+                            variants,
+                            isDark,
+                          ),
+                        ),
+                      ],
+                    )
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildGallery(
+                          productImages: productImages,
+                          currentVariant: currentVariant,
+                          variants: variants,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildCommerceDetails(
                           name,
                           desc,
                           currentPrice,
@@ -225,35 +350,55 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
                           variants,
                           isDark,
                         ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildGallery(images, isDark),
-                      const SizedBox(height: 24),
-                      _buildCommerceDetails(
-                        name,
-                        desc,
-                        currentPrice,
-                        currentSku,
-                        variants,
-                        isDark,
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGallery(List<FormImageItem> images, bool isDark) {
-    final hasImages = images.isNotEmpty;
-    final activeItem = hasImages && _selectedImageIndex < images.length
-        ? images[_selectedImageIndex]
-        : null;
+  Widget _buildGallery({
+    required List<FormImageItem> productImages,
+    required VariantDraftFormModel? currentVariant,
+    required List<VariantDraftFormModel> variants,
+    required bool isDark,
+  }) {
+    // Lista de ítems para mostrar:
+    // Si la variante actual tiene imagen, la priorizamos como primera imagen o activa
+    final hasCurrentVariantImage =
+        currentVariant != null && _variantHasImage(currentVariant);
+
+    // Recolectar todas las imágenes disponibles para la galería
+    // 1) Imagen de la variante seleccionada (si tiene)
+    // 2) Imágenes de otras variantes con foto
+    // 3) Imágenes generales del producto
+    final List<Widget> galleryDisplayWidgets = [];
+
+    if (hasCurrentVariantImage) {
+      galleryDisplayWidgets.add(_buildVariantImageWidget(currentVariant));
+    }
+
+    // Agregar imágenes de producto
+    for (final img in productImages) {
+      galleryDisplayWidgets.add(_buildImageWidget(img));
+    }
+
+    // Si aún no hay imágenes, verificar si alguna otra variante tiene imagen
+    if (galleryDisplayWidgets.isEmpty) {
+      for (final v in variants) {
+        if (_variantHasImage(v) && v != currentVariant) {
+          galleryDisplayWidgets.add(_buildVariantImageWidget(v));
+        }
+      }
+    }
+
+    final hasImages = galleryDisplayWidgets.isNotEmpty;
+    final safeIndex =
+        (_selectedImageIndex >= 0 &&
+                _selectedImageIndex < galleryDisplayWidgets.length)
+            ? _selectedImageIndex
+            : 0;
 
     return Column(
       children: [
@@ -265,47 +410,57 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
               color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                color:
+                    isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
               ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
-              child: activeItem != null
-                  ? _buildImageWidget(activeItem)
-                  : const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.photo_library_outlined,
-                            size: 48,
-                            color: Color(0xFF94A3B8),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Sin fotos cargadas',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: Color(0xFF94A3B8),
+              child:
+                  hasImages
+                      ? galleryDisplayWidgets[safeIndex]
+                      : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.photo_library_outlined,
+                              size: 48,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF64748B)
+                                      : const Color(0xFF94A3B8),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Text(
+                              currentVariant != null && variants.isNotEmpty
+                                  ? 'Sin fotos para esta variante'
+                                  : 'Sin fotos cargadas',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color:
+                                    isDark
+                                        ? const Color(0xFF64748B)
+                                        : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
             ),
           ),
         ),
-        if (images.length > 1) ...[
+        if (galleryDisplayWidgets.length > 1) ...[
           const SizedBox(height: 14),
           // Thumbnails
           SizedBox(
             height: 64,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: images.length,
+              itemCount: galleryDisplayWidgets.length,
               separatorBuilder: (context, index) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
-                final isSelected = index == _selectedImageIndex;
+                final isSelected = index == safeIndex;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedImageIndex = index),
                   child: AnimatedContainer(
@@ -315,15 +470,16 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF4F46E5)
-                            : Colors.transparent,
+                        color:
+                            isSelected
+                                ? const Color(0xFF4F46E5)
+                                : Colors.transparent,
                         width: 2,
                       ),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: _buildImageWidget(images[index]),
+                      child: galleryDisplayWidgets[index],
                     ),
                   ),
                 );
@@ -401,7 +557,11 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
             SizedBox(width: 6),
             Text(
               '4.9 (38 opiniones)',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
             ),
           ],
         ),
@@ -458,27 +618,54 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
             children: List.generate(variants.length, (idx) {
               final isSelected = idx == _selectedVariantIndex;
               final v = variants[idx];
-              final label = v.selectedAttributes.isNotEmpty
-                  ? (v.selectedAttributes.first['value_name']?.toString() ?? 'Opción #${idx + 1}')
-                  : 'Opción #${idx + 1}';
+              final label =
+                  v.selectedAttributes.isNotEmpty
+                      ? (v.selectedAttributes.first['value_name']?.toString() ??
+                          'Opción #${idx + 1}')
+                      : 'Opción #${idx + 1}';
+              final hasImage = _variantHasImage(v);
 
               return ChoiceChip(
+                avatar:
+                    hasImage
+                        ? ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: _buildVariantMiniThumbnail(v),
+                          ),
+                        )
+                        : null,
                 label: Text(label),
                 selected: isSelected,
                 onSelected: (selected) {
-                  if (selected) setState(() => _selectedVariantIndex = idx);
+                  if (selected) {
+                    setState(() {
+                      _selectedVariantIndex = idx;
+                      _selectedImageIndex =
+                          0; // Mostrar la foto de la variante seleccionada de inmediato
+                    });
+                  }
                 },
                 selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                backgroundColor:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 labelStyle: TextStyle(
                   fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? const Color(0xFF4F46E5) : const Color(0xFF475569),
+                  color:
+                      isSelected
+                          ? const Color(0xFF4F46E5)
+                          : const Color(0xFF475569),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
-                    color: isSelected ? const Color(0xFF6366F1) : Colors.transparent,
+                    color:
+                        isSelected
+                            ? const Color(0xFF6366F1)
+                            : Colors.transparent,
                     width: 1.5,
                   ),
                 ),
@@ -499,13 +686,19 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                    onPressed:
+                        _quantity > 1
+                            ? () => setState(() => _quantity--)
+                            : null,
                     icon: const Icon(Icons.remove, size: 16),
                     splashRadius: 16,
                   ),
                   Text(
                     '$_quantity',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                   ),
                   IconButton(
                     onPressed: () => setState(() => _quantity++),
@@ -521,7 +714,9 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Simulación: ¡Producto añadido al carrito con éxito!'),
+                      content: Text(
+                        'Simulación: ¡Producto añadido al carrito con éxito!',
+                      ),
                       backgroundColor: Color(0xFF10B981),
                     ),
                   );
