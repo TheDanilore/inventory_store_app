@@ -6,12 +6,13 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
   final bool isSidebarCollapsed;
   final VoidCallback onToggleSidebar;
   final bool showBackButton;
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
   final String title;
   final String? breadcrumbText;
   final List<Widget>? actions;
@@ -24,7 +25,7 @@ class AdminDesktopTopBar extends StatelessWidget {
     required this.isSidebarCollapsed,
     required this.onToggleSidebar,
     required this.showBackButton,
-    required this.onBack,
+    this.onBack,
     required this.title,
     this.breadcrumbText = '',
     this.actions,
@@ -56,7 +57,7 @@ class AdminDesktopTopBar extends StatelessWidget {
             _TopBarIconButton(
               icon: Icons.arrow_back_rounded,
               tooltip: 'Volver atrás',
-              onTap: onBack,
+              onTap: () => AppBackHandler.handleBack(context, onCustomBack: onBack),
             ),
             const SizedBox(width: 12),
             if (title.isNotEmpty) ...[

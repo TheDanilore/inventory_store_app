@@ -25,7 +25,6 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/services/dashboard_export_service.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -329,111 +328,105 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       },
       child: Focus(
         autofocus: true,
-        child: AdminLayout(
-          title: 'Dashboard',
-          showBackButton: false,
-          showDrawerButton: true,
-          showProfileButton: true,
-          body: RefreshIndicator(
-            color: AppColors.primary,
-            onRefresh: () async {
-              if (!kIsWeb) {
-                Vibration.vibrate(duration: 50, amplitude: 128);
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            if (!kIsWeb) {
+              Vibration.vibrate(duration: 50, amplitude: 128);
+            }
+            await context.read<DashboardCubit>().refresh();
+          },
+          child: BlocBuilder<DashboardCubit, DashboardState>(
+            builder: (context, state) {
+              if (state is DashboardInitial || state is DashboardLoading) {
+                return const SingleChildScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  child: DashboardSkeleton(),
+                );
               }
-              await context.read<DashboardCubit>().refresh();
-            },
-            child: BlocBuilder<DashboardCubit, DashboardState>(
-              builder: (context, state) {
-                if (state is DashboardInitial || state is DashboardLoading) {
-                  return const SingleChildScrollView(
-                    physics: AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.fromLTRB(20, 16, 20, 32),
-                    child: DashboardSkeleton(),
-                  );
-                }
 
-                if (state is DashboardError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.error_outline_rounded,
-                              size: 48,
-                              color: AppColors.error,
-                            ),
+              if (state is DashboardError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            state.message,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          FilledButton.icon(
-                            onPressed:
-                                () =>
-                                    context
-                                        .read<DashboardCubit>()
-                                        .loadDashboardData(),
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Reintentar conexión'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                if (state is DashboardLoaded) {
-                  return Stack(
-                    children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isDesktop = constraints.maxWidth >= 1100;
-                          final isTablet = constraints.maxWidth >= 720;
-
-                          if (isDesktop) {
-                            return _buildDesktopLayout(context, state);
-                          }
-                          if (isTablet) {
-                            return _buildTabletLayout(context, state);
-                          }
-                          return _buildMobileLayout(context, state);
-                        },
-                      ),
-                      if (state.isBackgroundLoading)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: LinearProgressIndicator(
-                            minHeight: 2.5,
-                            backgroundColor: Colors.transparent,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.primary.withValues(alpha: 0.85),
-                            ),
+                          child: const Icon(
+                            Icons.error_outline_rounded,
+                            size: 48,
+                            color: AppColors.error,
                           ),
                         ),
-                    ],
-                  );
-                }
+                        const SizedBox(height: 16),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed:
+                              () =>
+                                  context
+                                      .read<DashboardCubit>()
+                                      .loadDashboardData(),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Reintentar conexión'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
 
-                return const SizedBox.shrink();
-              },
-            ),
+              if (state is DashboardLoaded) {
+                return Stack(
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 1100;
+                        final isTablet = constraints.maxWidth >= 720;
+
+                        if (isDesktop) {
+                          return _buildDesktopLayout(context, state);
+                        }
+                        if (isTablet) {
+                          return _buildTabletLayout(context, state);
+                        }
+                        return _buildMobileLayout(context, state);
+                      },
+                    ),
+                    if (state.isBackgroundLoading)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(
+                          minHeight: 2.5,
+                          backgroundColor: Colors.transparent,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }
+
+              return const SizedBox.shrink();
+            },
           ),
         ),
       ),
@@ -2223,9 +2216,8 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                                     ))
                                 : (index.isOdd
                                     ? (isDark
-                                        ? AppColors.darkSurfaceElevated.withValues(
-                                          alpha: 0.5,
-                                        )
+                                        ? AppColors.darkSurfaceElevated
+                                            .withValues(alpha: 0.5)
                                         : const Color(0xFFF8FAFC))
                                     : Colors.transparent),
                         borderRadius: BorderRadius.circular(10),
@@ -2329,7 +2321,9 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                                       ? AppColors.error.withValues(alpha: 0.15)
                                       : days <= 7
                                       ? AppColors.error.withValues(alpha: 0.12)
-                                      : AppColors.warning.withValues(alpha: 0.12),
+                                      : AppColors.warning.withValues(
+                                        alpha: 0.12,
+                                      ),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
