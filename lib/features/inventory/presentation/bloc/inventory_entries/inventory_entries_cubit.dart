@@ -10,7 +10,7 @@ import 'package:inventory_store_app/core/services/logger_service.dart';
 class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   final GetInventoryEntriesUseCase getInventoryEntries;
   final GetActiveWarehousesUseCase getActiveWarehouses;
-  static const int pageSize = 24;
+  static const int pageSize = 15;
 
   InventoryEntriesLoaded? _lastLoaded;
 

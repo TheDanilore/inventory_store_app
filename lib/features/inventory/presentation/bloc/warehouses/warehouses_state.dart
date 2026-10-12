@@ -22,7 +22,7 @@ class WarehousesState extends Equatable {
     this.searchQuery = '',
     this.currentPage = 0,
     this.totalRecords = 0,
-    this.pageSize = 24,
+    this.pageSize = 15,
   });
 
   int get totalPages {

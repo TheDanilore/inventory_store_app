@@ -44,7 +44,7 @@ class AdminCatalogState extends Equatable {
   });
 
   final int itemsPerPage;
-  static const int pageSize = 24;
+  static const int pageSize = 15;
   int get totalPages =>
       totalCount == 0 ? 1 : (totalCount / itemsPerPage).ceil();
   bool get isLoading => catalogState == ViewState.loading;

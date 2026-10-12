@@ -12,7 +12,7 @@ abstract class KardexRepository {
     String? variantId,
     String? batchId,
     int page = 0,
-    int pageSize = 24,
+    int pageSize = 15,
   });
 
   Future<List<KardexMovementEntity>> getAllKardexMovements({

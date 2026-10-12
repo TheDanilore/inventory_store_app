@@ -12,7 +12,7 @@ class SuppliersCubit extends Cubit<SuppliersState> {
   final ToggleSupplierStatusUseCase toggleSupplierStatusUseCase;
   final SaveSupplierUseCase saveSupplierUseCase;
 
-  static const int pageSize = 24;
+  static const int pageSize = 15;
 
   SuppliersCubit({
     required this.fetchSuppliersUseCase,

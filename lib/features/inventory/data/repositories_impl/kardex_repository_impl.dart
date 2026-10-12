@@ -70,7 +70,7 @@ class KardexRepositoryImpl implements KardexRepository {
     String? variantId,
     String? batchId,
     int page = 0,
-    int pageSize = 24,
+    int pageSize = 15,
   }) async {
     var query = _supabase.from('inventory_movements').select('''
       *,

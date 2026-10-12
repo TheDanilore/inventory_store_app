@@ -15,7 +15,7 @@ class UsersCubit extends Cubit<UsersState> {
   final UpdateUserUseCase _updateUser;
   final DeleteUserUseCase _deleteUser;
 
-  static const int pageSize = 24;
+  static const int pageSize = 15;
   String _currentRole = AppRoles.customer;
 
   UsersCubit(

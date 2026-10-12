@@ -46,7 +46,7 @@ class AdminPageBlocks extends StatelessWidget {
     required this.onPageChanged,
     this.totalItems,
     this.itemsPerPage,
-    this.availableItemsPerPage = const [10, 20, 24, 50, 100],
+    this.availableItemsPerPage = const [10, 15, 20, 25, 50, 100],
     this.onItemsPerPageChanged,
     this.itemName,
     this.isCompact,
