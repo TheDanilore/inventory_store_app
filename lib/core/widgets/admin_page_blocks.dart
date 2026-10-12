@@ -46,7 +46,7 @@ class AdminPageBlocks extends StatelessWidget {
     required this.onPageChanged,
     this.totalItems,
     this.itemsPerPage,
-    this.availableItemsPerPage = const [15, 25, 50, 100],
+    this.availableItemsPerPage = const [10, 20, 24, 50, 100],
     this.onItemsPerPageChanged,
     this.itemName,
     this.isCompact,
@@ -179,7 +179,13 @@ class AdminPageBlocks extends StatelessWidget {
           Builder(
             builder: (ctx) {
               final isDark = Theme.of(ctx).brightness == Brightness.dark;
-              return Container(
+              final currentSize = itemsPerPage ?? 15;
+              final options =
+                  availableItemsPerPage.contains(currentSize)
+                      ? availableItemsPerPage
+                      : ([currentSize, ...availableItemsPerPage]..sort());
+
+              final indicator = Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 8,
@@ -247,6 +253,65 @@ class AdminPageBlocks extends StatelessWidget {
                     ],
                   ],
                 ),
+              );
+
+              if (onItemsPerPageChanged == null) {
+                return indicator;
+              }
+
+              return PopupMenuButton<int>(
+                initialValue: currentSize,
+                tooltip: 'Elementos por página',
+                offset: const Offset(0, 40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                elevation: 4,
+                color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                onSelected: (val) {
+                  if (val != currentSize) {
+                    onItemsPerPageChanged!(val);
+                  }
+                },
+                itemBuilder: (context) {
+                  return options.map((opt) {
+                    final isSelected = opt == currentSize;
+                    return PopupMenuItem<int>(
+                      value: opt,
+                      height: 40,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$opt ${itemName ?? 'items'}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color:
+                                  isSelected
+                                      ? (isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : AppColors.primary)
+                                      : (isDark
+                                          ? AppColors.darkTextPrimary
+                                          : const Color(0xFF1E293B)),
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList();
+                },
+                child: indicator,
               );
             },
           ),
@@ -518,7 +583,10 @@ class AdminPageBlocks extends StatelessWidget {
           );
         }).toList();
       },
-      child: dropdownChild,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: dropdownChild,
+      ),
     );
   }
 }

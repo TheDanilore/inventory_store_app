@@ -532,7 +532,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             totalPages: viewModel.totalPages,
             onPageChanged: (p) => viewModel.setPage(p),
             totalItems: viewModel.totalCount,
-            itemsPerPage: PurchaseOrdersState.pageSize,
+            itemsPerPage: viewModel.pageSize,
+            availableItemsPerPage: const [10, 20, 24, 50, 100],
+            onItemsPerPageChanged: (newSize) => viewModel.setPageSize(newSize),
             itemName: 'órdenes',
           ),
         ),
@@ -1383,6 +1385,19 @@ class _PurchaseOrdersViewModel {
     return 1;
   }
 
+  int get pageSize {
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).pageSize;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).pageSize;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).pageSize;
+    }
+    return PurchaseOrdersState.pageSize;
+  }
+
   double get totalAmountFiltered {
     double total = 0;
     for (final o in orders) {
@@ -1417,6 +1432,7 @@ class _PurchaseOrdersViewModel {
   void setStatusFilter(String v) => cubit.setStatusFilter(v);
   void setDateRange(DateTimeRange? v) => cubit.setDateRange(v?.start, v?.end);
   void setPage(int p) => cubit.loadOrders(page: p);
+  void setPageSize(int s) => cubit.setPageSize(s);
   Future<List<dynamic>> loadItemsForOrder(String id) async {
     final result = await sl<FetchPurchaseOrderItemsUseCase>().call(id);
     return result.fold((l) => [], (r) => r);

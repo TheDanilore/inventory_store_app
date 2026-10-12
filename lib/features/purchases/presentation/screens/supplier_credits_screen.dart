@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/supplier_credits/supplier_credits_cubit.dart';
@@ -446,6 +447,24 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                    SliverToBoxAdapter(
+                      child: AdminPageHeader(
+                        title: 'Créditos de Proveedores',
+                        subtitle:
+                            'Gestiona líneas de crédito, pagos y saldos pendientes.',
+                        isDesktop: isDesktop,
+                        actions: [
+                          AdminHeaderButton.primary(
+                            label: 'Nuevo Crédito',
+                            icon: Icons.add_rounded,
+                            tooltip: 'Registrar nuevo crédito',
+                            onPressed: _openCreateAccountModal,
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // --- 1. KPI BENTO METRIC BAR ---
                     SliverToBoxAdapter(
                       child: SupplierGlobalStatsBar(
@@ -481,12 +500,6 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                             () => context
                                 .read<SupplierCreditsCubit>()
                                 .loadAccounts(refresh: true),
-                        primaryAction: AdminProToolbarAction(
-                          label: 'Nueva Línea',
-                          icon: Icons.add_rounded,
-                          onPressed: _openCreateAccountModal,
-                          keyHint: 'N',
-                        ),
                       ),
                     ),
 

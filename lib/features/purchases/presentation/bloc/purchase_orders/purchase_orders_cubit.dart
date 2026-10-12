@@ -35,6 +35,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     DateTime? startDate,
     DateTime? endDate,
     int? page,
+    int? pageSize,
     bool refresh = false,
     bool background = false,
     bool forceRefresh = false,
@@ -46,6 +47,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     DateTime? currentStartDate;
     DateTime? currentEndDate;
     int currentPage = 0;
+    int currentPageSize = PurchaseOrdersState.pageSize;
     List<dynamic> currentOrders = [];
     int currentTotalCount = 0;
 
@@ -55,6 +57,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentPageSize = pageSize ?? currentState.pageSize;
       currentOrders =
           (refresh && !background && currentState.orders.isEmpty)
               ? []
@@ -66,6 +69,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentPageSize = pageSize ?? currentState.pageSize;
       currentOrders =
           (refresh && !background && currentState.currentOrders.isEmpty)
               ? []
@@ -77,6 +81,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage = page ?? (refresh ? 0 : currentState.currentPage);
+      currentPageSize = pageSize ?? currentState.pageSize;
       currentOrders = currentState.currentOrders;
       currentTotalCount = currentState.totalCount;
     } else {
@@ -85,6 +90,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStartDate = startDate;
       currentEndDate = endDate;
       currentPage = page ?? 0;
+      currentPageSize = pageSize ?? PurchaseOrdersState.pageSize;
     }
 
     emit(
@@ -96,12 +102,13 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
         endDate: currentEndDate,
         currentPage: currentPage,
         totalCount: currentTotalCount,
+        pageSize: currentPageSize,
       ),
     );
 
     final result = await fetchPurchaseOrdersUseCase(
       page: currentPage,
-      pageSize: pageSize,
+      pageSize: currentPageSize,
       searchText: currentSearchText,
       statusFilter: currentStatusFilter,
       startDate: currentStartDate,
@@ -130,6 +137,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             endDate: currentEndDate,
             currentPage: currentPage,
             totalCount: currentTotalCount,
+            pageSize: currentPageSize,
           ),
         );
       },
@@ -143,10 +151,15 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             endDate: currentEndDate,
             currentPage: currentPage,
             totalCount: data['count'] as int,
+            pageSize: currentPageSize,
           ),
         );
       },
     );
+  }
+
+  void setPageSize(int newSize) {
+    loadOrders(page: 0, pageSize: newSize, refresh: true, forceRefresh: true);
   }
 
   void setSearchText(String text) {

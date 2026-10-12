@@ -475,10 +475,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       onRefresh: () async => cubit.refreshProducts(),
                       child: CatalogProTableView(
                         products: state.products,
-                        pageSize: AdminCatalogState.pageSize,
+                        pageSize: state.itemsPerPage,
                         currentPage: state.currentPage,
                         totalCount: state.totalCount,
                         onPageChanged: cubit.setPage,
+                        onPageSizeChanged: cubit.setItemsPerPage,
                         headerSliver: headerSliver,
                         chipsSliver: chipsSliver,
                         bottomPadding: fabsBottomPadding,
@@ -506,10 +507,11 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     onRefresh: () async => cubit.refreshProducts(),
                     child: CatalogGridScrollView(
                       products: state.products,
-                      pageSize: AdminCatalogState.pageSize,
+                      pageSize: state.itemsPerPage,
                       currentPage: state.currentPage,
                       totalCount: state.totalCount,
                       onPageChanged: cubit.setPage,
+                      onPageSizeChanged: cubit.setItemsPerPage,
                       onSale: widget.onAddToCart ??
                           (product) =>
                               PosAddToCartSheet.show(context, product),

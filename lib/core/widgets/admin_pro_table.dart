@@ -158,10 +158,21 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   void initState() {
     super.initState();
     _tableFocusNode = FocusNode(debugLabel: 'AdminProTable');
+    _tableFocusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_tableFocusNode.hasFocus && (_focusedRowIndex != -1 || _hoveredItemId != null)) {
+      setState(() {
+        _focusedRowIndex = -1;
+        _hoveredItemId = null;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _tableFocusNode.removeListener(_onFocusChange);
     _tableFocusNode.dispose();
     super.dispose();
   }
@@ -207,6 +218,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
     if (key == LogicalKeyboardKey.arrowDown) {
       setState(() {
+        _hoveredItemId = null;
         _focusedRowIndex =
             _focusedRowIndex == -1
                 ? 0
@@ -217,6 +229,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
     if (key == LogicalKeyboardKey.arrowUp) {
       setState(() {
+        _hoveredItemId = null;
         _focusedRowIndex =
             _focusedRowIndex <= 0
                 ? 0
@@ -289,60 +302,81 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
       children: [
         Padding(
           padding: widget.margin,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.border,
-                width: 1.2,
-              ),
-              boxShadow:
-                  isDark
-                      ? AppColors.darkCardShadow(opacity: 0.15)
-                      : AppColors.cardShadow(opacity: 0.04),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Focus(
-              focusNode: _tableFocusNode,
-              onKeyEvent: _handleKeyEvent,
-              child: GestureDetector(
-                onTap: () => _tableFocusNode.requestFocus(),
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Cuerpo de la tabla con scroll horizontal
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final tableWidth =
-                              screenWidth < widget.minTableWidth
-                                  ? widget.minTableWidth
-                                  : (screenWidth - 32).clamp(
-                                    widget.minTableWidth,
-                                    double.infinity,
-                                  );
+          child: TapRegion(
+            onTapOutside: (_) {
+              _tableFocusNode.unfocus();
+              if (_hoveredItemId != null || _focusedRowIndex != -1) {
+                setState(() {
+                  _hoveredItemId = null;
+                  _focusedRowIndex = -1;
+                });
+              }
+            },
+            child: MouseRegion(
+              onExit: (_) {
+                if (_hoveredItemId != null || _focusedRowIndex != -1) {
+                  setState(() {
+                    _hoveredItemId = null;
+                    _focusedRowIndex = -1;
+                  });
+                }
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                    width: 1.2,
+                  ),
+                  boxShadow:
+                      isDark
+                          ? AppColors.darkCardShadow(opacity: 0.15)
+                          : AppColors.cardShadow(opacity: 0.04),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Focus(
+                  focusNode: _tableFocusNode,
+                  onKeyEvent: _handleKeyEvent,
+                  child: GestureDetector(
+                    onTap: () => _tableFocusNode.requestFocus(),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Cuerpo de la tabla con scroll horizontal
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final tableWidth =
+                                  screenWidth < widget.minTableWidth
+                                      ? widget.minTableWidth
+                                      : (screenWidth - 32).clamp(
+                                        widget.minTableWidth,
+                                        double.infinity,
+                                      );
 
-                          return SizedBox(
-                            width: tableWidth,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _buildTableHeader(),
-                                _buildTableRows(),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                              return SizedBox(
+                                width: tableWidth,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _buildTableHeader(),
+                                    _buildTableRows(),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        // Pie de Tabla (Paginación y conteo)
+                        if (widget.paginationConfig != null) _buildTableFooter(),
+                      ],
                     ),
-
-                    // Pie de Tabla (Paginación y conteo)
-                    if (widget.paginationConfig != null) _buildTableFooter(),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -511,7 +545,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     final id = widget.itemId(item);
     final isSelected = widget.selectedIds.contains(id);
     final isHovered = _hoveredItemId == id;
-    final isFocused = _focusedRowIndex == index;
+    final isFocused = _tableFocusNode.hasFocus && _focusedRowIndex == index;
     final isHighlighted = isHovered || isFocused;
 
     final rowColor =
@@ -544,15 +578,23 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
       onEnter: (_) {
-        _tableFocusNode.requestFocus();
         setState(() {
           _hoveredItemId = id;
-          _focusedRowIndex = index;
         });
       },
-      onExit: (_) => setState(() => _hoveredItemId = null),
+      onExit: (_) {
+        setState(() {
+          if (_hoveredItemId == id) _hoveredItemId = null;
+        });
+      },
       child: GestureDetector(
-        onTap: () => widget.onRowTap?.call(item),
+        onTap: () {
+          _tableFocusNode.requestFocus();
+          setState(() {
+            _focusedRowIndex = index;
+          });
+          widget.onRowTap?.call(item);
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 110),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),

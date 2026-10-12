@@ -12,6 +12,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final int currentPage;
   final int? totalCount;
   final ValueChanged<int> onPageChanged;
+  final ValueChanged<int>? onPageSizeChanged;
   final void Function(ProductEntity) onSale;
   final Future<void> Function(ProductEntity) onToggleActive;
   final void Function(ProductEntity) onEdit;
@@ -31,6 +32,7 @@ class CatalogGridScrollView extends StatelessWidget {
     required this.currentPage,
     this.totalCount,
     required this.onPageChanged,
+    this.onPageSizeChanged,
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
@@ -138,6 +140,8 @@ class CatalogGridScrollView extends StatelessWidget {
                   onPageChanged: onPageChanged,
                   totalItems: effectiveTotal,
                   itemsPerPage: pageSize,
+                  availableItemsPerPage: const [10, 20, 24, 50, 100],
+                  onItemsPerPageChanged: onPageSizeChanged,
                   itemName: 'productos',
                 ),
               ),

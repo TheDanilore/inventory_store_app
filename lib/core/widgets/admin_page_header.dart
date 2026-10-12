@@ -25,7 +25,7 @@ class AdminPageHeader extends StatelessWidget {
     this.subtitle,
     this.actions,
     required this.isDesktop,
-    this.showOnMobile = false,
+    this.showOnMobile = true,
     this.padding,
     // Parámetro obsoleto mantenido temporalmente por retrocompatibilidad
     String? breadcrumb,
@@ -56,6 +56,7 @@ class AdminPageHeader extends StatelessWidget {
   }
 
   Widget _buildDesktopHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -67,10 +68,13 @@ class AdminPageHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
                   letterSpacing: -0.5,
                   height: 1.2,
                 ),
@@ -79,9 +83,12 @@ class AdminPageHeader extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   subtitle!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
                     fontWeight: FontWeight.w400,
                     height: 1.35,
                   ),
@@ -109,16 +116,17 @@ class AdminPageHeader extends StatelessWidget {
   }
 
   Widget _buildMobileHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 20,
+          style: TextStyle(
+            fontSize: 22,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
+            color: isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A),
             letterSpacing: -0.4,
           ),
         ),
@@ -126,10 +134,14 @@ class AdminPageHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle!,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF64748B),
+              color:
+                  isDark
+                      ? AppColors.darkTextSecondary
+                      : const Color(0xFF64748B),
               fontWeight: FontWeight.w400,
+              height: 1.3,
             ),
           ),
         ],
@@ -167,6 +179,7 @@ class AdminHeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final Widget button;
 
     if (isPrimary) {
@@ -212,7 +225,9 @@ class AdminHeaderButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: (isDark ? Colors.black : Colors.black).withValues(
+                alpha: isDark ? 0.2 : 0.02,
+              ),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -223,19 +238,27 @@ class AdminHeaderButton extends StatelessWidget {
           icon: Icon(
             icon,
             size: 18,
-            color: iconColor ?? const Color(0xFF334155),
+            color:
+                iconColor ??
+                (isDark
+                    ? AppColors.darkTextSecondary
+                    : const Color(0xFF334155)),
           ),
           label: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 13.5,
-              color: Color(0xFF1E293B),
+              color:
+                  isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B),
             ),
           ),
           style: OutlinedButton.styleFrom(
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+            backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+            side: BorderSide(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
+              width: 1.2,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             minimumSize: const Size(0, 44),
             shape: RoundedRectangleBorder(

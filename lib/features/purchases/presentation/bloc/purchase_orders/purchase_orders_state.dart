@@ -18,6 +18,7 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
   final DateTime? endDate;
   final int currentPage;
   final int totalCount;
+  final int pageSize;
 
   const PurchaseOrdersLoading({
     this.currentOrders = const [],
@@ -27,10 +28,11 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     this.endDate,
     this.currentPage = 0,
     this.totalCount = 0,
+    this.pageSize = PurchaseOrdersState.pageSize,
   });
 
   int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
+      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   @override
   List<Object?> get props => [
@@ -41,6 +43,7 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     endDate,
     currentPage,
     totalCount,
+    pageSize,
   ];
 }
 
@@ -52,6 +55,7 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
   final DateTime? endDate;
   final int currentPage;
   final int totalCount;
+  final int pageSize;
 
   const PurchaseOrdersLoaded({
     required this.orders,
@@ -61,10 +65,11 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     this.endDate,
     required this.currentPage,
     required this.totalCount,
+    this.pageSize = PurchaseOrdersState.pageSize,
   });
 
   int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
+      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   PurchaseOrdersLoaded copyWith({
     List<dynamic>? orders,
@@ -74,6 +79,7 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     DateTime? endDate,
     int? currentPage,
     int? totalCount,
+    int? pageSize,
   }) {
     return PurchaseOrdersLoaded(
       orders: orders ?? this.orders,
@@ -83,6 +89,7 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
       endDate: endDate ?? this.endDate,
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
+      pageSize: pageSize ?? this.pageSize,
     );
   }
 
@@ -95,6 +102,7 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     endDate,
     currentPage,
     totalCount,
+    pageSize,
   ];
 }
 
@@ -107,6 +115,7 @@ class PurchaseOrdersError extends PurchaseOrdersState {
   final DateTime? endDate;
   final int currentPage;
   final int totalCount;
+  final int pageSize;
 
   const PurchaseOrdersError({
     required this.message,
@@ -117,10 +126,11 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     this.endDate,
     this.currentPage = 0,
     this.totalCount = 0,
+    this.pageSize = PurchaseOrdersState.pageSize,
   });
 
   int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / PurchaseOrdersState.pageSize).ceil();
+      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   @override
   List<Object?> get props => [
@@ -132,6 +142,7 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     endDate,
     currentPage,
     totalCount,
+    pageSize,
   ];
 }
 

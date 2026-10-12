@@ -14,6 +14,7 @@ class CatalogProTableView extends StatefulWidget {
   final int currentPage;
   final int? totalCount;
   final ValueChanged<int> onPageChanged;
+  final ValueChanged<int>? onPageSizeChanged;
   final void Function(ProductEntity) onSale;
   final Future<void> Function(ProductEntity) onToggleActive;
   final void Function(ProductEntity) onEdit;
@@ -30,6 +31,7 @@ class CatalogProTableView extends StatefulWidget {
     required this.currentPage,
     this.totalCount,
     required this.onPageChanged,
+    this.onPageSizeChanged,
     required this.onSale,
     required this.onToggleActive,
     required this.onEdit,
@@ -113,7 +115,7 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                 pageSize: widget.pageSize,
                 totalItems: effectiveTotal,
                 onPageChanged: (p) => widget.onPageChanged(p - 1),
-                onPageSizeChanged: (_) {},
+                onPageSizeChanged: (newSize) => widget.onPageSizeChanged?.call(newSize),
               ),
               bulkActions: [
                 AdminBulkAction<ProductEntity>(
