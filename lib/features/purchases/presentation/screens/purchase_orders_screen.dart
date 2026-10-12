@@ -1067,13 +1067,21 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
                             // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
                             SliverToBoxAdapter(
-                              child: _PurchaseOrdersBentoKpiBar(
-                                orderCount: viewModel.orders.length,
-                                totalRecords: viewModel.totalCount,
-                                totalAmount: totalAmount,
-                                pendingCount: pendingCount,
-                                totalDebt: totalDebt,
-                                isDesktop: isDesktopOrTablet,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  0,
+                                ),
+                                child: _PurchaseOrdersBentoKpiBar(
+                                  orderCount: viewModel.orders.length,
+                                  totalRecords: viewModel.totalCount,
+                                  totalAmount: totalAmount,
+                                  pendingCount: pendingCount,
+                                  totalDebt: totalDebt,
+                                  isDesktop: isDesktopOrTablet,
+                                ),
                               ),
                             ),
 

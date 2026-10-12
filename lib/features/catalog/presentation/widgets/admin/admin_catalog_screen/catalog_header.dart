@@ -118,6 +118,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     _hideOverlay();
     if (!mounted) return;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
     final overlay = Overlay.of(context);
 
@@ -132,13 +133,15 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               child: Material(
                 elevation: 8,
                 borderRadius: BorderRadius.circular(12),
-                shadowColor: Colors.black.withValues(alpha: 0.15),
-                color: Colors.white,
+                shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                color: isDark ? AppColors.darkSurface : Colors.white,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? AppColors.darkSurface : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -149,12 +152,12 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Búsquedas Recientes',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textSecondary,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                               ),
                             ),
                             InkWell(
@@ -174,7 +177,10 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                           ],
                         ),
                       ),
-                      const Divider(height: 1, color: AppColors.border),
+                      Divider(
+                        height: 1,
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 180),
                         child: ListView.builder(
@@ -190,24 +196,24 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                                 vertical: 0,
                               ),
                               visualDensity: VisualDensity.compact,
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.history_rounded,
                                 size: 16,
-                                color: AppColors.textMuted,
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                               ),
                               title: Text(
                                 item,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.textPrimary,
+                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               trailing: IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.close_rounded,
                                   size: 14,
-                                  color: AppColors.textMuted,
+                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -245,6 +251,8 @@ class _CatalogHeaderState extends State<CatalogHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 900;
@@ -252,22 +260,22 @@ class _CatalogHeaderState extends State<CatalogHeader> {
         return AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppColors.darkSurface : Colors.white,
             border: Border(
               bottom: BorderSide(
-                color: Colors.grey.withValues(alpha: 0.15),
+                color: isDark ? AppColors.darkBorder : Colors.grey.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
           ),
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+          child: isDesktop ? _buildDesktopLayout(isDark) : _buildMobileLayout(isDark),
         );
       },
     );
   }
 
-  Widget _buildSearchField({bool isDesktop = false}) {
+  Widget _buildSearchField({bool isDesktop = false, required bool isDark}) {
     const activeBlue = Color(0xFF2563EB);
     const activeBorderBlue = Color(0xFF3B82F6);
 
@@ -278,9 +286,12 @@ class _CatalogHeaderState extends State<CatalogHeader> {
           height: 48,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border, width: 1),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.border,
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -305,13 +316,15 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                     decoration: BoxDecoration(
                       color:
                           !widget.searchByIngredient
-                              ? Colors.white
+                              ? (isDark ? AppColors.darkSurfaceHighlight : Colors.white)
                               : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border:
                           !widget.searchByIngredient
                               ? Border.all(
-                                color: AppColors.border.withValues(alpha: 0.6),
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border.withValues(alpha: 0.6),
                                 width: 1,
                               )
                               : null,
@@ -319,7 +332,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                           !widget.searchByIngredient
                               ? [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
+                                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -332,7 +345,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       color:
                           !widget.searchByIngredient
                               ? activeBlue
-                              : AppColors.textMuted,
+                              : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                 ),
@@ -359,13 +372,15 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                     decoration: BoxDecoration(
                       color:
                           widget.searchByIngredient
-                              ? Colors.white
+                              ? (isDark ? AppColors.darkSurfaceHighlight : Colors.white)
                               : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border:
                           widget.searchByIngredient
                               ? Border.all(
-                                color: AppColors.border.withValues(alpha: 0.6),
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border.withValues(alpha: 0.6),
                                 width: 1,
                               )
                               : null,
@@ -373,7 +388,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                           widget.searchByIngredient
                               ? [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.06),
+                                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -386,7 +401,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       color:
                           widget.searchByIngredient
                               ? activeBlue
-                              : AppColors.textMuted,
+                              : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                   ),
                 ),
@@ -403,12 +418,12 @@ class _CatalogHeaderState extends State<CatalogHeader> {
             child: Container(
               height: 48,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: activeBorderBlue, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: activeBorderBlue.withValues(alpha: 0.08),
+                    color: activeBorderBlue.withValues(alpha: isDark ? 0.15 : 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -423,9 +438,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       textInputAction: TextInputAction.search,
                       onSubmitted: _executeSearch,
                       onChanged: widget.onSearchChanged,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textPrimary,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                         fontWeight: FontWeight.w500,
                       ),
                       decoration: InputDecoration(
@@ -433,8 +448,8 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                             widget.searchByIngredient
                                 ? 'Buscar por ingrediente activo...'
                                 : 'Buscar producto por nombre o SKU...',
-                        hintStyle: const TextStyle(
-                          color: AppColors.textMuted,
+                        hintStyle: TextStyle(
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                           fontSize: 14,
                         ),
                         prefixIcon: Icon(
@@ -454,10 +469,10 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                                   return const SizedBox.shrink();
                                 }
                                 return IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.cancel_rounded,
                                     size: 18,
-                                    color: AppColors.textMuted,
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   ),
                                   onPressed: _clearSearch,
                                   tooltip: 'Borrar búsqueda',
@@ -472,19 +487,19 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.background,
+                                  color: isDark ? AppColors.darkSurface : AppColors.background,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: AppColors.border,
+                                    color: isDark ? AppColors.darkBorder : AppColors.border,
                                     width: 1,
                                   ),
                                 ),
                                 child: Text(
                                   AppShortcutLabels.search,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textSecondary,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -532,7 +547,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     );
   }
 
-  Widget _buildDesktopLayout() {
+  Widget _buildDesktopLayout(bool isDark) {
     return Column(
       children: [
         Row(
@@ -541,16 +556,16 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               if (widget.onBack != null) ...[
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_rounded,
-                    color: AppColors.textPrimary,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                   tooltip: 'Volver al Catálogo',
                   style: IconButton.styleFrom(
-                    backgroundColor: AppColors.background,
+                    backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radius),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                   ),
                 ),
@@ -564,25 +579,27 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                 ),
                 tooltip: 'Operaciones POS (Ventas recientes y borradores)',
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.background,
+                  backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppColors.radius),
-                    side: const BorderSide(color: AppColors.border),
+                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
             ],
-            Expanded(child: _buildSearchField(isDesktop: true)),
+            Expanded(child: _buildSearchField(isDesktop: true, isDark: isDark)),
             if (!widget.isPosMode) ...[
               if (widget.onToggleTableView != null) ...[
                 const SizedBox(width: 12),
                 Container(
                   height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
+                    color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                    ),
                   ),
                   padding: const EdgeInsets.all(3),
                   child: Row(
@@ -601,13 +618,13 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                             ),
                             decoration: BoxDecoration(
                               color: !widget.isTableView
-                                  ? Colors.white
+                                  ? (isDark ? AppColors.darkSurfaceHighlight : Colors.white)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(7),
                               boxShadow: !widget.isTableView
                                   ? [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.06),
+                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
                                         blurRadius: 4,
                                         offset: const Offset(0, 1),
                                       ),
@@ -619,7 +636,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                               size: 18,
                               color: !widget.isTableView
                                   ? AppColors.primary
-                                  : AppColors.textMuted,
+                                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                             ),
                           ),
                         ),
@@ -638,13 +655,13 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                             ),
                             decoration: BoxDecoration(
                               color: widget.isTableView
-                                  ? Colors.white
+                                  ? (isDark ? AppColors.darkSurfaceHighlight : Colors.white)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(7),
                               boxShadow: widget.isTableView
                                   ? [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.06),
+                                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
                                         blurRadius: 4,
                                         offset: const Offset(0, 1),
                                       ),
@@ -656,7 +673,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                               size: 18,
                               color: widget.isTableView
                                   ? AppColors.primary
-                                  : AppColors.textMuted,
+                                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                             ),
                           ),
                         ),
@@ -669,9 +686,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               OutlinedButton.icon(
                 onPressed: widget.isExporting ? null : widget.onExport,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.slate,
-                  side: const BorderSide(color: AppColors.border),
-                  backgroundColor: Colors.white,
+                  foregroundColor: isDark ? AppColors.darkTextPrimary : AppColors.slate,
+                  side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+                  backgroundColor: isDark ? AppColors.darkSurfaceElevated : Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 11,
@@ -722,27 +739,31 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: isDark
+                          ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                          : const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       border: Border.all(
-                        color: const Color(0xFF6EE7B7),
+                        color: isDark
+                            ? const Color(0xFF059669).withValues(alpha: 0.5)
+                            : const Color(0xFF6EE7B7),
                         width: 1,
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(
                           Icons.science_rounded,
                           size: 14,
-                          color: Color(0xFF059669),
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Búsqueda por ingrediente activo: Se filtran productos por componente químico.',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF065F46),
+                              color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -757,7 +778,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
     );
   }
 
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout(bool isDark) {
     return Column(
       children: [
         Row(
@@ -766,16 +787,16 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               if (widget.onBack != null) ...[
                 IconButton(
                   onPressed: widget.onBack,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.arrow_back_rounded,
-                    color: AppColors.textPrimary,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                   tooltip: 'Volver al Catálogo',
                   style: IconButton.styleFrom(
-                    backgroundColor: AppColors.background,
+                    backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radius),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                     ),
                   ),
                 ),
@@ -789,16 +810,16 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                 ),
                 tooltip: 'Operaciones POS (Ventas recientes y borradores)',
                 style: IconButton.styleFrom(
-                  backgroundColor: AppColors.background,
+                  backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppColors.radius),
-                    side: const BorderSide(color: AppColors.border),
+                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
             ],
-            Expanded(child: _buildSearchField(isDesktop: false)),
+            Expanded(child: _buildSearchField(isDesktop: false, isDark: isDark)),
           ],
         ),
         AnimatedSize(
@@ -813,27 +834,31 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0FDF4),
+                      color: isDark
+                          ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                          : const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       border: Border.all(
-                        color: const Color(0xFF6EE7B7),
+                        color: isDark
+                            ? const Color(0xFF059669).withValues(alpha: 0.5)
+                            : const Color(0xFF6EE7B7),
                         width: 1,
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Icon(
                           Icons.science_rounded,
                           size: 13,
-                          color: Color(0xFF059669),
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Mostrando ingrediente activo completo en tarjeta.',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF065F46),
+                              color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
                               height: 1.4,
                             ),
                           ),

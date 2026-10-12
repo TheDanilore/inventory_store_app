@@ -11,15 +11,19 @@ class CatalogDialogs {
     return showDialog<({int mode, Set<String> selectedIds})>(
       context: context,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         int selectedMode = 1;
         final selectedIds = <String>{};
 
         return StatefulBuilder(
           builder: (context, setLocalState) {
             return Dialog(
-              backgroundColor: Colors.white,
+              backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isDark ? AppColors.darkBorder : Colors.transparent,
+                ),
               ),
               clipBehavior: Clip.antiAlias,
               child: ConstrainedBox(
@@ -36,20 +40,24 @@ class CatalogDialogs {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF2F2),
+                              color: isDark
+                                  ? const Color(0xFF7F1D1D).withValues(alpha: 0.35)
+                                  : const Color(0xFFFEF2F2),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFFCA5A5),
+                                color: isDark
+                                    ? const Color(0xFFDC2626).withValues(alpha: 0.5)
+                                    : const Color(0xFFFCA5A5),
                               ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.picture_as_pdf_rounded,
-                              color: Color(0xFFDC2626),
+                              color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
                               size: 22,
                             ),
                           ),
                           const SizedBox(width: 14),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -58,22 +66,26 @@ class CatalogDialogs {
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
                                   'Configura los productos a incluir',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 20),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                            ),
                             onPressed: () => Navigator.pop(context),
                             tooltip: 'Cerrar',
                           ),
@@ -117,9 +129,11 @@ class CatalogDialogs {
                         Container(
                           constraints: const BoxConstraints(maxHeight: 240),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(
+                              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                            ),
                           ),
                           child: ListView.builder(
                             shrinkWrap: true,
@@ -140,17 +154,17 @@ class CatalogDialogs {
                                 ),
                                 title: Text(
                                   product.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                   ),
                                 ),
                                 subtitle: Text(
                                   'Stock: ${product.totalStock > 0 ? product.totalStock : "Sin stock"} · ${product.isActive ? "Activo" : "Inactivo"}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.textMuted,
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   ),
                                 ),
                                 onChanged: (checked) {
@@ -177,17 +191,17 @@ class CatalogDialogs {
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
-                                side: const BorderSide(
-                                  color: Color(0xFFCBD5E1),
+                                side: BorderSide(
+                                  color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Cancelar',
                                 style: TextStyle(
-                                  color: AppColors.textSecondary,
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -204,7 +218,7 @@ class CatalogDialogs {
                                         selectedIds: selectedIds,
                                       )),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0F172A),
+                                backgroundColor: isDark ? AppColors.primary : const Color(0xFF0F172A),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(
@@ -245,13 +259,18 @@ class CatalogDialogs {
     ProductEntity product,
   ) {
     final willActivate = !product.isActive;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return showDialog<bool>(
       context: context,
       builder:
           (context) => Dialog(
-            backgroundColor: Colors.white,
+            backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppColors.radiusXl),
+              side: BorderSide(
+                color: isDark ? AppColors.darkBorder : Colors.transparent,
+              ),
             ),
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -264,8 +283,12 @@ class CatalogDialogs {
                     decoration: BoxDecoration(
                       color:
                           willActivate
-                              ? AppColors.successLight
-                              : AppColors.dangerLight,
+                              ? (isDark
+                                  ? const Color(0xFF064E3B).withValues(alpha: 0.4)
+                                  : AppColors.successLight)
+                              : (isDark
+                                  ? const Color(0xFF7F1D1D).withValues(alpha: 0.4)
+                                  : AppColors.dangerLight),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -273,17 +296,19 @@ class CatalogDialogs {
                           ? Icons.check_circle_rounded
                           : Icons.hide_source_rounded,
                       color:
-                          willActivate ? AppColors.success : AppColors.danger,
+                          willActivate
+                              ? (isDark ? const Color(0xFF34D399) : AppColors.success)
+                              : (isDark ? const Color(0xFFF87171) : AppColors.danger),
                       size: 28,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     willActivate ? 'Activar producto' : 'Desactivar producto',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -292,9 +317,9 @@ class CatalogDialogs {
                         ? '¿Volver a mostrar "${product.name}" en el catálogo?'
                         : '¿Ocultar "${product.name}" del catálogo?',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       height: 1.5,
                     ),
                   ),
@@ -310,13 +335,15 @@ class CatalogDialogs {
                               borderRadius: BorderRadius.circular(
                                 AppColors.radius,
                               ),
-                              side: const BorderSide(color: AppColors.border),
+                              side: BorderSide(
+                                color: isDark ? AppColors.darkBorder : AppColors.border,
+                              ),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Cancelar',
                             style: TextStyle(
-                              color: AppColors.textSecondary,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -373,6 +400,7 @@ class _ExportRadioOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = value == groupValue;
     return InkWell(
       onTap: () => onChanged(value),
@@ -380,9 +408,15 @@ class _ExportRadioOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.tealLight.withValues(alpha: 0.3) : null,
+          color: isSelected
+              ? (isDark
+                  ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                  : AppColors.tealLight.withValues(alpha: 0.3))
+              : (isDark ? AppColors.darkSurfaceElevated : null),
           border: Border.all(
-            color: isSelected ? AppColors.teal : AppColors.border,
+            color: isSelected
+                ? (isDark ? const Color(0xFF34D399) : AppColors.teal)
+                : (isDark ? AppColors.darkBorder : AppColors.border),
           ),
           borderRadius: BorderRadius.circular(AppColors.radius),
         ),
@@ -394,7 +428,7 @@ class _ExportRadioOption extends StatelessWidget {
               groupValue: groupValue,
               // ignore: deprecated_member_use
               onChanged: onChanged,
-              activeColor: AppColors.teal,
+              activeColor: isDark ? const Color(0xFF34D399) : AppColors.teal,
               visualDensity: VisualDensity.compact,
             ),
             const SizedBox(width: 8),
@@ -404,17 +438,17 @@ class _ExportRadioOption extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                     ),
                   ),
                 ],

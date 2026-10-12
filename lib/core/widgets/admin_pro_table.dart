@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 
@@ -240,6 +241,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 640;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     // 1. Estado de Carga: Skeleton Shimmer
     if (widget.isLoading) {
       return Padding(
@@ -260,9 +263,11 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: isDark ? AppColors.darkSurface : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
               ),
               child: const AppEmptyState(
                 icon: Icons.inbox_rounded,
@@ -278,8 +283,6 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     if (isMobile && widget.mobileCardBuilder != null) {
       return _buildMobileCardLayout();
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // 4. Modo Desktop & Tablet (Tabla Pro de Alta Densidad con Stack para barra flotante)
     return Stack(
@@ -633,7 +636,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
         border: Border(
@@ -643,185 +646,18 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          // Lado Izquierdo: Selector de tamaño de página y rango visible
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Mostrar',
-                style: TextStyle(
-                  fontSize: 12,
-                  color:
-                      isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color:
-                        isDark
-                            ? AppColors.darkBorderSubtle
-                            : const Color(0xFFCBD5E1),
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: config.pageSize,
-                    dropdownColor:
-                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
-                    isDense: true,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          isDark
-                              ? AppColors.darkTextPrimary
-                              : AppColors.textPrimary,
-                    ),
-                    icon: Icon(
-                      Icons.arrow_drop_down,
-                      size: 18,
-                      color:
-                          isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.textPrimary,
-                    ),
-                    items:
-                        config.pageSizeOptions
-                            .map(
-                              (size) => DropdownMenuItem(
-                                value: size,
-                                child: Text('$size'),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (val) {
-                      if (val != null && val != config.pageSize) {
-                        config.onPageSizeChanged(val);
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'por pág. • Viendo ${config.fromItem} - ${config.toItem} de ${config.totalItems}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color:
-                      isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          const Spacer(),
-
-          // Lado Derecho: Botones Anterior / Siguiente y número de página
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                onPressed:
-                    config.hasPrevious
-                        ? () => config.onPageChanged(config.currentPage - 1)
-                        : null,
-                icon: const Icon(Icons.chevron_left_rounded, size: 16),
-                label: const Text('Anterior'),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  foregroundColor:
-                      isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.textPrimary,
-                  disabledForegroundColor:
-                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                  side: BorderSide(
-                    color:
-                        isDark
-                            ? AppColors.darkBorderSubtle
-                            : const Color(0xFFCBD5E1),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color:
-                        isDark
-                            ? AppColors.darkBorderSubtle
-                            : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: Text(
-                  '${config.currentPage} / ${config.totalPages}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color:
-                        isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              OutlinedButton.icon(
-                onPressed:
-                    config.hasNext
-                        ? () => config.onPageChanged(config.currentPage + 1)
-                        : null,
-                icon: const Icon(Icons.chevron_right_rounded, size: 16),
-                label: const Text('Siguiente'),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  foregroundColor:
-                      isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.textPrimary,
-                  disabledForegroundColor:
-                      isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                  side: BorderSide(
-                    color:
-                        isDark
-                            ? AppColors.darkBorderSubtle
-                            : const Color(0xFFCBD5E1),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: AdminPageBlocks(
+        currentPage: config.currentPage - 1,
+        totalPages: config.totalPages,
+        totalItems: config.totalItems,
+        itemsPerPage: config.pageSize,
+        availableItemsPerPage: config.pageSizeOptions,
+        onPageChanged: (zeroBasedPage) {
+          config.onPageChanged(zeroBasedPage + 1);
+        },
+        onItemsPerPageChanged: (newSize) {
+          config.onPageSizeChanged(newSize);
+        },
       ),
     );
   }
@@ -1027,35 +863,30 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
   Widget _buildMobileFooter() {
     final config = widget.paginationConfig!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left_rounded),
-            onPressed:
-                config.hasPrevious
-                    ? () => config.onPageChanged(config.currentPage - 1)
-                    : null,
-          ),
-          Text(
-            'Página ${config.currentPage} de ${config.totalPages}',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right_rounded),
-            onPressed:
-                config.hasNext
-                    ? () => config.onPageChanged(config.currentPage + 1)
-                    : null,
-          ),
-        ],
+      child: AdminPageBlocks(
+        currentPage: config.currentPage - 1,
+        totalPages: config.totalPages,
+        totalItems: config.totalItems,
+        itemsPerPage: config.pageSize,
+        availableItemsPerPage: config.pageSizeOptions,
+        isCompact: true,
+        onPageChanged: (zeroBasedPage) {
+          config.onPageChanged(zeroBasedPage + 1);
+        },
+        onItemsPerPageChanged: (newSize) {
+          config.onPageSizeChanged(newSize);
+        },
       ),
     );
   }

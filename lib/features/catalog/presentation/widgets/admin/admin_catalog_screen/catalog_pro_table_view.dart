@@ -143,6 +143,7 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   flex: 4,
                   isSortable: true,
                   cellBuilder: (context, product) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
                     final variantCount = product.productVariants.length;
 
                     return Row(
@@ -158,10 +159,12 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                 product.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
-                                  color: AppColors.textPrimary,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                               Row(
@@ -173,15 +176,21 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                         vertical: 1.5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.08),
+                                        color: isDark
+                                            ? const Color(0xFF3B82F6)
+                                                .withValues(alpha: 0.18)
+                                            : AppColors.primary
+                                                .withValues(alpha: 0.08),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         '$variantCount var.',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
+                                          color: isDark
+                                              ? const Color(0xFF60A5FA)
+                                              : AppColors.primary,
                                         ),
                                       ),
                                     ),
@@ -191,9 +200,11 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                       product.brandName!.isNotEmpty)
                                     Text(
                                       product.brandName!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.textMuted,
+                                        color: isDark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.textMuted,
                                       ),
                                     ),
                                 ],
@@ -212,13 +223,18 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   label: 'CATEGORÍA',
                   flex: 2,
                   isSortable: true,
-                  cellBuilder: (context, product) => Text(
-                    product.categoryName ?? 'Sin categoría',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+                  cellBuilder: (context, product) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return Text(
+                      product.categoryName ?? 'Sin categoría',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                    );
+                  },
                 ),
 
                 // 3. Stock
@@ -227,7 +243,8 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   label: 'STOCK DISPONIBLE',
                   fixedWidth: 140,
                   isSortable: true,
-                  cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
+                  cellBuilder: (context, product) =>
+                      ProductStockBadge(stock: product.totalStock),
                 ),
 
                 // 4. Precio Venta
@@ -237,18 +254,28 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   fixedWidth: 135,
                   isSortable: true,
                   cellBuilder: (context, product) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
                     if (product.displaySalePrice != null) {
                       return Text(
                         'S/ ${product.displaySalePrice!.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          fontFeatures: [FontFeature.tabularFigures()],
+                          color: isDark
+                              ? const Color(0xFF34D399)
+                              : AppColors.textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       );
                     }
-                    return const Text('—', style: TextStyle(color: AppColors.textMuted));
+                    return Text(
+                      '—',
+                      style: TextStyle(
+                        color: isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted,
+                      ),
+                    );
                   },
                 ),
 
@@ -269,28 +296,34 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   id: 'actions',
                   label: 'ACCIONES',
                   fixedWidth: 110,
-                  cellBuilder: (context, product) => Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.point_of_sale_rounded, size: 16),
-                        tooltip: 'Vender',
-                        splashRadius: 14,
-                        color: AppColors.teal,
-                        onPressed: () => widget.onSale(product),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        tooltip: 'Editar',
-                        splashRadius: 14,
-                        color: AppColors.textSecondary,
-                        onPressed: () => widget.onEdit(product),
-                      ),
-                    ],
-                  ),
+                  cellBuilder: (context, product) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                          tooltip: 'Vender',
+                          splashRadius: 14,
+                          color: AppColors.teal,
+                          onPressed: () => widget.onSale(product),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          tooltip: 'Editar',
+                          splashRadius: 14,
+                          color: isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
+                          onPressed: () => widget.onEdit(product),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
               mobileCardBuilder: (context, product, isSelected, onSelect) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
                 return InkWell(
                   onTap: () => widget.onProductSelected(product),
                   borderRadius: BorderRadius.circular(12),
@@ -306,10 +339,12 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                             children: [
                               Text(
                                 product.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
-                                  color: AppColors.textPrimary,
+                                  color: isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -317,9 +352,11 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                               const SizedBox(height: 2),
                               Text(
                                 product.categoryName ?? 'Sin categoría',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.textMuted,
+                                  color: isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textMuted,
                                 ),
                               ),
                             ],

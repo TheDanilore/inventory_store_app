@@ -842,10 +842,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
                               // ── 1. Bento Metric Strip (Pulso en Tiempo Real) ──
                               SliverToBoxAdapter(
-                                child: _buildBentoMetrics(
-                                  state: state,
-                                  isMobile: isMobile,
-                                  isTablet: isTablet,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    12,
+                                    16,
+                                    0,
+                                  ),
+                                  child: _buildBentoMetrics(
+                                    state: state,
+                                    isMobile: isMobile,
+                                    isTablet: isTablet,
+                                  ),
                                 ),
                               ),
 

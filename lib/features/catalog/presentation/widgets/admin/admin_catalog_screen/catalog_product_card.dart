@@ -53,17 +53,17 @@ class _AdminProductCardState extends State<AdminProductCard> {
     } finally {
       if (mounted) setState(() => _isToggling = false);
     }
-  }
-
-  /// Placeholder elegante cuando no hay imagen de producto.
-  Widget _buildProductPlaceholder(String name) {
+  }  /// Placeholder elegante cuando no hay imagen de producto.
+  Widget _buildProductPlaceholder(String name, bool isDark) {
     final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'P';
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          colors: isDark
+              ? [AppColors.darkSurfaceElevated, AppColors.darkSurface]
+              : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
         ),
       ),
       child: Center(
@@ -74,12 +74,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.darkSurfaceHighlight : Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border, width: 1),
+                border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                  width: 1,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                     blurRadius: 6,
                     offset: const Offset(0, 1),
                   ),
@@ -97,12 +100,12 @@ class _AdminProductCardState extends State<AdminProductCard> {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Sin imagen',
               style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                 letterSpacing: 0.2,
               ),
             ),
@@ -114,6 +117,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAgotado =
         widget.product.stockControl && widget.product.totalStock <= 0;
     final isDesactivado = !widget.product.isActive;
@@ -160,15 +164,23 @@ class _AdminProductCardState extends State<AdminProductCard> {
           },
           child: Ink(
             decoration: BoxDecoration(
-              color: isDesactivado ? const Color(0xFFF8FAFC) : Colors.white,
+              color: isDesactivado
+                  ? (isDark
+                      ? AppColors.darkSurface.withValues(alpha: 0.5)
+                      : const Color(0xFFF8FAFC))
+                  : (isDark ? AppColors.darkSurface : Colors.white),
               borderRadius: BorderRadius.circular(AppColors.radius),
               border: Border.all(
                 color:
                     widget.isSelected
                         ? AppColors.primary
                         : (isDesactivado
-                            ? const Color(0xFFE2E8F0)
-                            : const Color(0xFFE5E7EB)),
+                            ? (isDark
+                                ? AppColors.darkBorder.withValues(alpha: 0.5)
+                                : const Color(0xFFE2E8F0))
+                            : (isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFE5E7EB))),
                 width: widget.isSelected ? 2.0 : 1.0,
               ),
               boxShadow:
@@ -177,13 +189,13 @@ class _AdminProductCardState extends State<AdminProductCard> {
                       : [
                         if (_isHovered)
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
                             blurRadius: 16,
                             offset: const Offset(0, 8),
                           )
                         else
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.02),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -205,7 +217,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           colorFilter:
                               isAgotado
                                   ? ColorFilter.mode(
-                                    Colors.grey.shade400,
+                                    isDark ? Colors.grey.shade700 : Colors.grey.shade400,
                                     BlendMode.saturation,
                                   )
                                   : const ColorFilter.mode(
@@ -237,7 +249,9 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                       maxHeightDiskCache: 600,
                                       placeholder:
                                           (_, _) => ColoredBox(
-                                            color: const Color(0xFFF1F5F9),
+                                            color: isDark
+                                                ? AppColors.darkSurfaceElevated
+                                                : const Color(0xFFF1F5F9),
                                             child: Center(
                                               child: SizedBox(
                                                 width: 24,
@@ -256,10 +270,12 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                       errorWidget:
                                           (_, _, _) => _buildProductPlaceholder(
                                             widget.product.name,
+                                            isDark,
                                           ),
                                     )
                                     : _buildProductPlaceholder(
                                       widget.product.name,
+                                      isDark,
                                     ),
                           ),
                         ),
@@ -295,7 +311,9 @@ class _AdminProductCardState extends State<AdminProductCard> {
                               top: Radius.circular(AppColors.radius),
                             ),
                             child: ColoredBox(
-                              color: Colors.white.withValues(alpha: 0.45),
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.50)
+                                  : Colors.white.withValues(alpha: 0.45),
                               child: const Center(
                                 child: _StatusBadge(
                                   label: 'INACTIVO',
@@ -313,7 +331,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                               top: Radius.circular(AppColors.radius),
                             ),
                             child: ColoredBox(
-                              color: Colors.black.withValues(alpha: 0.12),
+                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
                               child: const Center(
                                 child: _StatusBadge(
                                   label: 'AGOTADO',
@@ -379,19 +397,19 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.verified_outlined,
                               size: 10,
-                              color: AppColors.textMuted,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                             ),
                             const SizedBox(width: 3),
                             Flexible(
                               child: Text(
                                 widget.product.brandName!.trim().toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textMuted,
+                                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                   letterSpacing: 0.4,
                                 ),
                                 maxLines: 1,
@@ -409,8 +427,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           fontSize: widget.isFullPosMode ? 12.5 : 13,
                           color:
                               isDesactivado
-                                  ? AppColors.textMuted
-                                  : AppColors.textPrimary,
+                                  ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                                  : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
                           decoration:
                               isDesactivado ? TextDecoration.lineThrough : null,
                         ),
@@ -425,26 +443,32 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
+                            color: isDark
+                                ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                                : const Color(0xFFECFDF5),
                             borderRadius: BorderRadius.circular(5),
-                            border: Border.all(color: const Color(0xFF6EE7B7)),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF059669).withValues(alpha: 0.5)
+                                  : const Color(0xFF6EE7B7),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.science_rounded,
                                 size: 11,
-                                color: Color(0xFF059669),
+                                color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
                               ),
                               const SizedBox(width: 3),
                               Flexible(
                                 child: Text(
                                   activeIng,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: Color(0xFF065F46),
+                                    color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
@@ -464,8 +488,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                             style: TextStyle(
                               color:
                                   isDesactivado
-                                      ? AppColors.textMuted
-                                      : AppColors.tealDark,
+                                      ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                                      : (isDark ? const Color(0xFF34D399) : AppColors.tealDark),
                               fontWeight: FontWeight.w900,
                               fontSize: 14,
                             ),
@@ -475,8 +499,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: isAgotado
-                                    ? Colors.grey.shade100
-                                    : AppColors.tealLight.withValues(alpha: 0.6),
+                                    ? (isDark ? AppColors.darkSurfaceHighlight : Colors.grey.shade100)
+                                    : (isDark ? AppColors.tealDark.withValues(alpha: 0.3) : AppColors.tealLight.withValues(alpha: 0.6)),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -487,8 +511,8 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                         : Icons.add_rounded),
                                 size: 15,
                                 color: isAgotado
-                                    ? AppColors.textMuted
-                                    : AppColors.tealDark,
+                                    ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                                    : (isDark ? const Color(0xFF34D399) : AppColors.tealDark),
                               ),
                             ),
                         ],
@@ -502,7 +526,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                   Container(
                     margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -511,14 +535,14 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           icon: Icons.edit_rounded,
                           label: 'Editar',
                           enabled: true,
-                          color: const Color(0xFF2563EB),
+                          color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
                           onTap: widget.onEdit,
                           isFullWidth: false,
                         ),
                         Container(
                           width: 1,
                           height: 18,
-                          color: AppColors.border,
+                          color: isDark ? AppColors.darkBorder : AppColors.border,
                         ),
                         _IconCardAction(
                           icon:
@@ -534,7 +558,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           color:
                               isDesactivado
                                   ? AppColors.success
-                                  : AppColors.textSecondary,
+                                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
                           onTap: _isToggling ? null : _handleToggle,
                         ),
                       ],
@@ -607,6 +631,7 @@ class _PrimaryCardAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final radius =
         isFullWidth
             ? BorderRadius.circular(10)
@@ -634,12 +659,17 @@ class _PrimaryCardAction extends StatelessWidget {
                 decoration: BoxDecoration(
                   color:
                       enabled
-                          ? color.withValues(alpha: 0.10)
-                          : Colors.black.withValues(alpha: 0.03),
+                          ? color.withValues(alpha: isDark ? 0.18 : 0.10)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.03)),
                   borderRadius: radius,
                   border:
                       !enabled && isFullWidth
-                          ? Border.all(color: AppColors.border, width: 0.5)
+                          ? Border.all(
+                              color: isDark ? AppColors.darkBorder : AppColors.border,
+                              width: 0.5,
+                            )
                           : null,
                 ),
                 child: Row(
@@ -648,7 +678,9 @@ class _PrimaryCardAction extends StatelessWidget {
                     Icon(
                       icon,
                       size: 14,
-                      color: enabled ? color : AppColors.textMuted,
+                      color: enabled
+                          ? color
+                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                     ),
                     const SizedBox(width: 5),
                     Text(
@@ -656,7 +688,9 @@ class _PrimaryCardAction extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: enabled ? color : AppColors.textMuted,
+                        color: enabled
+                            ? color
+                            : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -687,6 +721,7 @@ class _IconCardAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDisabled = onTap == null;
     return Expanded(
       flex: 2,
@@ -706,7 +741,9 @@ class _IconCardAction extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 18,
-                  color: isDisabled ? AppColors.textMuted : color,
+                  color: isDisabled
+                      ? (isDark ? AppColors.darkTextMuted : AppColors.textMuted)
+                      : color,
                 ),
               ),
             ),

@@ -256,6 +256,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
@@ -318,7 +320,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       isExporting: state.actionState == ViewState.loading,
                       searchByIngredient: state.searchByIngredient,
                       child: Container(
-                        color: AppColors.background,
+                        color: isDark ? AppColors.darkBackground : AppColors.background,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -564,7 +566,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
               if (isDesktop || isTablet) {
                 return Container(
-                  color: AppColors.background,
+                  color: isDark ? AppColors.darkBackground : AppColors.background,
                   child: catalogBody,
                 );
               }
@@ -598,10 +600,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               OutlinedButton.icon(
                 onPressed: () => context.go('/pos'),
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: AppColors.tealLight.withValues(alpha: 0.5),
-                  foregroundColor: AppColors.tealDark,
+                  backgroundColor: isDark
+                      ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                      : AppColors.tealLight.withValues(alpha: 0.5),
+                  foregroundColor: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
                   side: BorderSide(
-                    color: AppColors.teal.withValues(alpha: 0.4),
+                    color: isDark
+                        ? const Color(0xFF059669).withValues(alpha: 0.5)
+                        : AppColors.teal.withValues(alpha: 0.4),
                     width: 1,
                   ),
                   elevation: 0,
@@ -613,17 +619,17 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                     borderRadius: BorderRadius.circular(AppColors.radiusSm),
                   ),
                 ),
-                icon: const Icon(
+                icon: Icon(
                   Icons.point_of_sale_rounded,
                   size: 16,
-                  color: AppColors.tealDark,
+                  color: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
                 ),
-                label: const Text(
+                label: Text(
                   'Punto de Venta (POS)',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
-                    color: AppColors.tealDark,
+                    color: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
                   ),
                 ),
               ),
