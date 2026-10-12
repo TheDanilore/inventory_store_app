@@ -75,7 +75,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final width = widget.isCollapsed ? 72.0 : 260.0;
+    final width = widget.isCollapsed ? 72.0 : 272.0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -454,7 +454,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
     return Container(
       height: 64,
-      padding: EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 16),
+      padding: EdgeInsets.symmetric(horizontal: widget.isCollapsed ? 0 : 12),
       child: ClipRect(
         child: Row(
           mainAxisAlignment:
@@ -465,6 +465,30 @@ class _AdminSidebarState extends State<AdminSidebar> {
             Tooltip(
               message:
                   widget.isCollapsed ? 'Expandir menú' : 'DANILORE ONE ERP',
+              preferBelow: false,
+              verticalOffset: 16,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF0F172A) : const Color(0xFF0F172A)).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              textStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -554,21 +578,23 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                       : const Color(0xFF0F172A),
                             ),
                           ),
-                        Text(
-                          isDefault
-                              ? 'Todo tu negocio en un solo lugar'
-                              : 'DANILORE ONE ERP',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                isDark
-                                    ? AppColors.darkTextMuted
-                                    : const Color(0xFF64748B),
-                            letterSpacing: 0.1,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            isDefault
+                                ? 'Todo tu negocio en un solo lugar'
+                                : 'DANILORE ONE ERP',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextMuted
+                                      : const Color(0xFF64748B),
+                              letterSpacing: -0.1,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     );
@@ -578,6 +604,30 @@ class _AdminSidebarState extends State<AdminSidebar> {
               const SizedBox(width: 4),
               Tooltip(
                 message: 'Colapsar menú',
+                preferBelow: false,
+                verticalOffset: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (isDark ? const Color(0xFF0F172A) : const Color(0xFF0F172A)).withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -585,19 +635,24 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     borderRadius: BorderRadius.circular(8),
                     hoverColor:
                         isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFF1F5F9),
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05),
                     child: Container(
-                      width: 32,
-                      height: 32,
+                      width: 30,
+                      height: 30,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.04)
+                                : Colors.black.withValues(alpha: 0.03),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color:
                               isDark
                                   ? AppColors.darkBorderSubtle
                                   : const Color(0xFFE2E8F0),
+                          width: 0.8,
                         ),
                       ),
                       child: Icon(
