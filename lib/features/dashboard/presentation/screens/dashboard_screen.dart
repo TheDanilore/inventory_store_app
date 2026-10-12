@@ -2202,10 +2202,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                     onTap: () {
                       context.go('/inventory?tab=batches');
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(vertical: 2),
+                    child: Container(
                       decoration: BoxDecoration(
                         color:
                             isHovered
@@ -2214,12 +2211,7 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                                     : AppColors.primaryLight.withValues(
                                       alpha: 0.45,
                                     ))
-                                : (index.isOdd
-                                    ? (isDark
-                                        ? AppColors.darkSurfaceElevated
-                                            .withValues(alpha: 0.5)
-                                        : const Color(0xFFF8FAFC))
-                                    : Colors.transparent),
+                                : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       padding: const EdgeInsets.symmetric(

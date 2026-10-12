@@ -1720,14 +1720,7 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
 
                     return Container(
                       decoration: BoxDecoration(
-                        color:
-                            index.isOdd
-                                ? (isDark
-                                    ? AppColors.darkSurfaceElevated.withValues(
-                                      alpha: 0.5,
-                                    )
-                                    : const Color(0xFFF8FAFC))
-                                : Colors.transparent,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: InkWell(
@@ -2021,9 +2014,7 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                   context.go('/inventory');
                                 }
                               },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 120),
-                                curve: Curves.easeOutCubic,
+                              child: Container(
                                 decoration: BoxDecoration(
                                   color:
                                       isHovered
@@ -2032,13 +2023,7 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                               : AppColors.primaryLight.withValues(
                                                 alpha: 0.45,
                                               ))
-                                          : (index.isOdd
-                                              ? (isDark
-                                                  ? AppColors.darkSurface.withValues(
-                                                    alpha: 0.35,
-                                                  )
-                                                  : const Color(0xFFF8FAFC))
-                                              : Colors.transparent),
+                                          : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 padding: const EdgeInsets.symmetric(
