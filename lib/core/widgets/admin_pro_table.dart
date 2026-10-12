@@ -122,6 +122,9 @@ class AdminProTable<T> extends StatefulWidget {
   )?
   mobileCardBuilder;
 
+  /// Padding vertical de cada fila de datos y cabecera.
+  final double rowVerticalPadding;
+
   const AdminProTable({
     super.key,
     required this.items,
@@ -141,6 +144,7 @@ class AdminProTable<T> extends StatefulWidget {
     this.minTableWidth = 880.0,
     this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.mobileCardBuilder,
+    this.rowVerticalPadding = 9.0,
   });
 
   @override
@@ -345,33 +349,11 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Cuerpo de la tabla con scroll horizontal
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final tableWidth =
-                                  screenWidth < widget.minTableWidth
-                                      ? widget.minTableWidth
-                                      : (screenWidth - 32).clamp(
-                                        widget.minTableWidth,
-                                        double.infinity,
-                                      );
-
-                              return SizedBox(
-                                width: tableWidth,
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    _buildTableHeader(),
-                                    _buildTableRows(),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                        // Cuerpo de la tabla con scroll horizontal + scrollbar visible
+                        _HorizontalScrollableTable(
+                          minTableWidth: widget.minTableWidth,
+                          header: _buildTableHeader(),
+                          rows: _buildTableRows(),
                         ),
 
                         // Pie de Tabla (Paginación y conteo)
@@ -405,7 +387,10 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: widget.rowVerticalPadding,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
         border: Border(
@@ -600,7 +585,10 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 110),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: widget.rowVerticalPadding,
+          ),
           decoration: BoxDecoration(
             color: rowColor,
             boxShadow: rowShadow,
@@ -933,6 +921,118 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           config.onPageSizeChanged(newSize);
         },
       ),
+    );
+  }
+}
+
+// ── HELPER PRIVADO: Tabla con scroll horizontal visible ─────────────────────
+class _HorizontalScrollableTable extends StatefulWidget {
+  final double minTableWidth;
+  final Widget header;
+  final Widget rows;
+
+  const _HorizontalScrollableTable({
+    required this.minTableWidth,
+    required this.header,
+    required this.rows,
+  });
+
+  @override
+  State<_HorizontalScrollableTable> createState() =>
+      _HorizontalScrollableTableState();
+}
+
+class _HorizontalScrollableTableState
+    extends State<_HorizontalScrollableTable> {
+  final _scrollController = ScrollController();
+  bool _canScrollRight = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_updateScrollIndicator);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _updateScrollIndicator(),
+    );
+  }
+
+  void _updateScrollIndicator() {
+    if (!_scrollController.hasClients) return;
+    final canScroll =
+        _scrollController.position.maxScrollExtent > 0 &&
+        _scrollController.offset <
+            _scrollController.position.maxScrollExtent - 2;
+    if (canScroll != _canScrollRight) {
+      setState(() => _canScrollRight = canScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_updateScrollIndicator);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use the available width from parent; fall back to minTableWidth if needed.
+        final tableWidth =
+            constraints.maxWidth.isFinite &&
+                    constraints.maxWidth > widget.minTableWidth
+                ? constraints.maxWidth
+                : widget.minTableWidth;
+
+        return Stack(
+          children: [
+            Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              thickness: 5,
+              radius: const Radius.circular(4),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: SizedBox(
+                  width: tableWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [widget.header, widget.rows],
+                  ),
+                ),
+              ),
+            ),
+            // Fade hint (right edge) when more content is available
+            if (_canScrollRight)
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: 36,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Colors.transparent,
+                          Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF1E293B).withValues(alpha: 0.85)
+                              : Colors.white.withValues(alpha: 0.85),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
