@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
@@ -10,16 +11,22 @@ class ProductVariantsTableView extends StatelessWidget {
 
   Color _resolveColorSwatch(String name, int index) {
     final lower = name.toLowerCase();
-    if (lower.contains('negro') || lower.contains('black') || lower.contains('oscuro')) {
+    if (lower.contains('negro') ||
+        lower.contains('black') ||
+        lower.contains('oscuro')) {
       return const Color(0xFF1E293B);
     }
     if (lower.contains('blanco') || lower.contains('white')) {
       return const Color(0xFFF1F5F9);
     }
-    if (lower.contains('plata') || lower.contains('silver') || lower.contains('gris')) {
+    if (lower.contains('plata') ||
+        lower.contains('silver') ||
+        lower.contains('gris')) {
       return const Color(0xFFCBD5E1);
     }
-    if (lower.contains('verde') || lower.contains('green') || lower.contains('titanio')) {
+    if (lower.contains('verde') ||
+        lower.contains('green') ||
+        lower.contains('titanio')) {
       return const Color(0xFF064E3B);
     }
     if (lower.contains('azul') || lower.contains('blue')) {
@@ -28,7 +35,9 @@ class ProductVariantsTableView extends StatelessWidget {
     if (lower.contains('rojo') || lower.contains('red')) {
       return const Color(0xFFDC2626);
     }
-    if (lower.contains('oro') || lower.contains('gold') || lower.contains('amarillo')) {
+    if (lower.contains('oro') ||
+        lower.contains('gold') ||
+        lower.contains('amarillo')) {
       return const Color(0xFFEAB308);
     }
 
@@ -53,7 +62,9 @@ class ProductVariantsTableView extends StatelessWidget {
       context: context,
       builder: (ctx) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680, maxHeight: 720),
             child: Padding(
@@ -177,7 +188,10 @@ class ProductVariantsTableView extends StatelessWidget {
                             fontSize: 13,
                             letterSpacing: 0.8,
                             fontWeight: FontWeight.w800,
-                            color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                            color:
+                                isDark
+                                    ? const Color(0xFFE2E8F0)
+                                    : const Color(0xFF1E293B),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -185,7 +199,10 @@ class ProductVariantsTableView extends StatelessWidget {
                           'Este producto tiene múltiples opciones como color o versión de diadema.',
                           style: TextStyle(
                             fontSize: 12.5,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
                           ),
                         ),
                       ],
@@ -198,14 +215,19 @@ class ProductVariantsTableView extends StatelessWidget {
                     icon: const Icon(Icons.add_rounded, size: 16),
                     label: const Text('Agregar Variante'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: isDark
-                          ? const Color(0xFF312E81)
-                          : const Color(0xFFEEF2FF), // Lavanda suave
-                      foregroundColor: isDark
-                          ? const Color(0xFFC7D2FE)
-                          : const Color(0xFF4F46E5), // Indigo intenso
+                      backgroundColor:
+                          isDark
+                              ? const Color(0xFF312E81)
+                              : const Color(0xFFEEF2FF), // Lavanda suave
+                      foregroundColor:
+                          isDark
+                              ? const Color(0xFFC7D2FE)
+                              : const Color(0xFF4F46E5), // Indigo intenso
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -224,7 +246,10 @@ class ProductVariantsTableView extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                    color:
+                        isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: ClipRRect(
@@ -233,17 +258,40 @@ class ProductVariantsTableView extends StatelessWidget {
                     children: [
                       // Encabezados de la Tabla
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                          color:
+                              isDark
+                                  ? const Color(0xFF0F172A)
+                                  : const Color(0xFFF8FAFC),
                           border: Border(
                             bottom: BorderSide(
-                              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF334155)
+                                      : const Color(0xFFE2E8F0),
                             ),
                           ),
                         ),
                         child: Row(
                           children: [
+                            // IMAGE
+                            const SizedBox(
+                              width: 52,
+                              child: Text(
+                                'IMG',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.6,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
                             const Expanded(
                               flex: 4,
                               child: Text(
@@ -328,7 +376,10 @@ class ProductVariantsTableView extends StatelessWidget {
                           child: Text(
                             'No hay variantes agregadas.',
                             style: TextStyle(
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                              color:
+                                  isDark
+                                      ? Colors.grey.shade400
+                                      : Colors.grey.shade600,
                             ),
                           ),
                         )
@@ -337,11 +388,15 @@ class ProductVariantsTableView extends StatelessWidget {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: variants.length,
-                          separatorBuilder: (context, index) => Divider(
-                            height: 1,
-                            thickness: 1,
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                          ),
+                          separatorBuilder:
+                              (context, index) => Divider(
+                                height: 1,
+                                thickness: 1,
+                                color:
+                                    isDark
+                                        ? const Color(0xFF334155)
+                                        : const Color(0xFFE2E8F0),
+                              ),
                           itemBuilder: (context, index) {
                             final draft = variants[index];
 
@@ -350,12 +405,19 @@ class ProductVariantsTableView extends StatelessWidget {
                             String editionOrAttr = 'Estándar';
 
                             if (draft.selectedAttributes.isNotEmpty) {
-                              colorOrName = draft.selectedAttributes.first['value_name']?.toString() ??
-                                  draft.selectedAttributes.first['attribute_name']?.toString() ??
+                              colorOrName =
+                                  draft.selectedAttributes.first['value_name']
+                                      ?.toString() ??
+                                  draft
+                                      .selectedAttributes
+                                      .first['attribute_name']
+                                      ?.toString() ??
                                   colorOrName;
 
                               if (draft.selectedAttributes.length > 1) {
-                                editionOrAttr = draft.selectedAttributes[1]['value_name']?.toString() ??
+                                editionOrAttr =
+                                    draft.selectedAttributes[1]['value_name']
+                                        ?.toString() ??
                                     editionOrAttr;
                               }
                             } else if (index == 0) {
@@ -369,26 +431,33 @@ class ProductVariantsTableView extends StatelessWidget {
                               editionOrAttr = 'Studio Master';
                             }
 
-                            final swatchColor = _resolveColorSwatch(colorOrName, index);
+                            final swatchColor = _resolveColorSwatch(
+                              colorOrName,
+                              index,
+                            );
 
                             return _VariantTableRow(
+                              key: ValueKey('variant_row_$index'),
                               index: index,
                               draft: draft,
                               colorOrName: colorOrName,
                               editionOrAttr: editionOrAttr,
                               swatchColor: swatchColor,
-                              onOpenModal: () => _openFullVariantModal(
-                                context,
-                                cubit,
-                                index,
-                                draft,
-                              ),
+                              onOpenModal:
+                                  () => _openFullVariantModal(
+                                    context,
+                                    cubit,
+                                    index,
+                                    draft,
+                                  ),
                               onRemove: () => cubit.removeVariantDraft(index),
-                              onUpdate: (updatedDraft) => cubit.updateVariantDraft(
-                                index,
-                                updatedDraft,
-                                syncState: false,
-                              ),
+                              onPickImage: () => cubit.pickVariantImage(index),
+                              onUpdate:
+                                  (updatedDraft) => cubit.updateVariantDraft(
+                                    index,
+                                    updatedDraft,
+                                    syncState: false,
+                                  ),
                             );
                           },
                         ),
@@ -412,9 +481,11 @@ class _VariantTableRow extends StatefulWidget {
   final Color swatchColor;
   final VoidCallback onOpenModal;
   final VoidCallback onRemove;
+  final VoidCallback onPickImage;
   final ValueChanged<VariantDraftFormModel> onUpdate;
 
   const _VariantTableRow({
+    super.key,
     required this.index,
     required this.draft,
     required this.colorOrName,
@@ -422,6 +493,7 @@ class _VariantTableRow extends StatefulWidget {
     required this.swatchColor,
     required this.onOpenModal,
     required this.onRemove,
+    required this.onPickImage,
     required this.onUpdate,
   });
 
@@ -440,16 +512,18 @@ class _VariantTableRowState extends State<_VariantTableRow> {
     super.initState();
     _priceCtrl = TextEditingController(text: widget.draft.price);
     _skuCtrl = TextEditingController(
-      text: widget.draft.sku.isNotEmpty
-          ? widget.draft.sku
-          : (widget.index == 0
-              ? 'NOVA-BLK-STD'
-              : (widget.index == 1 ? 'NOVA-SLV-PRO' : 'NOVA-GRN-STD')),
+      text:
+          widget.draft.sku.isNotEmpty
+              ? widget.draft.sku
+              : (widget.index == 0
+                  ? 'NOVA-BLK-STD'
+                  : (widget.index == 1 ? 'NOVA-SLV-PRO' : 'NOVA-GRN-STD')),
     );
     _stockCtrl = TextEditingController(
-      text: widget.draft.reorderPoint.isNotEmpty
-          ? widget.draft.reorderPoint
-          : (widget.index == 0 ? '24' : (widget.index == 1 ? '16' : '8')),
+      text:
+          widget.draft.reorderPoint.isNotEmpty
+              ? widget.draft.reorderPoint
+              : (widget.index == 0 ? '24' : (widget.index == 1 ? '16' : '8')),
     );
 
     _priceCtrl.addListener(_emitChange);
@@ -467,8 +541,207 @@ class _VariantTableRowState extends State<_VariantTableRow> {
     );
   }
 
+  Future<void> _promptForImageUrl() async {
+    String? url;
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          title: const Text('Pegar URL de Imagen'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: 'https://...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                url = ctrl.text.trim();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (url != null && url!.isNotEmpty) {
+      widget.onUpdate(
+        widget.draft.copyWith(
+          externalImageUrl: url,
+          urlsExistentes: [],
+          nuevasImagenes: [],
+          clearExternalImageUrl: false,
+        ),
+      );
+    }
+  }
+
+  Widget _buildImageCell(bool isDark) {
+    final draft = widget.draft;
+    final hasLocalImg = draft.nuevasImagenes.isNotEmpty;
+    final hasUrlImg = draft.urlsExistentes.isNotEmpty;
+    final hasExtImg =
+        draft.externalImageUrl != null && draft.externalImageUrl!.isNotEmpty;
+
+    if (hasLocalImg || hasUrlImg || hasExtImg) {
+      // Mostrar miniatura con opción de borrar
+      Widget img;
+      if (hasLocalImg) {
+        img = Image.memory(draft.nuevasImagenes.first, fit: BoxFit.cover);
+      } else if (hasUrlImg) {
+        img = CachedNetworkImage(
+          imageUrl: draft.urlsExistentes.first,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(color: Colors.grey.shade100),
+          errorWidget:
+              (context, url, err) =>
+                  const Icon(Icons.broken_image, size: 14, color: Colors.grey),
+        );
+      } else {
+        img = CachedNetworkImage(
+          imageUrl: draft.externalImageUrl!,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(color: Colors.grey.shade100),
+          errorWidget:
+              (context, url, err) =>
+                  const Icon(Icons.broken_image, size: 14, color: Colors.grey),
+        );
+      }
+      return SizedBox(
+        width: 52,
+        child: Center(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: img,
+                ),
+              ),
+              Positioned(
+                top: -4,
+                right: -6,
+                child: GestureDetector(
+                  onTap:
+                      () => widget.onUpdate(
+                        widget.draft.copyWith(
+                          urlsExistentes: [],
+                          nuevasImagenes: [],
+                          clearExternalImageUrl: true,
+                        ),
+                      ),
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 10,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Sin imagen → botones compactos subir / URL
+    return SizedBox(
+      width: 52,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Tooltip(
+            message: 'Subir imagen',
+            child: InkWell(
+              onTap: widget.onPickImage,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: const Icon(
+                  Icons.add_photo_alternate_outlined,
+                  size: 13,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 3),
+          Tooltip(
+            message: 'URL de imagen',
+            child: InkWell(
+              onTap: _promptForImageUrl,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: const Icon(
+                  Icons.link_rounded,
+                  size: 13,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _priceCtrl.removeListener(_emitChange);
+    _skuCtrl.removeListener(_emitChange);
+    _stockCtrl.removeListener(_emitChange);
     _priceCtrl.dispose();
     _skuCtrl.dispose();
     _stockCtrl.dispose();
@@ -484,12 +757,18 @@ class _VariantTableRowState extends State<_VariantTableRow> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        color: _isHovered
-            ? (isDark ? const Color(0xFF334155).withValues(alpha: 0.5) : const Color(0xFFF8FAFC))
-            : Colors.transparent,
+        color:
+            _isHovered
+                ? (isDark
+                    ? const Color(0xFF334155).withValues(alpha: 0.5)
+                    : const Color(0xFFF8FAFC))
+                : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
+            // IMAGE
+            _buildImageCell(isDark),
+
             // COLOR / NOMBRE
             Expanded(
               flex: 4,
@@ -532,7 +811,10 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                  color:
+                      isDark
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF334155),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -547,14 +829,19 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                 margin: const EdgeInsets.only(right: 8),
                 child: TextField(
                   controller: _priceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
                     filled: true,
                     fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
                     border: OutlineInputBorder(
@@ -567,7 +854,10 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6366F1),
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -610,7 +900,10 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
                     filled: true,
                     fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
                     border: OutlineInputBorder(
@@ -623,7 +916,10 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6366F1),
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),

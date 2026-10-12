@@ -672,11 +672,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const ProductImagesSection(),
+                              const SizedBox(height: 20),
                               const ProductStatusCard(),
                               const SizedBox(height: 20),
                               const ProductSalesChannelsCard(),
-                              const SizedBox(height: 20),
-                              const ProductImagesSection(),
                               const SizedBox(height: 20),
                               const ProductConfigSection(),
                               const SizedBox(height: 20),
@@ -1236,11 +1236,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                     child: Row(
                       children: [
                         // Micro-estado reactivo vía BlocSelector
-                        BlocSelector<
-                          ProductFormCubit,
-                          ProductFormState,
-                          bool
-                        >(
+                        BlocSelector<ProductFormCubit, ProductFormState, bool>(
                           selector: (s) => s.isDirty,
                           builder: (context, isDirty) {
                             return AnimatedContainer(
@@ -1333,11 +1329,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        BlocSelector<
-                          ProductFormCubit,
-                          ProductFormState,
-                          bool
-                        >(
+                        BlocSelector<ProductFormCubit, ProductFormState, bool>(
                           selector: (s) => s.isSaving,
                           builder: (context, isSaving) {
                             return FilledButton.icon(
@@ -1446,46 +1438,47 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               Tooltip(
                 message: isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
                 waitDuration: const Duration(milliseconds: 300),
-                child: isMobile
-                    ? IconButton(
-                        onPressed: _toggleExpandCollapseAll,
-                        icon: Icon(
-                          isAllExpanded
-                              ? Icons.unfold_less_rounded
-                              : Icons.unfold_more_rounded,
-                          size: 18,
-                          color: AppColors.textSecondary,
-                        ),
-                        padding: const EdgeInsets.all(6),
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                        splashRadius: 16,
-                      )
-                    : TextButton.icon(
-                        onPressed: _toggleExpandCollapseAll,
-                        icon: Icon(
-                          isAllExpanded
-                              ? Icons.unfold_less_rounded
-                              : Icons.unfold_more_rounded,
-                          size: 16,
-                        ),
-                        label: Text(
-                          isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                child:
+                    isMobile
+                        ? IconButton(
+                          onPressed: _toggleExpandCollapseAll,
+                          icon: Icon(
+                            isAllExpanded
+                                ? Icons.unfold_less_rounded
+                                : Icons.unfold_more_rounded,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          splashRadius: 16,
+                        )
+                        : TextButton.icon(
+                          onPressed: _toggleExpandCollapseAll,
+                          icon: Icon(
+                            isAllExpanded
+                                ? Icons.unfold_less_rounded
+                                : Icons.unfold_more_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
                           ),
                         ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
-                          ),
-                        ),
-                      ),
               ),
               SizedBox(width: isMobile ? 4 : 6),
             ],
