@@ -47,6 +47,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
     if (isMobile) {
       return showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

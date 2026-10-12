@@ -556,21 +556,6 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Drag Handle (solo móvil/bottomsheet) ──
-              if (!widget.isDialog) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
               if (_isProcessingAction)
                 const LinearProgressIndicator(
                   color: AppColors.primary,

@@ -113,6 +113,10 @@ class AdminProToolbar extends StatefulWidget {
   /// Activa o desactiva el motor de atajos de teclado con aislamiento de foco.
   final bool enableKeyboardShortcuts;
 
+  /// Si es true (por defecto), la búsqueda se activa únicamente al presionar Enter,
+  /// pulsar el botón "Buscar" o limpiar el texto, evitando búsquedas prematuras por tecla.
+  final bool searchOnSubmitOnly;
+
   const AdminProToolbar({
     super.key,
     required this.searchController,
@@ -142,6 +146,7 @@ class AdminProToolbar extends StatefulWidget {
     this.mobileFiltersTitle = 'Filtros de Búsqueda',
     this.mobileActionsTitle = 'Opciones y Herramientas',
     this.enableKeyboardShortcuts = true,
+    this.searchOnSubmitOnly = true,
   });
 
   @override
@@ -181,6 +186,22 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         context.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 
+  void _executeSearch([String? query]) {
+    final text = query ?? widget.searchController.text;
+    final trimmed = text.trim();
+    widget.onSearchSubmitted?.call(trimmed);
+    widget.onSearchChanged?.call(trimmed);
+  }
+
+  void _handleClearSearch() {
+    widget.searchController.clear();
+    if (widget.onClearSearch != null) {
+      widget.onClearSearch!();
+    } else {
+      _executeSearch('');
+    }
+  }
+
   bool _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
 
@@ -190,9 +211,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     if (isInputActive) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         if (widget.searchController.text.isNotEmpty) {
-          widget.searchController.clear();
-          widget.onClearSearch?.call();
-          widget.onSearchChanged?.call('');
+          _handleClearSearch();
         }
         FocusManager.instance.primaryFocus?.unfocus();
         return true;
@@ -212,9 +231,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     // 2. Atajo [Esc] -> Limpiar búsqueda
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       if (widget.searchController.text.isNotEmpty) {
-        widget.searchController.clear();
-        widget.onClearSearch?.call();
-        widget.onSearchChanged?.call('');
+        _handleClearSearch();
         return true;
       }
     }
@@ -275,8 +292,16 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         child: TextField(
           controller: widget.searchController,
           focusNode: _effectiveSearchFocusNode,
-          onChanged: widget.onSearchChanged,
-          onSubmitted: widget.onSearchSubmitted,
+          onChanged: (val) {
+            if (widget.searchOnSubmitOnly) {
+              if (val.isEmpty) {
+                _executeSearch('');
+              }
+            } else {
+              widget.onSearchChanged?.call(val);
+            }
+          },
+          onSubmitted: (val) => _executeSearch(val),
           style: TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w500,
@@ -298,25 +323,86 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             suffixIcon: ValueListenableBuilder<TextEditingValue>(
               valueListenable: widget.searchController,
               builder: (context, value, _) {
-                if (value.text.isNotEmpty) {
-                  return IconButton(
-                    icon: const Icon(
-                      Icons.cancel_rounded,
-                      color: AppColors.textMuted,
-                      size: 17,
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (value.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.cancel_rounded,
+                          color: AppColors.textMuted,
+                          size: 17,
+                        ),
+                        tooltip: 'Limpiar búsqueda (Atajo: Esc)',
+                        splashRadius: 16,
+                        onPressed: _handleClearSearch,
+                      ),
+                    Tooltip(
+                      message: 'Buscar (Atajo: Enter)',
+                      waitDuration: const Duration(milliseconds: 400),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _executeSearch(),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Ink(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isDark
+                                        ? const Color(
+                                          0xFF60A5FA,
+                                        ).withValues(alpha: 0.15)
+                                        : AppColors.teal.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color:
+                                      isDark
+                                          ? const Color(
+                                            0xFF60A5FA,
+                                          ).withValues(alpha: 0.4)
+                                          : AppColors.teal.withValues(
+                                            alpha: 0.35,
+                                          ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.search_rounded,
+                                    size: 14,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF60A5FA)
+                                            : AppColors.tealDark,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Buscar',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF60A5FA)
+                                              : AppColors.tealDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    tooltip: 'Limpiar búsqueda (Atajo: Esc)',
-                    onPressed: () {
-                      widget.searchController.clear();
-                      if (widget.onClearSearch != null) {
-                        widget.onClearSearch!();
-                      } else if (widget.onSearchChanged != null) {
-                        widget.onSearchChanged!('');
-                      }
-                    },
-                  );
-                }
-                return const SizedBox.shrink();
+                  ],
+                );
               },
             ),
             filled: true,
@@ -376,8 +462,16 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       child: TextField(
         controller: widget.searchController,
         focusNode: _effectiveSearchFocusNode,
-        onChanged: widget.onSearchChanged,
-        onSubmitted: widget.onSearchSubmitted,
+        onChanged: (val) {
+          if (widget.searchOnSubmitOnly) {
+            if (val.isEmpty) {
+              _executeSearch('');
+            }
+          } else {
+            widget.onSearchChanged?.call(val);
+          }
+        },
+        onSubmitted: (val) => _executeSearch(val),
         textInputAction: TextInputAction.search,
         style: TextStyle(
           fontSize: 14,
@@ -397,21 +491,35 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           suffixIcon: ValueListenableBuilder<TextEditingValue>(
             valueListenable: widget.searchController,
             builder: (context, value, _) {
-              if (value.text.isNotEmpty) {
-                return IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: AppColors.textMuted,
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (value.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
+                      splashRadius: 18,
+                      onPressed: _handleClearSearch,
+                    ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color:
+                          isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                    ),
+                    tooltip: 'Buscar',
+                    splashRadius: 20,
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _executeSearch();
+                    },
                   ),
-                  onPressed: () {
-                    widget.searchController.clear();
-                    widget.onClearSearch?.call();
-                    widget.onSearchChanged?.call('');
-                  },
-                );
-              }
-              return const SizedBox.shrink();
+                ],
+              );
             },
           ),
           border: InputBorder.none,
@@ -640,6 +748,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               } else if (widget.mobileFiltersSheetBuilder != null) {
                 showModalBottomSheet(
                   context: context,
+                  useRootNavigator: true,
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   builder: widget.mobileFiltersSheetBuilder!,
@@ -686,6 +795,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   void _showDefaultMobileFiltersSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
@@ -837,6 +947,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {

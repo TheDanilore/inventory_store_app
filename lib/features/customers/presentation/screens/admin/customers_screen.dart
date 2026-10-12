@@ -73,7 +73,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) {
         if (_tabCtrl.index == 0) {
-          context.read<CustomersCubit>().fetchCustomers(reset: true, showOnlyWithDebt: false);
+          context.read<CustomersCubit>().fetchCustomers(
+            reset: true,
+            showOnlyWithDebt: false,
+          );
         } else if (_tabCtrl.index == 1) {
           context.read<CustomersCubit>().toggleDebtFilter(true);
         } else if (_tabCtrl.index == 2) {
@@ -198,10 +201,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   }
 
   void _openDetail(CustomerEntity customer) {
-    context.go(
-      '/customers/customer-detail/${customer.id}',
-      extra: customer,
-    );
+    context.go('/customers/customer-detail/${customer.id}', extra: customer);
   }
 
   Future<void> _openCreateCustomer() async {
@@ -325,36 +325,38 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   void _showMobileCustomerActionSheet(CustomerEntity customer) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetCtx) => _MobileCustomerActionSheet(
-        customer: customer,
-        onOpenDetail: () {
-          Navigator.of(sheetCtx).pop();
-          _openDetail(customer);
-        },
-        onEdit: () {
-          Navigator.of(sheetCtx).pop();
-          _openEditCustomer(customer);
-        },
-        onWhatsApp: () {
-          Navigator.of(sheetCtx).pop();
-          if (customer.phone != null) _launchWhatsApp(customer.phone!);
-        },
-        onCall: () {
-          Navigator.of(sheetCtx).pop();
-          if (customer.phone != null) _launchPhoneCall(customer.phone!);
-        },
-        onCopyDoc: () {
-          Navigator.of(sheetCtx).pop();
-          if (customer.documentNumber != null) {
-            _copyToClipboard(
-              customer.documentNumber!,
-              customer.documentType ?? 'Documento',
-            );
-          }
-        },
-      ),
+      builder:
+          (sheetCtx) => _MobileCustomerActionSheet(
+            customer: customer,
+            onOpenDetail: () {
+              Navigator.of(sheetCtx).pop();
+              _openDetail(customer);
+            },
+            onEdit: () {
+              Navigator.of(sheetCtx).pop();
+              _openEditCustomer(customer);
+            },
+            onWhatsApp: () {
+              Navigator.of(sheetCtx).pop();
+              if (customer.phone != null) _launchWhatsApp(customer.phone!);
+            },
+            onCall: () {
+              Navigator.of(sheetCtx).pop();
+              if (customer.phone != null) _launchPhoneCall(customer.phone!);
+            },
+            onCopyDoc: () {
+              Navigator.of(sheetCtx).pop();
+              if (customer.documentNumber != null) {
+                _copyToClipboard(
+                  customer.documentNumber!,
+                  customer.documentType ?? 'Documento',
+                );
+              }
+            },
+          ),
     );
   }
 
@@ -363,7 +365,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     Offset position,
     CustomerEntity customer,
   ) {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (overlay == null) return;
 
     showMenu<String>(
@@ -379,7 +382,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           value: 'inspector',
           child: Row(
             children: const [
-              Icon(Icons.view_sidebar_rounded, size: 18, color: AppColors.primary),
+              Icon(
+                Icons.view_sidebar_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 10),
               Text('Vista rápida (Inspector)', style: TextStyle(fontSize: 13)),
             ],
@@ -389,7 +396,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           value: 'detail',
           child: Row(
             children: const [
-              Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+              Icon(
+                Icons.visibility_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               SizedBox(width: 10),
               Text('Ver ficha completa', style: TextStyle(fontSize: 13)),
             ],
@@ -410,7 +421,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             value: 'whatsapp',
             child: Row(
               children: const [
-                Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Color(0xFF25D366)),
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 18,
+                  color: Color(0xFF25D366),
+                ),
                 SizedBox(width: 10),
                 Text('Enviar WhatsApp', style: TextStyle(fontSize: 13)),
               ],
@@ -489,24 +504,38 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     final sorted = List<CustomerEntity>.from(list);
     switch (_sortColumn) {
       case 'name':
-        sorted.sort((a, b) => _sortAscending
-            ? a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase())
-            : b.fullName.toLowerCase().compareTo(a.fullName.toLowerCase()));
+        sorted.sort(
+          (a, b) =>
+              _sortAscending
+                  ? a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase())
+                  : b.fullName.toLowerCase().compareTo(
+                    a.fullName.toLowerCase(),
+                  ),
+        );
         break;
       case 'orders':
-        sorted.sort((a, b) => _sortAscending
-            ? a.orderCount.compareTo(b.orderCount)
-            : b.orderCount.compareTo(a.orderCount));
+        sorted.sort(
+          (a, b) =>
+              _sortAscending
+                  ? a.orderCount.compareTo(b.orderCount)
+                  : b.orderCount.compareTo(a.orderCount),
+        );
         break;
       case 'debt':
-        sorted.sort((a, b) => _sortAscending
-            ? a.currentDebt.compareTo(b.currentDebt)
-            : b.currentDebt.compareTo(a.currentDebt));
+        sorted.sort(
+          (a, b) =>
+              _sortAscending
+                  ? a.currentDebt.compareTo(b.currentDebt)
+                  : b.currentDebt.compareTo(a.currentDebt),
+        );
         break;
       case 'revenue':
-        sorted.sort((a, b) => _sortAscending
-            ? a.totalRevenue.compareTo(b.totalRevenue)
-            : b.totalRevenue.compareTo(a.totalRevenue));
+        sorted.sort(
+          (a, b) =>
+              _sortAscending
+                  ? a.totalRevenue.compareTo(b.totalRevenue)
+                  : b.totalRevenue.compareTo(a.totalRevenue),
+        );
         break;
     }
     return sorted;
@@ -529,7 +558,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             title: 'Clientes',
             settingsActions: const [
               PopupMenuItem(value: 'export', child: Text('Exportar a PDF')),
-              PopupMenuItem(value: 'reload', child: Text('Recargar directorio [R]')),
+              PopupMenuItem(
+                value: 'reload',
+                child: Text('Recargar directorio [R]'),
+              ),
             ],
             onSettingsSelected: (value) {
               if (value == 'export') {
@@ -539,24 +571,26 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               }
             },
             // FAB solo visible en móvil cuando no se está buscando
-            floatingActionButton: (isMobile &&
-                    _tabCtrl.index == 0 &&
-                    _searchCtrl.text.isEmpty)
-                ? FloatingActionButton.extended(
-                    heroTag: 'add_customer_fab',
-                    backgroundColor: AppColors.primary,
-                    elevation: 4,
-                    icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-                    label: const Text(
-                      'Nuevo cliente',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
+            floatingActionButton:
+                (isMobile && _tabCtrl.index == 0 && _searchCtrl.text.isEmpty)
+                    ? FloatingActionButton.extended(
+                      heroTag: 'add_customer_fab',
+                      backgroundColor: AppColors.primary,
+                      elevation: 4,
+                      icon: const Icon(
+                        Icons.person_add_rounded,
                         color: Colors.white,
                       ),
-                    ),
-                    onPressed: _openCreateCustomer,
-                  )
-                : null,
+                      label: const Text(
+                        'Nuevo cliente',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      onPressed: _openCreateCustomer,
+                    )
+                    : null,
             body: RefreshIndicator(
               onRefresh: () async => _reloadAll(),
               child: CustomScrollView(
@@ -574,18 +608,21 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   // 2. TOOLBAR UNIFICADO PRO DE BÚSQUEDA Y ACCIONES
                   BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
                     builder: (context, statsState) {
-                      final totalCount = statsState is CustomersStatsLoaded
-                          ? statsState.totalCustomersCount
-                          : 0;
-                      final debtCount = statsState is CustomersStatsLoaded
-                          ? statsState.debtCustomersCount
-                          : 0;
+                      final totalCount =
+                          statsState is CustomersStatsLoaded
+                              ? statsState.totalCustomersCount
+                              : 0;
+                      final debtCount =
+                          statsState is CustomersStatsLoaded
+                              ? statsState.debtCustomersCount
+                              : 0;
 
                       return BlocBuilder<TopCustomersCubit, TopCustomersState>(
                         builder: (context, topState) {
-                          final topCount = topState is TopCustomersLoaded
-                              ? topState.topCustomers.length
-                              : 0;
+                          final topCount =
+                              topState is TopCustomersLoaded
+                                  ? topState.topCustomers.length
+                                  : 0;
 
                           return SliverToBoxAdapter(
                             child: AdminProToolbar(
@@ -594,8 +631,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                               searchFocusNode: _searchFocusNode,
                               searchHint:
                                   'Buscar por nombre, documento o teléfono...',
-                              onSearchChanged: (val) =>
-                                  context.read<CustomersCubit>().search(val.trim()),
+                              onSearchChanged:
+                                  (val) => context
+                                      .read<CustomersCubit>()
+                                      .search(val.trim()),
                               onClearSearch: () {
                                 _searchCtrl.clear();
                                 context.read<CustomersCubit>().search('');
@@ -609,8 +648,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                               ],
                               viewToggleConfig: AdminProViewToggleConfig(
                                 isTableView: _isTableView,
-                                onToggleTableView: (val) =>
-                                    setState(() => _isTableView = val),
+                                onToggleTableView:
+                                    (val) => setState(() => _isTableView = val),
                               ),
                               onRefresh: _reloadAll,
                               refreshTooltip: 'Recargar directorio [R]',
@@ -629,8 +668,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                       size: 19,
                                       color: AppColors.textSecondary,
                                     ),
-                                    onPressed: () =>
-                                        context.read<CustomersCubit>().exportPdf(),
+                                    onPressed:
+                                        () =>
+                                            context
+                                                .read<CustomersCubit>()
+                                                .exportPdf(),
                                   ),
                                 ),
                               ],
@@ -644,9 +686,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   // 3. LISTADO / DATA TABLE PRO CON CARGA Y ORDENAMIENTO
                   BlocBuilder<TopCustomersCubit, TopCustomersState>(
                     builder: (context, topState) {
-                      final topList = topState is TopCustomersLoaded
-                          ? topState.topCustomers
-                          : <CustomerEntity>[];
+                      final topList =
+                          topState is TopCustomersLoaded
+                              ? topState.topCustomers
+                              : <CustomerEntity>[];
 
                       return BlocBuilder<CustomersCubit, CustomersState>(
                         builder: (context, state) {
@@ -731,19 +774,21 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.surface
-              : Colors.transparent,
+          color:
+              isSelected
+                  ? Theme.of(context).colorScheme.surface
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                  : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -753,36 +798,41 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? (isGold ? AppColors.warningDark : AppColors.primary)
-                    : AppColors.textSecondary,
+                color:
+                    isSelected
+                        ? (isGold ? AppColors.warningDark : AppColors.primary)
+                        : AppColors.textSecondary,
               ),
             ),
             if (count > 0) ...[
               const SizedBox(width: 6),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 1.5,
+                ),
                 decoration: BoxDecoration(
-                  color: isAlert
-                      ? AppColors.error
-                      : (isGold
-                          ? AppColors.warning.withValues(alpha: 0.15)
-                          : (isSelected
-                              ? AppColors.primary.withValues(alpha: 0.12)
-                              : AppColors.border)),
+                  color:
+                      isAlert
+                          ? AppColors.error
+                          : (isGold
+                              ? AppColors.warning.withValues(alpha: 0.15)
+                              : (isSelected
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : AppColors.border)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    color: isAlert
-                        ? Colors.white
-                        : (isGold
-                            ? AppColors.warningDark
-                            : (isSelected
-                                ? AppColors.primary
-                                : AppColors.textSecondary)),
+                    color:
+                        isAlert
+                            ? Colors.white
+                            : (isGold
+                                ? AppColors.warningDark
+                                : (isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary)),
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -849,16 +899,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final c = sortedList[index];
-                  return CustomerListCard(
-                    customer: c,
-                    onTap: () => _openDesktopCustomerInspector(c),
-                  );
-                },
-                childCount: sortedList.length,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final c = sortedList[index];
+                return CustomerListCard(
+                  customer: c,
+                  onTap: () => _openDesktopCustomerInspector(c),
+                );
+              }, childCount: sortedList.length),
             ),
           );
         }
@@ -1077,9 +1124,10 @@ class _CustomersBentoMetrics extends StatelessWidget {
                 Colors.white,
                 debt > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDFA),
               ],
-              iconGradient: debt > 0
-                  ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-                  : const [Color(0xFF0D9488), Color(0xFF0F766E)],
+              iconGradient:
+                  debt > 0
+                      ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+                      : const [Color(0xFF0D9488), Color(0xFF0F766E)],
               borderColor:
                   debt > 0 ? const Color(0xFFFECACA) : const Color(0xFF99F6E4),
               glowColor:
@@ -1129,10 +1177,14 @@ class _CustomerSideSheetInspector extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = customer;
     final isUnlimited = c.creditLimit <= 0;
-    final availableCredit = isUnlimited ? double.infinity : (c.creditLimit - c.currentDebt).clamp(0.0, double.infinity);
-    final creditUsageRatio = (!isUnlimited && c.creditLimit > 0)
-        ? (c.currentDebt / c.creditLimit).clamp(0.0, 1.0)
-        : 0.0;
+    final availableCredit =
+        isUnlimited
+            ? double.infinity
+            : (c.creditLimit - c.currentDebt).clamp(0.0, double.infinity);
+    final creditUsageRatio =
+        (!isUnlimited && c.creditLimit > 0)
+            ? (c.currentDebt / c.creditLimit).clamp(0.0, 1.0)
+            : 0.0;
 
     return Column(
       children: [
@@ -1146,8 +1198,11 @@ class _CustomerSideSheetInspector extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline_rounded,
-                  size: 18, color: AppColors.primary),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Ficha Rápida del Cliente',
@@ -1210,9 +1265,10 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: c.isActive
-                                        ? AppColors.successLight
-                                        : AppColors.slateLight,
+                                    color:
+                                        c.isActive
+                                            ? AppColors.successLight
+                                            : AppColors.slateLight,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -1220,9 +1276,10 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: c.isActive
-                                        ? AppColors.successDark
-                                        : AppColors.slate,
+                                      color:
+                                          c.isActive
+                                              ? AppColors.successDark
+                                              : AppColors.slate,
                                     ),
                                   ),
                                 ),
@@ -1272,18 +1329,20 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                         icon: Icons.badge_outlined,
                         label: c.documentType ?? 'Documento',
                         value: c.documentNumber ?? 'No registrado',
-                        onCopy: c.documentNumber != null
-                            ? () => onCopy(c.documentNumber!, 'Documento')
-                            : null,
+                        onCopy:
+                            c.documentNumber != null
+                                ? () => onCopy(c.documentNumber!, 'Documento')
+                                : null,
                       ),
                       const Divider(height: 16, color: AppColors.divider),
                       _InspectorDetailRow(
                         icon: Icons.phone_outlined,
                         label: 'Teléfono',
                         value: c.phone ?? 'No registrado',
-                        onCopy: c.phone != null
-                            ? () => onCopy(c.phone!, 'Teléfono')
-                            : null,
+                        onCopy:
+                            c.phone != null
+                                ? () => onCopy(c.phone!, 'Teléfono')
+                                : null,
                       ),
                     ],
                   ),
@@ -1325,7 +1384,10 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                           Expanded(
                             child: _BalanceMiniCard(
                               title: 'Límite Crédito',
-                              value: isUnlimited ? 'Sin límite (∞)' : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
+                              value:
+                                  isUnlimited
+                                      ? 'Sin límite (∞)'
+                                      : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
                             ),
                           ),
                         ],
@@ -1336,7 +1398,10 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                           Expanded(
                             child: _BalanceMiniCard(
                               title: 'Crédito Disponible',
-                              value: isUnlimited ? 'Ilimitado' : 'S/ ${availableCredit.toStringAsFixed(2)}',
+                              value:
+                                  isUnlimited
+                                      ? 'Ilimitado'
+                                      : 'S/ ${availableCredit.toStringAsFixed(2)}',
                               isSuccess: isUnlimited || availableCredit > 0,
                             ),
                           ),
@@ -1387,8 +1452,10 @@ class _CustomerSideSheetInspector extends StatelessWidget {
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          icon: const Icon(Icons.chat_bubble_outline_rounded,
-                              size: 16),
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                          ),
                           label: const Text('WhatsApp'),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF25D366),
@@ -1492,7 +1559,10 @@ class _BalanceMiniCard extends StatelessWidget {
         color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isAlert ? AppColors.danger.withValues(alpha: 0.25) : AppColors.border,
+          color:
+              isAlert
+                  ? AppColors.danger.withValues(alpha: 0.25)
+                  : AppColors.border,
         ),
       ),
       child: Column(
@@ -1546,10 +1616,7 @@ class _InspectorDetailRow extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-              ),
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             Text(
               value,
@@ -1654,36 +1721,46 @@ class _MobileCustomerActionSheet extends StatelessWidget {
 
           // Acciones con target táctil mínimo de 48dp
           ListTile(
-            leading: const Icon(Icons.visibility_outlined,
-                color: AppColors.primary),
+            leading: const Icon(
+              Icons.visibility_outlined,
+              color: AppColors.primary,
+            ),
             title: const Text('Ver ficha y pedidos completos'),
             onTap: onOpenDetail,
           ),
           if (c.phone != null && c.phone!.isNotEmpty) ...[
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: Color(0xFF25D366)),
+              leading: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                color: Color(0xFF25D366),
+              ),
               title: const Text('Enviar mensaje de WhatsApp'),
               subtitle: Text(c.phone!),
               onTap: onWhatsApp,
             ),
             ListTile(
-              leading: const Icon(Icons.phone_outlined,
-                  color: AppColors.textPrimary),
+              leading: const Icon(
+                Icons.phone_outlined,
+                color: AppColors.textPrimary,
+              ),
               title: const Text('Llamar por teléfono'),
               onTap: onCall,
             ),
           ],
           if (c.documentNumber != null && c.documentNumber!.isNotEmpty)
             ListTile(
-              leading: const Icon(Icons.copy_rounded,
-                  color: AppColors.textSecondary),
+              leading: const Icon(
+                Icons.copy_rounded,
+                color: AppColors.textSecondary,
+              ),
               title: const Text('Copiar número de documento'),
               onTap: onCopyDoc,
             ),
           ListTile(
-            leading: const Icon(Icons.edit_outlined,
-                color: AppColors.textSecondary),
+            leading: const Icon(
+              Icons.edit_outlined,
+              color: AppColors.textSecondary,
+            ),
             title: const Text('Editar información'),
             onTap: onEdit,
           ),
@@ -1791,7 +1868,9 @@ class _DesktopTableSkeleton extends StatelessWidget {
                     vertical: 12,
                   ),
                   decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: AppColors.divider)),
+                    border: Border(
+                      bottom: BorderSide(color: AppColors.divider),
+                    ),
                   ),
                   child: Row(
                     children: const [

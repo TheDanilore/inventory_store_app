@@ -23,7 +23,7 @@ class DetailSheetHeader extends StatefulWidget {
     required this.title,
     this.trailing,
     this.horizontalPadding = 24,
-    this.showDragHandle = true,
+    this.showDragHandle = false,
   });
 
   @override

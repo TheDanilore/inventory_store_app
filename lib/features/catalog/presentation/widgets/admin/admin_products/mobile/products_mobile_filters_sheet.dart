@@ -10,6 +10,7 @@ class ProductsMobileFiltersSheet {
   static void show(BuildContext context, AdminCatalogCubit cubit) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {

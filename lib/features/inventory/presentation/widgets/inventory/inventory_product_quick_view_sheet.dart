@@ -215,22 +215,6 @@ class _InventoryProductQuickViewContentState
 
     return Column(
       children: [
-        // ── Apple Drag Handle en móvil ──
-        if (!widget.isSideSheet)
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Center(
-              child: Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-          ),
-
         // ── Cabecera Superior: Ficha Rápida con Enfoque de Variante ──
         Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),

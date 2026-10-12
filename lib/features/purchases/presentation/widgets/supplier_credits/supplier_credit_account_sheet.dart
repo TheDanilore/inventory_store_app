@@ -401,17 +401,6 @@ class _SupplierCreditAccountSheetState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
               Text(
                 _isEditing
                     ? 'Editar línea de crédito'

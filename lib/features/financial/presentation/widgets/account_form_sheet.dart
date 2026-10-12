@@ -11,11 +11,7 @@ class AccountFormSheet extends StatefulWidget {
   final FinancialAccountEntity? account;
   final bool isSlideOver;
 
-  const AccountFormSheet({
-    super.key,
-    this.account,
-    this.isSlideOver = false,
-  });
+  const AccountFormSheet({super.key, this.account, this.isSlideOver = false});
 
   static Future<bool?> show(
     BuildContext context, {
@@ -25,13 +21,11 @@ class AccountFormSheet extends StatefulWidget {
     return AdaptiveSideSheet.show<bool>(
       context: context,
       desktopWidth: 460.0,
-      builder: (dialogCtx, isSlideOver) => BlocProvider.value(
-        value: cubit,
-        child: AccountFormSheet(
-          account: account,
-          isSlideOver: isSlideOver,
-        ),
-      ),
+      builder:
+          (dialogCtx, isSlideOver) => BlocProvider.value(
+            value: cubit,
+            child: AccountFormSheet(account: account, isSlideOver: isSlideOver),
+          ),
     );
   }
 
@@ -49,9 +43,21 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   bool _saving = false;
 
   static const _types = [
-    {'type': 'CAJA', 'label': 'Caja Física', 'icon': Icons.point_of_sale_rounded},
-    {'type': 'BANCO', 'label': 'Cuenta Bancaria', 'icon': Icons.account_balance_rounded},
-    {'type': 'DIGITAL', 'label': 'Billetera Digital', 'icon': Icons.phone_android_rounded},
+    {
+      'type': 'CAJA',
+      'label': 'Caja Física',
+      'icon': Icons.point_of_sale_rounded,
+    },
+    {
+      'type': 'BANCO',
+      'label': 'Cuenta Bancaria',
+      'icon': Icons.account_balance_rounded,
+    },
+    {
+      'type': 'DIGITAL',
+      'label': 'Billetera Digital',
+      'icon': Icons.phone_android_rounded,
+    },
     {'type': 'OTRO', 'label': 'Otra', 'icon': Icons.savings_rounded},
   ];
 
@@ -179,10 +185,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: _buildFormFields(),
-            ),
+            child: Form(key: _formKey, child: _buildFormFields()),
           ),
         ),
 
@@ -225,16 +228,17 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.check_rounded, size: 18),
+                  icon:
+                      _saving
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.check_rounded, size: 18),
                   label: Text(
                     _saving
                         ? 'Guardando...'
@@ -268,17 +272,6 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
             Row(
               children: [
                 Expanded(
@@ -294,16 +287,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                 IconButton(
                   icon: const Icon(Icons.close_rounded, size: 20),
                   onPressed: () => Navigator.pop(context),
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            Flexible(
-              child: SingleChildScrollView(
-                child: _buildFormFields(),
-              ),
-            ),
+            Flexible(child: SingleChildScrollView(child: _buildFormFields())),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -317,22 +309,23 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                child:
+                    _saving
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Text(
+                          _isEditing ? 'Guardar Cambios' : 'Crear Cuenta',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
                         ),
-                      )
-                    : Text(
-                        _isEditing ? 'Guardar Cambios' : 'Crear Cuenta',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
               ),
             ),
           ],
@@ -351,11 +344,15 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           decoration: _inputDeco('Ej: BCP Soles, Caja Chica, Yape Principal'),
           textCapitalization: TextCapitalization.words,
           maxLength: 50,
-          buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+          buildCounter:
+              (_, {required currentLength, required isFocused, maxLength}) =>
+                  null,
           validator: (v) {
             final trimmed = v?.trim() ?? '';
             if (trimmed.isEmpty) return 'El nombre es obligatorio';
-            if (trimmed.length < 2) return 'El nombre debe tener al menos 2 caracteres';
+            if (trimmed.length < 2) {
+              return 'El nombre debe tener al menos 2 caracteres';
+            }
             return null;
           },
         ),
@@ -365,59 +362,72 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _types.map((item) {
-            final itemType = item['type'] as String;
-            final itemLabel = item['label'] as String;
-            final itemIcon = item['icon'] as IconData;
-            final selected = _type == itemType;
+          children:
+              _types.map((item) {
+                final itemType = item['type'] as String;
+                final itemLabel = item['label'] as String;
+                final itemIcon = item['icon'] as IconData;
+                final selected = _type == itemType;
 
-            return MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => setState(() => _type = itemType),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.teal : AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected ? AppColors.teal : AppColors.border,
-                      width: selected ? 1.5 : 1.0,
-                    ),
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.teal.withValues(alpha: 0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        itemIcon,
-                        size: 16,
-                        color: selected ? Colors.white : AppColors.textSecondary,
+                return MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _type = itemType),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        itemLabel,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: selected ? Colors.white : AppColors.textPrimary,
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.teal : AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected ? AppColors.teal : AppColors.border,
+                          width: selected ? 1.5 : 1.0,
                         ),
+                        boxShadow:
+                            selected
+                                ? [
+                                  BoxShadow(
+                                    color: AppColors.teal.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                                : null,
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            itemIcon,
+                            size: 16,
+                            color:
+                                selected
+                                    ? Colors.white
+                                    : AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            itemLabel,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color:
+                                  selected
+                                      ? Colors.white
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
         ),
         const SizedBox(height: 18),
 
@@ -437,7 +447,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   ),
                 ),
               ),
-              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
@@ -510,39 +523,39 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   }
 
   Widget _fieldLabel(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 13,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   InputDecoration _inputDeco(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(fontSize: 13.5, color: AppColors.textMuted),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        filled: true,
-        fillColor: AppColors.surface,
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.danger),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
-        ),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(fontSize: 13.5, color: AppColors.textMuted),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    filled: true,
+    fillColor: AppColors.surface,
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.danger),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+    ),
+  );
 }

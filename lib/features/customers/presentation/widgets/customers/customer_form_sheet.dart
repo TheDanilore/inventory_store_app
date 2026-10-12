@@ -13,11 +13,7 @@ class CustomerFormSheet extends StatelessWidget {
   final CustomerEntity? customer;
   final bool isDialog;
 
-  const CustomerFormSheet({
-    super.key,
-    this.customer,
-    this.isDialog = false,
-  });
+  const CustomerFormSheet({super.key, this.customer, this.isDialog = false});
 
   static Future<bool?> show(
     BuildContext context, {
@@ -58,6 +54,7 @@ class CustomerFormSheet extends StatelessWidget {
     } else {
       saved = await showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => CustomerFormSheet(customer: customer),
@@ -71,10 +68,7 @@ class CustomerFormSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<CustomerFormCubit>(),
-      child: _CustomerFormSheetContent(
-        customer: customer,
-        isDialog: isDialog,
-      ),
+      child: _CustomerFormSheetContent(customer: customer, isDialog: isDialog),
     );
   }
 }
@@ -83,10 +77,7 @@ class _CustomerFormSheetContent extends StatefulWidget {
   final CustomerEntity? customer; // null = modo crear
   final bool isDialog;
 
-  const _CustomerFormSheetContent({
-    this.customer,
-    this.isDialog = false,
-  });
+  const _CustomerFormSheetContent({this.customer, this.isDialog = false});
 
   @override
   State<_CustomerFormSheetContent> createState() =>
@@ -249,8 +240,7 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
         return BlocConsumer<CustomerFormCubit, CustomerFormState>(
           listener: _onStateListener,
           builder:
-              (context, state) =>
-                  _buildSheetBody(context, state, scrollCtrl),
+              (context, state) => _buildSheetBody(context, state, scrollCtrl),
         );
       },
     );
@@ -292,541 +282,506 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
             const SizedBox(height: 8),
 
           // Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _isEditing ? Icons.edit_rounded : Icons.person_add_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isEditing ? 'Editar cliente' : 'Nuevo cliente',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            _isEditing
-                                ? Icons.edit_rounded
-                                : Icons.person_add_rounded,
-                            color: AppColors.primary,
-                            size: 20,
+                    Text(
+                      _isEditing
+                          ? widget.customer!.fullName
+                          : 'Completa los datos del cliente',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // Formulario
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                controller: scrollCtrl,
+                padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 100),
+                children: [
+                  // SECCIÓN: Datos personales
+                  _SectionHeader(
+                    icon: Icons.person_rounded,
+                    title: 'Datos personales',
+                  ),
+                  const SizedBox(height: 12),
+
+                  _FieldLabel('Nombre completo *'),
+                  _StyledField(
+                    controller: _nameCtrl,
+                    hint: 'Ej: Juan Pérez López',
+                    prefixIcon: Icons.badge_rounded,
+                    textCapitalization: TextCapitalization.words,
+                    validator:
+                        (v) =>
+                            (v == null || v.trim().isEmpty)
+                                ? 'Ingresa el nombre'
+                                : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  _FieldLabel('Teléfono'),
+                  _StyledField(
+                    controller: _phoneCtrl,
+                    hint: 'Ej: 987654321',
+                    prefixIcon: Icons.phone_rounded,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(12),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  _FieldLabel('Documento de identidad'),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Tipo de documento
+                      Container(
+                        width: 110,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: _docType,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'DNI',
+                                child: Text('DNI'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'RUC',
+                                child: Text('RUC'),
+                              ),
+                              DropdownMenuItem(value: 'CE', child: Text('CE')),
+                              DropdownMenuItem(
+                                value: 'Pasaporte',
+                                child: Text(
+                                  'Pasaporte',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                            onChanged:
+                                (v) => setState(() => _docType = v ?? 'DNI'),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StyledField(
+                          controller: _docNumberCtrl,
+                          hint: 'Número de documento',
+                          prefixIcon: Icons.numbers_rounded,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(
+                              _docType == 'DNI'
+                                  ? 8
+                                  : _docType == 'RUC'
+                                  ? 11
+                                  : 15,
+                            ),
+                          ],
+                          validator: (v) {
+                            final text = v?.trim() ?? '';
+                            if (text.isEmpty) return null;
+                            if (_docType == 'DNI' && text.length != 8) {
+                              return 'DNI debe tener 8 dígitos';
+                            }
+                            if (_docType == 'RUC' && text.length != 11) {
+                              return 'RUC debe tener 11 dígitos';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // SECCIÓN: Estado
+                  _SectionHeader(icon: Icons.tune_rounded, title: 'Estado'),
+                  const SizedBox(height: 12),
+
+                  _ToggleRow(
+                    icon: Icons.circle,
+                    iconColor:
+                        _isActive ? AppColors.success : AppColors.textMuted,
+                    title: _isActive ? 'Cliente activo' : 'Cliente inactivo',
+                    subtitle:
+                        _isActive
+                            ? 'Puede realizar compras'
+                            : 'No puede realizar compras',
+                    value: _isActive,
+                    onChanged: (v) => setState(() => _isActive = v),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // SECCIÓN: Billetera (solo edición)
+                  if (_isEditing && isLoyaltyEnabled) ...[
+                    _SectionHeader(
+                      icon: Icons.stars_rounded,
+                      title: 'Billetera de monedas',
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Saldo actual (solo lectura)
+                    _ReadOnlyInfoRow(
+                      icon: Icons.account_balance_wallet_rounded,
+                      iconColor: Colors.amber.shade700,
+                      label: 'Saldo actual',
+                      value: '$_currentWalletBalance monedas',
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Ajuste manual (puede ser negativo)
+                    _FieldLabel('Ajuste manual (puede ser negativo)'),
+                    _StyledField(
+                      controller: _walletAdjustCtrl,
+                      hint: '0',
+                      prefixIcon: Icons.add_circle_outline_rounded,
+                      prefixIconColor: Colors.amber.shade700,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        signed: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty || v == '0') {
+                          return null; // sin cambio, OK
+                        }
+                        final delta = int.tryParse(v.trim());
+                        if (delta == null) return 'Valor inválido';
+                        final newBalance = _currentWalletBalance + delta;
+                        if (newBalance < 0) {
+                          return 'El saldo resultante no puede ser negativo';
+                        }
+                        return null;
+                      },
+                    ),
+                    // Preview del saldo resultante
+                    _WalletAdjustPreview(
+                      currentBalance: _currentWalletBalance,
+                      adjustCtrl: _walletAdjustCtrl,
+                    ),
+                    const SizedBox(height: 6),
+                    const _InfoNote(
+                      text:
+                          'El ajuste queda registrado en el historial de movimientos de billetera.',
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // SECCIÓN: Línea de crédito
+                  _SectionHeader(
+                    icon: Icons.credit_card_rounded,
+                    title: 'Línea de crédito',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Indicador de carga del crédito
+                  if (_isLoadingCredit)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else ...[
+                    _ToggleRow(
+                      icon: Icons.credit_score_rounded,
+                      iconColor:
+                          _hasCredit ? AppColors.primary : AppColors.textMuted,
+                      title:
+                          _hasCredit
+                              ? 'Línea de crédito activa'
+                              : 'Sin crédito',
+                      subtitle:
+                          _hasCredit
+                              ? 'El cliente puede comprar a crédito'
+                              : 'Activa para asignar crédito al cliente',
+                      value: _hasCredit,
+                      onChanged: (v) => setState(() => _hasCredit = v),
+                    ),
+
+                    if (_hasCredit) ...[
+                      const SizedBox(height: 14),
+
+                      // Deuda actual (solo lectura en edición)
+                      if (_isEditing && _creditExistsInDb) ...[
+                        _ReadOnlyInfoRow(
+                          icon: Icons.money_off_rounded,
+                          iconColor:
+                              _currentDebt > 0
+                                  ? AppColors.danger
+                                  : AppColors.textMuted,
+                          label: 'Deuda actual acumulada',
+                          value: 'S/ ${_currentDebt.toStringAsFixed(2)}',
+                          note:
+                              _currentDebt > 0
+                                  ? 'Registra abonos desde Cuentas por Cobrar'
+                                  : null,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // Selector de Límite: Infinito vs Tope fijo
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              _isEditing ? 'Editar cliente' : 'Nuevo cliente',
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
+                            Expanded(
+                              child: _CreditTypePill(
+                                title: 'Límite Infinito (∞)',
+                                subtitle: 'Sin tope máximo',
+                                icon: Icons.all_inclusive_rounded,
+                                isSelected: _isUnlimited,
+                                onTap: () {
+                                  setState(() {
+                                    _isUnlimited = true;
+                                    _creditLimitCtrl.clear();
+                                  });
+                                },
                               ),
                             ),
-                            Text(
-                              _isEditing
-                                  ? widget.customer!.fullName
-                                  : 'Completa los datos del cliente',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: _CreditTypePill(
+                                title: 'Límite en Soles',
+                                subtitle: 'Tope máximo fijo',
+                                icon: Icons.tune_rounded,
+                                isSelected: !_isUnlimited,
+                                onTap: () {
+                                  setState(() {
+                                    _isUnlimited = false;
+                                  });
+                                },
                               ),
                             ),
                           ],
                         ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded),
-                          color: AppColors.textMuted,
+                      ),
+
+                      if (!_isUnlimited) ...[
+                        const SizedBox(height: 14),
+                        _FieldLabel('Límite de crédito en Soles *'),
+                        _StyledField(
+                          controller: _creditLimitCtrl,
+                          hint: 'Ej: 500.00',
+                          prefixIcon: Icons.account_balance_wallet_rounded,
+                          prefixText: 'S/ ',
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d{0,2}'),
+                            ),
+                          ],
+                          validator: (v) {
+                            if (!_hasCredit || _isUnlimited) return null;
+                            final n = double.tryParse(v?.trim() ?? '');
+                            if (n == null || n <= 0) {
+                              return 'Ingresa un límite válido mayor a 0';
+                            }
+                            if (_isEditing &&
+                                n < _currentDebt &&
+                                _currentDebt > 0) {
+                              return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
+                            }
+                            return null;
+                          },
                         ),
-                      ],
-                    ),
-                  ),
-
-                  const Divider(height: 1),
-
-                  // Formulario
-                  Expanded(
-                    child: Form(
-                      key: _formKey,
-                      child: ListView(
-                        controller: scrollCtrl,
-                        padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 100),
-                        children: [
-                          // SECCIÓN: Datos personales
-                          _SectionHeader(
-                            icon: Icons.person_rounded,
-                            title: 'Datos personales',
+                      ] else ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
                           ),
-                          const SizedBox(height: 12),
-
-                          _FieldLabel('Nombre completo *'),
-                          _StyledField(
-                            controller: _nameCtrl,
-                            hint: 'Ej: Juan Pérez López',
-                            prefixIcon: Icons.badge_rounded,
-                            textCapitalization: TextCapitalization.words,
-                            validator:
-                                (v) =>
-                                    (v == null || v.trim().isEmpty)
-                                        ? 'Ingresa el nombre'
-                                        : null,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
                           ),
-                          const SizedBox(height: 14),
-
-                          _FieldLabel('Teléfono'),
-                          _StyledField(
-                            controller: _phoneCtrl,
-                            hint: 'Ej: 987654321',
-                            prefixIcon: Icons.phone_rounded,
-                            keyboardType: TextInputType.phone,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(12),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          _FieldLabel('Documento de identidad'),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Tipo de documento
-                              Container(
-                                width: 110,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    isExpanded: true,
-                                    value: _docType,
-                                    style: const TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 14,
-                                    ),
-                                    items: const [
-                                      DropdownMenuItem(
-                                        value: 'DNI',
-                                        child: Text('DNI'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'RUC',
-                                        child: Text('RUC'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'CE',
-                                        child: Text('CE'),
-                                      ),
-                                      DropdownMenuItem(
-                                        value: 'Pasaporte',
-                                        child: Text(
-                                          'Pasaporte',
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                    onChanged:
-                                        (v) => setState(
-                                          () => _docType = v ?? 'DNI',
-                                        ),
-                                  ),
-                                ),
+                          child: Row(
+                            children: const [
+                              Icon(
+                                Icons.verified_rounded,
+                                size: 18,
+                                color: Color(0xFF16A34A),
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(width: 8),
                               Expanded(
-                                child: _StyledField(
-                                  controller: _docNumberCtrl,
-                                  hint: 'Número de documento',
-                                  prefixIcon: Icons.numbers_rounded,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(
-                                      _docType == 'DNI'
-                                          ? 8
-                                          : _docType == 'RUC'
-                                          ? 11
-                                          : 15,
-                                    ),
-                                  ],
-                                  validator: (v) {
-                                    final text = v?.trim() ?? '';
-                                    if (text.isEmpty) return null;
-                                    if (_docType == 'DNI' && text.length != 8) {
-                                      return 'DNI debe tener 8 dígitos';
-                                    }
-                                    if (_docType == 'RUC' && text.length != 11) {
-                                      return 'RUC debe tener 11 dígitos';
-                                    }
-                                    return null;
-                                  },
+                                child: Text(
+                                  'Crédito ilimitado: el cliente podrá comprar a crédito sin restricción de tope máximo.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF15803D),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
-
-                          // SECCIÓN: Estado
-                          _SectionHeader(
-                            icon: Icons.tune_rounded,
-                            title: 'Estado',
-                          ),
-                          const SizedBox(height: 12),
-
-                          _ToggleRow(
-                            icon: Icons.circle,
-                            iconColor:
-                                _isActive
-                                    ? AppColors.success
-                                    : AppColors.textMuted,
-                            title:
-                                _isActive
-                                    ? 'Cliente activo'
-                                    : 'Cliente inactivo',
-                            subtitle:
-                                _isActive
-                                    ? 'Puede realizar compras'
-                                    : 'No puede realizar compras',
-                            value: _isActive,
-                            onChanged: (v) => setState(() => _isActive = v),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // SECCIÓN: Billetera (solo edición)
-                          if (_isEditing && isLoyaltyEnabled) ...[
-                            _SectionHeader(
-                              icon: Icons.stars_rounded,
-                              title: 'Billetera de monedas',
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Saldo actual (solo lectura)
-                            _ReadOnlyInfoRow(
-                              icon: Icons.account_balance_wallet_rounded,
-                              iconColor: Colors.amber.shade700,
-                              label: 'Saldo actual',
-                              value: '$_currentWalletBalance monedas',
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Ajuste manual (puede ser negativo)
-                            _FieldLabel('Ajuste manual (puede ser negativo)'),
-                            _StyledField(
-                              controller: _walletAdjustCtrl,
-                              hint: '0',
-                              prefixIcon: Icons.add_circle_outline_rounded,
-                              prefixIconColor: Colors.amber.shade700,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    signed: true,
-                                  ),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                  RegExp(r'^-?\d*'),
-                                ),
-                                LengthLimitingTextInputFormatter(6),
-                              ],
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty || v == '0') {
-                                  return null; // sin cambio, OK
-                                }
-                                final delta = int.tryParse(v.trim());
-                                if (delta == null) return 'Valor inválido';
-                                final newBalance =
-                                    _currentWalletBalance + delta;
-                                if (newBalance < 0) {
-                                  return 'El saldo resultante no puede ser negativo';
-                                }
-                                return null;
-                              },
-                            ),
-                            // Preview del saldo resultante
-                            _WalletAdjustPreview(
-                              currentBalance: _currentWalletBalance,
-                              adjustCtrl: _walletAdjustCtrl,
-                            ),
-                            const SizedBox(height: 6),
-                            const _InfoNote(
-                              text:
-                                  'El ajuste queda registrado en el historial de movimientos de billetera.',
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-
-                          // SECCIÓN: Línea de crédito
-                          _SectionHeader(
-                            icon: Icons.credit_card_rounded,
-                            title: 'Línea de crédito',
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Indicador de carga del crédito
-                          if (_isLoadingCredit)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                            )
-                          else ...[
-                            _ToggleRow(
-                              icon: Icons.credit_score_rounded,
-                              iconColor:
-                                  _hasCredit
-                                      ? AppColors.primary
-                                      : AppColors.textMuted,
-                              title:
-                                  _hasCredit
-                                      ? 'Línea de crédito activa'
-                                      : 'Sin crédito',
-                              subtitle:
-                                  _hasCredit
-                                      ? 'El cliente puede comprar a crédito'
-                                      : 'Activa para asignar crédito al cliente',
-                              value: _hasCredit,
-                              onChanged: (v) => setState(() => _hasCredit = v),
-                            ),
-
-                            if (_hasCredit) ...[
-                              const SizedBox(height: 14),
-
-                              // Deuda actual (solo lectura en edición)
-                              if (_isEditing && _creditExistsInDb) ...[
-                                _ReadOnlyInfoRow(
-                                  icon: Icons.money_off_rounded,
-                                  iconColor:
-                                      _currentDebt > 0
-                                          ? AppColors.danger
-                                          : AppColors.textMuted,
-                                  label: 'Deuda actual acumulada',
-                                  value:
-                                      'S/ ${_currentDebt.toStringAsFixed(2)}',
-                                  note:
-                                      _currentDebt > 0
-                                          ? 'Registra abonos desde Cuentas por Cobrar'
-                                          : null,
-                                ),
-                                const SizedBox(height: 14),
-                              ],
-
-                              // Selector de Límite: Infinito vs Tope fijo
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _CreditTypePill(
-                                        title: 'Límite Infinito (∞)',
-                                        subtitle: 'Sin tope máximo',
-                                        icon: Icons.all_inclusive_rounded,
-                                        isSelected: _isUnlimited,
-                                        onTap: () {
-                                          setState(() {
-                                            _isUnlimited = true;
-                                            _creditLimitCtrl.clear();
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: _CreditTypePill(
-                                        title: 'Límite en Soles',
-                                        subtitle: 'Tope máximo fijo',
-                                        icon: Icons.tune_rounded,
-                                        isSelected: !_isUnlimited,
-                                        onTap: () {
-                                          setState(() {
-                                            _isUnlimited = false;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              if (!_isUnlimited) ...[
-                                const SizedBox(height: 14),
-                                _FieldLabel('Límite de crédito en Soles *'),
-                                _StyledField(
-                                  controller: _creditLimitCtrl,
-                                  hint: 'Ej: 500.00',
-                                  prefixIcon:
-                                      Icons.account_balance_wallet_rounded,
-                                  prefixText: 'S/ ',
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^\d*\.?\d{0,2}'),
-                                    ),
-                                  ],
-                                  validator: (v) {
-                                    if (!_hasCredit || _isUnlimited) return null;
-                                    final n = double.tryParse(v?.trim() ?? '');
-                                    if (n == null || n <= 0) {
-                                      return 'Ingresa un límite válido mayor a 0';
-                                    }
-                                    if (_isEditing &&
-                                        n < _currentDebt &&
-                                        _currentDebt > 0) {
-                                      return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ] else ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF0FDF4),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: const Color(0xFFBBF7D0),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: const [
-                                      Icon(
-                                        Icons.verified_rounded,
-                                        size: 18,
-                                        color: Color(0xFF16A34A),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Crédito ilimitado: el cliente podrá comprar a crédito sin restricción de tope máximo.',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF15803D),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-
-                              // Preview de uso de crédito
-                              const SizedBox(height: 12),
-                              _CreditPreview(
-                                limitCtrl: _creditLimitCtrl,
-                                currentDebt: _isEditing ? _currentDebt : 0,
-                                isUnlimited: _isUnlimited,
-                              ),
-
-                              // Nota aclaratoria
-                              const SizedBox(height: 8),
-                              const _InfoNote(
-                                text:
-                                    'La deuda se actualiza automáticamente al registrar ventas y pagos. No se edita manualmente.',
-                              ),
-                            ],
-                          ],
-
-                          const SizedBox(height: 32),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Footer
-                  Container(
-                    padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: AppColors.border, width: 1),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, -2),
                         ),
                       ],
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isSaving ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: AppColors.primary.withValues(
-                            alpha: 0.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        child:
-                            isSaving
-                                ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                                : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      _isEditing
-                                          ? Icons.save_rounded
-                                          : Icons.person_add_rounded,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _isEditing
-                                          ? 'Guardar cambios'
-                                          : 'Crear cliente',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+
+                      // Preview de uso de crédito
+                      const SizedBox(height: 12),
+                      _CreditPreview(
+                        limitCtrl: _creditLimitCtrl,
+                        currentDebt: _isEditing ? _currentDebt : 0,
+                        isUnlimited: _isUnlimited,
                       ),
-                    ),
-                  ),
+
+                      // Nota aclaratoria
+                      const SizedBox(height: 8),
+                      const _InfoNote(
+                        text:
+                            'La deuda se actualiza automáticamente al registrar ventas y pagos. No se edita manualmente.',
+                      ),
+                    ],
+                  ],
+
+                  const SizedBox(height: 32),
                 ],
               ),
-            );
+            ),
+          ),
+
+          // Footer
+          Container(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: AppColors.border, width: 1),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: isSaving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.primary.withValues(
+                    alpha: 0.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child:
+                    isSaving
+                        ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _isEditing
+                                  ? Icons.save_rounded
+                                  : Icons.person_add_rounded,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isEditing ? 'Guardar cambios' : 'Crear cliente',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

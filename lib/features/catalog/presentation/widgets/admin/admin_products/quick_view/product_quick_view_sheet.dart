@@ -71,6 +71,7 @@ class ProductQuickViewSheet {
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (ctx) {
@@ -129,16 +130,11 @@ class ProductQuickViewContent extends StatelessWidget {
                 product.details['formula'])
             ?.toString();
     final bool isSimpleProduct =
-        variants.length == 1 &&
-        variants.first.attributeValues.isEmpty;
+        variants.length == 1 && variants.first.attributeValues.isEmpty;
     final String sectionTitle =
-        isSimpleProduct
-            ? 'Presentación'
-            : 'Variantes (${variants.length})';
+        isSimpleProduct ? 'Presentación' : 'Variantes (${variants.length})';
     final IconData sectionIcon =
-        isSimpleProduct
-            ? Icons.inventory_2_outlined
-            : Icons.style_outlined;
+        isSimpleProduct ? Icons.inventory_2_outlined : Icons.style_outlined;
 
     return Column(
       children: [
@@ -231,11 +227,10 @@ class ProductQuickViewContent extends StatelessWidget {
                                 height: 72,
                                 fit: BoxFit.cover,
                                 errorBuilder:
-                                    (ctx, err, stack) =>
-                                        ProductMonogramAvatar(
-                                          name: product.name,
-                                          size: 72,
-                                        ),
+                                    (ctx, err, stack) => ProductMonogramAvatar(
+                                      name: product.name,
+                                      size: 72,
+                                    ),
                               )
                               : ProductMonogramAvatar(
                                 name: product.name,
@@ -512,11 +507,7 @@ class ProductQuickViewContent extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          sectionIcon,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
+                        Icon(sectionIcon, size: 16, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
                           sectionTitle,

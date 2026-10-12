@@ -69,10 +69,7 @@ class AttributeFormSheet extends StatefulWidget {
               begin: const Offset(1, 0),
               end: Offset.zero,
             ).animate(
-              CurvedAnimation(
-                parent: anim1,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
             ),
             child: child,
           );
@@ -81,15 +78,17 @@ class AttributeFormSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetContext) => BlocProvider.value(
-          value: cubit,
-          child: AttributeFormSheet(
-            attribute: attribute,
-            isSlideOver: false,
-          ),
-        ),
+        builder:
+            (sheetContext) => BlocProvider.value(
+              value: cubit,
+              child: AttributeFormSheet(
+                attribute: attribute,
+                isSlideOver: false,
+              ),
+            ),
       );
     }
   }
@@ -150,7 +149,9 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
 
   IconData _getIconForName(String name) {
     final lower = name.toLowerCase().trim();
-    if (lower.contains('talla') || lower.contains('tamaño') || lower.contains('size')) {
+    if (lower.contains('talla') ||
+        lower.contains('tamaño') ||
+        lower.contains('size')) {
       return Icons.straighten_rounded;
     }
     if (lower.contains('color')) return Icons.palette_outlined;
@@ -285,10 +286,11 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                 borderSide: BorderSide(color: themeColor, width: 1.5),
               ),
             ),
-            validator: (val) =>
-                val == null || val.trim().isEmpty
-                    ? 'El nombre es requerido'
-                    : null,
+            validator:
+                (val) =>
+                    val == null || val.trim().isEmpty
+                        ? 'El nombre es requerido'
+                        : null,
             onFieldSubmitted: (_) => _save(),
           ),
 
@@ -299,10 +301,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
             controller: _descCtrl,
             textCapitalization: TextCapitalization.sentences,
             maxLines: 2,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Descripción (Opcional)',
               hintText: 'Ej: Define las medidas físicas del artículo...',
@@ -317,7 +316,10 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -337,7 +339,11 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.visibility_outlined, size: 14, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.visibility_outlined,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'VISTA PREVIA EN CATÁLOGO',
@@ -365,19 +371,25 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _previewName.isEmpty ? 'Nombre de la propiedad' : _previewName,
+                        _previewName.isEmpty
+                            ? 'Nombre de la propiedad'
+                            : _previewName,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: _previewName.isEmpty
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
+                          color:
+                              _previewName.isEmpty
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(6),
@@ -416,7 +428,8 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: isSaving ? null : () => Navigator.of(context).pop(),
+                      onPressed:
+                          isSaving ? null : () => Navigator.of(context).pop(),
                       child: const Text(
                         'Cancelar',
                         style: TextStyle(fontWeight: FontWeight.w600),
@@ -436,22 +449,25 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
                         ),
                       ),
                       onPressed: isSaving ? null : _save,
-                      child: isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
+                      child:
+                          isSaving
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Text(
+                                isEditing
+                                    ? 'Guardar Cambios'
+                                    : 'Crear Propiedad',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
-                            )
-                          : Text(
-                              isEditing ? 'Guardar Cambios' : 'Crear Propiedad',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
                     ),
                   ),
                 ],
@@ -472,10 +488,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
             Navigator.of(context).pop();
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: formContent,
-        ),
+        child: Padding(padding: const EdgeInsets.all(28), child: formContent),
       );
     }
 

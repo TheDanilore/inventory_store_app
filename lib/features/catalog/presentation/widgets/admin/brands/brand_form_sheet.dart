@@ -13,11 +13,7 @@ class BrandFormSheet extends StatefulWidget {
   final BrandEntity? brand;
   final bool isSlideOver;
 
-  const BrandFormSheet({
-    super.key,
-    this.brand,
-    this.isSlideOver = false,
-  });
+  const BrandFormSheet({super.key, this.brand, this.isSlideOver = false});
 
   static Future<bool?> showAdaptive(
     BuildContext context, {
@@ -53,10 +49,7 @@ class BrandFormSheet extends StatefulWidget {
                       ),
                     ],
                   ),
-                  child: BrandFormSheet(
-                    brand: brand,
-                    isSlideOver: true,
-                  ),
+                  child: BrandFormSheet(brand: brand, isSlideOver: true),
                 ),
               ),
             ),
@@ -68,10 +61,7 @@ class BrandFormSheet extends StatefulWidget {
               begin: const Offset(1, 0),
               end: Offset.zero,
             ).animate(
-              CurvedAnimation(
-                parent: anim1,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
             ),
             child: child,
           );
@@ -80,15 +70,14 @@ class BrandFormSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetContext) => BlocProvider.value(
-          value: cubit,
-          child: BrandFormSheet(
-            brand: brand,
-            isSlideOver: false,
-          ),
-        ),
+        builder:
+            (sheetContext) => BlocProvider.value(
+              value: cubit,
+              child: BrandFormSheet(brand: brand, isSlideOver: false),
+            ),
       );
     }
   }
@@ -152,7 +141,8 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
       name: _nameCtrl.text.trim(),
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       logoUrl: _logoCtrl.text.trim().isEmpty ? null : _logoCtrl.text.trim(),
-      website: _websiteCtrl.text.trim().isEmpty ? null : _websiteCtrl.text.trim(),
+      website:
+          _websiteCtrl.text.trim().isEmpty ? null : _websiteCtrl.text.trim(),
       isActive: _isActive,
     );
 
@@ -160,9 +150,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
       Navigator.of(context).pop(true);
       AppSnackbar.show(
         context,
-        message: widget.brand == null
-            ? 'Marca "${_nameCtrl.text.trim()}" creada con éxito.'
-            : 'Marca actualizada exitosamente.',
+        message:
+            widget.brand == null
+                ? 'Marca "${_nameCtrl.text.trim()}" creada con éxito.'
+                : 'Marca actualizada exitosamente.',
         type: SnackbarType.success,
       );
     }
@@ -183,7 +174,9 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
+              border: Border(
+                bottom: BorderSide(color: AppColors.border, width: 1),
+              ),
             ),
             child: Row(
               children: [
@@ -226,7 +219,11 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textSecondary),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
                   onPressed: () => Navigator.of(context).pop(),
                   tooltip: 'Cerrar (Esc)',
                 ),
@@ -257,7 +254,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                       ),
                       filled: true,
                       fillColor: AppColors.background,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
@@ -281,19 +281,23 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                     decoration: InputDecoration(
                       hintText: 'https://ejemplo.com/logo.png',
                       prefixIcon: const Icon(Icons.image_outlined, size: 20),
-                      suffixIcon: _previewLogo.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 16),
-                              onPressed: () => _logoCtrl.clear(),
-                            )
-                          : null,
+                      suffixIcon:
+                          _previewLogo.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear, size: 16),
+                                onPressed: () => _logoCtrl.clear(),
+                              )
+                              : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: AppColors.border),
                       ),
                       filled: true,
                       fillColor: AppColors.background,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                   ),
 
@@ -314,7 +318,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                       ),
                       filled: true,
                       fillColor: AppColors.background,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
                   ),
 
@@ -327,7 +334,8 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                     controller: _descCtrl,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText: 'Breve reseña sobre el fabricante o línea de productos...',
+                      hintText:
+                          'Breve reseña sobre el fabricante o línea de productos...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(color: AppColors.border),
@@ -342,7 +350,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
 
                   // Switch Estado Activo
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(10),
@@ -396,19 +407,32 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
               color: AppColors.surface,
-              border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+              border: Border(
+                top: BorderSide(color: AppColors.border, width: 1),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton(
-                  onPressed: cubitState.isSaving ? null : () => Navigator.of(context).pop(),
+                  onPressed:
+                      cubitState.isSaving
+                          ? null
+                          : () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
@@ -417,16 +441,25 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  icon: cubitState.isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.check_rounded, size: 18),
+                  icon:
+                      cubitState.isSaving
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.check_rounded, size: 18),
                   label: Text(
                     cubitState.isSaving
                         ? 'Guardando...'
@@ -486,7 +519,11 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
         children: [
           Row(
             children: [
-              const Icon(Icons.visibility_outlined, size: 14, color: AppColors.textMuted),
+              const Icon(
+                Icons.visibility_outlined,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 6),
               Text(
                 'VISTA PREVIA EN TARJETA',
@@ -512,31 +549,40 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                   border: Border.all(color: AppColors.border),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: hasLogo
-                    ? CachedNetworkImage(
-                        imageUrl: _previewLogo,
-                        fit: BoxFit.contain,
-                        placeholder: (ctx, url) => const Center(
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                child:
+                    hasLogo
+                        ? CachedNetworkImage(
+                          imageUrl: _previewLogo,
+                          fit: BoxFit.contain,
+                          placeholder:
+                              (ctx, url) => const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                          errorWidget:
+                              (ctx, url, err) => const Center(
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 20,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                        )
+                        : Center(
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'M',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                        errorWidget: (ctx, url, err) => const Center(
-                          child: Icon(Icons.broken_image_outlined, size: 20, color: AppColors.textMuted),
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -551,7 +597,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: _previewName.isEmpty ? AppColors.textMuted : AppColors.textPrimary,
+                              color:
+                                  _previewName.isEmpty
+                                      ? AppColors.textMuted
+                                      : AppColors.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -559,9 +608,15 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: _isActive ? AppColors.successLight : AppColors.slateLight,
+                            color:
+                                _isActive
+                                    ? AppColors.successLight
+                                    : AppColors.slateLight,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -569,7 +624,10 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: _isActive ? AppColors.success : AppColors.slate,
+                              color:
+                                  _isActive
+                                      ? AppColors.success
+                                      : AppColors.slate,
                             ),
                           ),
                         ),

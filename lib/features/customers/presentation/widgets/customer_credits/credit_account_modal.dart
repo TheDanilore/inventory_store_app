@@ -63,13 +63,15 @@ class CreditAccountModal extends StatelessWidget {
     } else {
       return showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetCtx) => CreditAccountModal(
-          accountToEdit: accountToEdit,
-          onSaved: onSaved,
-          isDialog: false,
-        ),
+        builder:
+            (sheetCtx) => CreditAccountModal(
+              accountToEdit: accountToEdit,
+              onSaved: onSaved,
+              isDialog: false,
+            ),
       );
     }
   }
@@ -171,9 +173,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     }
 
     final limitVal =
-        _isUnlimited
-            ? 0.0
-            : (double.tryParse(_limitCtrl.text.trim()) ?? 0.0);
+        _isUnlimited ? 0.0 : (double.tryParse(_limitCtrl.text.trim()) ?? 0.0);
 
     if (!_isUnlimited && limitVal <= 0) {
       AppSnackbar.show(
@@ -237,12 +237,18 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(24, widget.isDialog ? 24 : 16, 24, 24 + bottomInset),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        widget.isDialog ? 24 : 16,
+        24,
+        24 + bottomInset,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: widget.isDialog
-            ? BorderRadius.circular(20)
-            : const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+            widget.isDialog
+                ? BorderRadius.circular(20)
+                : const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -276,7 +282,11 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
               ),
               if (widget.isDialog)
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textMuted),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
                   splashRadius: 18,
                   onPressed: () => Navigator.pop(context),
                 ),

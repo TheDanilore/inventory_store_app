@@ -617,6 +617,7 @@ class _CustomerCreditsScreenContentState
   void _showAccountOptions(BuildContext context, CustomerCreditEntity account) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

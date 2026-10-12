@@ -461,17 +461,6 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 4.5,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
               Text(
                 _isEditing ? 'Editar Proveedor' : 'Nuevo Proveedor',
                 style: const TextStyle(

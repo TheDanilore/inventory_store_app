@@ -15,11 +15,7 @@ class CategoryFormSheet extends StatefulWidget {
   final CategoryEntity? category;
   final bool isSlideOver;
 
-  const CategoryFormSheet({
-    super.key,
-    this.category,
-    this.isSlideOver = false,
-  });
+  const CategoryFormSheet({super.key, this.category, this.isSlideOver = false});
 
   /// Muestra el formulario adaptándose de forma automática al tamaño de pantalla.
   static Future<bool?> showAdaptive(
@@ -71,10 +67,7 @@ class CategoryFormSheet extends StatefulWidget {
               begin: const Offset(1, 0),
               end: Offset.zero,
             ).animate(
-              CurvedAnimation(
-                parent: anim1,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
             ),
             child: child,
           );
@@ -83,15 +76,14 @@ class CategoryFormSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (sheetContext) => BlocProvider.value(
-          value: cubit,
-          child: CategoryFormSheet(
-            category: category,
-            isSlideOver: false,
-          ),
-        ),
+        builder:
+            (sheetContext) => BlocProvider.value(
+              value: cubit,
+              child: CategoryFormSheet(category: category, isSlideOver: false),
+            ),
       );
     }
   }
@@ -125,7 +117,9 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
 
   IconData _getCategoryIcon(String name) {
     final lower = name.toLowerCase().trim();
-    if (lower.contains('ropa') || lower.contains('textil') || lower.contains('prenda')) {
+    if (lower.contains('ropa') ||
+        lower.contains('textil') ||
+        lower.contains('prenda')) {
       return Icons.checkroom_rounded;
     }
     if (lower.contains('calzado') || lower.contains('zapato')) {
@@ -134,13 +128,19 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
     if (lower.contains('insecticida') || lower.contains('plaga')) {
       return Icons.pest_control_rounded;
     }
-    if (lower.contains('fertilizante') || lower.contains('abono') || lower.contains('agro')) {
+    if (lower.contains('fertilizante') ||
+        lower.contains('abono') ||
+        lower.contains('agro')) {
       return Icons.grass_rounded;
     }
-    if (lower.contains('quimico') || lower.contains('químico') || lower.contains('componente')) {
+    if (lower.contains('quimico') ||
+        lower.contains('químico') ||
+        lower.contains('componente')) {
       return Icons.science_rounded;
     }
-    if (lower.contains('herramienta') || lower.contains('ferreteria') || lower.contains('ferretería')) {
+    if (lower.contains('herramienta') ||
+        lower.contains('ferreteria') ||
+        lower.contains('ferretería')) {
       return Icons.handyman_rounded;
     }
     if (lower.contains('electron') || lower.contains('electrón')) {
@@ -191,9 +191,10 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
       if (success) {
         AppSnackbar.show(
           context,
-          message: widget.category == null
-              ? 'Categoría creada correctamente.'
-              : 'Categoría actualizada correctamente.',
+          message:
+              widget.category == null
+                  ? 'Categoría creada correctamente.'
+                  : 'Categoría actualizada correctamente.',
           type: SnackbarType.success,
         );
         Navigator.of(context).pop(true);
@@ -304,10 +305,11 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                 borderSide: BorderSide(color: themeColor, width: 1.5),
               ),
             ),
-            validator: (val) =>
-                val == null || val.trim().isEmpty
-                    ? 'El nombre es obligatorio'
-                    : null,
+            validator:
+                (val) =>
+                    val == null || val.trim().isEmpty
+                        ? 'El nombre es obligatorio'
+                        : null,
             onFieldSubmitted: (_) => _save(),
           ),
 
@@ -318,13 +320,11 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
             controller: _descCtrl,
             textCapitalization: TextCapitalization.sentences,
             maxLines: 2,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
             decoration: InputDecoration(
               labelText: 'Descripción (Opcional)',
-              hintText: 'Breve descripción de los productos en esta categoría...',
+              hintText:
+                  'Breve descripción de los productos en esta categoría...',
               prefixIcon: const Icon(Icons.description_outlined, size: 18),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -336,7 +336,10 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
               ),
             ),
           ),
@@ -400,7 +403,11 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.visibility_outlined, size: 14, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.visibility_outlined,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'VISTA PREVIA EN CATÁLOGO',
@@ -431,13 +438,16 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _previewName.isEmpty ? 'Nombre de la categoría' : _previewName,
+                            _previewName.isEmpty
+                                ? 'Nombre de la categoría'
+                                : _previewName,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: _previewName.isEmpty
-                                  ? AppColors.textMuted
-                                  : AppColors.textPrimary,
+                              color:
+                                  _previewName.isEmpty
+                                      ? AppColors.textMuted
+                                      : AppColors.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -456,11 +466,15 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
                       decoration: BoxDecoration(
-                        color: _isActive
-                            ? AppColors.success.withValues(alpha: 0.12)
-                            : AppColors.textMuted.withValues(alpha: 0.1),
+                        color:
+                            _isActive
+                                ? AppColors.success.withValues(alpha: 0.12)
+                                : AppColors.textMuted.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -468,7 +482,10 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
-                          color: _isActive ? AppColors.success : AppColors.textMuted,
+                          color:
+                              _isActive
+                                  ? AppColors.success
+                                  : AppColors.textMuted,
                         ),
                       ),
                     ),
@@ -497,7 +514,10 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      onPressed: isSaving ? null : () => Navigator.of(context).pop(false),
+                      onPressed:
+                          isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(false),
                       child: const Text(
                         'Cancelar',
                         style: TextStyle(fontWeight: FontWeight.w600),
@@ -517,22 +537,25 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
                         ),
                       ),
                       onPressed: isSaving ? null : _save,
-                      child: isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
+                      child:
+                          isSaving
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Text(
+                                isEditing
+                                    ? 'Guardar Cambios'
+                                    : 'Crear Categoría',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                ),
                               ),
-                            )
-                          : Text(
-                              isEditing ? 'Guardar Cambios' : 'Crear Categoría',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
-                              ),
-                            ),
                     ),
                   ),
                 ],
@@ -552,10 +575,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
           const SingleActivator(LogicalKeyboardKey.enter, control: true): _save,
           const SingleActivator(LogicalKeyboardKey.enter, meta: true): _save,
         },
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: formContent,
-        ),
+        child: Padding(padding: const EdgeInsets.all(24), child: formContent),
       );
     }
 
