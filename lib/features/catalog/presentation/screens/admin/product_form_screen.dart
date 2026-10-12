@@ -1145,11 +1145,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  const ProductImagesSection(),
+                  const SizedBox(height: 16),
                   const ProductStatusCard(),
                   const SizedBox(height: 16),
                   const ProductSalesChannelsCard(),
-                  const SizedBox(height: 16),
-                  const ProductImagesSection(),
                   const SizedBox(height: 16),
                   ProductBasicInfoSection(
                     nombreCtrl: _nombreCtrl,

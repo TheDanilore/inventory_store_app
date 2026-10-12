@@ -6,8 +6,16 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/product_f
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
 
-class ProductVariantsTableView extends StatelessWidget {
+class ProductVariantsTableView extends StatefulWidget {
   const ProductVariantsTableView({super.key});
+
+  @override
+  State<ProductVariantsTableView> createState() =>
+      _ProductVariantsTableViewState();
+}
+
+class _ProductVariantsTableViewState extends State<ProductVariantsTableView> {
+  int? _hoveredIndex;
 
   Color _resolveColorSwatch(String name, int index) {
     final lower = name.toLowerCase();
@@ -443,6 +451,17 @@ class ProductVariantsTableView extends StatelessWidget {
                               colorOrName: colorOrName,
                               editionOrAttr: editionOrAttr,
                               swatchColor: swatchColor,
+                              isHovered: _hoveredIndex == index,
+                              onHoverEnter: () {
+                                if (_hoveredIndex != index) {
+                                  setState(() => _hoveredIndex = index);
+                                }
+                              },
+                              onHoverExit: () {
+                                if (_hoveredIndex == index) {
+                                  setState(() => _hoveredIndex = null);
+                                }
+                              },
                               onOpenModal:
                                   () => _openFullVariantModal(
                                     context,
@@ -479,6 +498,9 @@ class _VariantTableRow extends StatefulWidget {
   final String colorOrName;
   final String editionOrAttr;
   final Color swatchColor;
+  final bool isHovered;
+  final VoidCallback onHoverEnter;
+  final VoidCallback onHoverExit;
   final VoidCallback onOpenModal;
   final VoidCallback onRemove;
   final VoidCallback onPickImage;
@@ -491,6 +513,9 @@ class _VariantTableRow extends StatefulWidget {
     required this.colorOrName,
     required this.editionOrAttr,
     required this.swatchColor,
+    required this.isHovered,
+    required this.onHoverEnter,
+    required this.onHoverExit,
     required this.onOpenModal,
     required this.onRemove,
     required this.onPickImage,
@@ -502,7 +527,6 @@ class _VariantTableRow extends StatefulWidget {
 }
 
 class _VariantTableRowState extends State<_VariantTableRow> {
-  bool _isHovered = false;
   late final TextEditingController _priceCtrl;
   late final TextEditingController _skuCtrl;
   late final TextEditingController _stockCtrl;
@@ -753,15 +777,15 @@ class _VariantTableRowState extends State<_VariantTableRow> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) => widget.onHoverEnter(),
+      onExit: (_) => widget.onHoverExit(),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         color:
-            _isHovered
+            widget.isHovered
                 ? (isDark
                     ? const Color(0xFF334155).withValues(alpha: 0.5)
-                    : const Color(0xFFF8FAFC))
+                    : const Color(0xFFF1F5F9))
                 : Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(

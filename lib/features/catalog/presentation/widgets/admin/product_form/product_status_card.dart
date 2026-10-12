@@ -64,24 +64,33 @@ class ProductStatusCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Dropdown estilizado según la imagen 1
+              // Dropdown estilizado consistente con los demás inputs
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF6366F1), // Tono índigo/azul vibrante del diseño
-                    width: 1.8,
+                    color:
+                        isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFCBD5E1),
+                    width: 1,
                   ),
                   color: isDark ? const Color(0xFF0F172A) : Colors.white,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 2,
+                ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: status,
                     isExpanded: true,
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF1E293B),
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                       size: 22,
                     ),
                     items: [
@@ -93,7 +102,9 @@ class ProductStatusCard extends StatelessWidget {
                               width: 12,
                               height: 12,
                               decoration: const BoxDecoration(
-                                color: Color(0xFF10B981), // Verde esmeralda vivo
+                                color: Color(
+                                  0xFF10B981,
+                                ), // Verde esmeralda vivo
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -182,7 +193,10 @@ class ProductStatusCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12.5,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                   ),
                 ),
               ),
