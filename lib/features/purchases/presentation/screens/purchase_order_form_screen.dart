@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/purchas
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -280,10 +281,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed:
-                          () =>
-                              context.read<PurchaseOrderFormCubit>().initForm(
-                                editOrderId: widget.editOrderId,
-                              ),
+                          () => context.read<PurchaseOrderFormCubit>().initForm(
+                            editOrderId: widget.editOrderId,
+                          ),
                       icon: const Icon(Icons.refresh_rounded),
                       label: const Text('Reintentar'),
                       style: ElevatedButton.styleFrom(
@@ -480,9 +480,9 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Izquierda: Datos, Pago, Documento
+                                // Izquierda: Datos, Pago, Documento (40%)
                                 Expanded(
-                                  flex: 5,
+                                  flex: 4,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       border: Border(
@@ -505,15 +505,18 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     ),
                                   ),
                                 ),
-                                // Derecha: Productos y Botón Guardar
+                                // Derecha: Tabla de Productos y Botón Guardar (60%)
                                 Expanded(
-                                  flex: 4,
+                                  flex: 6,
                                   child: Column(
                                     children: [
                                       Expanded(
                                         child: SingleChildScrollView(
                                           padding: const EdgeInsets.all(24.0),
-                                          child: _buildProductsData(viewModel),
+                                          child: _buildProductsData(
+                                            viewModel,
+                                            isDesktop: true,
+                                          ),
                                         ),
                                       ),
                                       _buildStickySaveButton(viewModel),
@@ -688,7 +691,21 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
-  Widget _buildProductsData(_PurchaseOrderFormViewModel viewModel) {
+  Widget _buildProductsData(
+    _PurchaseOrderFormViewModel viewModel, {
+    bool isDesktop = false,
+  }) {
+    if (isDesktop) {
+      return PurchaseOrderItemsTable(
+        items: viewModel.items,
+        onRemoveItem: (index) => viewModel.removeItem(index),
+        onUpdateQuantity:
+            (index, qty) => viewModel.updateItemQuantity(index, qty),
+        onUpdateCost: (index, cost) => viewModel.updateItemCost(index, cost),
+        onAddNewRow: () => _showAddProductSheet(context),
+      );
+    }
+
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
