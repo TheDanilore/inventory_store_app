@@ -268,16 +268,29 @@ class _CustomerCreditsScreenContentState
 
           return AdminLayout(
             title: 'Cuentas por Cobrar',
-            // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
+            // FAB solo visible en móvil cuando no se está buscando
             floatingActionButton:
-                isWide
-                    ? null
-                    : FloatingActionButton(
-                      onPressed: () => _openCreateAccountModal(),
+                (isWide &&
+                    _tabController.index == 0 &&
+                    _searchCtrl.text.isEmpty)
+                    ? FloatingActionButton.extended(
+                      heroTag: 'add_customer_fab',
                       backgroundColor: AppColors.primary,
-                      tooltip: 'Nueva Línea',
-                      child: const Icon(Icons.add_rounded, color: Colors.white),
-                    ),
+                      elevation: 4,
+                      icon: const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'Nueva Línea',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      onPressed: _openCreateAccountModal,
+                    )
+                    : null,
             body: RefreshIndicator(
               color: AppColors.primary,
               onRefresh:

@@ -336,14 +336,22 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
           title: 'Créditos de Proveedores',
           // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
           floatingActionButton:
-              isWide
-                  ? null
-                  : FloatingActionButton(
-                    onPressed: _openCreateAccountModal,
+              (isWide && _searchCtrl.text.isEmpty)
+                  ? FloatingActionButton.extended(
+                    heroTag: 'add_account_fab',
                     backgroundColor: AppColors.primary,
-                    tooltip: 'Nueva Línea',
-                    child: const Icon(Icons.add_rounded, color: Colors.white),
-                  ),
+                    elevation: 4,
+                    icon: const Icon(Icons.money_rounded, color: Colors.white),
+                    label: const Text(
+                      'Nuevo Crédito',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onPressed: _openCreateAccountModal,
+                  )
+                  : null,
           body: BlocBuilder<SupplierCreditsCubit, SupplierCreditsState>(
             builder: (context, state) {
               final isLoading =

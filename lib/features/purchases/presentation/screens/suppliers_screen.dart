@@ -220,17 +220,25 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           title: 'Directorio de Proveedores',
           // En tablet/escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
-              isWide
-                  ? null
-                  : FloatingActionButton(
-                    onPressed: () => _openSupplierModal(context),
-                    backgroundColor: AppColors.teal,
-                    tooltip: 'Nuevo Proveedor',
-                    child: const Icon(
+              (isWide && _searchCtrl.text.isEmpty)
+                  ? FloatingActionButton.extended(
+                    heroTag: 'add_supplier_fab',
+                    backgroundColor: AppColors.primary,
+                    elevation: 4,
+                    icon: const Icon(
                       Icons.add_business_rounded,
                       color: Colors.white,
                     ),
-                  ),
+                    label: const Text(
+                      'Nuevo Proveedor',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onPressed: () => _openSupplierModal(context),
+                  )
+                  : null,
           body: BlocBuilder<SuppliersCubit, SuppliersState>(
             builder: (context, state) {
               final isLoading =
