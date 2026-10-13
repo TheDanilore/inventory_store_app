@@ -1,7 +1,15 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
+
+// Anchos fijos de las columnas numéricas: encabezados y filas quedan
+// alineados sin importar el ancho del panel. El producto ocupa el resto.
+const double _kQtyW = 100;
+const double _kCostW = 120;
+const double _kSubtotalW = 104;
+const double _kActionW = 48;
 
 class PurchaseOrderItemsTable extends StatelessWidget {
   final List<InventoryEntryItemEntity> items;
@@ -10,6 +18,16 @@ class PurchaseOrderItemsTable extends StatelessWidget {
   final Function(int index, double cost) onUpdateCost;
   final VoidCallback onAddNewRow;
 
+  /// Si se pasa, los productos con lote muestran un chip para editarlo.
+  final ValueChanged<int>? onEditBatch;
+
+  final String title;
+  final String emptyTitle;
+  final String emptyMessage;
+
+  /// Pie con unidades y total. Ocultarlo si la pantalla ya muestra el total.
+  final bool showFooter;
+
   const PurchaseOrderItemsTable({
     super.key,
     required this.items,
@@ -17,301 +35,64 @@ class PurchaseOrderItemsTable extends StatelessWidget {
     required this.onUpdateQuantity,
     required this.onUpdateCost,
     required this.onAddNewRow,
+    this.onEditBatch,
+    this.title = 'Ítems de la orden',
+    this.emptyTitle = 'Aún no hay productos',
+    this.emptyMessage = 'Agrega los productos de esta orden para empezar.',
+    this.showFooter = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final p = _Palette.of(isDark);
     final totalCost = items.fold<double>(0.0, (sum, i) => sum + i.subtotal);
     final totalUnits = items.fold<double>(0.0, (sum, i) => sum + i.quantity);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: p.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: p.border),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header de la Sección
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.inventory_2_rounded,
-                          size: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'ÍTEMS DE LA ORDEN',
-                            style: TextStyle(
-                              fontSize: 13,
-                              letterSpacing: 0.8,
-                              fontWeight: FontWeight.w800,
-                              color:
-                                  isDark
-                                      ? const Color(0xFFE2E8F0)
-                                      : const Color(0xFF1E293B),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${items.length} producto${items.length == 1 ? '' : 's'} agregado${items.length == 1 ? '' : 's'}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  FilledButton.icon(
-                    onPressed: onAddNewRow,
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('Agregar Producto'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          isDark
-                              ? const Color(0xFF312E81)
-                              : const Color(0xFFEEF2FF),
-                      foregroundColor:
-                          isDark
-                              ? const Color(0xFFC7D2FE)
-                              : const Color(0xFF4F46E5),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 9,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            ),
-
-            // Encabezados de Columna
-            Container(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: const Row(
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Text('PRODUCTO / VARIANTE', style: _headerStyle),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'CANTIDAD',
-                      textAlign: TextAlign.center,
-                      style: _headerStyle,
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'COSTO UNIT.',
-                      textAlign: TextAlign.right,
-                      style: _headerStyle,
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'SUBTOTAL',
-                      textAlign: TextAlign.right,
-                      style: _headerStyle,
-                    ),
-                  ),
-                  SizedBox(width: 48), // Espacio de acción
-                ],
-              ),
-            ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            ),
-
-            // Filas o Estado Vacío
+            _buildHeader(p),
+            Divider(height: 1, thickness: 1, color: p.border),
             if (items.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(36.0),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.shopping_bag_outlined,
-                        size: 44,
-                        color:
-                            isDark
-                                ? const Color(0xFF475569)
-                                : const Color(0xFFCBD5E1),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Tu orden está vacía',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color:
-                              isDark
-                                  ? const Color(0xFFE2E8F0)
-                                  : const Color(0xFF334155),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Presiona "Agregar Producto" para añadir artículos a esta orden de compra.',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          color:
-                              isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              )
+              _buildEmpty(p)
             else ...[
+              _buildColumnHeaders(p),
+              Divider(height: 1, thickness: 1, color: p.border),
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 separatorBuilder:
-                    (context, index) => Divider(
-                      height: 1,
-                      thickness: 1,
-                      color:
-                          isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
-                    ),
+                    (context, index) =>
+                        Divider(height: 1, thickness: 1, color: p.border),
                 itemBuilder: (context, index) {
                   return _PurchaseOrderRow(
                     key: ValueKey(
                       'po_row_${items[index].productId}_${items[index].variantId}_$index',
                     ),
-                    index: index,
                     item: items[index],
-                    isDark: isDark,
+                    palette: p,
                     onUpdateQuantity: (qty) => onUpdateQuantity(index, qty),
                     onUpdateCost: (cost) => onUpdateCost(index, cost),
+                    onEditBatch:
+                        onEditBatch == null ? null : () => onEditBatch!(index),
                     onRemove: () => onRemoveItem(index),
                   );
                 },
               ),
-
-              // Pie de Tabla con Resumen Integrado (Estilo ERP Pro)
-              Divider(
-                height: 1,
-                thickness: 1,
-                color:
-                    isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-              ),
-              Container(
-                color:
-                    isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 14,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        _StatBadge(
-                          label: 'Items',
-                          value: '${items.length}',
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 12),
-                        _StatBadge(
-                          label: 'Unidades',
-                          value: totalUnits.toStringAsFixed(0),
-                          isDark: isDark,
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          'TOTAL ESTIMADO: ',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
-                        ),
-                        Text(
-                          'S/ ${totalCost.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                            color:
-                                isDark
-                                    ? const Color(0xFF60A5FA)
-                                    : const Color(0xFF1D4ED8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              if (showFooter) ...[
+                Divider(height: 1, thickness: 1, color: p.border),
+                _buildFooter(p, totalUnits, totalCost),
+              ],
             ],
           ],
         ),
@@ -319,30 +100,294 @@ class PurchaseOrderItemsTable extends StatelessWidget {
     );
   }
 
-  static const _headerStyle = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.w800,
-    color: Color(0xFF64748B),
-    letterSpacing: 0.6,
-  );
+  Widget _buildHeader(_Palette p) {
+    final count = items.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: p.accentSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.inventory_2_rounded, size: 18, color: p.accent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: p.textStrong,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  count == 0
+                      ? 'Sin productos'
+                      : '$count producto${count == 1 ? '' : 's'}',
+                  style: TextStyle(fontSize: 12.5, color: p.textMuted),
+                ),
+              ],
+            ),
+          ),
+          // Con la lista vacía, la acción vive en el estado vacío.
+          if (items.isNotEmpty)
+            FilledButton.icon(
+              onPressed: onAddNewRow,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Agregar producto'),
+              style: FilledButton.styleFrom(
+                backgroundColor: p.accentSoft,
+                foregroundColor: p.accent,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildColumnHeaders(_Palette p) {
+    final style = TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w600,
+      color: p.textMuted,
+    );
+    return Container(
+      color: p.subtle,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(child: Text('Producto', style: style)),
+          SizedBox(
+            width: _kQtyW,
+            child: Text('Cantidad', textAlign: TextAlign.center, style: style),
+          ),
+          SizedBox(
+            width: _kCostW,
+            child: Text(
+              'Costo unitario',
+              textAlign: TextAlign.right,
+              style: style,
+            ),
+          ),
+          SizedBox(
+            width: _kSubtotalW,
+            child: Text('Subtotal', textAlign: TextAlign.right, style: style),
+          ),
+          const SizedBox(width: _kActionW),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty(_Palette p) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: p.accentSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_shopping_cart_rounded,
+                  size: 28,
+                  color: p.accent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                emptyTitle,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: p.textStrong,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                emptyMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13.5, color: p.textMuted),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: onAddNewRow,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Agregar producto'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: p.accentFilled,
+                  foregroundColor: p.onAccentFilled,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(_Palette p, double totalUnits, double totalCost) {
+    final units =
+        totalUnits % 1 == 0
+            ? totalUnits.toInt().toString()
+            : totalUnits.toStringAsFixed(2);
+    return Container(
+      color: p.subtle,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '${items.length} producto${items.length == 1 ? '' : 's'} · $units unidad${totalUnits == 1 ? '' : 'es'}',
+            style: TextStyle(fontSize: 13, color: p.textMuted),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                'Total estimado  ',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: p.textMuted,
+                ),
+              ),
+              Text(
+                'S/ ${totalCost.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.3,
+                  color: p.textStrong,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Colores de la tabla. Los acentos salen de [AppColors.primary] en modo claro.
+class _Palette {
+  final Color surface;
+  final Color subtle;
+  final Color border;
+  final Color textStrong;
+  final Color textMuted;
+  final Color accent;
+  final Color accentSoft;
+  final Color accentFilled;
+  final Color onAccentFilled;
+  final Color warning;
+  final Color danger;
+
+  _Palette({
+    required this.surface,
+    required this.subtle,
+    required this.border,
+    required this.textStrong,
+    required this.textMuted,
+    required this.accent,
+    required this.accentSoft,
+    required this.accentFilled,
+    required this.onAccentFilled,
+    required this.warning,
+    required this.danger,
+  });
+
+  factory _Palette.of(bool isDark) {
+    if (isDark) {
+      return _Palette(
+        surface: const Color(0xFF1E293B),
+        subtle: const Color(0xFF0F172A),
+        border: const Color(0xFF334155),
+        textStrong: Colors.white,
+        textMuted: const Color(0xFF94A3B8),
+        accent: const Color(0xFFC7D2FE),
+        accentSoft: const Color(0xFF312E81),
+        accentFilled: const Color(0xFF6366F1),
+        onAccentFilled: Colors.white,
+        warning: AppColors.warning,
+        danger: AppColors.danger,
+      );
+    }
+    return _Palette(
+      surface: Colors.white,
+      subtle: const Color(0xFFF8FAFC),
+      border: const Color(0xFFE2E8F0),
+      textStrong: const Color(0xFF0F172A),
+      textMuted: const Color(0xFF64748B),
+      accent: AppColors.primary,
+      accentSoft: AppColors.primary.withValues(alpha: 0.08),
+      accentFilled: AppColors.primary,
+      onAccentFilled: Colors.white,
+      warning: AppColors.warning,
+      danger: AppColors.danger,
+    );
+  }
 }
 
 class _PurchaseOrderRow extends StatefulWidget {
-  final int index;
   final InventoryEntryItemEntity item;
-  final bool isDark;
+  final _Palette palette;
   final ValueChanged<double> onUpdateQuantity;
   final ValueChanged<double> onUpdateCost;
+  final VoidCallback? onEditBatch;
   final VoidCallback onRemove;
 
   const _PurchaseOrderRow({
     super.key,
-    required this.index,
     required this.item,
-    required this.isDark,
+    required this.palette,
     required this.onUpdateQuantity,
     required this.onUpdateCost,
     required this.onRemove,
+    this.onEditBatch,
   });
 
   @override
@@ -353,47 +398,76 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
   bool _isHovered = false;
   late final TextEditingController _qtyCtrl;
   late final TextEditingController _costCtrl;
+  final _qtyFocus = FocusNode();
+  final _costFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    _qtyCtrl = TextEditingController(
-      text: widget.item.quantity.toStringAsFixed(0),
-    );
+    _qtyCtrl = TextEditingController(text: _fmtQty(widget.item.quantity));
     _costCtrl = TextEditingController(
       text: widget.item.unitCost.toStringAsFixed(2),
     );
+    _qtyFocus.addListener(_onQtyFocusChange);
+    _costFocus.addListener(_onCostFocusChange);
   }
 
   @override
   void didUpdateWidget(covariant _PurchaseOrderRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.item.quantity != widget.item.quantity) {
-      final text = widget.item.quantity.toStringAsFixed(0);
-      if (_qtyCtrl.text != text) {
-        _qtyCtrl.text = text;
-      }
+    if (!_qtyFocus.hasFocus &&
+        oldWidget.item.quantity != widget.item.quantity) {
+      _qtyCtrl.text = _fmtQty(widget.item.quantity);
     }
-    if (oldWidget.item.unitCost != widget.item.unitCost) {
-      final text = widget.item.unitCost.toStringAsFixed(2);
-      if (_costCtrl.text != text) {
-        _costCtrl.text = text;
-      }
+    if (!_costFocus.hasFocus &&
+        oldWidget.item.unitCost != widget.item.unitCost) {
+      _costCtrl.text = widget.item.unitCost.toStringAsFixed(2);
     }
   }
 
   @override
   void dispose() {
+    _qtyFocus.removeListener(_onQtyFocusChange);
+    _costFocus.removeListener(_onCostFocusChange);
+    _qtyFocus.dispose();
+    _costFocus.dispose();
     _qtyCtrl.dispose();
     _costCtrl.dispose();
     super.dispose();
   }
 
+  void _onQtyFocusChange() {
+    if (!_qtyFocus.hasFocus) _qtyCtrl.text = _fmtQty(widget.item.quantity);
+  }
+
+  void _onCostFocusChange() {
+    if (!_costFocus.hasFocus) {
+      _costCtrl.text = widget.item.unitCost.toStringAsFixed(2);
+    }
+  }
+
+  static String _fmtQty(double v) {
+    if (v % 1 == 0) return v.toInt().toString();
+    return v
+        .toStringAsFixed(3)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  void _selectAll(TextEditingController c) {
+    c.selection = TextSelection(baseOffset: 0, extentOffset: c.text.length);
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    final p = widget.palette;
     final subtotal = item.quantity * item.unitCost;
-    final isDark = widget.isDark;
+    final isZeroCost = item.unitCost <= 0;
+    final hasVariant =
+        item.variantLabel.isNotEmpty &&
+        item.variantLabel != 'Default' &&
+        item.variantLabel != 'Variante Única';
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -402,62 +476,16 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
         duration: const Duration(milliseconds: 120),
         color:
             _isHovered
-                ? (isDark
-                    ? const Color(0xFF334155).withValues(alpha: 0.4)
-                    : const Color(0xFFF1F5F9))
+                ? p.textMuted.withValues(alpha: 0.07)
                 : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            // Producto & Miniatura
+            // Producto
             Expanded(
-              flex: 5,
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 38,
-                      height: 38,
-                      child:
-                          item.imageUrl != null &&
-                                  item.imageUrl!.trim().isNotEmpty
-                              ? CachedNetworkImage(
-                                imageUrl: item.imageUrl!,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (context, url) => Container(
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF334155)
-                                              : const Color(0xFFF1F5F9),
-                                    ),
-                                errorWidget:
-                                    (context, url, error) => Container(
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF334155)
-                                              : const Color(0xFFF1F5F9),
-                                      child: const Icon(
-                                        Icons.inventory_2_outlined,
-                                        size: 18,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                              )
-                              : Container(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF334155)
-                                        : const Color(0xFFF1F5F9),
-                                child: const Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 18,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                    ),
-                  ),
+                  _Thumb(url: item.imageUrl, palette: p),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -467,27 +495,31 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
                           item.productName,
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color:
-                                isDark ? Colors.white : const Color(0xFF0F172A),
+                            fontSize: 14,
+                            color: p.textStrong,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (item.variantLabel.isNotEmpty &&
-                            item.variantLabel != 'Default') ...[
+                        if (hasVariant) ...[
                           const SizedBox(height: 2),
                           Text(
                             item.variantLabel,
                             style: TextStyle(
-                              fontSize: 11.5,
-                              color:
-                                  isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
+                              fontSize: 12.5,
+                              color: p.textMuted,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (item.usesBatches && widget.onEditBatch != null) ...[
+                          const SizedBox(height: 6),
+                          _BatchChip(
+                            batchNumber: item.batchNumber,
+                            expiryDate: item.expiryDate,
+                            palette: p,
+                            onTap: widget.onEditBatch!,
                           ),
                         ],
                       ],
@@ -497,24 +529,36 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
               ),
             ),
 
-            // Input Cantidad
-            Expanded(
-              flex: 2,
+            // Cantidad
+            SizedBox(
+              width: _kQtyW,
               child: Center(
                 child: SizedBox(
-                  width: 80,
-                  height: 34,
-                  child: TextFormField(
+                  width: 84,
+                  height: 38,
+                  child: TextField(
                     controller: _qtyCtrl,
+                    focusNode: _qtyFocus,
                     textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,3}'),
+                      ),
+                    ],
+                    textAlignVertical: TextAlignVertical.center,
+                    onTap: () => _selectAll(_qtyCtrl),
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
-                    decoration: _inputDecorationCompact(isDark),
+                    decoration: _decoration(p),
                     onChanged: (val) {
-                      final qty = double.tryParse(val.trim());
+                      final qty = double.tryParse(
+                        val.trim().replaceAll(',', '.'),
+                      );
                       if (qty != null && qty > 0) {
                         widget.onUpdateQuantity(qty);
                       }
@@ -524,27 +568,41 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
               ),
             ),
 
-            // Input Costo Unitario
-            Expanded(
-              flex: 2,
+            // Costo unitario
+            SizedBox(
+              width: _kCostW,
               child: Align(
                 alignment: Alignment.centerRight,
                 child: SizedBox(
-                  width: 105,
-                  height: 34,
-                  child: TextFormField(
+                  width: 104,
+                  height: 38,
+                  child: TextField(
                     controller: _costCtrl,
+                    focusNode: _costFocus,
                     textAlign: TextAlign.right,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
+                    ],
+                    textAlignVertical: TextAlignVertical.center,
+                    onTap: () => _selectAll(_costCtrl),
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
-                    decoration: _inputDecorationCompact(isDark, prefix: 'S/ '),
+                    decoration: _decoration(
+                      p,
+                      prefix: 'S/ ',
+                      accent: isZeroCost ? p.warning : null,
+                    ),
                     onChanged: (val) {
-                      final cost = double.tryParse(val.trim());
+                      final cost = double.tryParse(
+                        val.trim().replaceAll(',', '.'),
+                      );
                       if (cost != null && cost >= 0) {
                         widget.onUpdateCost(cost);
                       }
@@ -555,30 +613,31 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
             ),
 
             // Subtotal
-            Expanded(
-              flex: 2,
+            SizedBox(
+              width: _kSubtotalW,
               child: Text(
                 'S/ ${subtotal.toStringAsFixed(2)}',
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 14.5,
+                  color: p.textStrong,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ),
 
-            // Eliminar
+            // Quitar
             SizedBox(
-              width: 48,
+              width: _kActionW,
               child: Center(
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.delete_outline_rounded,
-                    size: 19,
-                    color: AppColors.danger,
+                    size: 20,
+                    color: _isHovered ? p.danger : p.textMuted,
                   ),
-                  tooltip: 'Eliminar ítem',
+                  tooltip: 'Quitar producto',
                   splashRadius: 18,
                   onPressed: widget.onRemove,
                 ),
@@ -590,77 +649,124 @@ class _PurchaseOrderRowState extends State<_PurchaseOrderRow> {
     );
   }
 
-  InputDecoration _inputDecorationCompact(bool isDark, {String? prefix}) {
+  InputDecoration _decoration(_Palette p, {String? prefix, Color? accent}) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: c, width: w),
+    );
     return InputDecoration(
       prefixText: prefix,
       prefixStyle: TextStyle(
-        fontSize: 11.5,
+        fontSize: 12.5,
         fontWeight: FontWeight.w700,
-        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+        color: p.textMuted,
       ),
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       filled: true,
-      fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+      fillColor: p.surface,
+      border: border(accent ?? p.border),
+      enabledBorder: border(accent ?? p.border),
+      focusedBorder: border(accent ?? p.accentFilled, 1.5),
+    );
+  }
+}
+
+class _BatchChip extends StatelessWidget {
+  final String batchNumber;
+  final DateTime? expiryDate;
+  final _Palette palette;
+  final VoidCallback onTap;
+
+  const _BatchChip({
+    required this.batchNumber,
+    required this.expiryDate,
+    required this.palette,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = batchNumber.isEmpty || batchNumber == 'DEFAULT';
+    final color = pending ? palette.warning : palette.textMuted;
+
+    String label;
+    if (pending) {
+      label = 'Asignar lote';
+    } else if (expiryDate != null) {
+      final d = expiryDate!;
+      final date =
+          '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+      label = 'Lote $batchNumber · vence $date';
+    } else {
+      label = 'Lote $batchNumber';
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.tag_rounded, size: 14, color: color),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.edit_rounded, size: 12, color: color),
+          ],
         ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
       ),
     );
   }
 }
 
-class _StatBadge extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isDark;
-
-  const _StatBadge({
-    required this.label,
-    required this.value,
-    required this.isDark,
-  });
+class _Thumb extends StatelessWidget {
+  final String? url;
+  final _Palette palette;
+  const _Thumb({required this.url, required this.palette});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(6),
+    final hasUrl = url != null && url!.trim().isNotEmpty;
+    final placeholder = Container(
+      color: palette.subtle,
+      child: Icon(
+        Icons.inventory_2_outlined,
+        size: 20,
+        color: palette.textMuted,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-        ],
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child:
+            hasUrl
+                ? CachedNetworkImage(
+                  imageUrl: url!,
+                  fit: BoxFit.cover,
+                  placeholder: (context, _) => Container(color: palette.subtle),
+                  errorWidget: (context, _, _) => placeholder,
+                )
+                : placeholder,
       ),
     );
   }

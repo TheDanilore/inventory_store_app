@@ -7,8 +7,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_state.dart';
 
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_item_tile.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_form_summary_card.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/entry_item_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -47,13 +46,14 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   final _documentNumberCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  static const List<String> _docTypes = [
-    'NINGUNO',
-    'FACTURA',
-    'BOLETA',
-    'GUIA_REMISION',
-    'TICKET',
-  ];
+  // valor interno -> etiqueta visible
+  static const Map<String, String> _docTypes = {
+    'NINGUNO': 'Ninguno',
+    'FACTURA': 'Factura',
+    'BOLETA': 'Boleta',
+    'GUIA_REMISION': 'Guía de remisión',
+    'TICKET': 'Ticket',
+  };
 
   @override
   void initState() {
@@ -112,19 +112,45 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       return;
     }
 
-    final newItem = await showModalBottomSheet<InventoryEntryItemEntity>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => AddEntryProductSheet(
-            warehouseId: cubit.state.selectedWarehouseId,
-          ),
+    final newItem = await AddEntryProductSheet.show(
+      context,
+      warehouseId: cubit.state.selectedWarehouseId,
+      // Permite cargar varios productos sin cerrar y reabrir el panel.
+      onAddAndContinue: (item) => cubit.addItem(item),
     );
 
     if (newItem != null && mounted) {
       cubit.addItem(newItem);
     }
+  }
+
+  /// Quita el producto al instante y ofrece "Deshacer" (en vez de un diálogo
+  /// de confirmación que interrumpe cada vez).
+  void _removeItemWithUndo(InventoryEntryFormCubit cubit, int index) {
+    final items = cubit.state.items;
+    if (index < 0 || index >= items.length) return;
+    final removed = items[index];
+
+    HapticFeedback.lightImpact();
+    cubit.removeItem(index);
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.hideCurrentSnackBar();
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text('Quitaste "${removed.productName}"'),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        // Deja libre la barra inferior con el botón de confirmar.
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+        action: SnackBarAction(
+          label: 'Deshacer',
+          onPressed: () {
+            if (mounted) cubit.addItem(removed);
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _handleSave() async {
@@ -255,12 +281,14 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             ),
             actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             actions: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, 'cancel'),
-                    child: const Text('Cancelar'),
+                    child: const Text('Seguir editando'),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, 'discard'),
@@ -276,7 +304,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
-                    child: const Text('Borrador'),
+                    child: const Text('Guardar borrador'),
                   ),
                 ],
               ),
@@ -421,14 +449,11 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             onBack: _handleBackButton,
             showProfileButton: false,
             showDrawerButton: false,
-            body:
-                cubit.state.isSaving
-                    ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    )
-                    : Form(
+            body: Stack(
+              children: [
+                AbsorbPointer(
+                  absorbing: cubit.state.isSaving,
+                  child: Form(
                       key: _formKey,
                       child: LayoutBuilder(
                         builder: (context, constraints) {
@@ -554,6 +579,20 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                         },
                       ),
                     ),
+                ),
+                if (cubit.state.isSaving)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: AppColors.surface.withValues(alpha: 0.7),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -629,7 +668,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         children: [
           const _SectionTitle(
             icon: Icons.storefront_rounded,
-            title: 'Datos Principales',
+            title: 'Datos principales',
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
@@ -721,51 +760,43 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         children: [
           _SectionTitle(
             icon: Icons.payments_rounded,
-            title: 'Modo de Pago / Financiamiento',
+            title: 'Modo de pago',
             iconColor: isCredit ? Colors.purple.shade600 : AppColors.primary,
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey('paymode_${cubit.state.paymentMode}'),
-            initialValue: cubit.state.paymentMode,
-            isExpanded: true,
-            icon: const Icon(Icons.expand_more_rounded),
-            decoration: _dropdownDecoration(
-              'Tipo de Operación',
-              icon: Icons.money_rounded,
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: 'CONTADO', label: Text('Contado')),
+                ButtonSegment(value: 'CRÉDITO', label: Text('Crédito')),
+                ButtonSegment(value: 'AJUSTE', label: Text('Ajuste')),
+              ],
+              selected: {cubit.state.paymentMode},
+              onSelectionChanged: (selection) {
+                HapticFeedback.selectionClick();
+                cubit.setPaymentMode(selection.first);
+              },
+              style: SegmentedButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.textSecondary,
+                selectedBackgroundColor:
+                    isCredit
+                        ? Colors.purple.shade600
+                        : AppColors.primary,
+                selectedForegroundColor: Colors.white,
+                side: const BorderSide(color: AppColors.border),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
             ),
-            items: const [
-              DropdownMenuItem(
-                value: 'CONTADO',
-                child: Text(
-                  'Pago al Contado',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-              DropdownMenuItem(
-                value: 'CRÉDITO',
-                child: Text(
-                  'Compra al Crédito',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              DropdownMenuItem(
-                value: 'AJUSTE',
-                child: Text(
-                  'Ajuste / Sin Costo',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-            onChanged: (v) {
-              if (v != null) cubit.setPaymentMode(v);
-            },
           ),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
@@ -964,110 +995,106 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormState state,
     InventoryEntryFormCubit cubit,
   ) {
+    // Sin documento no hay número ni fecha que capturar.
+    final hasDocument = cubit.state.documentType != 'NINGUNO';
+
+    final typeField = DropdownButtonFormField<String>(
+      key: ValueKey('doctype_${cubit.state.documentType}'),
+      initialValue: cubit.state.documentType,
+      isExpanded: true,
+      icon: const Icon(Icons.expand_more_rounded),
+      decoration: _dropdownDecoration(
+        'Tipo de documento',
+        icon: Icons.description_outlined,
+      ),
+      items:
+          _docTypes.entries
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e.key,
+                  child: Text(
+                    e.value,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+      onChanged: (v) {
+        if (v == null) return;
+        cubit.setDocumentType(v);
+        if (v == 'NINGUNO') {
+          _documentNumberCtrl.clear();
+          cubit.setDocumentNumber('');
+          cubit.setDocumentDate(null);
+        }
+      },
+    );
+
+    final numberField = TextFormField(
+      controller: _documentNumberCtrl,
+      maxLength: 50,
+      textCapitalization: TextCapitalization.characters,
+      decoration: _dropdownDecoration(
+        'Número / serie',
+      ).copyWith(hintText: 'Ej: F001-000123', counterText: ''),
+    );
+
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionTitle(
             icon: Icons.receipt_long_rounded,
-            title: 'Documento Físico',
+            title: 'Documento y notas',
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: ValueKey('doctype_${cubit.state.documentType}'),
-                  initialValue: cubit.state.documentType,
-                  isExpanded: true,
-                  icon: const Icon(Icons.expand_more_rounded),
-                  decoration: _dropdownDecoration('Tipo Doc.'),
-                  items:
-                      _docTypes
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(
-                                type,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                  onChanged: (v) {
-                    if (v != null) cubit.setDocumentType(v);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: _documentNumberCtrl,
-                  maxLength: 50,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: 'Número / Serie',
-                    counterText: '',
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (!hasDocument) return typeField;
+              if (constraints.maxWidth >= 440) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: typeField),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 3, child: numberField),
+                  ],
+                );
+              }
+              return Column(
+                children: [typeField, const SizedBox(height: 16), numberField],
+              );
+            },
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child:
+                hasDocument
+                    ? Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: _DatePickerField(
+                        label: 'Fecha de emisión',
+                        value: cubit.state.documentDate,
+                        onPick: () => _pickDocumentDate(context),
+                        onClear: () => cubit.setDocumentDate(null),
+                        icon: Icons.edit_calendar_rounded,
                       ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _DatePickerField(
-            label: 'Fecha Emisión',
-            value: cubit.state.documentDate,
-            onPick: () => _pickDocumentDate(context),
-            onClear: () => cubit.setDocumentDate(null),
-            icon: Icons.edit_calendar_rounded,
+                    )
+                    : const SizedBox(width: double.infinity),
           ),
           const SizedBox(height: 16),
           TextFormField(
             controller: _notesCtrl,
             maxLines: 3,
             maxLength: 300,
-            decoration: InputDecoration(
-              labelText: 'Notas adicionales (Opcional)',
-              counterText: '',
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 2,
-                ),
-              ),
-            ),
+            decoration: _dropdownDecoration(
+              'Notas adicionales (opcional)',
+            ).copyWith(counterText: '', alignLabelWithHint: true),
           ),
         ],
       ),
@@ -1090,11 +1117,22 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         builder: (context, items) {
           return PurchaseOrderItemsTable(
             items: items,
-            onRemoveItem: (index) => cubit.removeItem(index),
+            title: 'Productos a ingresar',
+            emptyTitle: 'Aún no hay productos',
+            emptyMessage:
+                'Agrega los productos que vas a ingresar a tu almacén.',
+            // El total vive en la barra inferior fija.
+            showFooter: false,
+            onRemoveItem: (index) => _removeItemWithUndo(cubit, index),
             onUpdateQuantity:
                 (index, qty) => cubit.updateItemQuantity(index, qty),
             onUpdateCost: (index, cost) => cubit.updateItemCost(index, cost),
             onAddNewRow: () => _showAddProductSheet(context),
+            onEditBatch: (index) {
+              if (index < items.length) {
+                _showEditBatchDialog(context, index, items[index], cubit);
+              }
+            },
           );
         },
       );
@@ -1112,165 +1150,166 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: _SectionTitle(
                       icon: Icons.inventory_2_rounded,
-                      title: 'Productos a Ingresar',
+                      title:
+                          items.isEmpty
+                              ? 'Productos'
+                              : 'Productos (${items.length})',
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => _showAddProductSheet(context),
-                        icon: const Icon(
-                          Icons.add_circle_outline_rounded,
-                          size: 18,
+                  if (items.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _showAddProductSheet(context),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Agregar'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.1,
                         ),
-                        label: const Text('Agregar'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primary,
+                        foregroundColor: AppColors.primary,
+                        minimumSize: const Size(44, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      if (items.isNotEmpty && widget.purchaseOrderId == null)
-                        PopupMenuButton<String>(
-                          tooltip: 'Más opciones',
-                          icon: const Icon(
-                            Icons.more_vert_rounded,
-                            color: AppColors.textSecondary,
-                          ),
-                          onSelected: (value) {
-                            if (value == 'clear') _handleClearDraft();
-                          },
-                          itemBuilder:
-                              (_) => [
-                                const PopupMenuItem(
-                                  value: 'clear',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.delete_sweep_rounded,
-                                        color: AppColors.danger,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'Descartar todo',
-                                        style: TextStyle(
-                                          color: AppColors.danger,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                    ),
+                    if (widget.purchaseOrderId == null)
+                      PopupMenuButton<String>(
+                        tooltip: 'Más opciones',
+                        icon: const Icon(
+                          Icons.more_vert_rounded,
+                          color: AppColors.textSecondary,
                         ),
-                    ],
-                  ),
+                        onSelected: (value) {
+                          if (value == 'clear') _handleClearDraft();
+                        },
+                        itemBuilder:
+                            (_) => [
+                              const PopupMenuItem(
+                                value: 'clear',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_sweep_rounded,
+                                      color: AppColors.danger,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Descartar todo',
+                                      style: TextStyle(color: AppColors.danger),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                      ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
               AnimatedSize(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
                 child:
                     items.isEmpty
-                        ? Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 28,
-                            horizontal: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.move_to_inbox_rounded,
-                                size: 52,
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.25,
-                                ),
+                        ? _buildEmptyProducts(context)
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: List.generate(items.length, (index) {
+                            final item = items[index];
+                            return EntryItemCard(
+                              key: ValueKey(
+                                'entry_item_${item.productId}_${item.variantId}_${item.batchNumber}_$index',
                               ),
-                              const SizedBox(height: 14),
-                              const Text(
-                                'Sin productos a ingresar',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Agrega los productos que vas a registrar en tu inventario',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 18),
-                              OutlinedButton.icon(
-                                onPressed: () => _showAddProductSheet(context),
-                                icon: const Icon(Icons.add_rounded, size: 18),
-                                label: const Text('Agregar primer producto'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: const BorderSide(
-                                    color: AppColors.primary,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                        : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: items.length,
-                          itemBuilder: (context, index) {
-                            return POFormItemTile(
-                              item: items[index],
-                              onUpdateQuantity: (newQty) {
-                                cubit.updateItemQuantity(index, newQty);
-                              },
-                              onUpdateCost: (newCost) {
-                                cubit.updateItemCost(index, newCost);
-                              },
+                              item: item,
+                              onUpdateQuantity:
+                                  (qty) =>
+                                      cubit.updateItemQuantity(index, qty),
+                              onUpdateCost:
+                                  (cost) => cubit.updateItemCost(index, cost),
                               onEditBatch:
-                                  items[index].usesBatches
+                                  item.usesBatches
                                       ? () => _showEditBatchDialog(
                                         context,
                                         index,
-                                        items[index],
+                                        item,
                                         cubit,
                                       )
                                       : null,
-                              onRemove: () => cubit.removeItem(index),
+                              onRemove: () => _removeItemWithUndo(cubit, index),
                             );
-                          },
+                          }),
                         ),
               ),
-              if (items.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                POFormSummaryCard(items: items),
-              ],
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyProducts(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.move_to_inbox_rounded,
+              size: 26,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Aún no hay productos',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Agrega los productos que vas a ingresar a tu almacén.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () => _showAddProductSheet(context),
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Agregar producto'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1284,13 +1323,23 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     InventoryEntryFormState state,
     InventoryEntryFormCubit cubit,
   ) {
-    return BlocSelector<InventoryEntryFormCubit, InventoryEntryFormState, bool>(
-      selector: (state) => state.items.isNotEmpty,
-      builder: (context, hasItems) {
+    return BlocBuilder<InventoryEntryFormCubit, InventoryEntryFormState>(
+      buildWhen:
+          (prev, curr) =>
+              prev.items != curr.items || prev.isSaving != curr.isSaving,
+      builder: (context, s) {
+        final items = s.items;
+        final hasItems = items.isNotEmpty;
+        final isSaving = s.isSaving;
+        final total = items.fold<double>(
+          0.0,
+          (sum, i) => sum + i.quantity * i.unitCost,
+        );
+
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             border: Border(top: BorderSide(color: Colors.grey.shade200)),
             boxShadow: [
               BoxShadow(
@@ -1304,26 +1353,75 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             top: false,
             child: Row(
               children: [
+                // Total siempre a la vista, sin tener que bajar hasta el final.
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: !hasItems ? null : _handleSave,
-                    icon: const Icon(Icons.check_circle_outline_rounded),
-                    label: const Text(
-                      'Confirmar Ingreso',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Total estimado',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'S/ ${total.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.4,
+                            color:
+                                hasItems
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
+                          ),
+                        ),
                       ),
-                      elevation: 0,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: (!hasItems || isSaving) ? null : _handleSave,
+                  icon:
+                      isSaving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                          : const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 20,
+                          ),
+                  label: Text(isSaving ? 'Guardando...' : 'Confirmar ingreso'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
                     ),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.border,
+                    disabledForegroundColor: AppColors.textMuted,
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
                   ),
                 ),
               ],
@@ -1605,10 +1703,11 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 16 : 24),
       decoration: BoxDecoration(
         color: highlightColor ?? AppColors.surface,
         borderRadius: BorderRadius.circular(20),

@@ -1,30 +1,79 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
-import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-
-import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart';
-import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_state.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
-import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
-import 'dart:developer' as developer;
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_state.dart';
 
+/// Panel para añadir un producto a la entrada de inventario.
+///
+/// - En pantallas angostas se muestra como bottom sheet.
+/// - En pantallas anchas se muestra como diálogo anclado arriba (no salta
+///   de posición al crecer el contenido).
+///
+/// Usa [AddEntryProductSheet.show] para abrirlo: elige el formato solo.
 class AddEntryProductSheet extends StatefulWidget {
   final String? warehouseId;
   final bool isBatchRequired;
+
+  /// Si se pasa, aparece el botón "Agregar y seguir": agrega el producto a la
+  /// lista sin cerrar el panel, para cargar varios productos seguidos.
+  final ValueChanged<InventoryEntryItemEntity>? onAddAndContinue;
+
+  /// Lo define [show]. `true` = diálogo (pantalla ancha).
+  final bool asDialog;
 
   const AddEntryProductSheet({
     super.key,
     this.warehouseId,
     this.isBatchRequired = true,
+    this.onAddAndContinue,
+    this.asDialog = false,
   });
+
+  static Future<InventoryEntryItemEntity?> show(
+    BuildContext context, {
+    String? warehouseId,
+    bool isBatchRequired = true,
+    ValueChanged<InventoryEntryItemEntity>? onAddAndContinue,
+  }) {
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
+    if (isWide) {
+      return showDialog<InventoryEntryItemEntity>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder:
+            (_) => AddEntryProductSheet(
+              warehouseId: warehouseId,
+              isBatchRequired: isBatchRequired,
+              onAddAndContinue: onAddAndContinue,
+              asDialog: true,
+            ),
+      );
+    }
+    return showModalBottomSheet<InventoryEntryItemEntity>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (_) => AddEntryProductSheet(
+            warehouseId: warehouseId,
+            isBatchRequired: isBatchRequired,
+            onAddAndContinue: onAddAndContinue,
+          ),
+    );
+  }
 
   @override
   State<AddEntryProductSheet> createState() => _AddEntryProductSheetState();
@@ -35,8 +84,20 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   ProductVariantModel? _selectedVariant;
   double _quantity = 1;
   final _costCtrl = TextEditingController();
+  final _qtyCtrl = TextEditingController(text: '1');
   final _batchCtrl = TextEditingController();
   DateTime? _expiryDate;
+
+  /// El usuario tocó el costo a mano: ya no lo pisamos con el sugerido.
+  bool _costEdited = false;
+
+  /// Error mostrado dentro del panel (un snackbar quedaría detrás del modal).
+  String? _formError;
+  String? _lastHandledError;
+
+  /// Producto recién agregado con "Agregar y seguir".
+  String? _lastAddedName;
+  int _addedCount = 0;
 
   final _searchDebouncer = _Debouncer(milliseconds: 500);
 
@@ -54,31 +115,47 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   void dispose() {
     _searchDebouncer.dispose();
     _costCtrl.dispose();
+    _qtyCtrl.dispose();
     _batchCtrl.dispose();
     _cubit.close();
     super.dispose();
   }
 
-  /// Devuelve el costo unitario efectivo: primero el de la variante
-  /// (si es > 0), luego el del producto como fallback.
+  // ── Lógica ────────────────────────────────────────────────────────────────
+
+  /// Costo efectivo: primero el de la variante (si es > 0), luego el del
+  /// producto como fallback.
   double _effectiveCost({ProductVariantModel? variant, ProductModel? product}) {
     final variantCost = variant?.unitCost ?? 0;
     if (variantCost > 0) return variantCost;
     return product?.defaultVariant?.unitCost ?? 0;
   }
 
-  Future<void> _onProductChanged(ProductModel? val) async {
+  double get _currentCost =>
+      double.tryParse(_costCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+
+  String _fmtQty(double v) {
+    if (v % 1 == 0) return v.toInt().toString();
+    return v
+        .toStringAsFixed(3)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  void _onProductChanged(ProductModel? val) {
     ProductVariantModel? autoSelectedVariant;
-    if (val != null && val.productVariants.isNotEmpty) {
-      if (val.productVariants.length == 1) {
-        autoSelectedVariant = val.productVariants.first;
-      }
+    if (val != null && val.productVariants.length == 1) {
+      autoSelectedVariant = val.productVariants.first;
     }
 
     setState(() {
       _selectedProduct = val;
       _selectedVariant = autoSelectedVariant;
       _quantity = 1;
+      _qtyCtrl.text = '1';
+      _costEdited = false;
+      _formError = null;
+      _lastHandledError = null;
       _batchCtrl.clear();
       _expiryDate = null;
       if (val != null) {
@@ -101,8 +178,11 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   void _onVariantChanged(ProductVariantModel? val) {
     setState(() {
       _selectedVariant = val;
-      final cost = _effectiveCost(variant: val, product: _selectedProduct);
-      _costCtrl.text = cost.toStringAsFixed(2);
+      _formError = null;
+      if (!_costEdited) {
+        final cost = _effectiveCost(variant: val, product: _selectedProduct);
+        _costCtrl.text = cost.toStringAsFixed(2);
+      }
       _batchCtrl.clear();
     });
 
@@ -113,836 +193,165 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     }
   }
 
-  Future<void> _showQuantityDialog() async {
-    final qtyCtrl = TextEditingController(text: _quantity.toStringAsFixed(0));
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad exacta',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: TextField(
-              controller: qtyCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              autofocus: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 20),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty > 0) {
-                    setState(() => _quantity = newQty);
-                  }
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Guardar'),
-              ),
-            ],
-          ),
-    );
-    qtyCtrl.dispose();
+  void _setQuantity(double value) {
+    setState(() {
+      _quantity = value;
+      _qtyCtrl.text = _fmtQty(value);
+      _qtyCtrl.selection = TextSelection.collapsed(
+        offset: _qtyCtrl.text.length,
+      );
+      _formError = null;
+    });
   }
 
-  void _submit(AddEntryProductState state) {
-    final sanitizedCost = _costCtrl.text.trim().replaceAll(',', '.');
-    final cost = double.tryParse(sanitizedCost);
-    final availableVariants = state.availableVariants;
+  void _stepQuantity(int delta) {
+    HapticFeedback.selectionClick();
+    final double base = _quantity > 0 ? _quantity : 0.0;
+    double next = base + delta;
+    if (next < 1) next = 1;
+    _setQuantity(next);
+  }
 
-    if (_selectedProduct == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Selecciona un producto',
-        type: SnackbarType.error,
-      );
-      return;
+  void _onQuantityTyped(String raw) {
+    final parsed = double.tryParse(raw.trim().replaceAll(',', '.'));
+    setState(() {
+      _quantity = (parsed != null && parsed > 0) ? parsed : 0;
+      _formError = null;
+    });
+  }
+
+  void _fail(String message) {
+    HapticFeedback.mediumImpact();
+    setState(() => _formError = message);
+  }
+
+  InventoryEntryItemEntity? _buildItem(AddEntryProductState state) {
+    final product = _selectedProduct;
+    if (product == null) {
+      _fail('Selecciona un producto');
+      return null;
+    }
+
+    final variants = state.availableVariants;
+    if (variants.length > 1 && _selectedVariant == null) {
+      _fail('Elige una variante para continuar');
+      return null;
     }
     if (_quantity <= 0) {
-      AppSnackbar.show(
-        context,
-        message: 'La cantidad debe ser mayor a 0',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    if (cost == null || cost < 0) {
-      AppSnackbar.show(
-        context,
-        message: 'Ingresa un costo válido (positivo)',
-        type: SnackbarType.error,
-      );
-      return;
-    }
-    if (availableVariants.length > 1 && _selectedVariant == null) {
-      AppSnackbar.show(
-        context,
-        message: 'Selecciona una variante obligatoriamente',
-        type: SnackbarType.warning,
-      );
-      return;
+      _fail('La cantidad debe ser mayor a 0');
+      return null;
     }
 
-    final bool usesBatches = _selectedProduct?.usesBatches == true;
+    final cost = double.tryParse(_costCtrl.text.trim().replaceAll(',', '.'));
+    if (cost == null || cost < 0) {
+      _fail('Ingresa un costo válido (positivo)');
+      return null;
+    }
+
+    final bool usesBatches = product.usesBatches == true;
     if (widget.isBatchRequired &&
         usesBatches &&
         _batchCtrl.text.trim().isEmpty) {
-      AppSnackbar.show(
-        context,
-        message: 'El número de lote es obligatorio para este producto.',
-        type: SnackbarType.error,
-      );
-      return;
+      _fail('El número de lote es obligatorio para este producto');
+      return null;
     }
 
     final variantToUse =
         _selectedVariant ??
-        (state.availableVariants.isNotEmpty
-            ? state.availableVariants.first
-            : (_selectedProduct!.productVariants.isNotEmpty
-                ? _selectedProduct!.productVariants.first
+        (variants.isNotEmpty
+            ? variants.first
+            : (product.productVariants.isNotEmpty
+                ? product.productVariants.first
                 : ProductVariantModel(
                   id: '',
-                  productId: _selectedProduct!.id,
+                  productId: product.id,
                   sku: null,
                   salePrice: null,
                 )));
 
-    Navigator.pop(
-      context,
-      InventoryEntryItemEntity(
-        productId: _selectedProduct!.id,
-        productName: _selectedProduct!.name,
-        variantId: variantToUse.id,
-        variantLabel: _selectedVariant?.label ?? variantToUse.label,
-        imageUrl: _resolveCurrentImageUrl(),
-        usesBatches: usesBatches,
-        quantity: _quantity,
-        unitCost: cost,
-        batchNumber:
-            usesBatches
-                ? (_batchCtrl.text.trim().isEmpty
-                    ? 'DEFAULT'
-                    : _batchCtrl.text.trim())
-                : 'DEFAULT',
-        expiryDate: usesBatches ? _expiryDate : null,
-      ),
+    return InventoryEntryItemEntity(
+      productId: product.id,
+      productName: product.name,
+      variantId: variantToUse.id,
+      variantLabel: _selectedVariant?.label ?? variantToUse.label,
+      imageUrl: _resolveCurrentImageUrl(),
+      usesBatches: usesBatches,
+      quantity: _quantity,
+      unitCost: cost,
+      batchNumber:
+          usesBatches
+              ? (_batchCtrl.text.trim().isEmpty
+                  ? 'DEFAULT'
+                  : _batchCtrl.text.trim())
+              : 'DEFAULT',
+      expiryDate: usesBatches ? _expiryDate : null,
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _cubit,
-      child: BlocConsumer<AddEntryProductCubit, AddEntryProductState>(
-        listener: (context, state) {
-          if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
-            AppSnackbar.show(
-              context,
-              message: state.errorMessage!,
-              type: SnackbarType.error,
-            );
-          }
+  void _submit(AddEntryProductState state, {bool keepOpen = false}) {
+    final item = _buildItem(state);
+    if (item == null) return;
 
-          if (state.availableVariants.isNotEmpty && _selectedVariant == null) {
-            if (state.availableVariants.length == 1) {
-              setState(() {
-                _selectedVariant = state.availableVariants.first;
-                final cost = _effectiveCost(
-                  variant: _selectedVariant,
-                  product: _selectedProduct,
-                );
-                if (cost > 0) {
-                  _costCtrl.text = cost.toStringAsFixed(2);
-                }
-              });
-            } else {
-              final currentCost =
-                  double.tryParse(_costCtrl.text.trim()) ?? 0.0;
-              if (currentCost <= 0.0) {
-                final suggestedCost = _effectiveCost(
-                  variant: state.availableVariants.first,
-                  product: _selectedProduct,
-                );
-                if (suggestedCost > 0) {
-                  setState(() {
-                    _costCtrl.text = suggestedCost.toStringAsFixed(2);
-                  });
-                }
-              }
-            }
-          }
-        },
-        builder: (context, state) {
-          final availableVariants = state.availableVariants;
-          final theme = Theme.of(context);
-          final colorScheme = theme.colorScheme;
-          final textTheme = theme.textTheme;
-          final mediaQuery = MediaQuery.of(context);
+    if (keepOpen && widget.onAddAndContinue != null) {
+      HapticFeedback.mediumImpact();
+      widget.onAddAndContinue!(item);
+      setState(() {
+        _selectedProduct = null;
+        _selectedVariant = null;
+        _quantity = 1;
+        _qtyCtrl.text = '1';
+        _costCtrl.clear();
+        _batchCtrl.clear();
+        _expiryDate = null;
+        _costEdited = false;
+        _formError = null;
+        _lastHandledError = null;
+        _lastAddedName = item.productName;
+        _addedCount++;
+      });
+      return;
+    }
 
-          // Calcular el ancho del Autocomplete para que coincida con el espacio disponible
-          double overlayWidth =
-              mediaQuery.size.width - 48; // 24 padding por lado
-          if (overlayWidth > 492) {
-            overlayWidth = 492; // Max width de 540 - 48
-          }
+    HapticFeedback.mediumImpact();
+    Navigator.pop(context, item);
+  }
 
-          final bool usesBatches = _selectedProduct?.usesBatches == true;
-          final currentImageUrl = _resolveCurrentImageUrl();
+  void _onCubitState(BuildContext context, AddEntryProductState state) {
+    final error = state.errorMessage;
+    if (error != null && error.isNotEmpty && error != _lastHandledError) {
+      _lastHandledError = error;
+      setState(() => _formError = error);
+    }
 
-          return SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 540),
-                child: Container(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    0,
-                    24,
-                    mediaQuery.viewInsets.bottom + 24,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(32),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 14),
-                            width: 40,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: AppColors.border,
-                              borderRadius: BorderRadius.circular(2.5),
-                            ),
-                          ),
-                        ),
-                        Text(
-                          'Añadir Producto',
-                          style: textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
+    // Autoselección de variante / costo sugerido, solo con el producto
+    // actual ya cargado (evita aplicar variantes de un producto anterior).
+    if (_selectedProduct == null ||
+        state.isLoadingVariants ||
+        state.availableVariants.isEmpty ||
+        _selectedVariant != null) {
+      return;
+    }
 
-                        // ── BUSCADOR DE PRODUCTO (AUTOCOMPLETE) ──
-                        const _FieldLabel('Producto'),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Autocomplete<ProductModel>(
-                            displayStringForOption: (p) => p.name,
-                            optionsBuilder: (textEditingValue) async {
-                              if (textEditingValue.text.isEmpty) {
-                                return const Iterable<ProductModel>.empty();
-                              }
-                              return _searchDebouncer.run<
-                                Iterable<ProductModel>
-                              >(() async {
-                                final res = await _repository
-                                    .searchProductsForEntry(
-                                      textEditingValue.text,
-                                    );
-                                return res.fold((l) {
-                                  developer.log(
-                                    'Error de red al buscar',
-                                    error: l.message,
-                                  );
-                                  if (mounted) {
-                                    AppSnackbar.show(
-                                      context,
-                                      message:
-                                          'Error de red al buscar productos. Revisa tu conexión.',
-                                      type: SnackbarType.error,
-                                    );
-                                  }
-                                  return const Iterable<ProductModel>.empty();
-                                }, (r) => r.map((p) => ProductModel.fromJson(p)));
-                              }, const Iterable<ProductModel>.empty());
-                            },
-                            onSelected: _onProductChanged,
-                            fieldViewBuilder: (
-                              context,
-                              textEditingController,
-                              focusNode,
-                              onFieldSubmitted,
-                            ) {
-                              if (_selectedProduct != null &&
-                                  textEditingController.text !=
-                                      _selectedProduct!.name) {
-                                textEditingController.text =
-                                    _selectedProduct!.name;
-                              }
-                              return TextField(
-                                controller: textEditingController,
-                                focusNode: focusNode,
-                                decoration: InputDecoration(
-                                  hintText: 'Buscar producto...',
-                                  hintStyle: textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textMuted,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.search_rounded,
-                                    color: AppColors.textMuted,
-                                  ),
-                                  suffixIcon:
-                                      _selectedProduct != null
-                                          ? GestureDetector(
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              textEditingController.clear();
-                                              _onProductChanged(null);
-                                            },
-                                            behavior: HitTestBehavior.opaque,
-                                            child: const SizedBox(
-                                              width: 48,
-                                              height: 48,
-                                              child: Icon(
-                                                Icons.clear_rounded,
-                                                size: 20,
-                                                color: AppColors.textMuted,
-                                              ),
-                                            ),
-                                          )
-                                          : null,
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                ),
-                              );
-                            },
-                            optionsViewBuilder: (context, onSelected, options) {
-                              return Align(
-                                alignment: Alignment.topLeft,
-                                child: Material(
-                                  elevation: 8,
-                                  shadowColor: Colors.black.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  color: colorScheme.surface,
-                                  clipBehavior: Clip.antiAlias,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxHeight: 250,
-                                      maxWidth: overlayWidth,
-                                    ),
-                                    child: ListView.separated(
-                                      padding: EdgeInsets.zero,
-                                      shrinkWrap: true,
-                                      itemCount: options.length,
-                                      separatorBuilder:
-                                          (_, _) => const Divider(height: 1),
-                                      itemBuilder: (context, index) {
-                                        final p = options.elementAt(index);
-                                        String? imgUrl;
-                                        if (p.images.isNotEmpty) {
-                                          imgUrl =
-                                              p.images
-                                                  .firstWhere(
-                                                    (img) => img.isMain,
-                                                    orElse:
-                                                        () => p.images.first,
-                                                  )
-                                                  .imageUrl;
-                                        }
-                                        return ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 4,
-                                              ),
-                                          leading: _ProductThumbnail(
-                                            imageUrl: imgUrl,
-                                            size: 40,
-                                          ),
-                                          title: Text(
-                                            p.name,
-                                            style: textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                          onTap: () {
-                                            HapticFeedback.lightImpact();
-                                            onSelected(p);
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Selector de variante (solo si tiene 2 o más variantes)
-                        if (state.isLoadingVariants) ...[
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24.0),
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                        ] else if (availableVariants.length > 1) ...[
-                          DropdownButtonFormField<ProductVariantModel>(
-                            initialValue: _selectedVariant,
-                            isExpanded: true,
-                            icon: const Icon(Icons.expand_more_rounded),
-                            decoration: _dropdownDecoration(
-                              'Selecciona la Variante (Obligatorio)',
-                            ),
-                            items:
-                                availableVariants
-                                    .map(
-                                      (v) => DropdownMenuItem(
-                                        value: v,
-                                        child: Text(
-                                          v.label,
-                                          style: textTheme.bodyMedium?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (val) {
-                              HapticFeedback.lightImpact();
-                              _onVariantChanged(val);
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        if (_selectedProduct != null) ...[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _ProductThumbnail(
-                                imageUrl: currentImageUrl,
-                                size: 64,
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Builder(
-                                  builder: (context) {
-                                    final cost =
-                                        double.tryParse(
-                                          _costCtrl.text.trim(),
-                                        ) ??
-                                        0.0;
-                                    final isZeroCost = cost == 0.0;
-                                    return TextField(
-                                      controller: _costCtrl,
-                                      keyboardType:
-                                          const TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.allow(
-                                          RegExp(r'^\d+\.?\d{0,2}'),
-                                        ),
-                                      ],
-                                      onChanged: (_) => setState(() {}),
-                                      style: textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                      decoration: InputDecoration(
-                                        labelText: 'Costo de Compra (S/)',
-                                        labelStyle: textTheme.bodyMedium
-                                            ?.copyWith(
-                                              color:
-                                                  isZeroCost
-                                                      ? AppColors.warning
-                                                      : AppColors.textSecondary,
-                                            ),
-                                        helperText:
-                                            isZeroCost
-                                                ? '⚠ Verifica el costo — está en S/ 0.00'
-                                                : null,
-                                        helperStyle: textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: AppColors.warning,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                        filled: true,
-                                        fillColor: AppColors.background,
-                                        prefixText: 'S/ ',
-                                        prefixStyle: textTheme.titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color:
-                                                isZeroCost
-                                                    ? AppColors.warning
-                                                    : AppColors.border,
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color:
-                                                isZeroCost
-                                                    ? AppColors.warning
-                                                    : AppColors.border,
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color:
-                                                isZeroCost
-                                                    ? AppColors.warning
-                                                    : AppColors.primary,
-                                            width: 1.5,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          const _FieldLabel('Cantidad'),
-                          const SizedBox(height: 8),
-                          _HorizontalStepper(
-                            value: _quantity,
-                            onAdd: () {
-                              HapticFeedback.lightImpact();
-                              setState(() => _quantity++);
-                            },
-                            onRemove:
-                                _quantity > 1
-                                    ? () {
-                                      HapticFeedback.lightImpact();
-                                      setState(() => _quantity--);
-                                    }
-                                    : null,
-                            onTapValue: _showQuantityDialog,
-                          ),
-                        ],
-
-                        const SizedBox(height: 24),
-
-                        // Lote (solo si el producto lo requiere)
-                        if (usesBatches) ...[
-                          if (state.isLoadingBatches)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          else
-                            Autocomplete<WarehouseStockBatchModel>(
-                              key: ValueKey(
-                                'batch_autocomplete_${_selectedProduct?.id}_${_selectedVariant?.id}',
-                              ),
-                              initialValue: TextEditingValue(
-                                text: _batchCtrl.text,
-                              ),
-                              optionsBuilder: (
-                                TextEditingValue textEditingValue,
-                              ) {
-                                final batches =
-                                    state.availableBatches
-                                        .map(
-                                          (e) =>
-                                              WarehouseStockBatchModel.fromJson(
-                                                e,
-                                              ),
-                                        )
-                                        .toList();
-                                if (textEditingValue.text.isEmpty) {
-                                  return batches;
-                                }
-                                return batches.where(
-                                  (option) =>
-                                      option.batchNumber.toLowerCase().contains(
-                                        textEditingValue.text.toLowerCase(),
-                                      ),
-                                );
-                              },
-                              displayStringForOption:
-                                  (option) => option.batchNumber,
-                              fieldViewBuilder: (
-                                context,
-                                textEditingController,
-                                focusNode,
-                                onFieldSubmitted,
-                              ) {
-                                return TextField(
-                                  controller: textEditingController,
-                                  focusNode: focusNode,
-                                  onChanged: (value) => _batchCtrl.text = value,
-                                  decoration: InputDecoration(
-                                    labelText:
-                                        widget.isBatchRequired
-                                            ? 'Nº de Lote (Obligatorio)'
-                                            : 'Nº de Lote (Opcional - En recepción)',
-                                    labelStyle: textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    hintText:
-                                        state.availableBatches.isEmpty
-                                            ? (widget.isBatchRequired
-                                                ? 'Ej: LOTE-2024-001'
-                                                : 'Opcional (se asigna en recepción física)')
-                                            : 'Escribe o toca para ver lotes existentes...',
-                                    filled: true,
-                                    fillColor: AppColors.background,
-                                    prefixIcon: const Icon(
-                                      Icons.qr_code_scanner,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    suffixIcon:
-                                        state.availableBatches.isNotEmpty
-                                            ? Tooltip(
-                                              message:
-                                                  '${state.availableBatches.length} lote(s) existente(s) en este almacén',
-                                              child: Icon(
-                                                Icons.layers_rounded,
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.7),
-                                                size: 20,
-                                              ),
-                                            )
-                                            : null,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                        color: AppColors.primary,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                              optionsViewBuilder: (
-                                context,
-                                onSelected,
-                                options,
-                              ) {
-                                return Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Material(
-                                    elevation: 8.0,
-                                    shadowColor: Colors.black.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    color: colorScheme.surface,
-                                    clipBehavior: Clip.antiAlias,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxHeight: 260,
-                                        maxWidth: overlayWidth,
-                                      ),
-                                      child: ListView.separated(
-                                        padding: EdgeInsets.zero,
-                                        shrinkWrap: true,
-                                        itemCount: options.length,
-                                        separatorBuilder:
-                                            (_, _) => const Divider(height: 1),
-                                        itemBuilder: (
-                                          BuildContext context,
-                                          int index,
-                                        ) {
-                                          final option = options.elementAt(
-                                            index,
-                                          );
-                                          final dateStr =
-                                              option.expiryDate != null
-                                                  ? '${option.expiryDate!.day.toString().padLeft(2, '0')}/${option.expiryDate!.month.toString().padLeft(2, '0')}/${option.expiryDate!.year}'
-                                                  : 'Sin vencimiento';
-                                          return ListTile(
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 16,
-                                                  vertical: 8,
-                                                ),
-                                            leading: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary
-                                                    .withValues(alpha: 0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(
-                                                Icons.tag,
-                                                color: AppColors.primary,
-                                                size: 20,
-                                              ),
-                                            ),
-                                            title: Text(
-                                              option.batchNumber,
-                                              style: textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                            ),
-                                            subtitle: Text(
-                                              'Vence: $dateStr',
-                                              style: textTheme.bodySmall,
-                                            ),
-                                            trailing: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  'Stock',
-                                                  style: textTheme.labelSmall
-                                                      ?.copyWith(
-                                                        color:
-                                                            AppColors.textMuted,
-                                                      ),
-                                                ),
-                                                Text(
-                                                  option.availableQuantity
-                                                      .toStringAsFixed(0),
-                                                  style: textTheme.titleSmall
-                                                      ?.copyWith(
-                                                        color:
-                                                            AppColors.primary,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                            onTap: () {
-                                              HapticFeedback.lightImpact();
-                                              onSelected(option);
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                              onSelected: (WarehouseStockBatchModel selection) {
-                                setState(() {
-                                  _batchCtrl.text = selection.batchNumber;
-                                  _expiryDate = selection.expiryDate;
-                                });
-                              },
-                            ),
-                          const SizedBox(height: 16),
-                          _DatePickerField(
-                            label: 'Fecha de Vencimiento (Opcional)',
-                            value: _expiryDate,
-                            onPick: (d) => setState(() => _expiryDate = d),
-                            onClear: () {
-                              HapticFeedback.lightImpact();
-                              setState(() => _expiryDate = null);
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-
-                        SizedBox(
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed:
-                                state.isLoadingVariants ||
-                                        state.isLoadingBatches
-                                    ? null
-                                    : () {
-                                      HapticFeedback.mediumImpact();
-                                      _submit(state);
-                                    },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Text(
-                              'Agregar a la lista',
-                              style: textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: colorScheme.onPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+    if (state.availableVariants.length == 1) {
+      setState(() {
+        _selectedVariant = state.availableVariants.first;
+        if (!_costEdited) {
+          final cost = _effectiveCost(
+            variant: _selectedVariant,
+            product: _selectedProduct,
           );
-        },
-      ),
-    );
+          if (cost > 0) _costCtrl.text = cost.toStringAsFixed(2);
+        }
+      });
+    } else if (!_costEdited && _currentCost <= 0.0) {
+      final suggested = _effectiveCost(
+        variant: state.availableVariants.first,
+        product: _selectedProduct,
+      );
+      if (suggested > 0) {
+        setState(() => _costCtrl.text = suggested.toStringAsFixed(2));
+      }
+    }
   }
 
   String? _resolveCurrentImageUrl() {
@@ -959,45 +368,1106 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     }
     return null;
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider.value(
+      value: _cubit,
+      child: BlocConsumer<AddEntryProductCubit, AddEntryProductState>(
+        listener: _onCubitState,
+        builder: (context, state) {
+          final mq = MediaQuery.of(context);
+
+          if (widget.asDialog) {
+            final top =
+                mq.size.height * 0.08 < 24 ? 24.0 : mq.size.height * 0.08;
+            final maxHeight = mq.size.height - top - 24 - mq.viewInsets.bottom;
+            return Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  top,
+                  24,
+                  24 + mq.viewInsets.bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 520,
+                    maxHeight: maxHeight,
+                  ),
+                  child: _buildPanel(
+                    context,
+                    state,
+                    radius: BorderRadius.circular(24),
+                    elevation: 12,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final maxHeight =
+              mq.size.height -
+              mq.viewInsets.bottom -
+              mq.padding.top -
+              mq.padding.bottom -
+              8;
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 540,
+                    maxHeight: maxHeight,
+                  ),
+                  child: _buildPanel(
+                    context,
+                    state,
+                    radius: const BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPanel(
+    BuildContext context,
+    AddEntryProductState state, {
+    required BorderRadius radius,
+    required double elevation,
+  }) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withValues(alpha: 0.25),
+      elevation: elevation,
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(context),
+          Flexible(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+              child: _buildContent(context, state),
+            ),
+          ),
+          _buildFooter(context, state),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!widget.asDialog)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 10),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(24, widget.asDialog ? 20 : 8, 12, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Añadir producto',
+                      style: textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    if (_addedCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          _addedCount == 1
+                              ? '1 producto agregado en esta sesión'
+                              : '$_addedCount productos agregados en esta sesión',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Cerrar',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, AddEntryProductState state) {
+    final product = _selectedProduct;
+    final variantLabel = _selectedVariant?.label;
+    final showVariantLabel =
+        variantLabel != null &&
+        variantLabel.isNotEmpty &&
+        variantLabel != 'Default' &&
+        variantLabel != 'Variante Única';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_lastAddedName != null) _AddedBanner(name: _lastAddedName!),
+        if (product == null) ...[
+          const _FieldLabel('Producto'),
+          const SizedBox(height: 8),
+          _buildSearchField(context),
+          const _SearchHint(),
+        ] else ...[
+          _SelectedProductCard(
+            name: product.name,
+            variantLabel: showVariantLabel ? variantLabel : null,
+            imageUrl: _resolveCurrentImageUrl(),
+            usesBatches: product.usesBatches == true,
+            onChange: () {
+              HapticFeedback.lightImpact();
+              _onProductChanged(null);
+            },
+          ),
+          ..._buildDetails(context, state),
+        ],
+      ],
+    );
+  }
+
+  // ── Búsqueda ──────────────────────────────────────────────────────────────
+
+  Widget _buildSearchField(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final overlayWidth = constraints.maxWidth;
+        return Autocomplete<ProductModel>(
+          displayStringForOption: (p) => p.name,
+          optionsBuilder: (textEditingValue) async {
+            if (textEditingValue.text.trim().isEmpty) {
+              return const Iterable<ProductModel>.empty();
+            }
+            return _searchDebouncer.run<Iterable<ProductModel>>(() async {
+              final res = await _repository.searchProductsForEntry(
+                textEditingValue.text,
+              );
+              return res.fold((l) {
+                developer.log('Error de red al buscar', error: l.message);
+                if (mounted) {
+                  AppSnackbar.show(
+                    context,
+                    message:
+                        'Error de red al buscar productos. Revisa tu conexión.',
+                    type: SnackbarType.error,
+                  );
+                }
+                return const Iterable<ProductModel>.empty();
+              }, (r) => r.map((p) => ProductModel.fromJson(p)));
+            }, const Iterable<ProductModel>.empty());
+          },
+          onSelected: _onProductChanged,
+          fieldViewBuilder: (
+            context,
+            textEditingController,
+            focusNode,
+            onFieldSubmitted,
+          ) {
+            return TextField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              style: textTheme.bodyLarge,
+              decoration: _inputDecoration(
+                hint: 'Buscar producto...',
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            );
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Material(
+                  elevation: 8,
+                  shadowColor: Colors.black.withValues(alpha: 0.15),
+                  surfaceTintColor: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  color: colorScheme.surface,
+                  clipBehavior: Clip.antiAlias,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: 280,
+                      maxWidth: overlayWidth,
+                    ),
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final p = options.elementAt(index);
+                        String? imgUrl;
+                        if (p.images.isNotEmpty) {
+                          imgUrl =
+                              p.images
+                                  .firstWhere(
+                                    (img) => img.isMain,
+                                    orElse: () => p.images.first,
+                                  )
+                                  .imageUrl;
+                        }
+                        final variantCount = p.productVariants.length;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          leading: _ProductThumbnail(
+                            imageUrl: imgUrl,
+                            size: 44,
+                          ),
+                          title: Text(
+                            p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle:
+                              variantCount > 1
+                                  ? Text(
+                                    '$variantCount variantes',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  )
+                                  : null,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            onSelected(p);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ── Detalles del producto elegido ─────────────────────────────────────────
+
+  List<Widget> _buildDetails(BuildContext context, AddEntryProductState state) {
+    final variants = state.availableVariants;
+    final usesBatches = _selectedProduct?.usesBatches == true;
+    final subtotal = _quantity * _currentCost;
+
+    return [
+      if (state.isLoadingVariants)
+        const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(4)),
+            child: LinearProgressIndicator(
+              minHeight: 3,
+              color: AppColors.primary,
+            ),
+          ),
+        )
+      else if (variants.length > 1) ...[
+        const SizedBox(height: 20),
+        const _FieldLabel('Variante'),
+        const SizedBox(height: 8),
+        _buildVariantPicker(context, variants),
+      ],
+      const SizedBox(height: 20),
+      _buildAmounts(context),
+      if (usesBatches) ...[
+        const SizedBox(height: 20),
+        _buildBatchSection(context, state),
+      ],
+      const SizedBox(height: 20),
+      _SubtotalBar(subtotal: subtotal),
+    ];
+  }
+
+  Widget _buildVariantPicker(
+    BuildContext context,
+    List<ProductVariantModel> variants,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    // Pocas variantes: chips (1 toque). Muchas: lista desplegable.
+    if (variants.length > 6) {
+      return DropdownButtonFormField<ProductVariantModel>(
+        initialValue: _selectedVariant,
+        isExpanded: true,
+        icon: const Icon(Icons.expand_more_rounded),
+        decoration: _inputDecoration(hint: 'Selecciona una variante'),
+        items:
+            variants
+                .map(
+                  (v) => DropdownMenuItem(
+                    value: v,
+                    child: Text(
+                      v.label,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+        onChanged: (val) {
+          HapticFeedback.lightImpact();
+          _onVariantChanged(val);
+        },
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children:
+          variants.map((v) {
+            final selected = _selectedVariant?.id == v.id;
+            return ChoiceChip(
+              label: Text(v.label),
+              selected: selected,
+              showCheckmark: false,
+              onSelected: (_) {
+                HapticFeedback.selectionClick();
+                _onVariantChanged(v);
+              },
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.background,
+              labelStyle: textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : AppColors.textPrimary,
+              ),
+              side: BorderSide(
+                color: selected ? AppColors.primary : AppColors.border,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  Widget _buildAmounts(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final isZeroCost = _currentCost == 0.0;
+
+    final costField = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _FieldLabel('Costo unitario'),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _costCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.next,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+          ],
+          onTap:
+              () =>
+                  _costCtrl.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _costCtrl.text.length,
+                  ),
+          onChanged:
+              (_) => setState(() {
+                _costEdited = true;
+                _formError = null;
+              }),
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+          decoration: _inputDecoration(
+            prefixText: 'S/ ',
+            helper: isZeroCost ? 'Verifica el costo: está en S/ 0.00' : null,
+            accent: isZeroCost ? AppColors.warning : null,
+          ),
+        ),
+      ],
+    );
+
+    final qtyField = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _FieldLabel('Cantidad'),
+        const SizedBox(height: 8),
+        _QuantityStepper(
+          controller: _qtyCtrl,
+          canDecrease: _quantity > 1,
+          onDecrease: () => _stepQuantity(-1),
+          onIncrease: () => _stepQuantity(1),
+          onChanged: _onQuantityTyped,
+        ),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 300) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: costField),
+              const SizedBox(width: 12),
+              Expanded(child: qtyField),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [costField, const SizedBox(height: 16), qtyField],
+        );
+      },
+    );
+  }
+
+  Widget _buildBatchSection(BuildContext context, AddEntryProductState state) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _FieldLabel(
+          widget.isBatchRequired ? 'Lote (obligatorio)' : 'Lote (opcional)',
+        ),
+        const SizedBox(height: 8),
+        if (state.isLoadingBatches)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final overlayWidth = constraints.maxWidth;
+              return Autocomplete<WarehouseStockBatchModel>(
+                key: ValueKey(
+                  'batch_autocomplete_${_selectedProduct?.id}_${_selectedVariant?.id}',
+                ),
+                initialValue: TextEditingValue(text: _batchCtrl.text),
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  final batches =
+                      state.availableBatches
+                          .map((e) => WarehouseStockBatchModel.fromJson(e))
+                          .toList();
+                  if (textEditingValue.text.isEmpty) return batches;
+                  return batches.where(
+                    (option) => option.batchNumber.toLowerCase().contains(
+                      textEditingValue.text.toLowerCase(),
+                    ),
+                  );
+                },
+                displayStringForOption: (option) => option.batchNumber,
+                fieldViewBuilder: (
+                  context,
+                  textEditingController,
+                  focusNode,
+                  onFieldSubmitted,
+                ) {
+                  return TextField(
+                    controller: textEditingController,
+                    focusNode: focusNode,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (value) {
+                      _batchCtrl.text = value;
+                      if (_formError != null) {
+                        setState(() => _formError = null);
+                      }
+                    },
+                    decoration: _inputDecoration(
+                      hint:
+                          state.availableBatches.isEmpty
+                              ? (widget.isBatchRequired
+                                  ? 'Ej: LOTE-2024-001'
+                                  : 'Se asigna en la recepción física')
+                              : 'Escribe o elige un lote existente',
+                      prefixIcon: const Icon(
+                        Icons.tag_rounded,
+                        color: AppColors.textMuted,
+                      ),
+                      suffixIcon:
+                          state.availableBatches.isNotEmpty
+                              ? Tooltip(
+                                message:
+                                    '${state.availableBatches.length} lote(s) en este almacén',
+                                child: Icon(
+                                  Icons.layers_rounded,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  size: 20,
+                                ),
+                              )
+                              : null,
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Material(
+                        elevation: 8,
+                        shadowColor: Colors.black.withValues(alpha: 0.15),
+                        surfaceTintColor: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        color: colorScheme.surface,
+                        clipBehavior: Clip.antiAlias,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: 260,
+                            maxWidth: overlayWidth,
+                          ),
+                          child: ListView.separated(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            separatorBuilder:
+                                (_, _) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final option = options.elementAt(index);
+                              final dateStr =
+                                  option.expiryDate != null
+                                      ? _formatDate(option.expiryDate!)
+                                      : 'Sin vencimiento';
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 6,
+                                ),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.tag_rounded,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  option.batchNumber,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  'Vence: $dateStr',
+                                  style: textTheme.bodySmall,
+                                ),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Stock',
+                                      style: textTheme.labelSmall?.copyWith(
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    Text(
+                                      option.availableQuantity.toStringAsFixed(
+                                        0,
+                                      ),
+                                      style: textTheme.titleSmall?.copyWith(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  onSelected(option);
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                onSelected: (WarehouseStockBatchModel selection) {
+                  setState(() {
+                    _batchCtrl.text = selection.batchNumber;
+                    _expiryDate = selection.expiryDate;
+                    _formError = null;
+                  });
+                },
+              );
+            },
+          ),
+        const SizedBox(height: 12),
+        _DatePickerField(
+          label: 'Fecha de vencimiento (opcional)',
+          value: _expiryDate,
+          onPick: (d) => setState(() => _expiryDate = d),
+          onClear: () {
+            HapticFeedback.lightImpact();
+            setState(() => _expiryDate = null);
+          },
+        ),
+      ],
+    );
+  }
+
+  // ── Footer ────────────────────────────────────────────────────────────────
+
+  Widget _buildFooter(BuildContext context, AddEntryProductState state) {
+    final loading = state.isLoadingVariants || state.isLoadingBatches;
+    final canAdd = _selectedProduct != null && !loading;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: const Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_formError != null) _InlineError(message: _formError!),
+          Row(
+            children: [
+              if (widget.onAddAndContinue != null) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        canAdd ? () => _submit(state, keepOpen: true) : null,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Agregar y seguir',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: canAdd ? () => _submit(state) : null,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: colorScheme.onPrimary,
+                    disabledBackgroundColor: AppColors.border,
+                    disabledForegroundColor: AppColors.textMuted,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Agregar a la lista',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Decoración compartida ─────────────────────────────────────────────────
+
+  InputDecoration _inputDecoration({
+    String? hint,
+    String? helper,
+    String? prefixText,
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+    Color? accent,
+  }) {
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.textMuted),
+      helperText: helper,
+      helperStyle: TextStyle(
+        color: accent ?? AppColors.textSecondary,
+        fontWeight: FontWeight.w600,
+      ),
+      prefixText: prefixText,
+      prefixStyle: const TextStyle(
+        fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary,
+      ),
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: AppColors.background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: border(accent ?? AppColors.border),
+      enabledBorder: border(accent ?? AppColors.border),
+      focusedBorder: border(accent ?? AppColors.primary, 1.5),
+    );
+  }
 }
+
+String _formatDate(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+// ═════════════════════════════════════════════════════════════════════════════
+// WIDGETS AUXILIARES
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _FieldLabel extends StatelessWidget {
   final String text;
   const _FieldLabel(this.text);
+
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-      fontWeight: FontWeight.w700,
+    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w600,
       color: AppColors.textSecondary,
-      letterSpacing: 0.5,
     ),
   );
 }
 
-class _HorizontalStepper extends StatelessWidget {
-  final double value;
-  final VoidCallback onAdd;
-  final VoidCallback? onRemove;
-  final VoidCallback onTapValue;
-  const _HorizontalStepper({
-    required this.value,
-    required this.onAdd,
-    this.onRemove,
-    required this.onTapValue,
+/// Estado inicial: invita a buscar en vez de dejar un hueco vacío.
+class _SearchHint extends StatelessWidget {
+  const _SearchHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primary,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Escribe el nombre del producto',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedProductCard extends StatelessWidget {
+  final String name;
+  final String? variantLabel;
+  final String? imageUrl;
+  final bool usesBatches;
+  final VoidCallback onChange;
+
+  const _SelectedProductCard({
+    required this.name,
+    required this.variantLabel,
+    required this.imageUrl,
+    required this.usesBatches,
+    required this.onChange,
   });
 
-  /// Muestra la cantidad con decimales solo si no es entera.
-  String get _displayValue =>
-      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          _ProductThumbnail(imageUrl: imageUrl, size: 60),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (variantLabel != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      variantLabel!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                if (usesBatches)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Se controla por lote',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onChange,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(64, 44),
+            ),
+            child: const Text(
+              'Cambiar',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddedBanner extends StatelessWidget {
+  final String name;
+  const _AddedBanner({required this.name});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 18,
+            color: AppColors.success,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$name agregado a la lista',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.success,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  final String message;
+  const _InlineError({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: AppColors.danger,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubtotalBar extends StatelessWidget {
+  final double subtotal;
+  const _SubtotalBar({required this.subtotal});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Subtotal',
+            style: textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            child: Text(
+              'S/ ${subtotal.toStringAsFixed(2)}',
+              key: ValueKey(subtotal.toStringAsFixed(2)),
+              style: textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stepper con la cantidad editable directamente (sin diálogo intermedio).
+class _QuantityStepper extends StatelessWidget {
+  final TextEditingController controller;
+  final bool canDecrease;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
+  final ValueChanged<String> onChanged;
+
+  const _QuantityStepper({
+    required this.controller,
+    required this.canDecrease,
+    required this.onDecrease,
+    required this.onIncrease,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -1007,45 +1477,38 @@ class _HorizontalStepper extends StatelessWidget {
             button: true,
             child: _QtyButton(
               icon: Icons.remove_rounded,
-              enabled: onRemove != null,
-              onTap: onRemove ?? () {},
+              enabled: canDecrease,
+              onTap: onDecrease,
             ),
           ),
           Expanded(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  onTapValue();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  // AnimatedSwitcher con curva elástica para feedback visual al cambiar valor
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    transitionBuilder:
-                        (child, animation) => ScaleTransition(
-                          scale: CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.elasticOut,
-                          ),
-                          child: child,
-                        ),
-                    child: Text(
-                      _displayValue,
-                      key: ValueKey(_displayValue),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.center,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,3}')),
+              ],
+              onTap:
+                  () =>
+                      controller.selection = TextSelection(
+                        baseOffset: 0,
+                        extentOffset: controller.text.length,
                       ),
-                    ),
-                  ),
-                ),
+              onChanged: onChanged,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
               ),
             ),
           ),
@@ -1055,10 +1518,50 @@ class _HorizontalStepper extends StatelessWidget {
             child: _QtyButton(
               icon: Icons.add_rounded,
               enabled: true,
-              onTap: onAdd,
+              onTap: onIncrease,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QtyButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+  const _QtyButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        splashColor: AppColors.primary.withValues(alpha: 0.18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 40,
+          height: 44,
+          decoration: BoxDecoration(
+            color:
+                enabled
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: enabled ? AppColors.primary : AppColors.textMuted,
+            size: 22,
+          ),
+        ),
       ),
     );
   }
@@ -1086,21 +1589,17 @@ class _DatePickerField extends StatelessWidget {
           HapticFeedback.lightImpact();
           final picked = await showDatePicker(
             context: context,
-            initialDate: DateTime.now().add(const Duration(days: 30)),
+            initialDate: value ?? DateTime.now().add(const Duration(days: 30)),
             firstDate: DateTime.now(),
             lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-            helpText: 'Fecha de Vencimiento',
+            helpText: 'Fecha de vencimiento',
           );
           if (picked != null) onPick(picked);
         },
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: value != null ? 0 : 16,
-            top: 10,
-            bottom: 10,
-          ),
+          height: 56,
+          padding: EdgeInsets.only(left: 16, right: value != null ? 0 : 16),
           decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.circular(14),
@@ -1116,9 +1615,7 @@ class _DatePickerField extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  value == null
-                      ? label
-                      : 'Vence: ${value!.day.toString().padLeft(2, '0')}/${value!.month.toString().padLeft(2, '0')}/${value!.year}',
+                  value == null ? label : 'Vence: ${_formatDate(value!)}',
                   style: textTheme.bodyMedium?.copyWith(
                     color:
                         value == null
@@ -1151,69 +1648,6 @@ class _DatePickerField extends StatelessWidget {
   }
 }
 
-class _QtyButton extends StatelessWidget {
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-  const _QtyButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
-        splashColor: AppColors.primary.withValues(alpha: 0.18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 48, // mínimo 48dp según Material Design
-          height: 48,
-          decoration: BoxDecoration(
-            color:
-                enabled
-                    ? AppColors.primary.withValues(alpha: 0.1)
-                    : Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            icon,
-            color: enabled ? AppColors.primary : AppColors.textMuted,
-            size: 22,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
-  return InputDecoration(
-    labelText: label,
-    labelStyle: const TextStyle(color: AppColors.textSecondary),
-    prefixIcon: icon != null ? Icon(icon, color: AppColors.textMuted) : null,
-    filled: true,
-    fillColor: AppColors.background,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.border),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.border),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-    ),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-  );
-}
-
 class _ProductThumbnail extends StatelessWidget {
   final String? imageUrl;
   final double size;
@@ -1232,7 +1666,7 @@ class _ProductThumbnail extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(11),
         child:
-            imageUrl != null
+            imageUrl != null && imageUrl!.trim().isNotEmpty
                 ? CachedNetworkImage(
                   imageUrl: imageUrl!,
                   fit: BoxFit.cover,
