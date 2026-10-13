@@ -400,9 +400,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   Future<void> _irAVenta(ProductEntity product) async {
-    // Si el producto no tiene variantes o tiene solo 1 (la default) y no usa lotes:
+    // Si el producto no tiene variantes o tiene solo 1 (la default):
     // Flujo POS de Alta Velocidad (1-Click): se agrega directo a la caja sin abrir modal.
-    if (product.productVariants.length <= 1 && !product.usesBatches) {
+    if (product.productVariants.length <= 1) {
       if (product.stockControl && product.totalStock <= 0) {
         AppSnackbar.show(
           context,
@@ -417,7 +417,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       return;
     }
 
-    // Si tiene múltiples variantes (> 1) o requiere selección de lote, se abre el modal
+    // Si tiene múltiples variantes (> 1), se abre el modal
     PosAddToCartSheet.show(context, product);
   }
 
