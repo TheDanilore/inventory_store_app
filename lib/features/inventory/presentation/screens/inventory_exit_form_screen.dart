@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/exit_quantity_stepper.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_items_table.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class InventoryExitFormScreen extends StatefulWidget {
   const InventoryExitFormScreen({super.key});
@@ -22,10 +23,20 @@ class InventoryExitFormScreen extends StatefulWidget {
 class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   final _notesCtrl = TextEditingController();
 
+  static const Map<String, IconData> _reasons = {
+    'AJUSTE': Icons.tune_rounded,
+    'MERMA': Icons.trending_down_rounded,
+    'DAÑO': Icons.broken_image_outlined,
+    'VENCIMIENTO': Icons.event_busy_rounded,
+    'ROBO/PÉRDIDA': Icons.report_problem_outlined,
+    'CONSUMO INTERNO': Icons.home_work_outlined,
+  };
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<InventoryExitFormCubit>().loadInitialData();
     });
   }
@@ -36,132 +47,89 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     super.dispose();
   }
 
-  Future<void> _showAddProductSheet(BuildContext context) async {
+  // ════════════════════════════════════════════════════════════════════════════
+  // ACCIONES
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Future<void> _showAddProductSheet() async {
     final cubit = context.read<InventoryExitFormCubit>();
-    if (cubit.state.selectedWarehouseId == null) {
+    final warehouseId = cubit.state.selectedWarehouseId;
+    if (warehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Primero selecciona el almacén de origen.',
+        message: 'Seleccione el almacén de origen primero',
         type: SnackbarType.warning,
       );
       return;
     }
 
-    final newItem = await showModalBottomSheet<ExitItemUI>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => AddExitProductSheet(
-            warehouseId: cubit.state.selectedWarehouseId!,
-          ),
+    // Lo que ya está en la lista, por lote: el panel descuenta esa cantidad
+    // del stock para no permitir retirar más de lo que hay.
+    final reserved = <String, double>{};
+    for (final i in cubit.state.items) {
+      final key = exitBatchKey(i.selectedBatch);
+      if (key.isEmpty) continue;
+      reserved[key] = (reserved[key] ?? 0.0) + i.quantity;
+    }
+
+    final newItem = await AddExitProductSheet.show(
+      context,
+      warehouseId: warehouseId,
+      reservedByBatchId: reserved,
+      // Permite cargar varios productos sin cerrar y reabrir el panel.
+      onAddAndContinue: (item) => cubit.addItem(item),
     );
 
-    if (!context.mounted) return;
-
-    if (newItem != null) {
+    if (newItem != null && mounted) {
       cubit.addItem(newItem);
     }
   }
 
-  Future<void> _showQuantityDialog(
-    int index,
-    double cantidadActual,
-    double maxAvailable,
-  ) async {
-    final cubit = context.read<InventoryExitFormCubit>();
-    final qtyCtrl = TextEditingController(
-      text: cantidadActual.toStringAsFixed(0),
-    );
+  /// Quita la línea al instante y ofrece "Deshacer" (sin diálogo de
+  /// confirmación que interrumpa cada vez).
+  void _removeItemWithUndo(InventoryExitFormCubit cubit, int index) {
+    final items = cubit.state.items;
+    if (index < 0 || index >= items.length) return;
+    final removed = items[index];
 
-    await showDialog<void>(
-      context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text(
-              'Cantidad a retirar',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: qtyCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  autofocus: true,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 20),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Máximo disponible: ${maxAvailable.toInt()}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                ),
-                onPressed: () {
-                  final newQty = double.tryParse(qtyCtrl.text.trim());
-                  if (newQty != null && newQty > 0) {
-                    final qty = newQty > maxAvailable ? maxAvailable : newQty;
-                    cubit.updateQuantity(index, qty);
-                  }
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text(
-                  'Guardar',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
+    HapticFeedback.lightImpact();
+    cubit.removeItem(index);
+
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.hideCurrentSnackBar();
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text('Quitaste "${removed.product.name}"'),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        // Deja libre la barra inferior con el botón de confirmar.
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+        action: SnackBarAction(
+          label: 'Deshacer',
+          onPressed: () {
+            if (mounted) cubit.addItem(removed);
+          },
+        ),
+      ),
     );
-    qtyCtrl.dispose();
   }
 
-  Future<void> _handleClearDraft(BuildContext context) async {
+  Future<void> _handleClearDraft() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder:
-          (_) => AlertDialog(
-            title: const Text('Descartar Borrador'),
+          (ctx) => AlertDialog(
+            title: const Text('Descartar borrador'),
             content: const Text(
-              '¿Estás seguro de que quieres limpiar la salida actual? Perderás todos los ítems agregados.',
+              '¿Estás seguro de que quieres limpiar los productos de la salida actual?',
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('Cancelar'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(ctx, true),
                 child: const Text(
                   'Descartar',
                   style: TextStyle(color: AppColors.danger),
@@ -171,9 +139,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
           ),
     );
 
-    if (!context.mounted) return;
-
-    if (confirm == true) {
+    if (confirm == true && mounted) {
       context.read<InventoryExitFormCubit>().clearDraft();
       _notesCtrl.clear();
       AppSnackbar.show(
@@ -184,13 +150,82 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     }
   }
 
-  Future<void> _saveExit(BuildContext context) async {
+  void _leave() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/inventory-exits');
+    }
+  }
+
+  Future<void> _handleBackButton() async {
+    final cubit = context.read<InventoryExitFormCubit>();
+    if (cubit.state.isSaving) return;
+
+    if (cubit.state.items.isEmpty) {
+      cubit.clearDraft();
+      _leave();
+      return;
+    }
+
+    final action = await showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Cambios sin guardar'),
+            content: const Text(
+              'Tienes una salida en curso. ¿Qué deseas hacer al salir?',
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            actions: [
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'cancel'),
+                    child: const Text('Seguir editando'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 'discard'),
+                    child: const Text(
+                      'Descartar',
+                      style: TextStyle(color: AppColors.danger),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx, 'draft'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: const Text('Guardar borrador'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+    );
+
+    if (!mounted) return;
+
+    if (action == 'discard') {
+      cubit.clearDraft();
+      _leave();
+    } else if (action == 'draft') {
+      _leave();
+    }
+  }
+
+  Future<void> _saveExit() async {
     final cubit = context.read<InventoryExitFormCubit>();
 
     if (cubit.state.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Seleccione un almacén',
+        message: 'Seleccione un almacén de origen',
         type: SnackbarType.warning,
       );
       return;
@@ -204,7 +239,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       return;
     }
 
-    // Validación estricta de lotes requeridos antes de confirmar
+    // Validación estricta de lotes requeridos antes de confirmar.
     for (final item in cubit.state.items) {
       final batchNumber = item.selectedBatch?['batch_number'] as String?;
       final batchId = item.selectedBatch?['id'] as String?;
@@ -223,131 +258,23 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       }
     }
 
-    // Modal de Confirmación Estricta (CONFIRMAR)
-    final confirmCtrl = TextEditingController();
-    bool isConfirmed = false;
-    bool isDialogProcessing = false;
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog(
+    final items = cubit.state.items;
+    final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder:
-          (ctx) => StatefulBuilder(
-            builder:
-                (dialogCtx, setDialogState) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  title: const Row(
-                    children: [
-                      Icon(
-                        Icons.warning_rounded,
-                        color: AppColors.danger,
-                        size: 28,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Confirmar Salida Múltiple',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.danger,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  content: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Estás a punto de confirmar una pérdida valorizada de S/ ${cubit.state.totalLossCost.toStringAsFixed(2)}. Esto impactará directamente el inventario físico.',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Para autorizar, escribe la palabra CONFIRMAR:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: confirmCtrl,
-                          textCapitalization: TextCapitalization.characters,
-                          validator: (value) {
-                            if (value == null || value.trim() != 'CONFIRMAR') {
-                              return 'Debes escribir CONFIRMAR correctamente';
-                            }
-                            return null;
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'CONFIRMAR',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            filled: true,
-                            fillColor: AppColors.background,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed:
-                          isDialogProcessing ? null : () => Navigator.pop(ctx),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.danger,
-                      ),
-                      onPressed:
-                          isDialogProcessing
-                              ? null
-                              : () {
-                                if (formKey.currentState?.validate() ?? false) {
-                                  setDialogState(
-                                    () => isDialogProcessing = true,
-                                  );
-                                  isConfirmed = true;
-                                  Navigator.pop(ctx);
-                                }
-                              },
-                      child: const Text(
-                        'Autorizar',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          (_) => _ConfirmExitDialog(
+            reason: cubit.state.selectedReason,
+            lines: items.length,
+            units: items.fold<double>(0.0, (s, i) => s + i.quantity),
+            totalLoss: items.fold<double>(0.0, (s, i) => s + i.totalCost),
           ),
     );
 
-    confirmCtrl.dispose();
-
-    if (!context.mounted) return;
-    if (!isConfirmed) return;
+    if (confirmed != true || !mounted) return;
 
     await cubit.saveExit(_notesCtrl.text.trim());
-
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     if (cubit.state.isSuccess) {
       AppSnackbar.show(
@@ -355,7 +282,6 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         message: 'Salida de inventario registrada con éxito.',
         type: SnackbarType.success,
       );
-      if (!context.mounted) return;
       context.go('/inventory-exits');
     } else {
       AppSnackbar.show(
@@ -366,115 +292,52 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     }
   }
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ════════════════════════════════════════════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
-      buildWhen:
-          (previous, current) =>
-              previous.isLoading != current.isLoading ||
-              previous.isSaving != current.isSaving ||
-              previous.selectedWarehouseId != current.selectedWarehouseId ||
-              previous.selectedReason != current.selectedReason ||
-              previous.items != current.items ||
-              previous.warehouses != current.warehouses,
-      builder: (context, state) {
-        final cubit = context.read<InventoryExitFormCubit>();
-
-        if (state.isLoading) {
-          return const AdminLayout(
-            title: 'Nueva Salida',
-            showBackButton: true,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.danger),
-            ),
-          );
-        }
-
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-
-            if (state.items.isEmpty) {
-              cubit.clearDraft();
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/inventory-exits');
-              }
-              return;
-            }
-
-            final action = await showDialog<String>(
-              context: context,
-              builder:
-                  (ctx) => AlertDialog(
-                    title: const Text('Salida en progreso'),
-                    content: const Text(
-                      'Tienes productos en la salida actual. ¿Qué deseas hacer al salir?',
-                    ),
-                    actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    actions: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, 'cancel'),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, 'discard'),
-                            child: const Text(
-                              'Descartar',
-                              style: TextStyle(color: AppColors.danger),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(ctx, 'draft'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                            ),
-                            child: const Text('Borrador'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleBackButton();
+      },
+      child: BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+        buildWhen:
+            (prev, curr) =>
+                prev.isLoading != curr.isLoading ||
+                prev.isSaving != curr.isSaving ||
+                prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                prev.selectedReason != curr.selectedReason ||
+                prev.items != curr.items ||
+                prev.warehouses != curr.warehouses,
+        builder: (context, state) {
+          if (state.isLoading) {
+            return AdminLayout(
+              title: 'Registrar Salida',
+              showBackButton: true,
+              onBack: _handleBackButton,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
             );
+          }
 
-            if (!context.mounted) return;
-
-            if (action == 'discard') {
-              cubit.clearDraft();
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/inventory-exits');
-              }
-            } else if (action == 'draft') {
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/inventory-exits');
-              }
-            }
-          },
-          child: AdminLayout(
+          return AdminLayout(
             title: 'Registrar Salida',
             showBackButton: true,
+            onBack: _handleBackButton,
             showProfileButton: false,
             showDrawerButton: false,
-            body: IgnorePointer(
-              ignoring: state.isSaving,
-              child: Stack(
-                children: [
-                  LayoutBuilder(
+            body: Stack(
+              children: [
+                AbsorbPointer(
+                  absorbing: state.isSaving,
+                  child: LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth >= 900;
 
@@ -482,7 +345,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Izquierda: Datos de Origen y Justificación (40%)
+                            // Izquierda: Datos y notas (40%)
                             Expanded(
                               flex: 4,
                               child: Container(
@@ -495,14 +358,19 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                 ),
                                 child: SingleChildScrollView(
                                   padding: const EdgeInsets.all(24.0),
-                                  child: _buildGeneralInfoSection(
-                                    context,
-                                    state,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildMainDataSection(context, state),
+                                      const SizedBox(height: 16),
+                                      _buildNotesSection(),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
-                            // Derecha: Tabla de Productos y Botón Guardar (60%)
+                            // Derecha: Productos y barra de confirmación (60%)
                             Expanded(
                               flex: 6,
                               child: Column(
@@ -517,7 +385,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                       ),
                                     ),
                                   ),
-                                  _buildStickySaveButton(context, state),
+                                  _buildStickySaveButton(),
                                 ],
                               ),
                             ),
@@ -534,72 +402,38 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildGeneralInfoSection(context, state),
+                                  _buildMainDataSection(context, state),
                                   const SizedBox(height: 16),
                                   _buildProductsSection(context, state),
+                                  const SizedBox(height: 16),
+                                  _buildNotesSection(),
                                   const SizedBox(height: 24),
                                 ],
                               ),
                             ),
                           ),
-                          _buildStickySaveButton(context, state),
+                          _buildStickySaveButton(),
                         ],
                       );
                     },
                   ),
-                  if (state.isSaving)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 18,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: AppColors.danger,
-                                  ),
-                                ),
-                                SizedBox(width: 14),
-                                Text(
-                                  'Procesando salida de inventario...',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                ),
+                if (state.isSaving)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: AppColors.surface.withValues(alpha: 0.7),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -607,7 +441,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   // SECCIONES
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildGeneralInfoSection(
+  Widget _buildMainDataSection(
     BuildContext context,
     InventoryExitFormState state,
   ) {
@@ -622,19 +456,22 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionTitle(
-            icon: Icons.output_rounded,
-            title: 'Información General',
-            iconColor: AppColors.danger,
+            icon: Icons.storefront_rounded,
+            title: 'Datos principales',
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            key: ValueKey('warehouse_$validWarehouseId'),
+            key: ValueKey('wh_${validWarehouseId}_${state.warehouses.length}'),
             initialValue: validWarehouseId,
             isExpanded: true,
             icon: const Icon(Icons.expand_more_rounded),
             decoration: _dropdownDecoration(
-              'Almacén de Origen (Obligatorio)',
+              'Almacén de origen',
               icon: Icons.warehouse_rounded,
+            ),
+            hint: const Text(
+              'Seleccione almacén de origen',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
             ),
             items:
                 state.warehouses
@@ -650,59 +487,76 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     .toList(),
             onChanged: cubit.selectWarehouse,
           ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: state.selectedReason,
-            isExpanded: true,
-            icon: const Icon(Icons.expand_more_rounded),
-            decoration: _dropdownDecoration(
-              'Motivo de Salida (Obligatorio)',
-              icon: Icons.assignment_late_rounded,
+          const SizedBox(height: 20),
+          const Text(
+            'Motivo de salida',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
             ),
-            items:
-                [
-                      'AJUSTE',
-                      'MERMA',
-                      'DAÑO',
-                      'VENCIMIENTO',
-                      'ROBO/PÉRDIDA',
-                      'CONSUMO INTERNO',
-                    ]
-                    .map(
-                      (r) => DropdownMenuItem(
-                        value: r,
-                        child: Text(
-                          r,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (v) {
-              if (v != null) cubit.selectReason(v);
-            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                _reasons.entries.map((e) {
+                  final selected = state.selectedReason == e.key;
+                  return ChoiceChip(
+                    avatar: Icon(
+                      e.value,
+                      size: 18,
+                      color: selected ? Colors.white : AppColors.textSecondary,
+                    ),
+                    label: Text(e.key),
+                    selected: selected,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      HapticFeedback.selectionClick();
+                      cubit.selectReason(e.key);
+                    },
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.background,
+                    labelStyle: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : AppColors.textPrimary,
+                    ),
+                    side: BorderSide(
+                      color: selected ? AppColors.primary : AppColors.border,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  );
+                }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesSection() {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.receipt_long_rounded,
+            title: 'Notas y justificación',
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _notesCtrl,
             maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Notas / Justificación (Opcional)',
-              hintText: 'Ej: Botellas rotas durante traslado',
-              filled: true,
-              fillColor: AppColors.background,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
+            maxLength: 300,
+            decoration: _dropdownDecoration(
+              'Notas / justificación (opcional)',
+            ).copyWith(
+              hintText: 'Ej: Botellas rotas durante el traslado',
+              counterText: '',
+              alignLabelWithHint: true,
             ),
           ),
         ],
@@ -720,148 +574,99 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (isDesktop) {
       return InventoryExitItemsTable(
         items: state.items,
-        onRemoveItem: (index) => cubit.removeItem(index),
+        onRemoveItem: (index) => _removeItemWithUndo(cubit, index),
         onUpdateQuantity: (index, qty) => cubit.updateQuantity(index, qty),
-        onAddNewRow: () => _showAddProductSheet(context),
+        onAddNewRow: _showAddProductSheet,
       );
     }
 
+    final items = state.items;
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: _SectionTitle(
                   icon: Icons.inventory_2_rounded,
-                  title: 'Productos a Retirar',
-                  iconColor: AppColors.danger,
+                  title:
+                      items.isEmpty
+                          ? 'Productos a retirar'
+                          : 'Productos a retirar (${items.length})',
                 ),
               ),
-              const SizedBox(width: 8),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _showAddProductSheet(context),
-                    icon: const Icon(
-                      Icons.add_circle_outline_rounded,
-                      size: 18,
-                    ),
-                    label: const Text('Agregar'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
+              if (items.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                FilledButton.tonalIcon(
+                  onPressed: _showAddProductSheet,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Agregar'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  if (state.items.isNotEmpty)
-                    PopupMenuButton<String>(
-                      tooltip: 'Más opciones',
-                      icon: const Icon(
-                        Icons.more_vert_rounded,
-                        color: AppColors.textSecondary,
-                      ),
-                      onSelected: (value) {
-                        if (value == 'clear') _handleClearDraft(context);
-                      },
-                      itemBuilder:
-                          (_) => [
-                            const PopupMenuItem(
-                              value: 'clear',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_sweep_rounded,
-                                    color: AppColors.danger,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Descartar todo',
-                                    style: TextStyle(color: AppColors.danger),
-                                  ),
-                                ],
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'Más opciones',
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'clear') _handleClearDraft();
+                  },
+                  itemBuilder:
+                      (_) => const [
+                        PopupMenuItem(
+                          value: 'clear',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_sweep_rounded,
+                                color: AppColors.danger,
+                                size: 18,
                               ),
-                            ),
-                          ],
-                    ),
-                ],
-              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Descartar todo',
+                                style: TextStyle(color: AppColors.danger),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
-          if (state.items.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.outbox_rounded,
-                    size: 52,
-                    color: AppColors.danger.withValues(alpha: 0.25),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Sin productos a retirar',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Agrega los productos que vas a dar de baja de tu inventario',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 13,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 18),
-                  OutlinedButton.icon(
-                    onPressed: () => _showAddProductSheet(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Agregar primer producto'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: const BorderSide(color: AppColors.danger),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: state.items.length,
-              itemBuilder: (context, index) {
-                return _buildItemCard(context, state, index);
-              },
-            ),
           AnimatedSize(
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
             child:
-                state.items.isEmpty
-                    ? const SizedBox.shrink()
-                    : Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: const _ExitFormSummaryCard(),
+                items.isEmpty
+                    ? _buildEmptyProducts()
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: List.generate(items.length, (index) {
+                        final item = items[index];
+                        return InventoryExitItemCard(
+                          key: ValueKey(
+                            'exit_item_${item.product.id}_${item.variant.id}_${exitRowBatchKey(item)}_$index',
+                          ),
+                          item: item,
+                          onUpdateQuantity:
+                              (qty) => cubit.updateQuantity(index, qty),
+                          onRemove: () => _removeItemWithUndo(cubit, index),
+                        );
+                      }),
                     ),
           ),
         ],
@@ -869,276 +674,428 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     );
   }
 
-  Widget _buildItemCard(
-    BuildContext context,
-    InventoryExitFormState state,
-    int index,
-  ) {
-    final item = state.items[index];
-    final cubit = context.read<InventoryExitFormCubit>();
-
-    String? imageUrl;
-    if (item.variant.images.isNotEmpty) {
-      imageUrl = item.variant.images.first.imageUrl;
-    } else if (item.product.images.isNotEmpty) {
-      imageUrl =
-          item.product.images
-              .firstWhere(
-                (img) => img.isMain,
-                orElse: () => item.product.images.first,
-              )
-              .imageUrl;
-    }
-
-    final attrValues =
-        item.variant.attributeValues.map((v) => v.value).toList();
-    final attrsText = attrValues.join(' · ');
-    final displayVariantText = attrsText.isNotEmpty ? attrsText : '';
-    final batchNumber = item.selectedBatch?['batch_number'] ?? 'DEFAULT';
-    final double maxAvailable =
-        (item.selectedBatch?['available_quantity'] as num?)?.toDouble() ?? 0.0;
-
-    final bool isBatchMissing =
-        item.product.usesBatches &&
-        (batchNumber == 'DEFAULT' || batchNumber.trim().isEmpty);
-
+  Widget _buildEmptyProducts() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isBatchMissing ? AppColors.danger : Colors.grey.shade200,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          // Imagen
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child:
-                  imageUrl != null
-                      ? CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder:
-                            (context, url) => const Center(
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                        errorWidget:
-                            (context, url, error) => const Icon(
-                              Icons.image_not_supported_rounded,
-                              size: 20,
-                              color: AppColors.textMuted,
-                            ),
-                      )
-                      : const Icon(
-                        Icons.inventory_2_rounded,
-                        color: AppColors.textMuted,
-                      ),
+            child: const Icon(
+              Icons.outbox_rounded,
+              size: 26,
+              color: AppColors.primary,
             ),
           ),
-          const SizedBox(width: 16),
-          // Detalles
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.product.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (displayVariantText.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Variante: $displayVariantText',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-                if (item.product.usesBatches)
-                  Text(
-                    isBatchMissing ? '⚠ Lote Requerido' : 'Lote: $batchNumber',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight:
-                          isBatchMissing ? FontWeight.bold : FontWeight.normal,
-                      color:
-                          isBatchMissing
-                              ? AppColors.danger
-                              : AppColors.textSecondary,
-                    ),
-                  ),
-              ],
+          const SizedBox(height: 14),
+          const Text(
+            'Aún no hay productos',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(width: 8),
-          // Controles + Acciones
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _HorizontalStepper(
-                value: item.quantity.toInt(),
-                onAdd:
-                    item.quantity < maxAvailable
-                        ? () {
-                          cubit.updateQuantity(index, item.quantity + 1);
-                        }
-                        : null,
-                onRemove:
-                    item.quantity > 1
-                        ? () {
-                          cubit.updateQuantity(index, item.quantity - 1);
-                        }
-                        : null,
-                onTapValue:
-                    () =>
-                        _showQuantityDialog(index, item.quantity, maxAvailable),
+          const SizedBox(height: 6),
+          const Text(
+            'Agrega los productos que vas a dar de baja de tu inventario.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: _showAddProductSheet,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text('Agregar producto'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'S/ ${item.totalCost.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppColors.danger,
-                  size: 20,
-                ),
-                onPressed: () {
-                  cubit.removeItem(index);
-                },
-                tooltip: 'Eliminar ítem',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // BARRA INFERIOR FIJA
+  // ════════════════════════════════════════════════════════════════════════════
+
+  Widget _buildStickySaveButton() {
+    return BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+      buildWhen:
+          (prev, curr) =>
+              prev.items != curr.items || prev.isSaving != curr.isSaving,
+      builder: (context, s) {
+        final items = s.items;
+        final hasItems = items.isNotEmpty;
+        final isSaving = s.isSaving;
+        final totalLoss = items.fold<double>(
+          0.0,
+          (sum, i) => sum + i.totalCost,
+        );
+        final totalUnits = items.fold<double>(
+          0.0,
+          (sum, i) => sum + i.quantity,
+        );
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
               ),
             ],
           ),
-        ],
-      ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                // Total siempre a la vista, sin bajar hasta el final.
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Pérdida estimada',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'S/ ${totalLoss.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.4,
+                            color:
+                                hasItems
+                                    ? AppColors.danger
+                                    : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      if (hasItems)
+                        Text(
+                          '${items.length} ${items.length == 1 ? 'línea' : 'líneas'} · ${formatExitQty(totalUnits)} ${totalUnits == 1 ? 'unidad' : 'unidades'}',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton.icon(
+                  onPressed: (!hasItems || isSaving) ? null : _saveExit,
+                  icon:
+                      isSaving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                          : const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 20,
+                          ),
+                  label: Text(isSaving ? 'Guardando...' : 'Confirmar salida'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.border,
+                    disabledForegroundColor: AppColors.textMuted,
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // STICKY BOTTOM BUTTON (Guardar)
+  // UTILS
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _buildStickySaveButton(
-    BuildContext context,
-    InventoryExitFormState state,
-  ) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
+  InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      filled: true,
+      fillColor: AppColors.surface,
+      prefixIcon:
+          icon != null ? Icon(icon, color: AppColors.primary, size: 20) : null,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DIÁLOGO DE CONFIRMACIÓN
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Confirmación estricta (hay que escribir CONFIRMAR). Es un StatefulWidget
+/// con su propio controlador: así no se destruye antes de que el diálogo
+/// termine de cerrarse (eso provocaba "TextEditingController used after
+/// being disposed").
+class _ConfirmExitDialog extends StatefulWidget {
+  final String? reason;
+  final int lines;
+  final double units;
+  final double totalLoss;
+
+  const _ConfirmExitDialog({
+    required this.reason,
+    required this.lines,
+    required this.units,
+    required this.totalLoss,
+  });
+
+  @override
+  State<_ConfirmExitDialog> createState() => _ConfirmExitDialogState();
+}
+
+class _ConfirmExitDialogState extends State<_ConfirmExitDialog> {
+  final _ctrl = TextEditingController();
+  bool _valid = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.danger,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Confirmar salida',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed:
-                    (state.items.isEmpty || state.isSaving)
-                        ? null
-                        : () => _saveExit(context),
-                icon:
-                    state.isSaving
-                        ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Icon(Icons.output_rounded),
-                label: Text(
-                  state.isSaving ? 'Guardando salida...' : 'Confirmar Salida',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: AppColors.danger,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.danger.withValues(
-                    alpha: 0.5,
-                  ),
-                  disabledForegroundColor: Colors.white70,
-                  shape: RoundedRectangleBorder(
+                child: Column(
+                  children: [
+                    if (widget.reason != null)
+                      _SummaryRow(label: 'Motivo', value: widget.reason!),
+                    _SummaryRow(label: 'Líneas', value: '${widget.lines}'),
+                    _SummaryRow(
+                      label: 'Unidades',
+                      value: formatExitQty(widget.units),
+                    ),
+                    const Divider(height: 20),
+                    _SummaryRow(
+                      label: 'Pérdida valorizada',
+                      value: 'S/ ${widget.totalLoss.toStringAsFixed(2)}',
+                      emphasize: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Esto descontará el stock del inventario físico.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Para autorizar, escribe CONFIRMAR:',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _ctrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                onChanged:
+                    (v) => setState(
+                      () => _valid = v.trim().toUpperCase() == 'CONFIRMAR',
+                    ),
+                decoration: InputDecoration(
+                  hintText: 'CONFIRMAR',
+                  hintStyle: const TextStyle(color: AppColors.textMuted),
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text(
+            'Cancelar',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        FilledButton(
+          onPressed: _valid ? () => Navigator.pop(context, true) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.danger,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
+            'Autorizar salida',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  const _SummaryRow({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: emphasize ? 18 : 13,
+              fontWeight: emphasize ? FontWeight.w900 : FontWeight.w700,
+              color: emphasize ? AppColors.danger : AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── WIDGETS AUXILIARES ──
-
-InputDecoration _dropdownDecoration(String label, {IconData? icon}) {
-  return InputDecoration(
-    labelText: label,
-    labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-    filled: true,
-    fillColor: AppColors.background,
-    prefixIcon:
-        icon != null ? Icon(icon, color: AppColors.textMuted, size: 20) : null,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.grey.shade300),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: Colors.grey.shade300),
-    ),
-  );
-}
+// ═════════════════════════════════════════════════════════════════════════════
+// WIDGETS AUXILIARES (idénticos a los de Entradas)
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _SectionCard extends StatelessWidget {
   final Widget child;
@@ -1147,19 +1104,14 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 16 : 24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: child,
     );
@@ -1169,13 +1121,8 @@ class _SectionCard extends StatelessWidget {
 class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
-  final Color? iconColor;
 
-  const _SectionTitle({
-    required this.icon,
-    required this.title,
-    this.iconColor,
-  });
+  const _SectionTitle({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -1184,10 +1131,10 @@ class _SectionTitle extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (iconColor ?? AppColors.primary).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: iconColor ?? AppColors.primary, size: 20),
+          child: Icon(icon, color: AppColors.primary, size: 20),
         ),
         const SizedBox(width: 12),
         Flexible(
@@ -1202,157 +1149,6 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _HorizontalStepper extends StatelessWidget {
-  final int value;
-  final VoidCallback? onAdd;
-  final VoidCallback? onRemove;
-  final VoidCallback? onTapValue;
-
-  const _HorizontalStepper({
-    required this.value,
-    this.onAdd,
-    this.onRemove,
-    this.onTapValue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(
-              Icons.remove_rounded,
-              size: 16,
-              color:
-                  onRemove != null ? AppColors.textPrimary : AppColors.border,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            onPressed: onRemove,
-          ),
-          GestureDetector(
-            onTap: onTapValue,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 32),
-              alignment: Alignment.center,
-              child: Text(
-                '$value',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.add_rounded,
-              size: 16,
-              color: onAdd != null ? AppColors.textPrimary : AppColors.border,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            onPressed: onAdd,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ExitFormSummaryCard extends StatelessWidget {
-  const _ExitFormSummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
-      buildWhen:
-          (previous, current) =>
-              previous.totalLossCost != current.totalLossCost ||
-              previous.items.length != current.items.length ||
-              previous.totalUnits != current.totalUnits,
-      builder: (context, state) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E2D),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Resumen de Salida (Pérdida)',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'S/ ${state.totalLossCost.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Divider(color: Colors.white24, height: 1),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Productos/Variantes',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                      Text(
-                        '${state.items.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(width: 1, height: 30, color: Colors.white24),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Unidades Totales',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                      Text(
-                        '${state.totalUnits}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
