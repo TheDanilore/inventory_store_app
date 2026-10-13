@@ -333,7 +333,7 @@ class UsersRepositoryImpl implements UsersRepository {
   Future<Either<Failure, void>> deleteUser(String id) async {
     try {
       final response = await _supabase.rpc(
-        'delete_user_safely',
+        'delete_user_force',
         params: {'p_user_id': id},
       );
 

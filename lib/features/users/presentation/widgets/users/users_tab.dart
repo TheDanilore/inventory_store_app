@@ -104,6 +104,8 @@ class _UsersTabState extends State<UsersTab>
   void _showUserDetail(BuildContext context, String userId) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
+    final cubit = context.read<UsersCubit>();
+
     if (isDesktop) {
       // Linear Slide-Over Drawer en Desktop
       showGeneralDialog(
@@ -157,6 +159,7 @@ class _UsersTabState extends State<UsersTab>
       // Bottom Sheet Apple HIG en Móvil
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
@@ -169,9 +172,8 @@ class _UsersTabState extends State<UsersTab>
               child: UserDetailSheet(
                 userId: userId,
                 isSideSheet: false,
-                onUserUpdated: () {
-                  context.read<UsersCubit>().fetchUsers();
-                },
+                onUserUpdated: cubit.fetchUsers,
+                onToggleStatus: (u) => cubit.toggleUserStatus(u.id, u.isActive),
               ),
             ),
       );
@@ -755,16 +757,60 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                         color: AppColors.primary,
                         onPressed: widget.onEdit,
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
+                      PopupMenuButton<String>(
+                        tooltip: 'Más acciones',
+                        icon: Icon(
+                          Icons.more_vert_rounded,
                           size: 18,
+                          color: Colors.grey.shade700,
                         ),
-                        tooltip: 'Eliminar usuario',
                         splashRadius: 18,
-                        color: AppColors.error,
-                        hoverColor: AppColors.error.withValues(alpha: 0.08),
-                        onPressed: widget.onDelete,
+                        onSelected: (v) {
+                          if (v == 'toggle') {
+                            widget.onToggleActive(!widget.user.isActive);
+                          }
+                          if (v == 'delete') widget.onDelete();
+                        },
+                        itemBuilder:
+                            (_) => [
+                              PopupMenuItem(
+                                value: 'toggle',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      widget.user.isActive
+                                          ? Icons.block_rounded
+                                          : Icons.check_circle_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.user.isActive
+                                          ? 'Desactivar cuenta'
+                                          : 'Reactivar cuenta',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 18,
+                                      color: AppColors.error,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Eliminar…',
+                                      style: TextStyle(color: AppColors.error),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                       ),
                     ],
                   ),

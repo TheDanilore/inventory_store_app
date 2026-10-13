@@ -12,19 +12,20 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/delete_user_usecase.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/user_delete_flow.dart';
 
 class UserDetailSheet extends StatelessWidget {
   final String userId;
   final VoidCallback onUserUpdated;
   final bool isSideSheet;
+  final Future<void> Function(UserEntity user)? onToggleStatus;
 
   const UserDetailSheet({
     super.key,
     required this.userId,
     required this.onUserUpdated,
     this.isSideSheet = false,
+    this.onToggleStatus,
   });
 
   @override
@@ -34,6 +35,7 @@ class UserDetailSheet extends StatelessWidget {
       child: _UserDetailContent(
         onUserUpdated: onUserUpdated,
         isSideSheet: isSideSheet,
+        onToggleStatus: onToggleStatus,
       ),
     );
   }
@@ -42,10 +44,12 @@ class UserDetailSheet extends StatelessWidget {
 class _UserDetailContent extends StatefulWidget {
   final VoidCallback onUserUpdated;
   final bool isSideSheet;
+  final Future<void> Function(UserEntity user)? onToggleStatus;
 
   const _UserDetailContent({
     required this.onUserUpdated,
     required this.isSideSheet,
+    this.onToggleStatus,
   });
 
   @override
@@ -84,13 +88,13 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     final deleted = await runDeleteUserFlow(
       context,
       user: user,
-      onDeactivate: () async {
-        await context.read<UsersCubit>().toggleUserStatus(
-          user.id,
-          user.isActive,
-        );
-        widget.onUserUpdated();
-      },
+      onDeactivate:
+          widget.onToggleStatus == null
+              ? null
+              : () async {
+                await widget.onToggleStatus!(user);
+                widget.onUserUpdated();
+              },
       onDelete: () async {
         final res = await sl<DeleteUserUseCase>()(user.id);
         return res.fold((failure) {
@@ -823,6 +827,25 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                       ],
                     ],
                     const SizedBox(height: 24),
+
+                    if (widget.onToggleStatus != null)
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          await widget.onToggleStatus!(state.user);
+                          widget.onUserUpdated();
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                        icon: Icon(
+                          state.user.isActive
+                              ? Icons.block_rounded
+                              : Icons.check_circle_outline_rounded,
+                        ),
+                        label: Text(
+                          state.user.isActive
+                              ? 'Desactivar cuenta'
+                              : 'Reactivar cuenta',
+                        ),
+                      ),
 
                     // ─── ZONA DE PELIGRO (DANGER ZONE) ────────────────────────
                     Container(
