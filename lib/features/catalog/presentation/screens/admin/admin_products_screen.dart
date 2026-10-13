@@ -980,7 +980,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     return AdminKpiMetricsBar(
       isDesktop: !isMobile,
-      isMobileGrid: true,
+      padding: EdgeInsets.zero,
       items: [
         AdminKpiItem(
           title: 'TOTAL CATÁLOGO',

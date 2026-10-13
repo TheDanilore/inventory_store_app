@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
@@ -175,11 +176,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     if (!cubit.hasUnsavedChanges &&
         !state.isSaving &&
         !state.isInitializingData) {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      } else {
-        context.go('/products');
-      }
+      _exitForm();
       return;
     }
 
@@ -188,13 +185,18 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
       setState(() => _allowExplicitPop = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            context.go('/products');
-          }
+          _exitForm();
         }
       });
+    }
+  }
+
+  /// Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
+  void _exitForm([Object? result]) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, result);
+    } else {
+      AppBackHandler.handleBack(context); // sin onCustomBack → usa el historial
     }
   }
 
@@ -250,11 +252,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
               c.saveSuccess != p.saveSuccess,
       listener: (context, state) {
         if (state.saveSuccess) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context, true);
-          } else {
-            context.go('/products');
-          }
+          _exitForm();
           return;
         }
         if (state.snackMessage != null) {
@@ -291,11 +289,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   !currentState.isSaving &&
                   !currentState.isInitializingData) {
                 setState(() => _allowExplicitPop = true);
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context, result);
-                } else {
-                  context.go('/products');
-                }
+                _exitForm();
                 return;
               }
               final shouldPop = await _onWillPop();
@@ -303,11 +297,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 setState(() => _allowExplicitPop = true);
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (context.mounted) {
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context, result);
-                    } else {
-                      context.go('/products');
-                    }
+                    _exitForm();
                   }
                 });
               }

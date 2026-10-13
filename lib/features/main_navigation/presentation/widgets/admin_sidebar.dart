@@ -177,37 +177,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   _ExpandableSidebarGroup(
                     isCollapsed: widget.isCollapsed,
                     item: const AdminSidebarItem(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'Compras',
-                      routePath: '',
-                      children: [
-                        AdminSidebarItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Órdenes de compra',
-                          routePath: '/purchase-orders',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.add_rounded,
-                          title: 'Entradas inventario',
-                          routePath: '/inventory-entries',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos proveedores',
-                          routePath: '/supplier-credits',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Proveedores',
-                          routePath: '/suppliers',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  _ExpandableSidebarGroup(
-                    isCollapsed: widget.isCollapsed,
-                    item: const AdminSidebarItem(
                       icon: Icons.inventory_2_outlined,
                       title: 'Inventario',
                       routePath: '',
@@ -231,6 +200,37 @@ class _AdminSidebarState extends State<AdminSidebar> {
                           icon: Icons.remove_rounded,
                           title: 'Salidas inventario',
                           routePath: '/inventory-exits',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  _ExpandableSidebarGroup(
+                    isCollapsed: widget.isCollapsed,
+                    item: const AdminSidebarItem(
+                      icon: Icons.shopping_bag_outlined,
+                      title: 'Compras',
+                      routePath: '',
+                      children: [
+                        AdminSidebarItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Órdenes de compra',
+                          routePath: '/purchase-orders',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.add_rounded,
+                          title: 'Entradas inventario',
+                          routePath: '/inventory-entries',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos proveedores',
+                          routePath: '/supplier-credits',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Proveedores',
+                          routePath: '/suppliers',
                         ),
                       ],
                     ),
@@ -469,7 +469,10 @@ class _AdminSidebarState extends State<AdminSidebar> {
               verticalOffset: 16,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF0F172A) : const Color(0xFF0F172A)).withValues(alpha: 0.85),
+                color: (isDark
+                        ? const Color(0xFF0F172A)
+                        : const Color(0xFF0F172A))
+                    .withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.15),
@@ -606,9 +609,15 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 message: 'Colapsar menú',
                 preferBelow: false,
                 verticalOffset: 16,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF0F172A) : const Color(0xFF0F172A)).withValues(alpha: 0.85),
+                  color: (isDark
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFF0F172A))
+                      .withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.15),

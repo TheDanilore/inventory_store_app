@@ -190,53 +190,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     },
                   ),
 
-                  // ── Compras (con sub-ítems) ─────────────────────────
-                  _ExpandableDrawerGroup(
-                    _DrawerItem(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'Compras',
-                      routePath: '',
-                      children: [
-                        _DrawerSubItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Órdenes de compra',
-                          routePath: '/purchase-orders',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/purchase-orders');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.add_rounded,
-                          title: 'Entradas inventario',
-                          routePath: '/inventory-entries',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/inventory-entries');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos proveedores',
-                          routePath: '/supplier-credits',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/supplier-credits');
-                          },
-                        ),
-                        _DrawerSubItem(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Proveedores',
-                          routePath: '/suppliers',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/suppliers');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
                   // ── Inventario (con sub-ítems) ─────────────────────────
                   _ExpandableDrawerGroup(
                     _DrawerItem(
@@ -278,6 +231,53 @@ class _AppDrawerState extends State<AppDrawer> {
                           onTap: () {
                             Navigator.pop(context);
                             context.go('/inventory-exits');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Compras (con sub-ítems) ─────────────────────────
+                  _ExpandableDrawerGroup(
+                    _DrawerItem(
+                      icon: Icons.shopping_bag_outlined,
+                      title: 'Compras',
+                      routePath: '',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'Órdenes de compra',
+                          routePath: '/purchase-orders',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/purchase-orders');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.add_rounded,
+                          title: 'Entradas inventario',
+                          routePath: '/inventory-entries',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/inventory-entries');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.credit_score_rounded,
+                          title: 'Créditos proveedores',
+                          routePath: '/supplier-credits',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/supplier-credits');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.local_shipping_outlined,
+                          title: 'Proveedores',
+                          routePath: '/suppliers',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/suppliers');
                           },
                         ),
                       ],
@@ -558,7 +558,8 @@ class _AppDrawerState extends State<AppDrawer> {
   bool _isItemActive(String routePath, String currentPath) {
     if (routePath.isEmpty) return false;
     if (currentPath == routePath) return true;
-    if (routePath == '/' && (currentPath == '/dashboard' || currentPath == '/')) {
+    if (routePath == '/' &&
+        (currentPath == '/dashboard' || currentPath == '/')) {
       return true;
     }
     if (routePath == '/catalog' &&
@@ -857,9 +858,12 @@ class _DrawerHeader extends StatelessWidget {
     final headerBg = isDark ? AppColors.darkSurface : Colors.white;
     final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
     final logoBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
-    final logoBorder = isDark ? const Color(0xFF334155) : const Color(0xFFDBEAFE);
-    final titleColor = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
-    final subtitleColor = isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+    final logoBorder =
+        isDark ? const Color(0xFF334155) : const Color(0xFFDBEAFE);
+    final titleColor =
+        isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final subtitleColor =
+        isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
 
     return Container(
       padding: EdgeInsets.only(
@@ -895,10 +899,16 @@ class _DrawerHeader extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFFEFF6FF),
+                  color:
+                      isDark
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : const Color(0xFFEFF6FF),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isDark ? AppColors.primary.withValues(alpha: 0.3) : const Color(0xFFDBEAFE),
+                    color:
+                        isDark
+                            ? AppColors.primary.withValues(alpha: 0.3)
+                            : const Color(0xFFDBEAFE),
                     width: 1,
                   ),
                 ),
@@ -909,14 +919,20 @@ class _DrawerHeader extends StatelessWidget {
                       isAdmin
                           ? Icons.admin_panel_settings_rounded
                           : Icons.person_rounded,
-                      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                      color:
+                          isDark
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFF2563EB),
                       size: 13,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       isAdmin ? 'Administrador' : 'Cliente',
                       style: TextStyle(
-                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+                        color:
+                            isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1E40AF),
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1001,8 +1017,10 @@ class _DrawerFooter extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final footerBg = isDark ? AppColors.darkSurface : AppColors.background;
     final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textPrimary =
+        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary =
+        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return Container(
       decoration: BoxDecoration(

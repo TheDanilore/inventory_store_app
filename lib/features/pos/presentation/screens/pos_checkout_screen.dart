@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:printing/printing.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
@@ -476,33 +474,28 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     try {
                       final detailsRes = await posCubit
                           .fetchOrderDetailsForTicket(orderId);
-                      detailsRes.fold(
-                        (failure) {
-                          AppSnackbar.show(
-                            dialogContext,
-                            message:
-                                'Error cargando comprobante: ${failure.message}',
-                            type: SnackbarType.error,
-                          );
+
+                      // await sobre el fold para que los errores lleguen al catch
+                      await detailsRes.fold<Future<void>>(
+                        (failure) async {
+                          if (dialogContext.mounted) {
+                            AppSnackbar.show(
+                              dialogContext,
+                              message:
+                                  'Error cargando comprobante: ${failure.message}',
+                              type: SnackbarType.error,
+                            );
+                          }
                         },
                         (details) async {
                           final config = context.read<AppConfigCubit>();
-                          final order = details.order;
-                          final items = details.items;
-                          final bytes = await IsolateUtils.run(() {
-                            return OrderPdfGenerator.buildPdfBytes(
-                              order,
-                              items: items,
-                              businessName: config.businessName,
-                              taxId: config.businessTaxId,
-                              address: config.businessAddress,
-                              phone: config.businessPhone,
-                            );
-                          });
-
-                          await Printing.sharePdf(
-                            bytes: bytes,
-                            filename: 'Pedido_${orderId.substring(0, 8)}.pdf',
+                          await OrderPdfGenerator.shareTicket(
+                            details.order,
+                            items: details.items,
+                            businessName: config.businessName,
+                            taxId: config.businessTaxId,
+                            address: config.businessAddress,
+                            phone: config.businessPhone,
                           );
                         },
                       );
