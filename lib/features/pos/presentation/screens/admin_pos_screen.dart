@@ -101,7 +101,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       // [QA CRITICAL FIX] Inicializar POS (almacenes, cuentas y turno activo) en el ciclo de vida raíz.
       // Previene que en mobile la cabecera quede sin almacenes ni turno al no montarse DesktopPosPanel.
       final posCubit = context.read<PosCubit>();
-      if (posCubit.state.warehouses.isEmpty || posCubit.state.accounts.isEmpty) {
+      if (posCubit.state.warehouses.isEmpty ||
+          posCubit.state.accounts.isEmpty) {
         posCubit.initPosData();
       }
 
@@ -259,7 +260,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       // 9. Alternar modo Producto vs Ingrediente Activo (I o Alt+I)
       if (event.logicalKey == LogicalKeyboardKey.keyI) {
         if (_selectedSidebarIndex == 0) {
-          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
+          _catalogCubit.toggleSearchByIngredient(
+            !_catalogCubit.state.searchByIngredient,
+          );
           return true;
         }
       }
@@ -324,61 +327,68 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
     final shouldExit = await showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              hasItems ? Icons.warning_amber_rounded : Icons.logout_rounded,
-              color: hasItems ? AppColors.warning : AppColors.primary,
+      builder:
+          (dialogCtx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 8),
-            const Text('¿Salir de Caja POS?'),
-          ],
-        ),
-        content: Text(
-          hasItems
-              ? 'Tienes productos agregados en la caja. Si sales al panel administrativo, la venta actual continuará en tu carrito para cuando regreses.\n\n¿Deseas volver al panel de administración ERP?'
-              : '¿Estás seguro de que deseas salir del Punto de Venta y regresar al panel de administración ERP?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Quedarme en Caja'),
-          ),
-          () {
-            bool isExiting = false;
-            return StatefulBuilder(
-              builder: (ctx, setBtnState) {
-                return FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                  ),
-                  onPressed: isExiting
-                      ? null
-                      : () async {
-                          setBtnState(() => isExiting = true);
-                          await Future.delayed(const Duration(milliseconds: 60));
-                          if (dialogCtx.mounted) {
-                            Navigator.pop(dialogCtx, true);
-                          }
-                        },
-                  child: isExiting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Salir al ERP'),
+            title: Row(
+              children: [
+                Icon(
+                  hasItems ? Icons.warning_amber_rounded : Icons.logout_rounded,
+                  color: hasItems ? AppColors.warning : AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                const Text('¿Salir de Caja POS?'),
+              ],
+            ),
+            content: Text(
+              hasItems
+                  ? 'Tienes productos agregados en la caja. Si sales al panel administrativo, la venta actual continuará en tu carrito para cuando regreses.\n\n¿Deseas volver al panel de administración ERP?'
+                  : '¿Estás seguro de que deseas salir del Punto de Venta y regresar al panel de administración ERP?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('Quedarme en Caja'),
+              ),
+              () {
+                bool isExiting = false;
+                return StatefulBuilder(
+                  builder: (ctx, setBtnState) {
+                    return FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      onPressed:
+                          isExiting
+                              ? null
+                              : () async {
+                                setBtnState(() => isExiting = true);
+                                await Future.delayed(
+                                  const Duration(milliseconds: 60),
+                                );
+                                if (dialogCtx.mounted) {
+                                  Navigator.pop(dialogCtx, true);
+                                }
+                              },
+                      child:
+                          isExiting
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Text('Salir al ERP'),
+                    );
+                  },
                 );
-              },
-            );
-          }(),
-        ],
-      ),
+              }(),
+            ],
+          ),
     );
 
     if (shouldExit == true && mounted) {
@@ -430,359 +440,440 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       child: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
           // Foco de Búsqueda (Ctrl+K, Cmd+K, Alt+K)
-          const SingleActivator(LogicalKeyboardKey.keyK, control: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
+          const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+              _focusSearch,
+          const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+              _focusSearch,
+          const SingleActivator(LogicalKeyboardKey.keyK, alt: true):
+              _focusSearch,
 
-        // Guardar Borrador (Alt+B)
-        const SingleActivator(LogicalKeyboardKey.keyB, alt: true): () {
-          _desktopPanelKey.currentState?.triggerDraft();
-        },
+          // Guardar Borrador (Alt+B)
+          const SingleActivator(LogicalKeyboardKey.keyB, alt: true): () {
+            _desktopPanelKey.currentState?.triggerDraft();
+          },
 
-        // Navegación Sidebar: Venta (Ctrl+1 / Cmd+1 / Alt+1 / Alt+V / Numpad 1)
-        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.digit1, meta: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.digit1, alt: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.numpad1): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.keyV, control: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.keyV, meta: true): () => _onSidebarTabSelected(0),
-        const SingleActivator(LogicalKeyboardKey.keyV, alt: true): () => _onSidebarTabSelected(0),
+          // Navegación Sidebar: Venta (Ctrl+1 / Cmd+1 / Alt+1 / Alt+V / Numpad 1)
+          const SingleActivator(LogicalKeyboardKey.digit1, control: true):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.digit1, meta: true):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.digit1, alt: true):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.numpad1):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+              () => _onSidebarTabSelected(0),
+          const SingleActivator(LogicalKeyboardKey.keyV, alt: true):
+              () => _onSidebarTabSelected(0),
 
-        // Navegación Sidebar: Lotes / Stock (Ctrl+2 / Cmd+2 / Alt+2 / Alt+L / Alt+S / Numpad 2)
-        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.digit2, meta: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.digit2, alt: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.numpad2): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyL, control: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyL, meta: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyL, alt: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () => _onSidebarTabSelected(1),
-        const SingleActivator(LogicalKeyboardKey.keyS, alt: true): () => _onSidebarTabSelected(1),
+          // Navegación Sidebar: Lotes / Stock (Ctrl+2 / Cmd+2 / Alt+2 / Alt+L / Alt+S / Numpad 2)
+          const SingleActivator(LogicalKeyboardKey.digit2, control: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.digit2, meta: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.digit2, alt: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.numpad2):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyL, control: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyL, meta: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyL, alt: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
+              () => _onSidebarTabSelected(1),
+          const SingleActivator(LogicalKeyboardKey.keyS, alt: true):
+              () => _onSidebarTabSelected(1),
 
-        // Navegación Sidebar: Ventas / Historial (Ctrl+3 / Cmd+3 / Alt+3 / Alt+H / Numpad 3)
-        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.digit3, meta: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.digit3, alt: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.numpad3): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.keyH, control: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.keyH, meta: true): () => _onSidebarTabSelected(2),
-        const SingleActivator(LogicalKeyboardKey.keyH, alt: true): () => _onSidebarTabSelected(2),
+          // Navegación Sidebar: Ventas / Historial (Ctrl+3 / Cmd+3 / Alt+3 / Alt+H / Numpad 3)
+          const SingleActivator(LogicalKeyboardKey.digit3, control: true):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.digit3, meta: true):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.digit3, alt: true):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.numpad3):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.keyH, control: true):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.keyH, meta: true):
+              () => _onSidebarTabSelected(2),
+          const SingleActivator(LogicalKeyboardKey.keyH, alt: true):
+              () => _onSidebarTabSelected(2),
 
-        // Navegación Sidebar: Turnos de Caja (Ctrl+4 / Cmd+4 / Alt+4 / Alt+T / Numpad 4)
-        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.digit4, meta: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.digit4, alt: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.numpad4): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.keyT, control: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.keyT, meta: true): () => _onSidebarTabSelected(3),
-        const SingleActivator(LogicalKeyboardKey.keyT, alt: true): () => _onSidebarTabSelected(3),
+          // Navegación Sidebar: Turnos de Caja (Ctrl+4 / Cmd+4 / Alt+4 / Alt+T / Numpad 4)
+          const SingleActivator(LogicalKeyboardKey.digit4, control: true):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.digit4, meta: true):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.digit4, alt: true):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.numpad4):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.keyT, control: true):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.keyT, meta: true):
+              () => _onSidebarTabSelected(3),
+          const SingleActivator(LogicalKeyboardKey.keyT, alt: true):
+              () => _onSidebarTabSelected(3),
 
-        // Alternar modo de búsqueda Producto vs Ingrediente Activo (Ctrl+I / Cmd+I / Alt+I)
-        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () {
-          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
-        },
-        const SingleActivator(LogicalKeyboardKey.keyI, meta: true): () {
-          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
-        },
-        const SingleActivator(LogicalKeyboardKey.keyI, alt: true): () {
-          _catalogCubit.toggleSearchByIngredient(!_catalogCubit.state.searchByIngredient);
-        },
-
-        // Cobrar Inmediato en Desktop (F2 o Alt+Enter)
-        const SingleActivator(LogicalKeyboardKey.f2): () {
-          _desktopPanelKey.currentState?.triggerCheckout();
-        },
-        const SingleActivator(LogicalKeyboardKey.enter, alt: true): () {
-          _desktopPanelKey.currentState?.triggerCheckout();
-        },
-
-        // Abrir Búsqueda de Cliente en Desktop (Alt+C)
-        const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {
-          _desktopPanelKey.currentState?.openClientSearch();
-        },
-
-        // Nuevo Cliente Express (Alt+A)
-        const SingleActivator(LogicalKeyboardKey.keyA, alt: true): _openQuickCreateCustomer,
-
-        // Escape solo desenfoca el buscador en Tab 0 (sin salir del ERP)
-        const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (_searchFocusNode.hasFocus) {
-            _searchFocusNode.unfocus();
-          }
-        },
-      },
-      child: BlocListener<CartCubit, CartState>(
-        listenWhen:
-            (previous, current) =>
-                (current.errorMessage != null &&
-                    current.errorMessage != previous.errorMessage) ||
-                (current.items.length > previous.items.length),
-        listener: (context, state) {
-          if (state.errorMessage != null) {
-            AppSnackbar.show(
-              context,
-              message: state.errorMessage!,
-              type: SnackbarType.warning,
+          // Alternar modo de búsqueda Producto vs Ingrediente Activo (Ctrl+I / Cmd+I / Alt+I)
+          const SingleActivator(LogicalKeyboardKey.keyI, control: true): () {
+            _catalogCubit.toggleSearchByIngredient(
+              !_catalogCubit.state.searchByIngredient,
             );
-          } else if (state.items.isNotEmpty) {
-            // Un item ha sido agregado exitosamente: feedback táctil sin saturar con SnackBars
-            HapticFeedback.lightImpact();
-          }
+          },
+          const SingleActivator(LogicalKeyboardKey.keyI, meta: true): () {
+            _catalogCubit.toggleSearchByIngredient(
+              !_catalogCubit.state.searchByIngredient,
+            );
+          },
+          const SingleActivator(LogicalKeyboardKey.keyI, alt: true): () {
+            _catalogCubit.toggleSearchByIngredient(
+              !_catalogCubit.state.searchByIngredient,
+            );
+          },
+
+          // Cobrar Inmediato en Desktop (F2 o Alt+Enter)
+          const SingleActivator(LogicalKeyboardKey.f2): () {
+            _desktopPanelKey.currentState?.triggerCheckout();
+          },
+          const SingleActivator(LogicalKeyboardKey.enter, alt: true): () {
+            _desktopPanelKey.currentState?.triggerCheckout();
+          },
+
+          // Abrir Búsqueda de Cliente en Desktop (Alt+C)
+          const SingleActivator(LogicalKeyboardKey.keyC, alt: true): () {
+            _desktopPanelKey.currentState?.openClientSearch();
+          },
+
+          // Nuevo Cliente Express (Alt+A)
+          const SingleActivator(LogicalKeyboardKey.keyA, alt: true):
+              _openQuickCreateCustomer,
+
+          // Escape solo desenfoca el buscador en Tab 0 (sin salir del ERP)
+          const SingleActivator(LogicalKeyboardKey.escape): () {
+            if (_searchFocusNode.hasFocus) {
+              _searchFocusNode.unfocus();
+            }
+          },
         },
-        child: FocusScope(
-          autofocus: true,
-          child: Scaffold(
-            key: _scaffoldKey,
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            bottomNavigationBar: isDesktop
-                ? null
-                : NavigationBar(
-                    selectedIndex: _selectedSidebarIndex,
-                    onDestinationSelected: _onSidebarTabSelected,
-                    backgroundColor: Colors.white,
-                    elevation: 8,
-                    indicatorColor: AppColors.teal.withValues(alpha: 0.15),
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.point_of_sale_outlined),
-                        selectedIcon: Icon(Icons.point_of_sale, color: AppColors.tealDark),
-                        label: 'Venta',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.inventory_2_outlined),
-                        selectedIcon: Icon(Icons.inventory_2, color: AppColors.tealDark),
-                        label: 'Lotes/Stock',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.receipt_long_outlined),
-                        selectedIcon: Icon(Icons.receipt_long, color: AppColors.tealDark),
-                        label: 'Ventas',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.account_balance_wallet_outlined),
-                        selectedIcon: Icon(Icons.account_balance_wallet, color: AppColors.tealDark),
-                        label: 'Turnos',
-                      ),
-                    ],
-                  ),
-            body: Builder(
-              builder: (context) {
-                if (!_isMountedReady) {
-                  return const PosDesktopSkeleton();
-                }
-
-                Widget catalogContent = Column(
-                  children: [
-                    Expanded(
-                      child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                        buildWhen: (prev, current) =>
-                            prev.products != current.products ||
-                            prev.catalogState != current.catalogState ||
-                            prev.errorMessage != current.errorMessage,
-                        builder: (context, state) =>
-                            _buildMainContent(
-                              context,
-                              context.read<AdminCatalogCubit>(),
-                              state,
-                              headerSliver: _buildCatalogHeaderSliver(context),
-                              chipsSliver: _buildCategoryChipsSliver(context),
-                            ),
-                      ),
-                    ),
-                  BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-                    buildWhen: (prev, current) =>
-                        prev.currentPage != current.currentPage ||
-                        prev.totalPages != current.totalPages ||
-                        prev.products != current.products,
-                    builder: (context, state) {
-                      if (state.products.isNotEmpty && state.totalPages > 1) {
-                        return Container(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: SafeArea(
-                            top: false,
-                            child: AdminPageBlocks(
-                              currentPage: state.currentPage,
-                              totalPages: state.totalPages,
-                              onPageChanged: context.read<AdminCatalogCubit>().setPage,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ],
+        child: BlocListener<CartCubit, CartState>(
+          listenWhen:
+              (previous, current) =>
+                  (current.errorMessage != null &&
+                      current.errorMessage != previous.errorMessage) ||
+                  (current.items.length > previous.items.length),
+          listener: (context, state) {
+            if (state.errorMessage != null) {
+              AppSnackbar.show(
+                context,
+                message: state.errorMessage!,
+                type: SnackbarType.warning,
               );
+            } else if (state.items.isNotEmpty) {
+              // Un item ha sido agregado exitosamente: feedback táctil sin saturar con SnackBars
+              HapticFeedback.lightImpact();
+            }
+          },
+          child: FocusScope(
+            autofocus: true,
+            child: Scaffold(
+              key: _scaffoldKey,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              bottomNavigationBar:
+                  isDesktop
+                      ? null
+                      : NavigationBar(
+                        selectedIndex: _selectedSidebarIndex,
+                        onDestinationSelected: _onSidebarTabSelected,
+                        backgroundColor: Colors.white,
+                        elevation: 8,
+                        indicatorColor: AppColors.teal.withValues(alpha: 0.15),
+                        destinations: const [
+                          NavigationDestination(
+                            icon: Icon(Icons.point_of_sale_outlined),
+                            selectedIcon: Icon(
+                              Icons.point_of_sale,
+                              color: AppColors.tealDark,
+                            ),
+                            label: 'Venta',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.inventory_2_outlined),
+                            selectedIcon: Icon(
+                              Icons.inventory_2,
+                              color: AppColors.tealDark,
+                            ),
+                            label: 'Lotes/Stock',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.receipt_long_outlined),
+                            selectedIcon: Icon(
+                              Icons.receipt_long,
+                              color: AppColors.tealDark,
+                            ),
+                            label: 'Ventas',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.account_balance_wallet_outlined),
+                            selectedIcon: Icon(
+                              Icons.account_balance_wallet,
+                              color: AppColors.tealDark,
+                            ),
+                            label: 'Turnos',
+                          ),
+                        ],
+                      ),
+              body: Builder(
+                builder: (context) {
+                  if (!_isMountedReady) {
+                    return const PosDesktopSkeleton();
+                  }
 
-              Widget activeView;
-              if (_selectedSidebarIndex == 1) {
-                _inventoryCubit ??= sl<InventoryCubit>()..initStockTab();
-                activeView = Expanded(
-                  child: BlocProvider.value(
-                    value: _inventoryCubit!,
-                    child: const InventoryScreen(isEmbedded: true),
-                  ),
-                );
-              } else if (_selectedSidebarIndex == 2) {
-                activeView = Expanded(
-                  child: PosSalesView(
-                    onOpenCashShifts: () => _onSidebarTabSelected(3),
-                  ),
-                );
-              } else if (_selectedSidebarIndex == 3) {
-                _cashShiftsCubit ??= sl<CashShiftsCubit>();
-                activeView = Expanded(
-                  child: AllCashShiftsScreen(
-                    isEmbedded: true,
-                    cubit: _cashShiftsCubit,
-                  ),
-                );
-              } else {
-                activeView = Expanded(
-                  child: Row(
+                  Widget catalogContent = Column(
                     children: [
                       Expanded(
-                        flex: 6,
-                        child: RepaintBoundary(child: catalogContent),
+                        child: BlocBuilder<
+                          AdminCatalogCubit,
+                          AdminCatalogState
+                        >(
+                          buildWhen:
+                              (prev, current) =>
+                                  prev.products != current.products ||
+                                  prev.catalogState != current.catalogState ||
+                                  prev.errorMessage != current.errorMessage,
+                          builder:
+                              (context, state) => _buildMainContent(
+                                context,
+                                context.read<AdminCatalogCubit>(),
+                                state,
+                                headerSliver: _buildCatalogHeaderSliver(
+                                  context,
+                                ),
+                                chipsSliver: _buildCategoryChipsSliver(context),
+                              ),
+                        ),
                       ),
-                      if (isDesktop)
-                        Container(
-                          width:
-                              MediaQuery.of(context).size.width >= 1300
-                                  ? 440
-                                  : MediaQuery.of(context).size.width >= 1000
-                                  ? 400
-                                  : 360,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border(
-                              left: BorderSide(
-                                color: Colors.grey.withValues(alpha: 0.15),
-                                width: 1,
+                      BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+                        buildWhen:
+                            (prev, current) =>
+                                prev.currentPage != current.currentPage ||
+                                prev.totalPages != current.totalPages ||
+                                prev.products != current.products,
+                        builder: (context, state) {
+                          if (state.products.isNotEmpty &&
+                              state.totalPages > 1) {
+                            return Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                12,
+                                16,
+                                12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, -4),
+                                  ),
+                                ],
+                              ),
+                              child: SafeArea(
+                                top: false,
+                                child: AdminPageBlocks(
+                                  currentPage: state.currentPage,
+                                  totalPages: state.totalPages,
+                                  onPageChanged:
+                                      context.read<AdminCatalogCubit>().setPage,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ],
+                  );
+
+                  Widget activeView;
+                  if (_selectedSidebarIndex == 1) {
+                    _inventoryCubit ??= sl<InventoryCubit>()..initStockTab();
+                    activeView = Expanded(
+                      child: SafeArea(
+                        bottom: false,
+                        child: BlocProvider.value(
+                          value: _inventoryCubit!,
+                          child: const InventoryScreen(isEmbedded: true),
+                        ),
+                      ),
+                    );
+                  } else if (_selectedSidebarIndex == 2) {
+                    activeView = Expanded(
+                      child: SafeArea(
+                        bottom: false,
+                        child: PosSalesView(
+                          onOpenCashShifts: () => _onSidebarTabSelected(3),
+                        ),
+                      ),
+                    );
+                  } else if (_selectedSidebarIndex == 3) {
+                    _cashShiftsCubit ??= sl<CashShiftsCubit>();
+                    activeView = Expanded(
+                      child: SafeArea(
+                        bottom: false,
+                        child: AllCashShiftsScreen(
+                          isEmbedded: true,
+                          cubit: _cashShiftsCubit,
+                        ),
+                      ),
+                    );
+                  } else {
+                    activeView = Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 6,
+                            child: RepaintBoundary(child: catalogContent),
+                          ),
+                          if (isDesktop)
+                            Container(
+                              width:
+                                  MediaQuery.of(context).size.width >= 1300
+                                      ? 440
+                                      : MediaQuery.of(context).size.width >=
+                                          1000
+                                      ? 400
+                                      : 360,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border(
+                                  left: BorderSide(
+                                    color: Colors.grey.withValues(alpha: 0.15),
+                                    width: 1,
+                                  ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 24,
+                                    spreadRadius: -4,
+                                    offset: const Offset(-8, 0),
+                                  ),
+                                ],
+                              ),
+                              child: RepaintBoundary(
+                                child: DesktopPosPanel(
+                                  key: _desktopPanelKey,
+                                  onSaleCompleted: (soldQuantities) {
+                                    context
+                                        .read<AdminCatalogCubit>()
+                                        .decrementStockLocal(soldQuantities);
+                                  },
+                                ),
                               ),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 24,
-                                spreadRadius: -4,
-                                offset: const Offset(-8, 0),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Stack(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (isDesktop)
+                            RepaintBoundary(
+                              child: PosSidebarRail(
+                                selectedIndex: _selectedSidebarIndex,
+                                onDestinationSelected: _onSidebarTabSelected,
+                                onExitPos: _onExitPos,
                               ),
-                            ],
-                          ),
-                          child: RepaintBoundary(
-                            child: DesktopPosPanel(
-                              key: _desktopPanelKey,
-                              onSaleCompleted: (soldQuantities) {
+                            ),
+                          activeView,
+                        ],
+                      ),
+                      // Overlay global de procesamiento: cubre toda la pantalla
+                      BlocSelector<PosCubit, PosState, bool>(
+                        selector: (s) => s.status == PosStatus.loading,
+                        builder:
+                            (ctx, isLoading) =>
+                                isLoading
+                                    ? const PosProcessingOverlay(
+                                      isVisible: true,
+                                    )
+                                    : const SizedBox.shrink(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              floatingActionButton:
+                  isDesktop || _selectedSidebarIndex != 0
+                      ? null
+                      : BlocBuilder<CartCubit, CartState>(
+                        builder: (context, cartState) {
+                          final hasItems = cartState.items.isNotEmpty;
+                          final itemCount = cartState.items.values.fold<int>(
+                            0,
+                            (sum, item) => sum + item.quantity,
+                          );
+                          final totalAmount = cartState.totalAmount;
+
+                          return FloatingActionButton.extended(
+                            onPressed: () async {
+                              final sold = await context.push<Map<String, int>>(
+                                '/pos-checkout',
+                              );
+                              if (sold != null && context.mounted) {
                                 context
                                     .read<AdminCatalogCubit>()
-                                    .decrementStockLocal(soldQuantities);
-                              },
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              }
-
-              return Stack(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (isDesktop)
-                        RepaintBoundary(
-                          child: PosSidebarRail(
-                            selectedIndex: _selectedSidebarIndex,
-                            onDestinationSelected: _onSidebarTabSelected,
-                            onExitPos: _onExitPos,
-                          ),
-                        ),
-                      activeView,
-                    ],
-                  ),
-                  // Overlay global de procesamiento: cubre toda la pantalla
-                  BlocSelector<PosCubit, PosState, bool>(
-                    selector: (s) => s.status == PosStatus.loading,
-                    builder:
-                        (ctx, isLoading) =>
-                            isLoading
-                                ? const PosProcessingOverlay(isVisible: true)
-                                : const SizedBox.shrink(),
-                  ),
-                ],
-              );
-            },
-          ),
-          floatingActionButton:
-              isDesktop || _selectedSidebarIndex != 0
-                  ? null
-                  : BlocBuilder<CartCubit, CartState>(
-                      builder: (context, cartState) {
-                        final hasItems = cartState.items.isNotEmpty;
-                        final itemCount = cartState.items.values.fold<int>(
-                          0,
-                          (sum, item) => sum + item.quantity,
-                        );
-                        final totalAmount = cartState.totalAmount;
-
-                        return FloatingActionButton.extended(
-                          onPressed: () async {
-                            final sold = await context.push<Map<String, int>>('/pos-checkout');
-                            if (sold != null && context.mounted) {
-                              context.read<AdminCatalogCubit>().decrementStockLocal(sold);
-                            }
-                          },
-                          backgroundColor:
+                                    .decrementStockLocal(sold);
+                              }
+                            },
+                            backgroundColor:
+                                hasItems
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                            foregroundColor: Colors.white,
+                            icon: Icon(
                               hasItems
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
-                          foregroundColor: Colors.white,
-                          icon: Icon(
-                            hasItems
-                                ? Icons.shopping_bag_rounded
-                                : Icons.shopping_cart_checkout_rounded,
-                            size: 20,
-                          ),
-                          label: Text(
-                            hasItems
-                                ? 'Ir a Caja ($itemCount) • S/ ${totalAmount.toStringAsFixed(2)}'
-                                : 'Ir a Caja',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                                  ? Icons.shopping_bag_rounded
+                                  : Icons.shopping_cart_checkout_rounded,
+                              size: 20,
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                            label: Text(
+                              hasItems
+                                  ? 'Ir a Caja ($itemCount) • S/ ${totalAmount.toStringAsFixed(2)}'
+                                  : 'Ir a Caja',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCatalogHeaderSliver(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
         color: Colors.white,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: BlocSelector<AdminCatalogCubit, AdminCatalogState, bool>(
           selector: (state) => state.searchByIngredient,
           builder: (context, searchByIngredient) {
@@ -804,14 +895,15 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   Widget _buildCategoryChipsSliver(BuildContext context) {
     return SliverToBoxAdapter(
       child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-        buildWhen: (prev, current) =>
-            prev.categories != current.categories ||
-            prev.selectedCategoryId != current.selectedCategoryId ||
-            prev.brands != current.brands ||
-            prev.selectedBrandId != current.selectedBrandId ||
-            prev.filterIsActive != current.filterIsActive ||
-            prev.sortOption != current.sortOption ||
-            prev.stockFilter != current.stockFilter,
+        buildWhen:
+            (prev, current) =>
+                prev.categories != current.categories ||
+                prev.selectedCategoryId != current.selectedCategoryId ||
+                prev.brands != current.brands ||
+                prev.selectedBrandId != current.selectedBrandId ||
+                prev.filterIsActive != current.filterIsActive ||
+                prev.sortOption != current.sortOption ||
+                prev.stockFilter != current.stockFilter,
         builder: (context, state) {
           if (state.categories.isEmpty && state.brands.isEmpty) {
             return const SizedBox.shrink();
@@ -831,7 +923,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               sortOption: state.sortOption,
               onSortSelected: context.read<AdminCatalogCubit>().setSortOption,
               stockFilter: state.stockFilter,
-              onStockFilterSelected: context.read<AdminCatalogCubit>().setStockFilter,
+              onStockFilterSelected:
+                  context.read<AdminCatalogCubit>().setStockFilter,
               onClearAllFilters: () {
                 final cubit = context.read<AdminCatalogCubit>();
                 cubit.setCategory(null);
@@ -868,24 +961,21 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                     MediaQuery.of(context).size.width >= 1200
                         ? 6
                         : MediaQuery.of(context).size.width >= 800
-                            ? 4
-                            : MediaQuery.of(context).size.width >= 600
-                                ? 3
-                                : 2,
+                        ? 4
+                        : MediaQuery.of(context).size.width >= 600
+                        ? 3
+                        : 2,
                 childAspectRatio: 0.75,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  return const AppShimmer(
-                    width: double.infinity,
-                    height: double.infinity,
-                    borderRadius: 16,
-                  );
-                },
-                childCount: 12,
-              ),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                return const AppShimmer(
+                  width: double.infinity,
+                  height: double.infinity,
+                  borderRadius: 16,
+                );
+              }, childCount: 12),
             ),
           ),
         ],
@@ -900,7 +990,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
           chipsSliver,
           SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(child: CatalogErrorState(message: state.errorMessage!)),
+            child: Center(
+              child: CatalogErrorState(message: state.errorMessage!),
+            ),
           ),
         ],
       );
