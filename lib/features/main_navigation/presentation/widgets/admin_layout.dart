@@ -176,12 +176,9 @@ class _AdminLayoutState extends State<AdminLayout> {
     // transparente para conservar soporte opcional a FABs locales.
     // Esto elimina: N Scaffolds anidados, N AppBars duplicadas, parpadeos y LayoutBuilders redundantes.
     if (shell != null) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: widget.body,
-        floatingActionButton: widget.floatingActionButton,
-        bottomNavigationBar: widget.bottomNavigationBar,
-      );
+      // El shell ya renderiza bottomNavigationBar y floatingActionButton
+      // (vía AdminHeaderConfig). No duplicarlos aquí.
+      return Scaffold(backgroundColor: Colors.transparent, body: widget.body);
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -643,16 +643,8 @@ class _ProductDetailScreenContentState
 
         return AdminLayout(
           title: product.name,
-          breadcrumb: 'Catálogo > Productos > ${product.name}',
           showBackButton: true,
           showProfileButton: false,
-          onBack: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/products');
-            }
-          },
           actions:
               isDesktop ? _buildHeaderActions(context, isDesktop: true) : null,
           bottomNavigationBar:
@@ -689,7 +681,9 @@ class _ProductDetailScreenContentState
               ),
             ),
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+              side: BorderSide(
+                color: isDark ? AppColors.darkBorder : AppColors.border,
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -763,22 +757,25 @@ class _ProductDetailScreenContentState
                 : 14,
           ),
           decoration: BoxDecoration(
-            color: (isDark ? AppColors.darkSurface : Colors.white).withValues(alpha: 0.94),
+            color: (isDark ? AppColors.darkSurface : Colors.white).withValues(
+              alpha: 0.94,
+            ),
             border: Border(
               top: BorderSide(
                 color: isDark ? AppColors.darkBorder : AppColors.border,
                 width: 1,
               ),
             ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, -3),
-                    ),
-                  ],
+            boxShadow:
+                isDark
+                    ? []
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, -3),
+                      ),
+                    ],
           ),
           child: Row(
             children: [
@@ -796,14 +793,18 @@ class _ProductDetailScreenContentState
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                      foregroundColor:
+                          isDark
+                              ? const Color(0xFFF8FAFC)
+                              : AppColors.textPrimary,
                       side: BorderSide(
                         color: isDark ? AppColors.darkBorder : AppColors.border,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                      backgroundColor:
+                          isDark ? AppColors.darkSurface : Colors.white,
                     ),
                   ),
                 ),
@@ -930,15 +931,16 @@ class _ProductDetailScreenContentState
             color: isDark ? AppColors.darkBorder : AppColors.border,
             width: 1,
           ),
-          boxShadow: isDark
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+          boxShadow:
+              isDark
+                  ? []
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
         ),
         child: Column(
           children: [
@@ -990,7 +992,9 @@ class _ProductDetailScreenContentState
                     subValue:
                         '${retailMargin.toStringAsFixed(1)}% margen bruto',
                     valueColor:
-                        isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                   ),
                 ),
                 Container(
@@ -1008,9 +1012,10 @@ class _ProductDetailScreenContentState
                         reorderPoint > 0
                             ? 'Mínimo: $reorderPoint u.'
                             : 'Sin reorden',
-                    valueColor: isDark
-                        ? const Color(0xFFF8FAFC)
-                        : const Color(0xFF0F172A),
+                    valueColor:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF0F172A),
                   ),
                 ),
               ],
@@ -1029,15 +1034,16 @@ class _ProductDetailScreenContentState
           color: isDark ? AppColors.darkBorder : AppColors.border,
           width: 1,
         ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow:
+            isDark
+                ? []
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
       ),
       child: Row(
         children: [
@@ -1239,11 +1245,17 @@ class _ProductDetailScreenContentState
                             children: [
                               Card(
                                 elevation: 0,
-                                color: isDark ? AppColors.darkSurface : Colors.white,
+                                color:
+                                    isDark
+                                        ? AppColors.darkSurface
+                                        : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                   side: BorderSide(
-                                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.border,
                                   ),
                                 ),
                                 child: Padding(
@@ -1325,7 +1337,9 @@ class _ProductDetailScreenContentState
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: Row(
         children:
@@ -1505,7 +1519,8 @@ class _ProductDetailScreenContentState
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                         side: BorderSide(
-                          color: isDark ? AppColors.darkBorder : AppColors.border,
+                          color:
+                              isDark ? AppColors.darkBorder : AppColors.border,
                         ),
                       ),
                       child: Padding(
