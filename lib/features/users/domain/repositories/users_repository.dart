@@ -44,6 +44,8 @@ abstract class UsersRepository {
 
   Future<Either<Failure, void>> deleteUser(String id);
 
+  Future<Either<Failure, Map<String, int>>> getUserRelations(String id);
+
   Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(
     String userId,
   );

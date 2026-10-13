@@ -7,12 +7,12 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/user_card.dart';
+import 'package:inventory_store_app/features/users/presentation/widgets/users/user_delete_flow.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/user_detail_sheet.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/users_skeleton.dart';
 
@@ -187,26 +187,19 @@ class _UsersTabState extends State<UsersTab>
 
   Future<void> _confirmDeleteUser(BuildContext context, UserEntity user) async {
     final cubit = context.read<UsersCubit>();
-    await AdaptiveDestructiveDialog.show(
-      context: context,
-      title: 'Eliminar Usuario',
-      itemName: user.fullName,
-      matchText: user.fullName,
-      description:
-          'Esta acción eliminará permanentemente la cuenta de "${user.fullName}" (${user.email ?? user.phone ?? 'sin contacto'}), sus credenciales de acceso y desvinculará sus registros y puntos acumulados.',
-      confirmButtonText: 'Eliminar Usuario',
-      onConfirmAsync: () async {
-        final success = await cubit.deleteUser(user.id);
-        if (success && context.mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Usuario "${user.fullName}" eliminado correctamente',
-            type: SnackbarType.success,
-          );
-        }
-        return success;
-      },
+    final deleted = await runDeleteUserFlow(
+      context,
+      user: user,
+      onDeactivate: () => cubit.toggleUserStatus(user.id, user.isActive),
+      onDelete: () => cubit.deleteUser(user.id),
     );
+    if (deleted && context.mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'Usuario "${user.fullName}" eliminado correctamente',
+        type: SnackbarType.success,
+      );
+    }
   }
 
   @override

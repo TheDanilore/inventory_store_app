@@ -374,6 +374,22 @@ class UsersRepositoryImpl implements UsersRepository {
   }
 
   @override
+  Future<Either<Failure, Map<String, int>>> getUserRelations(String id) async {
+    try {
+      final res = await _supabase.rpc(
+        'get_user_relations_summary',
+        params: {'p_user_id': id},
+      );
+      final map = Map<String, dynamic>.from(res as Map);
+      return Right(map.map((k, v) => MapEntry(k, (v as num).toInt())));
+    } on PostgrestException catch (e) {
+      return Left(ServerFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Error al consultar relaciones: $e'));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<Map<String, dynamic>>>> getRecentMovements(
     String userId,
   ) async {

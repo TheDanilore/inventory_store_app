@@ -8,11 +8,12 @@ import 'package:inventory_store_app/features/users/presentation/bloc/user_detail
 import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_dialog.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/delete_user_usecase.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/widgets/users/user_delete_flow.dart';
 
 class UserDetailSheet extends StatelessWidget {
   final String userId;
@@ -75,40 +76,35 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     Navigator.of(context).pop();
     context.go(
       '/users/form',
-      extra: {
-        'existingUser': user,
-        'initialRole': user.role,
-      },
+      extra: {'existingUser': user, 'initialRole': user.role},
     );
   }
 
   Future<void> _confirmDeleteUser(BuildContext context, UserEntity user) async {
-    final confirmed = await AdaptiveDestructiveDialog.show(
-      context: context,
-      title: 'Eliminar Usuario',
-      itemName: user.fullName,
-      matchText: user.fullName,
-      description:
-          'Esta acción eliminará permanentemente la cuenta de "${user.fullName}" y revocará todos sus accesos al sistema. Esta operación es irreversible.',
-      confirmButtonText: 'Eliminar Usuario',
-      onConfirmAsync: () async {
-        final useCase = sl<DeleteUserUseCase>();
-        final res = await useCase(user.id);
-        return res.fold(
-          (failure) {
-            AppSnackbar.show(
-              context,
-              message: 'Error al eliminar: ${failure.message}',
-              type: SnackbarType.error,
-            );
-            return false;
-          },
-          (_) => true,
+    final deleted = await runDeleteUserFlow(
+      context,
+      user: user,
+      onDeactivate: () async {
+        await context.read<UsersCubit>().toggleUserStatus(
+          user.id,
+          user.isActive,
         );
+        widget.onUserUpdated();
+      },
+      onDelete: () async {
+        final res = await sl<DeleteUserUseCase>()(user.id);
+        return res.fold((failure) {
+          AppSnackbar.show(
+            context,
+            message: 'Error al eliminar: ${failure.message}',
+            type: SnackbarType.error,
+          );
+          return false;
+        }, (_) => true);
       },
     );
 
-    if (confirmed == true && context.mounted) {
+    if (deleted && context.mounted) {
       Navigator.of(context).pop();
       widget.onUserUpdated();
       AppSnackbar.show(
@@ -162,11 +158,18 @@ class _UserDetailContentState extends State<_UserDetailContent> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.red, size: 40),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.red,
+                  size: 40,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Error al cargar: ${state.message}',
-                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -199,7 +202,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
             // ─── CABECERA DRAWER EN DESKTOP ──────────────────────────────────
             if (widget.isSideSheet)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(
@@ -273,9 +279,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                           width: 64,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: role == AppRoles.admin
-                                ? Colors.indigo.withValues(alpha: 0.12)
-                                : role == AppRoles.employee
+                            color:
+                                role == AppRoles.admin
+                                    ? Colors.indigo.withValues(alpha: 0.12)
+                                    : role == AppRoles.employee
                                     ? Colors.orange.withValues(alpha: 0.12)
                                     : AppColors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
@@ -286,9 +293,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color: role == AppRoles.admin
-                                    ? Colors.indigo.shade700
-                                    : role == AppRoles.employee
+                                color:
+                                    role == AppRoles.admin
+                                        ? Colors.indigo.shade700
+                                        : role == AppRoles.employee
                                         ? Colors.orange.shade700
                                         : AppColors.primary,
                               ),
@@ -319,16 +327,18 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: role == AppRoles.admin
-                                          ? Colors.indigo.shade50
-                                          : role == AppRoles.employee
+                                      color:
+                                          role == AppRoles.admin
+                                              ? Colors.indigo.shade50
+                                              : role == AppRoles.employee
                                               ? Colors.orange.shade50
                                               : AppColors.surface,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: role == AppRoles.admin
-                                            ? Colors.indigo.shade200
-                                            : role == AppRoles.employee
+                                        color:
+                                            role == AppRoles.admin
+                                                ? Colors.indigo.shade200
+                                                : role == AppRoles.employee
                                                 ? Colors.orange.shade200
                                                 : AppColors.border,
                                       ),
@@ -337,14 +347,15 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       role == AppRoles.admin
                                           ? 'ADMINISTRADOR'
                                           : role == AppRoles.employee
-                                              ? 'EMPLEADO'
-                                              : 'CLIENTE',
+                                          ? 'EMPLEADO'
+                                          : 'CLIENTE',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: role == AppRoles.admin
-                                            ? Colors.indigo.shade700
-                                            : role == AppRoles.employee
+                                        color:
+                                            role == AppRoles.admin
+                                                ? Colors.indigo.shade700
+                                                : role == AppRoles.employee
                                                 ? Colors.orange.shade700
                                                 : AppColors.textSecondary,
                                       ),
@@ -356,14 +367,16 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: isActive
-                                          ? Colors.green.shade50
-                                          : Colors.red.shade50,
+                                      color:
+                                          isActive
+                                              ? Colors.green.shade50
+                                              : Colors.red.shade50,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: isActive
-                                            ? Colors.green.shade200
-                                            : Colors.red.shade200,
+                                        color:
+                                            isActive
+                                                ? Colors.green.shade200
+                                                : Colors.red.shade200,
                                       ),
                                     ),
                                     child: Text(
@@ -371,9 +384,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        color: isActive
-                                            ? Colors.green.shade700
-                                            : Colors.red.shade700,
+                                        color:
+                                            isActive
+                                                ? Colors.green.shade700
+                                                : Colors.red.shade700,
                                       ),
                                     ),
                                   ),
@@ -418,7 +432,9 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,
-                          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

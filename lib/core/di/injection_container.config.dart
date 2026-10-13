@@ -73,7 +73,7 @@ import '../../features/catalog/domain/repositories/ingredients_repository.dart'
 import '../../features/catalog/domain/repositories/products_repository.dart'
     as _i570;
 import '../../features/catalog/domain/usecases/add_product_review_usecase.dart'
-    as _i288;
+    as _i289;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_brand_mutations_uc.dart'
@@ -503,6 +503,8 @@ import '../../features/users/domain/usecases/get_global_users_count_usecase.dart
     as _i962;
 import '../../features/users/domain/usecases/get_user_by_id_usecase.dart'
     as _i342;
+import '../../features/users/domain/usecases/get_user_relations_usecase.dart'
+    as _i288;
 import '../../features/users/domain/usecases/get_users_usecase.dart' as _i499;
 import '../../features/users/domain/usecases/update_user_usecase.dart' as _i90;
 import '../../features/users/presentation/bloc/user_detail/user_detail_cubit.dart'
@@ -513,6 +515,7 @@ import '../../features/users/presentation/bloc/users/users_cubit.dart' as _i451;
 import '../localization/bloc/locale_cubit.dart' as _i119;
 import '../network/network_cubit.dart' as _i11;
 import '../services/logger_service.dart' as _i141;
+import '../theme/bloc/theme_cubit.dart' as _i735;
 import 'register_module.dart' as _i291;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -534,6 +537,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i119.LocaleCubit>(() => _i119.LocaleCubit());
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
     gh.lazySingleton<_i141.LoggerService>(() => const _i141.LoggerService());
+    gh.lazySingleton<_i735.ThemeCubit>(() => _i735.ThemeCubit());
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
       () => _i1021.ExportCustomersPdfUseCase(),
     );
@@ -900,6 +904,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i342.GetUserByIdUseCase>(
       () => _i342.GetUserByIdUseCase(gh<_i476.UsersRepository>()),
+    );
+    gh.factory<_i288.GetUserRelationsUseCase>(
+      () => _i288.GetUserRelationsUseCase(gh<_i476.UsersRepository>()),
     );
     gh.factory<_i499.GetUsersUseCase>(
       () => _i499.GetUsersUseCase(gh<_i476.UsersRepository>()),
@@ -1368,8 +1375,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),
     );
-    gh.factory<_i288.AddProductReviewUseCase>(
-      () => _i288.AddProductReviewUseCase(gh<_i570.ProductsRepository>()),
+    gh.factory<_i289.AddProductReviewUseCase>(
+      () => _i289.AddProductReviewUseCase(gh<_i570.ProductsRepository>()),
     );
     gh.factory<_i987.CheckCustomerPurchaseUseCase>(
       () => _i987.CheckCustomerPurchaseUseCase(gh<_i570.ProductsRepository>()),
@@ -1675,7 +1682,7 @@ extension GetItInjectableX on _i174.GetIt {
         getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
         exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
         checkPurchase: gh<_i987.CheckCustomerPurchaseUseCase>(),
-        addReview: gh<_i288.AddProductReviewUseCase>(),
+        addReview: gh<_i289.AddProductReviewUseCase>(),
       ),
     );
     gh.lazySingleton<_i1067.CatalogFormMutationsUC>(
