@@ -1930,11 +1930,14 @@ BEGIN
       RAISE EXCEPTION 'La línea de crédito del cliente no está activa.' USING ERRCODE = 'P0011';
     END IF;
 
-    v_credit_disponible := v_credit_limit - v_current_debt;
-    IF v_credit_disponible < (v_total_amount - v_amount_paid) THEN
-      RAISE EXCEPTION 'Crédito insuficiente para esta venta. Disponible: %, Requerido: %', 
-        v_credit_disponible, (v_total_amount - v_amount_paid)
-        USING ERRCODE = 'P0012';
+    -- credit_limit <= 0 = crédito ilimitado (misma regla que la UI)
+    IF v_credit_limit > 0 THEN
+      v_credit_disponible := v_credit_limit - v_current_debt;
+      IF v_credit_disponible < (v_total_amount - v_amount_paid) THEN
+        RAISE EXCEPTION 'Crédito insuficiente para esta venta. Disponible: %, Requerido: %',
+          v_credit_disponible, (v_total_amount - v_amount_paid)
+          USING ERRCODE = 'P0012';
+      END IF;
     END IF;
   END IF;
 
@@ -2919,8 +2922,11 @@ BEGIN
             RAISE EXCEPTION 'El cliente no tiene línea de crédito activa.';
         END IF;
 
-        IF (v_credit_limit - v_current_debt) < v_total_amount THEN
-            RAISE EXCEPTION 'Crédito insuficiente. Disponible: S/ %', (v_credit_limit - v_current_debt);
+        -- credit_limit <= 0 = crédito ilimitado
+        IF v_credit_limit > 0
+           AND (v_credit_limit - v_current_debt) < v_total_amount THEN
+            RAISE EXCEPTION 'Crédito insuficiente. Disponible: S/ %',
+                (v_credit_limit - v_current_debt);
         END IF;
     END IF;
 

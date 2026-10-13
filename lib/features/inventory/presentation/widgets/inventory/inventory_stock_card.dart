@@ -76,10 +76,10 @@ class InventoryStockCard extends StatelessWidget {
                         child:
                             item.imageUrl != null && item.imageUrl!.isNotEmpty
                                 ? CachedNetworkImage(
-                                    imageUrl: item.imageUrl!,
-                                    memCacheWidth: 140,
-                                    memCacheHeight: 140,
-                                    fit: BoxFit.cover,
+                                  imageUrl: item.imageUrl!,
+                                  memCacheWidth: 140,
+                                  memCacheHeight: 140,
+                                  fit: BoxFit.cover,
                                   placeholder:
                                       (context, url) => Container(
                                         color: AppColors.background,
@@ -276,95 +276,49 @@ class InventoryStockCard extends StatelessWidget {
               // ── Pie de Tarjeta ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-                child: Row(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.flag_outlined,
-                      size: 13,
-                      color: AppColors.textSecondary,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.flag_outlined,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Punto de reorden: ${item.reorderPoint} uds.',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Punto de reorden: ${item.reorderPoint} uds.',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    InkWell(
+                    _FooterChip(
+                      icon: Icons.visibility_outlined,
+                      label: 'Variantes',
+                      foreground: AppColors.primary,
+                      background: AppColors.primary.withValues(alpha: 0.08),
                       onTap: onTap,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              Icons.visibility_outlined,
-                              size: 13,
-                              color: AppColors.primary,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Variantes',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
-                    const SizedBox(width: 6),
-                    InkWell(
+                    _FooterChip(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Kárdex',
+                      foreground: AppColors.textSecondary,
+                      background: const Color(0xFFF1F5F9),
                       onTap: () {
                         context.push(
                           '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
                         );
                       },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(
-                              Icons.receipt_long_rounded,
-                              size: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Kárdex',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
-                    const SizedBox(width: 6),
                     if (item.usesBatches)
                       _Badge(
                         icon: Icons.batch_prediction_rounded,
@@ -485,6 +439,52 @@ class _BatchMiniList extends StatelessWidget {
                 ),
               );
             }).toList(),
+      ),
+    );
+  }
+}
+
+class _FooterChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color foreground;
+  final Color background;
+  final VoidCallback? onTap;
+
+  const _FooterChip({
+    required this.icon,
+    required this.label,
+    required this.foreground,
+    required this.background,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: foreground),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: foreground,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
