@@ -592,19 +592,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                 (val) => setState(() => _isTableView = val),
                           ),
                           onRefresh: () => cubit.loadExits(isRefresh: true),
-                          primaryAction: AdminProToolbarAction(
-                            label:
-                                _hasDraft
-                                    ? 'Continuar Borrador'
-                                    : 'Nueva Salida',
-                            icon:
-                                _hasDraft
-                                    ? Icons.edit_note_rounded
-                                    : Icons.remove_circle_outline_rounded,
-                            onPressed: _onNewExit,
-                            keyHint: 'N',
-                            isHighlighted: _hasDraft,
-                          ),
                         ),
                       ),
 

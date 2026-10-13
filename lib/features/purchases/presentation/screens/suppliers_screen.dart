@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
@@ -282,6 +283,24 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                    SliverToBoxAdapter(
+                      child: AdminPageHeader(
+                        title: 'Directorio de Proveedores',
+                        subtitle:
+                            'Gestiona tus proveedores, su información y datos de contacto',
+                        isDesktop: isDesktop,
+                        actions: [
+                          AdminHeaderButton.primary(
+                            label: 'Nuevo Proveedor',
+                            icon: Icons.add_business_rounded,
+                            tooltip: 'Nuevo proveedor (Atajo: N)',
+                            onPressed: () => _openSupplierModal(context),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // --- 1. BENTO METRIC RIBBON PARA PROVEEDORES ---
                     SliverToBoxAdapter(
                       child: Padding(
@@ -322,12 +341,6 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                               refresh: true,
                             ),
                         refreshTooltip: 'Refrescar proveedores [R]',
-                        primaryAction: AdminProToolbarAction(
-                          label: 'Nuevo Proveedor',
-                          icon: Icons.add_business_rounded,
-                          onPressed: () => _openSupplierModal(context),
-                          keyHint: 'N',
-                        ),
                         isDesktop: isDesktop,
                       ),
                     ),

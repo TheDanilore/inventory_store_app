@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
@@ -937,6 +938,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                             minHeight: 2,
                           ),
                         ),
+
+                      // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                      SliverToBoxAdapter(
+                        child: AdminPageHeader(
+                          title: 'Gestión de Pedidos',
+                          subtitle:
+                              'Gestiona los pedidos de tus clientes, su estado y pagos',
+                          isDesktop: isWide,
+                        ),
+                      ),
 
                       // --- 1. BENTO KPI BAR ---
                       SliverToBoxAdapter(

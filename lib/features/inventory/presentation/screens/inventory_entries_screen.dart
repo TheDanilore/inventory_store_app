@@ -759,19 +759,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                               page: 0,
                             );
                           },
-                          primaryAction: AdminProToolbarAction(
-                            label:
-                                _hasDraft
-                                    ? 'Continuar Borrador'
-                                    : 'Nueva Entrada',
-                            icon:
-                                _hasDraft
-                                    ? Icons.edit_note_rounded
-                                    : Icons.add_box_rounded,
-                            onPressed: _onNewEntry,
-                            keyHint: 'N',
-                            isHighlighted: _hasDraft,
-                          ),
                           isDesktop: isTablet,
                         ),
                       ),
