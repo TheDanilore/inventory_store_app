@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -286,6 +287,23 @@ class _CustomerCreditsScreenContentState
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
+                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                  SliverToBoxAdapter(
+                    child: AdminPageHeader(
+                      title: 'Cuentas por Cobrar',
+                      subtitle: 'Gestiona tus cuentas por cobrar',
+                      isDesktop: isDesktop,
+                      actions: [
+                        AdminHeaderButton.primary(
+                          label: 'Nueva Línea',
+                          icon: Icons.add_rounded,
+                          tooltip: 'Nueva línea de crédito (Atajo: N)',
+                          onPressed: () => _openCreateAccountModal(),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // --- 1. KPI BENTO METRIC BAR ---
                   if (!state.isLoading || state.accounts.isNotEmpty)
                     SliverToBoxAdapter(
@@ -325,12 +343,6 @@ class _CustomerCreditsScreenContentState
                                   .read<CustomerCreditListCubit>()
                                   .loadData(),
                       refreshTooltip: 'Refrescar créditos [R]',
-                      primaryAction: AdminProToolbarAction(
-                        label: 'Nueva Línea',
-                        icon: Icons.add_rounded,
-                        onPressed: () => _openCreateAccountModal(),
-                        keyHint: 'N',
-                      ),
                     ),
                   ),
 
@@ -590,7 +602,6 @@ class _CustomerCreditsScreenContentState
           children: [
             _FilterTabButton(
               title: 'Todas',
-              shortcutHint: '1',
               isSelected: _tabController.index == 0,
               onTap: () {
                 _tabController.animateTo(0);
@@ -601,7 +612,6 @@ class _CustomerCreditsScreenContentState
             _FilterTabButton(
               title: 'Por Cobrar',
               count: debtCount,
-              shortcutHint: '2',
               isSelected: _tabController.index == 1,
               onTap: () {
                 _tabController.animateTo(1);
@@ -843,14 +853,12 @@ class _CustomerCreditsScreenContentState
 class _FilterTabButton extends StatelessWidget {
   final String title;
   final int? count;
-  final String shortcutHint;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _FilterTabButton({
     required this.title,
     this.count,
-    required this.shortcutHint,
     required this.isSelected,
     required this.onTap,
   });
@@ -910,22 +918,6 @@ class _FilterTabButton extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                shortcutHint,
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
           ],
         ),
       ),

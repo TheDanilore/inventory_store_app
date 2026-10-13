@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -597,6 +598,24 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                 controller: _scrollCtrl,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
+                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                  SliverToBoxAdapter(
+                    child: AdminPageHeader(
+                      title: 'Directorio de Clientes',
+                      subtitle:
+                          'Gestiona tus clientes, su información y datos de contacto',
+                      isDesktop: isDesktop,
+                      actions: [
+                        AdminHeaderButton.primary(
+                          label: 'Nuevo Cliente',
+                          icon: Icons.person_add_rounded,
+                          tooltip: 'Nuevo cliente (Atajo: N)',
+                          onPressed: () => _openCreateCustomer(),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   // 1. FINTECH BENTO METRIC STRIP (Ultra-compacto y limpio)
                   SliverToBoxAdapter(
                     child: _CustomersBentoMetrics(
@@ -653,12 +672,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                               ),
                               onRefresh: _reloadAll,
                               refreshTooltip: 'Recargar directorio [R]',
-                              primaryAction: AdminProToolbarAction(
-                                label: 'Nuevo cliente',
-                                icon: Icons.person_add_rounded,
-                                onPressed: _openCreateCustomer,
-                                keyHint: 'N',
-                              ),
                               trailingActions: [
                                 Tooltip(
                                   message: 'Exportar a PDF',
