@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_entry_item_model.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_entry_items_usecase.dart';
@@ -609,11 +610,39 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
+                      // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                      SliverToBoxAdapter(
+                        child: AdminPageHeader(
+                          title: 'Entradas de Inventario',
+                          subtitle:
+                              'Gestiona las entradas de inventario, recepcion de mercancía y ajuste de inventario',
+                          isDesktop: isDesktopOrTablet,
+                          actions: [
+                            AdminHeaderButton.primary(
+                              label:
+                                  _hasDraft
+                                      ? 'Continuar Borrador'
+                                      : 'Nueva Entrada',
+                              icon:
+                                  _hasDraft
+                                      ? Icons.edit_note_rounded
+                                      : Icons.add_box_rounded,
+                              tooltip:
+                                  _hasDraft
+                                      ? 'Continuar entrada (Atajo: N)'
+                                      : 'Nueva entrada (Atajo: N)',
+                              onPressed:
+                                  () => context.go('/inventory-entries/form'),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // ── 1. Aviso de Borrador ──────────────────────────────
                       if (_hasDraft)
                         SliverToBoxAdapter(
                           child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 10,
@@ -639,12 +668,14 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                     style: TextStyle(
                                       color: AppColors.warning,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 12.5,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ),
                                 FilledButton.tonal(
-                                  onPressed: _onNewEntry,
+                                  onPressed: () {
+                                    context.go('/inventory-entries/form');
+                                  },
                                   style: FilledButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,

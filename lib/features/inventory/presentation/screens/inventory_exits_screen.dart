@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -448,11 +449,38 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
+                      // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                      SliverToBoxAdapter(
+                        child: AdminPageHeader(
+                          title: 'Salidas de Inventario',
+                          subtitle: 'Gestiona las salidas de inventario',
+                          isDesktop: isDesktopOrTablet,
+                          actions: [
+                            AdminHeaderButton.primary(
+                              label:
+                                  _hasDraft
+                                      ? 'Continuar Borrador'
+                                      : 'Nueva Salida',
+                              icon:
+                                  _hasDraft
+                                      ? Icons.edit_note_rounded
+                                      : Icons.remove_circle_outline_rounded,
+                              tooltip:
+                                  _hasDraft
+                                      ? 'Continuar salida (Atajo: N)'
+                                      : 'Nueva salida (Atajo: N)',
+                              onPressed:
+                                  () => context.go('/inventory-exits/form'),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // ── 1. Aviso de Borrador ──────────────────────────────
                       if (_hasDraft)
                         SliverToBoxAdapter(
                           child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 10,
@@ -478,12 +506,14 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                                     style: TextStyle(
                                       color: AppColors.warning,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 12.5,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ),
                                 FilledButton.tonal(
-                                  onPressed: _onNewExit,
+                                  onPressed: () {
+                                    context.go('/inventory-exits/form');
+                                  },
                                   style: FilledButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,

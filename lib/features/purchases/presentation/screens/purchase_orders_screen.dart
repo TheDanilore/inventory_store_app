@@ -994,7 +994,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                             ? Icons.edit_note_rounded
                                             : Icons.add_shopping_cart_rounded,
                                     tooltip:
-                                        'Crear o continuar orden (Atajo: N)',
+                                        _hasDraft
+                                            ? 'Continuar orden de compra (Atajo: N)'
+                                            : 'Nueva orden de compra (Atajo: N)',
                                     onPressed:
                                         () =>
                                             context.go('/purchase-orders/form'),
