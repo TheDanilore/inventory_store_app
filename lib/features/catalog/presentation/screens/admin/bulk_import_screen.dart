@@ -624,9 +624,14 @@ class _StatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, c) {
-        const gap = 12.0;
-        var cols = c.maxWidth >= 980 ? 6 : (c.maxWidth >= 620 ? 3 : 2);
+        const gap = 10.0;
+        const minTile = 150.0;
+        var cols = ((c.maxWidth + gap) / (minTile + gap)).floor();
+        if (cols < 2) cols = 2;
         if (cols > items.length) cols = items.length;
+        // Equilibra las filas (7 → 4+3 en vez de 6+1).
+        final rowsCount = (items.length / cols).ceil();
+        cols = (items.length / rowsCount).ceil();
         final w = (c.maxWidth - gap * (cols - 1)) / cols;
         return Wrap(
           spacing: gap,
@@ -646,20 +651,21 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     width: width,
-    padding: const EdgeInsets.all(14),
+    constraints: const BoxConstraints(minHeight: 66),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
     decoration: AppColors.cardAdaptive(context, elevated: false),
     child: Row(
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             color: item.color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(item.icon, size: 20, color: item.color),
+          child: Icon(item.icon, size: 19, color: item.color),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,7 +673,7 @@ class _StatTile extends StatelessWidget {
               Text(
                 '${item.value}',
                 style: const TextStyle(
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                 ),
@@ -1122,6 +1128,48 @@ class _ColumnsGuide extends StatelessWidget {
 
 enum _Filter { all, created, existing, warnings, errors }
 
+/// Barra que queda fija arriba al hacer scroll (filtros de la revisión).
+class _PinnedBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final Color background;
+  final double height;
+  const _PinnedBarDelegate({
+    required this.child,
+    required this.background,
+    required this.height,
+  });
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      height: height,
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: background,
+        border:
+            overlapsContent
+                ? Border(
+                  bottom: BorderSide(color: AppColors.brdSubtle(context)),
+                )
+                : null,
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _PinnedBarDelegate old) => true;
+}
+
 class _ReviewView extends StatefulWidget {
   final BulkImportState state;
   final bool compact;
@@ -1134,6 +1182,16 @@ class _ReviewView extends StatefulWidget {
 class _ReviewViewState extends State<_ReviewView> {
   _Filter _filter = _Filter.all;
   static const int _maxShown = 300;
+
+  final ScrollController _scroll = ScrollController();
+  final ScrollController _hScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _hScroll.dispose();
+    super.dispose();
+  }
 
   bool _isCreated(ImportRow r) =>
       !r.hasError && r.action != ImportRowAction.updateVariant;
@@ -1164,7 +1222,7 @@ class _ReviewViewState extends State<_ReviewView> {
     if (state.fileErrors.isNotEmpty) return _fileErrors(context, state, cubit);
 
     final rows = _filtered(state.rows);
-    final top = Column(
+    final intro = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _fileHeader(context, state, cubit),
@@ -1176,48 +1234,55 @@ class _ReviewViewState extends State<_ReviewView> {
             text: state.importError!,
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         _StatsGrid(items: _stats(state.summary)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         _statusBanner(state.summary),
-        const SizedBox(height: 16),
-        _filters(state),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
       ],
     );
 
-    final Widget body =
-        compact
-            ? CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: top),
-                if (rows.isEmpty)
-                  SliverToBoxAdapter(child: _empty(context))
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) {
-                        if (i >= _maxShown) {
-                          return _moreNote(context, rows.length);
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _RowCard(row: rows[i], mode: state.stockMode),
-                        );
-                      },
-                      childCount:
-                          rows.length > _maxShown ? _maxShown + 1 : rows.length,
-                    ),
-                  ),
-                const SliverToBoxAdapter(child: SizedBox(height: 4)),
-              ],
+    // Toda la revisión hace scroll junta (resumen + tabla); los filtros
+    // quedan fijos arriba y la barra de importar fija abajo.
+    final Widget body = Scrollbar(
+      controller: _scroll,
+      thumbVisibility: !compact,
+      child: CustomScrollView(
+        controller: _scroll,
+        slivers: [
+          SliverToBoxAdapter(child: intro),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _PinnedBarDelegate(
+              height: 56,
+              background: AppColors.bg(context),
+              child: _filters(state),
+            ),
+          ),
+          if (rows.isEmpty)
+            SliverToBoxAdapter(child: _empty(context))
+          else if (compact)
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) {
+                  if (i >= _maxShown) {
+                    return _moreNote(context, rows.length);
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _RowCard(row: rows[i], mode: state.stockMode),
+                  );
+                },
+                childCount:
+                    rows.length > _maxShown ? _maxShown + 1 : rows.length,
+              ),
             )
-            : Column(
-              children: [
-                top,
-                Expanded(child: _table(context, rows, state.stockMode)),
-              ],
-            );
+          else
+            SliverToBoxAdapter(child: _table(context, rows, state.stockMode)),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
+        ],
+      ),
+    );
 
     return Column(
       children: [
@@ -1595,61 +1660,59 @@ class _ReviewViewState extends State<_ReviewView> {
       child: LayoutBuilder(
         builder: (context, c) {
           final width = c.maxWidth > _totalWidth ? c.maxWidth : _totalWidth;
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: width,
-              child: Column(
-                children: [
-                  Container(
-                    color: _soft(context),
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    child: Row(
-                      children: [
-                        for (final col in _cols)
-                          SizedBox(
-                            width:
-                                col.$1 == 'Detalle'
-                                    ? col.$2 + (width - _totalWidth)
-                                    : col.$2,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              child: Text(
-                                col.$1.toUpperCase(),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
-                                  letterSpacing: 0.5,
-                                  color: _muted(context),
+          return Scrollbar(
+            controller: _hScroll,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _hScroll,
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: width,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      color: _soft(context),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      child: Row(
+                        children: [
+                          for (final col in _cols)
+                            SizedBox(
+                              width:
+                                  col.$1 == 'Detalle'
+                                      ? col.$2 + (width - _totalWidth)
+                                      : col.$2,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Text(
+                                  col.$1.toUpperCase(),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    letterSpacing: 0.5,
+                                    color: _muted(context),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount:
-                          shown.length + (rows.length > _maxShown ? 1 : 0),
-                      separatorBuilder:
-                          (_, _) =>
-                              Divider(height: 1, color: AppColors.brd(context)),
-                      itemBuilder: (context, i) {
-                        if (i >= shown.length) {
-                          return _moreNote(context, rows.length);
-                        }
-                        return _TableRow(
-                          row: shown[i],
-                          mode: mode,
-                          extraDetailWidth: width - _totalWidth,
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                    for (var i = 0; i < shown.length; i++) ...[
+                      if (i > 0)
+                        Divider(height: 1, color: AppColors.brd(context)),
+                      _TableRow(
+                        row: shown[i],
+                        mode: mode,
+                        extraDetailWidth: width - _totalWidth,
+                      ),
+                    ],
+                    if (rows.length > _maxShown)
+                      _moreNote(context, rows.length),
+                  ],
+                ),
               ),
             ),
           );
