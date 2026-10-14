@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
@@ -151,10 +152,15 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   }
 
   void _leave() {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+    _exitForm();
+  }
+
+  // Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
+  void _exitForm([Object? result]) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, result);
     } else {
-      context.go('/inventory-exits');
+      AppBackHandler.handleBack(context); // sin onCustomBack → usa el historial
     }
   }
 

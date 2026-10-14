@@ -220,7 +220,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
           title: 'Directorio de Proveedores',
           // En tablet/escritorio ocultamos el FAB; la acción vive en el Toolbar
           floatingActionButton:
-              (isWide && _searchCtrl.text.isEmpty)
+              (isDesktop && _searchCtrl.text.isEmpty)
                   ? FloatingActionButton.extended(
                     heroTag: 'add_supplier_fab',
                     backgroundColor: AppColors.primary,

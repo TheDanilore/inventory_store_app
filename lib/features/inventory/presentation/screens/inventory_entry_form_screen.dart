@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/purc
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
   final String? purchaseOrderId;
@@ -253,21 +254,13 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     if (cubit.state.isSaving) return;
 
     if (widget.purchaseOrderId != null) {
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(false);
-      } else {
-        context.go('/purchase-orders?selectedId=${widget.purchaseOrderId}');
-      }
+      _exitForm();
       return;
     }
 
     if (cubit.state.items.isEmpty) {
       cubit.clearDraft();
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      } else {
-        context.go('/inventory-entries');
-      }
+      _exitForm();
       return;
     }
 
@@ -316,17 +309,18 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     if (action == 'discard') {
       cubit.clearDraft();
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      } else {
-        context.go('/inventory-entries');
-      }
+      _exitForm();
     } else if (action == 'draft') {
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      } else {
-        context.go('/inventory-entries');
-      }
+      _exitForm();
+    }
+  }
+
+  // Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
+  void _exitForm([Object? result]) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, result);
+    } else {
+      AppBackHandler.handleBack(context); // sin onCustomBack → usa el historial
     }
   }
 
@@ -454,131 +448,129 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 AbsorbPointer(
                   absorbing: cubit.state.isSaving,
                   child: Form(
-                      key: _formKey,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 900;
+                    key: _formKey,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 900;
 
-                          if (isWide) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Izquierda: Datos, Finanzas, Documento (40%)
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
-                                    ),
-                                    child: SingleChildScrollView(
-                                      padding: const EdgeInsets.all(24.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          _buildMainDataSection(
-                                            context,
-                                            state,
-                                            cubit,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          if (widget.purchaseOrderId ==
-                                              null) ...[
-                                            _buildFinanceSection(
-                                              context,
-                                              state,
-                                              cubit,
-                                            ),
-                                            const SizedBox(height: 16),
-                                          ],
-                                          _buildDocumentSection(
-                                            context,
-                                            state,
-                                            cubit,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Derecha: Productos y Botón Guardar (60%)
-                                Expanded(
-                                  flex: 6,
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: SingleChildScrollView(
-                                          padding: const EdgeInsets.all(24.0),
-                                          child: _buildProductsSection(
-                                            context,
-                                            state,
-                                            cubit,
-                                            isDesktop: true,
-                                          ),
-                                        ),
-                                      ),
-                                      _buildStickySaveButton(
-                                        context,
-                                        state,
-                                        cubit,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          }
-
-                          // Móvil
-                          return Column(
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Izquierda: Datos, Finanzas, Documento (40%)
                               Expanded(
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildMainDataSection(
-                                        context,
-                                        state,
-                                        cubit,
+                                flex: 4,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Colors.grey.shade200,
                                       ),
-                                      const SizedBox(height: 16),
-                                      if (widget.purchaseOrderId == null) ...[
-                                        _buildFinanceSection(
+                                    ),
+                                  ),
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildMainDataSection(
                                           context,
                                           state,
                                           cubit,
                                         ),
                                         const SizedBox(height: 16),
+                                        if (widget.purchaseOrderId == null) ...[
+                                          _buildFinanceSection(
+                                            context,
+                                            state,
+                                            cubit,
+                                          ),
+                                          const SizedBox(height: 16),
+                                        ],
+                                        _buildDocumentSection(
+                                          context,
+                                          state,
+                                          cubit,
+                                        ),
                                       ],
-                                      _buildDocumentSection(
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Derecha: Productos y Botón Guardar (60%)
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: _buildProductsSection(
+                                          context,
+                                          state,
+                                          cubit,
+                                          isDesktop: true,
+                                        ),
+                                      ),
+                                    ),
+                                    _buildStickySaveButton(
+                                      context,
+                                      state,
+                                      cubit,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        // Móvil
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildMainDataSection(
+                                      context,
+                                      state,
+                                      cubit,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (widget.purchaseOrderId == null) ...[
+                                      _buildFinanceSection(
                                         context,
                                         state,
                                         cubit,
                                       ),
                                       const SizedBox(height: 16),
-                                      _buildProductsSection(
-                                        context,
-                                        state,
-                                        cubit,
-                                      ),
-                                      const SizedBox(height: 24),
                                     ],
-                                  ),
+                                    _buildDocumentSection(
+                                      context,
+                                      state,
+                                      cubit,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildProductsSection(
+                                      context,
+                                      state,
+                                      cubit,
+                                    ),
+                                    const SizedBox(height: 24),
+                                  ],
                                 ),
                               ),
-                              _buildStickySaveButton(context, state, cubit),
-                            ],
-                          );
-                        },
-                      ),
+                            ),
+                            _buildStickySaveButton(context, state, cubit),
+                          ],
+                        );
+                      },
                     ),
+                  ),
                 ),
                 if (cubit.state.isSaving)
                   Positioned.fill(
@@ -782,9 +774,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 backgroundColor: AppColors.surface,
                 foregroundColor: AppColors.textSecondary,
                 selectedBackgroundColor:
-                    isCredit
-                        ? Colors.purple.shade600
-                        : AppColors.primary,
+                    isCredit ? Colors.purple.shade600 : AppColors.primary,
                 selectedForegroundColor: Colors.white,
                 side: const BorderSide(color: AppColors.border),
                 textStyle: const TextStyle(
@@ -1230,8 +1220,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                               ),
                               item: item,
                               onUpdateQuantity:
-                                  (qty) =>
-                                      cubit.updateItemQuantity(index, qty),
+                                  (qty) => cubit.updateItemQuantity(index, qty),
                               onUpdateCost:
                                   (cost) => cubit.updateItemCost(index, cost),
                               onEditBatch:

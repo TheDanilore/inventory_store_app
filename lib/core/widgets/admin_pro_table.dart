@@ -5,6 +5,10 @@ import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 
+/// Espaciado compartido (tabla real y shimmer deben coincidir).
+const double kAdminTableRowHPad = 14.0;
+const double kAdminTableCellGutter = 8.0;
+
 /// Definición declarativa de una columna para [AdminProTable].
 class AdminTableColumn<T> {
   final String id;
@@ -267,6 +271,15 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         padding: widget.margin,
         child: AppTableShimmer(
           minWidth: widget.minTableWidth,
+          showCheckbox: _isMultiSelectEnabled,
+          columns: [
+            for (final c in widget.columns)
+              AppShimmerColumn(
+                flex: c.flex,
+                fixedWidth: c.fixedWidth,
+                alignment: c.alignment,
+              ),
+          ],
           rowCount: widget.paginationConfig?.pageSize.clamp(3, 8) ?? 6,
         ),
       );
@@ -388,7 +401,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: 18,
+        horizontal: kAdminTableRowHPad,
         vertical: widget.rowVerticalPadding,
       ),
       decoration: BoxDecoration(
@@ -443,7 +456,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                 col.label.toUpperCase(),
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color:
                       isSorted
                           ? (isDark
@@ -451,8 +464,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                               : AppColors.primary)
                           : (isDark
                               ? AppColors.darkTextSecondary
-                              : const Color(0xFF334155)),
-                  letterSpacing: 0.5,
+                              : const Color(0xFF64748B)),
+                  letterSpacing: 0.6,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -502,6 +515,11 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         child: wrappedCell,
       );
     }
+
+    wrappedCell = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: kAdminTableCellGutter),
+      child: wrappedCell,
+    );
 
     if (col.fixedWidth != null) {
       return SizedBox(width: col.fixedWidth, child: wrappedCell);
@@ -586,7 +604,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 110),
           padding: EdgeInsets.symmetric(
-            horizontal: 18,
+            horizontal: kAdminTableRowHPad,
             vertical: widget.rowVerticalPadding,
           ),
           decoration: BoxDecoration(
@@ -651,9 +669,12 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   }
 
   Widget _buildDataCell(AdminTableColumn<T> col, T item) {
-    final cellWidget = Align(
-      alignment: col.alignment,
-      child: col.cellBuilder(context, item),
+    final cellWidget = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: kAdminTableCellGutter),
+      child: Align(
+        alignment: col.alignment,
+        child: col.cellBuilder(context, item),
+      ),
     );
 
     if (col.fixedWidth != null) {

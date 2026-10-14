@@ -45,6 +45,16 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
     return AppColors.teal;
   }
 
+  /// 50000 -> "S/ 50,000.00"
+  String _money(double v) {
+    final parts = v.toStringAsFixed(2).split('.');
+    final intPart = parts[0].replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => ',',
+    );
+    return 'S/ $intPart.${parts[1]}';
+  }
+
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     AppSnackbar.show(
@@ -61,7 +71,9 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
       int cmp = 0;
       switch (_sortColumnId) {
         case 'supplier':
-          cmp = a.supplierName.toLowerCase().compareTo(b.supplierName.toLowerCase());
+          cmp = a.supplierName.toLowerCase().compareTo(
+            b.supplierName.toLowerCase(),
+          );
           break;
         case 'creditLimit':
           cmp = a.creditLimit.compareTo(b.creditLimit);
@@ -108,7 +120,7 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
       },
       paginationConfig: widget.paginationConfig,
       onRowTap: widget.onSelectAccount,
-      minTableWidth: 960.0,
+      minTableWidth: 1020.0,
       margin: EdgeInsets.zero,
       bulkActions: [
         AdminBulkAction<SupplierCreditEntity>(
@@ -121,7 +133,11 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                       '${a.supplierName}: Deuda S/ ${a.currentDebt.toStringAsFixed(2)} / Límite S/ ${a.creditLimit.toStringAsFixed(2)}',
                 )
                 .join('\n');
-            _copyToClipboard(context, text, '${selectedItems.length} cuentas de proveedores');
+            _copyToClipboard(
+              context,
+              text,
+              '${selectedItems.length} cuentas de proveedores',
+            );
           },
         ),
       ],
@@ -139,9 +155,10 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: account.isActive
-                        ? AppColors.tealLight
-                        : Colors.grey.shade100,
+                    color:
+                        account.isActive
+                            ? AppColors.tealLight
+                            : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   alignment: Alignment.center,
@@ -150,9 +167,10 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                         ? account.supplierName.substring(0, 1).toUpperCase()
                         : 'P',
                     style: TextStyle(
-                      color: account.isActive
-                          ? AppColors.tealDark
-                          : Colors.grey.shade600,
+                      color:
+                          account.isActive
+                              ? AppColors.tealDark
+                              : Colors.grey.shade600,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
@@ -178,11 +196,12 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                       if (account.supplierTaxId != null &&
                           account.supplierTaxId!.isNotEmpty)
                         InkWell(
-                          onTap: () => _copyToClipboard(
-                            context,
-                            account.supplierTaxId!,
-                            'RUC',
-                          ),
+                          onTap:
+                              () => _copyToClipboard(
+                                context,
+                                account.supplierTaxId!,
+                                'RUC',
+                              ),
                           borderRadius: BorderRadius.circular(4),
                           child: Text(
                             'RUC ${account.supplierTaxId}',
@@ -222,12 +241,12 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         AdminTableColumn<SupplierCreditEntity>(
           id: 'creditLimit',
           label: 'Línea Crédito',
-          fixedWidth: 125,
+          fixedWidth: 140,
           alignment: Alignment.centerRight,
           isSortable: true,
           cellBuilder: (context, account) {
             return Text(
-              'S/ ${account.creditLimit.toStringAsFixed(2)}',
+              _money(account.creditLimit),
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -242,17 +261,19 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         AdminTableColumn<SupplierCreditEntity>(
           id: 'currentDebt',
           label: 'Deuda Actual',
-          fixedWidth: 125,
+          fixedWidth: 140,
           alignment: Alignment.centerRight,
           isSortable: true,
           cellBuilder: (context, account) {
             final pct = account.usagePercent.clamp(0.0, 1.0);
-            final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
+            final debtColor = _getDebtColor(
+              pct,
+              account.isMaxedOut,
+              account.currentDebt,
+            );
 
             return Text(
-              account.currentDebt > 0
-                  ? 'S/ ${account.currentDebt.toStringAsFixed(2)}'
-                  : 'S/ 0.00',
+              _money(account.currentDebt),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -267,18 +288,19 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         AdminTableColumn<SupplierCreditEntity>(
           id: 'availableCredit',
           label: 'Disponible',
-          fixedWidth: 125,
+          fixedWidth: 140,
           alignment: Alignment.centerRight,
           isSortable: true,
           cellBuilder: (context, account) {
             return Text(
-              'S/ ${account.availableCredit.toStringAsFixed(2)}',
+              _money(account.availableCredit),
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: account.availableCredit > 0
-                    ? AppColors.tealDark
-                    : AppColors.textMuted,
+                color:
+                    account.availableCredit > 0
+                        ? AppColors.tealDark
+                        : AppColors.textMuted,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             );
@@ -289,47 +311,37 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
         AdminTableColumn<SupplierCreditEntity>(
           id: 'usage',
           label: 'Uso de Línea',
-          fixedWidth: 130,
+          fixedWidth: 160,
           isSortable: true,
           cellBuilder: (context, account) {
             final pct = account.usagePercent.clamp(0.0, 1.0);
             final progressColor = _getProgressColor(pct, account.isMaxedOut);
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            return Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${(pct * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: progressColor,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: pct,
+                      minHeight: 6,
+                      backgroundColor: const Color(0xFFF1F5F9),
+                      valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                     ),
-                    if (account.isMaxedOut)
-                      const Text(
-                        '100%',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.danger,
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    minHeight: 5,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    '${(pct * 100).toStringAsFixed(0)}%',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: progressColor,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
@@ -347,16 +359,21 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
             return Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
-                  color: account.isActive
-                      ? AppColors.successLight
-                      : const Color(0xFFFEF2F2),
+                  color:
+                      account.isActive
+                          ? AppColors.successLight
+                          : const Color(0xFFFEF2F2),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: account.isActive
-                        ? AppColors.success.withValues(alpha: 0.3)
-                        : const Color(0xFFFECACA),
+                    color:
+                        account.isActive
+                            ? AppColors.success.withValues(alpha: 0.3)
+                            : const Color(0xFFFECACA),
                   ),
                 ),
                 child: Row(
@@ -367,9 +384,10 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                       height: 5.5,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: account.isActive
-                            ? AppColors.success
-                            : AppColors.danger,
+                        color:
+                            account.isActive
+                                ? AppColors.success
+                                : AppColors.danger,
                       ),
                     ),
                     const SizedBox(width: 5),
@@ -378,9 +396,10 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: account.isActive
-                            ? AppColors.successDark
-                            : AppColors.danger,
+                        color:
+                            account.isActive
+                                ? AppColors.successDark
+                                : AppColors.danger,
                       ),
                     ),
                   ],
@@ -407,7 +426,10 @@ class _SupplierCreditsTableState extends State<SupplierCreditsTable> {
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.tealLight,
                       foregroundColor: AppColors.tealDark,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       visualDensity: VisualDensity.compact,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),

@@ -191,7 +191,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     }
   }
 
-  /// Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
+  // Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
   void _exitForm([Object? result]) {
     if (Navigator.canPop(context)) {
       Navigator.pop(context, result);

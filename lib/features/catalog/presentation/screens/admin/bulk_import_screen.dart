@@ -82,9 +82,6 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                   builder: (context, c) {
                     final compact = c.maxWidth < _wideBreakpoint;
 
-                    // La revisión hace scroll a TODO el ancho (así la barra de
-                    // desplazamiento queda pegada al borde derecho) y gestiona
-                    // ella misma su margen centrado.
                     if (state.status == BulkImportStatus.review) {
                       final pad = compact ? 16.0 : 24.0;
                       return Column(

@@ -336,7 +336,7 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
           title: 'Créditos de Proveedores',
           // En tablet/escritorio ocultamos el FAB flotante; la acción se ubica en el Toolbar superior
           floatingActionButton:
-              (isWide && _searchCtrl.text.isEmpty)
+              (isDesktop && _searchCtrl.text.isEmpty)
                   ? FloatingActionButton.extended(
                     heroTag: 'add_account_fab',
                     backgroundColor: AppColors.primary,
