@@ -79,7 +79,8 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = '$prefix${value.toStringAsFixed(0)}';
+    final decimals = prefix == 'S/ ' ? 2 : 0;
+    final displayValue = '$prefix${value.toStringAsFixed(decimals)}';
 
     return Expanded(
       child: Semantics(
@@ -108,7 +109,7 @@ class _KpiCard extends StatelessWidget {
                 tween: Tween<double>(begin: 0, end: value),
                 builder: (context, val, child) {
                   return Text(
-                    '$prefix${val.toStringAsFixed(0)}',
+                    '$prefix${val.toStringAsFixed(decimals)}',
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.bold,

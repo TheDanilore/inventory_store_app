@@ -55,9 +55,11 @@ class CustomerCreditSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = limit > 0 ? (debt / limit).clamp(0.0, 1.0) : 0.0;
-    final available = (limit - debt).clamp(0.0, double.infinity);
-    final isRisk = pct >= 0.8;
+    final isUnlimited = limit <= 0; // misma regla que ficha rápida y POS
+    final pct = isUnlimited ? 0.0 : (debt / limit).clamp(0.0, 1.0);
+    final available =
+        isUnlimited ? 0.0 : (limit - debt).clamp(0.0, double.infinity);
+    final isRisk = !isUnlimited && pct >= 0.8;
 
     return CustomerSectionCard(
       title: 'Línea de Crédito',
@@ -92,64 +94,107 @@ class CustomerCreditSection extends StatelessWidget {
                   color: debt > 0 ? AppColors.danger : AppColors.textMuted,
                 ),
               ),
-              Expanded(
-                child: _CreditStat(
-                  label: 'Disponible',
-                  value: 'S/ ${available.toStringAsFixed(2)}',
-                  color: isActive ? AppColors.success : AppColors.textMuted,
-                ),
-              ),
-              Expanded(
-                child: _CreditStat(
-                  label: 'Límite',
-                  value: 'S/ ${limit.toStringAsFixed(2)}',
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0, end: pct),
-            builder: (context, value, child) {
-              // Interpolar el color
-              final animColor = Color.lerp(
-                AppColors.success,
-                AppColors.danger,
-                value >= 0.8 ? 1.0 : (value / 0.8), // Rojo cuando >= 80%
-              );
-
-              return Semantics(
-                label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: value,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      animColor ??
-                          (isRisk ? AppColors.danger : AppColors.success),
-                    ),
-                    minHeight: 8,
+              if (isUnlimited)
+                const Expanded(
+                  child: _CreditStat(
+                    label: 'Límite',
+                    value: 'Sin límite ∞',
+                    color: AppColors.success,
+                  ),
+                )
+              else ...[
+                Expanded(
+                  child: _CreditStat(
+                    label: 'Disponible',
+                    value: 'S/ ${available.toStringAsFixed(2)}',
+                    color: isActive ? AppColors.success : AppColors.textMuted,
                   ),
                 ),
-              );
-            },
+                Expanded(
+                  child: _CreditStat(
+                    label: 'Límite',
+                    value: 'S/ ${limit.toStringAsFixed(2)}',
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '${(pct * 100).toStringAsFixed(0)}% usado',
-              style: TextStyle(
-                fontSize: 11,
-                color: isRisk ? AppColors.danger : AppColors.textMuted,
-                fontWeight: FontWeight.w600,
+
+          if (isUnlimited)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.success.withValues(alpha: 0.25),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.all_inclusive_rounded,
+                    size: 16,
+                    color: AppColors.success,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Línea de crédito sin límite configurado',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(begin: 0, end: pct),
+              builder: (context, value, child) {
+                // Interpolar el color
+                final animColor = Color.lerp(
+                  AppColors.success,
+                  AppColors.danger,
+                  value >= 0.8 ? 1.0 : (value / 0.8), // Rojo cuando >= 80%
+                );
+
+                return Semantics(
+                  label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: value,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        animColor ??
+                            (isRisk ? AppColors.danger : AppColors.success),
+                      ),
+                      minHeight: 8,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${(pct * 100).toStringAsFixed(0)}% usado',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isRisk ? AppColors.danger : AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
+          ],
 
           if (isActive) ...[
             const SizedBox(height: 12),
