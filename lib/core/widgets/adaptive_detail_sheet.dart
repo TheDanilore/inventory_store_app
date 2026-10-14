@@ -2,37 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-/// Contenedor reutilizable para vistas de detalle:
-///  - Desktop (>= 900px): panel lateral derecho (slide-over).
-///  - Móvil: bottom sheet con esquinas redondeadas y drag handle.
-///
-/// Solo resuelve el "contorno": animación, barrera, ancho, sombra, Esc y
-/// re-inyección de providers. El contenido lo define cada pantalla con
-/// [DetailSheetFrame] (header / body / footer) o con cualquier widget propio.
+/// Contenedor marco/contorno reutilizable para vistas de detalle:
+///  - Desktop / Tablet (>= 900px): Slide-over panel lateral flotante con bordes redondeados.
+///  - Móvil: Bottom Sheet con drag handle.
 class AdaptiveDetailSheet {
   static const double desktopBreakpoint = 900;
 
   static Future<T?> show<T>(
     BuildContext context, {
     required WidgetBuilder builder,
-    double desktopWidth = 480,
+    double desktopWidth = 520,
     double mobileMaxHeightFactor = 0.92,
-
-    /// Los modales usan el navigator raíz, por lo que pierden los providers
-    /// (BlocProvider, etc.) de la pantalla. Úsalo para re-inyectarlos:
-    /// `wrap: (child) => BlocProvider.value(value: cubit, child: child)`
     Widget Function(Widget child)? wrap,
   }) {
-    Widget wrapped(Widget child) => wrap == null ? child : wrap(child);
+    Widget wrapped(Widget child) => wrap != null ? wrap(child) : child;
     final isDesktop = MediaQuery.sizeOf(context).width >= desktopBreakpoint;
 
     if (isDesktop) {
       return showGeneralDialog<T>(
         context: context,
         barrierDismissible: true,
-        barrierLabel: 'Detalle',
+        barrierLabel: 'Cerrar detalle',
         barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 250),
+        transitionDuration: const Duration(milliseconds: 220),
         pageBuilder: (dialogContext, _, _) {
           return wrapped(
             _DetailSheetScope(
@@ -46,20 +38,22 @@ class AdaptiveDetailSheet {
                   autofocus: true,
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: Material(
-                      color: AppColors.surface,
-                      elevation: 0,
-                      borderRadius: const BorderRadius.horizontal(
-                        left: Radius.circular(20),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: SizedBox(
-                        width: desktopWidth.clamp(
-                          320,
-                          MediaQuery.sizeOf(dialogContext).width,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Material(
+                        color: Colors.white,
+                        elevation: 8,
+                        shadowColor: Colors.black12,
+                        borderRadius: BorderRadius.circular(20),
+                        clipBehavior: Clip.antiAlias,
+                        child: SizedBox(
+                          width: desktopWidth.clamp(
+                            360.0,
+                            MediaQuery.sizeOf(dialogContext).width - 32,
+                          ),
+                          height: double.infinity,
+                          child: Builder(builder: builder),
                         ),
-                        height: double.infinity,
-                        child: Builder(builder: builder),
                       ),
                     ),
                   ),
@@ -98,7 +92,7 @@ class AdaptiveDetailSheet {
                     MediaQuery.sizeOf(ctx).height * mobileMaxHeightFactor,
               ),
               decoration: const BoxDecoration(
-                color: AppColors.surface,
+                color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               clipBehavior: Clip.antiAlias,
@@ -126,27 +120,17 @@ class _DetailSheetScope extends InheritedWidget {
       old.isSideSheet != isSideSheet;
 }
 
-/// Estructura interna estándar: header fijo + body con scroll + footer fijo.
+/// Marco general del detalle (Header + Body Desplazable + Footer opcional).
 class DetailSheetFrame extends StatelessWidget {
   final String title;
-
-  /// Línea(s) bajo el título: chips de ID, estado, categoría, etc.
   final Widget? subtitle;
-
-  /// Avatar / ícono a la izquierda del título.
   final Widget? leading;
-
-  /// Botones a la derecha del header (Ticket, Editar, estado...).
   final List<Widget> headerActions;
-
-  /// Contenido. Ya viene dentro de un scroll con padding.
   final Widget body;
-
-  /// Barra inferior fija (acciones principales / total).
   final Widget? footer;
-
   final EdgeInsetsGeometry bodyPadding;
-  final Color? bodyColor;
+  final Color? bodyBackgroundColor;
+  final VoidCallback? onClose;
 
   const DetailSheetFrame({
     super.key,
@@ -156,8 +140,9 @@ class DetailSheetFrame extends StatelessWidget {
     this.leading,
     this.headerActions = const [],
     this.footer,
-    this.bodyPadding = const EdgeInsets.fromLTRB(20, 16, 20, 20),
-    this.bodyColor,
+    this.bodyPadding = const EdgeInsets.all(16),
+    this.bodyBackgroundColor,
+    this.onClose,
   });
 
   @override
@@ -171,7 +156,7 @@ class DetailSheetFrame extends StatelessWidget {
       children: [
         if (!isSide)
           Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 2),
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
             child: Center(
               child: Container(
                 width: 36,
@@ -184,26 +169,26 @@ class DetailSheetFrame extends StatelessWidget {
             ),
           ),
 
-        // ── Header ──
+        // ── Cabecera / Header ──
         Padding(
-          padding: EdgeInsets.fromLTRB(20, isSide ? 18 : 8, 12, 14),
+          padding: EdgeInsets.fromLTRB(20, isSide ? 16 : 8, 14, 12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (leading != null) ...[leading!, const SizedBox(width: 12)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       title,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
-                        height: 1.2,
                         color: AppColors.textPrimary,
                       ),
                     ),
@@ -215,41 +200,66 @@ class DetailSheetFrame extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Wrap(
-                spacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   ...headerActions,
-                  if (isSide)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 2),
-                      child: _KeyHint('ESC'),
+                  if (headerActions.isNotEmpty) const SizedBox(width: 6),
+                  if (isSide) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: const Text(
+                        'ESC',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     ),
+                    const SizedBox(width: 6),
+                  ],
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 20,
                     tooltip: 'Cerrar',
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed:
+                        onClose ?? () => Navigator.of(context).maybePop(),
                   ),
                 ],
               ),
             ],
           ),
         ),
-        const Divider(height: 1, color: AppColors.border),
 
-        // ── Body ──
-        Flexible(
-          fit: isSide ? FlexFit.tight : FlexFit.loose,
-          child: ColoredBox(
-            color: bodyColor ?? AppColors.background.withValues(alpha: 0.5),
-            child: SingleChildScrollView(padding: bodyPadding, child: body),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+
+        // ── Cuerpo Desplazable (Body) ──
+        Expanded(
+          child: Container(
+            color: bodyBackgroundColor ?? const Color(0xFFF8FAFC),
+            child: SingleChildScrollView(
+              padding: bodyPadding,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: body,
+            ),
           ),
         ),
 
-        // ── Footer ──
+        // ── Pie Fijo (Footer) ──
         if (footer != null) ...[
-          const Divider(height: 1, color: AppColors.border),
-          Padding(
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          Container(
+            color: Colors.white,
             padding: EdgeInsets.fromLTRB(
               20,
               12,
@@ -264,21 +274,25 @@ class DetailSheetFrame extends StatelessWidget {
   }
 }
 
-/// Tarjeta de sección estándar: título + acción opcional + contenido.
-class DetailSection extends StatelessWidget {
+/// Tarjeta contenedor genérica para agrupar secciones dentro del body.
+class DetailSectionCard extends StatelessWidget {
+  final Widget child;
   final String? title;
   final IconData? icon;
   final Widget? trailing;
-  final Widget child;
   final EdgeInsetsGeometry padding;
+  final Color? backgroundColor;
+  final Color? borderColor;
 
-  const DetailSection({
+  const DetailSectionCard({
     super.key,
     required this.child,
     this.title,
     this.icon,
     this.trailing,
     this.padding = const EdgeInsets.all(14),
+    this.backgroundColor,
+    this.borderColor,
   });
 
   @override
@@ -287,9 +301,16 @@ class DetailSection extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: backgroundColor ?? Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: borderColor ?? const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x050F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,101 +339,6 @@ class DetailSection extends StatelessWidget {
           ],
           child,
         ],
-      ),
-    );
-  }
-}
-
-/// Fila de métricas "etiqueta pequeña + valor grande" separadas por divisores.
-class DetailMetricRow extends StatelessWidget {
-  final List<DetailMetric> metrics;
-  const DetailMetricRow({super.key, required this.metrics});
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        children: [
-          for (var i = 0; i < metrics.length; i++) ...[
-            if (i > 0)
-              const VerticalDivider(
-                width: 24,
-                thickness: 1,
-                color: AppColors.border,
-              ),
-            Expanded(child: metrics[i]),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class DetailMetric extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final bool emphasized;
-
-  const DetailMetric({
-    super.key,
-    required this.label,
-    required this.value,
-    this.valueColor,
-    this.emphasized = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
-          ),
-        ),
-        const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: emphasized ? 18 : 15,
-              fontWeight: emphasized ? FontWeight.w800 : FontWeight.w700,
-              color: valueColor ?? AppColors.textPrimary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _KeyHint extends StatelessWidget {
-  final String label;
-  const _KeyHint(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textMuted,
-        ),
       ),
     );
   }

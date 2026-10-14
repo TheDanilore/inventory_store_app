@@ -51,8 +51,6 @@ class ProductQuickViewContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Datos "vivos": si el usuario activa/desactiva desde la ficha,
-    // la píldora y el header se actualizan sin cerrar el modal.
     return BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
       buildWhen: (a, b) => a.products != b.products,
       builder: (context, state) {
@@ -133,7 +131,7 @@ class ProductQuickViewContent extends StatelessWidget {
             children: [
               ProductStockBadge(stock: p.totalStock),
               ProductTypeBadge(type: p.productType),
-              if (p.usesBatches) _MiniTag('Control por lotes'),
+              if (p.usesBatches) const _MiniTag('Control por lotes'),
             ],
           ),
 
@@ -147,30 +145,53 @@ class ProductQuickViewContent extends StatelessWidget {
           ],
 
           const SizedBox(height: 14),
-          DetailSection(
-            child: DetailMetricRow(
-              metrics: [
-                DetailMetric(
-                  label: 'Precio venta',
-                  emphasized: true,
-                  value: price != null ? 'S/ ${price.toStringAsFixed(2)}' : '—',
-                ),
-                DetailMetric(
-                  label: 'Costo ref.',
-                  value: cost != null ? 'S/ ${cost.toStringAsFixed(2)}' : '—',
-                  valueColor: AppColors.textSecondary,
-                ),
-                DetailMetric(
-                  label: 'Margen',
-                  value: margin,
-                  valueColor: marginColor,
-                ),
-              ],
+          // Métrica con desglose limpio
+          DetailSectionCard(
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _MetricItem(
+                      label: 'Precio venta',
+                      value:
+                          price != null
+                              ? 'S/ ${price.toStringAsFixed(2)}'
+                              : '—',
+                      emphasized: true,
+                    ),
+                  ),
+                  const VerticalDivider(
+                    width: 24,
+                    thickness: 1,
+                    color: AppColors.border,
+                  ),
+                  Expanded(
+                    child: _MetricItem(
+                      label: 'Costo ref.',
+                      value:
+                          cost != null ? 'S/ ${cost.toStringAsFixed(2)}' : '—',
+                      valueColor: AppColors.textSecondary,
+                    ),
+                  ),
+                  const VerticalDivider(
+                    width: 24,
+                    thickness: 1,
+                    color: AppColors.border,
+                  ),
+                  Expanded(
+                    child: _MetricItem(
+                      label: 'Margen',
+                      value: margin,
+                      valueColor: marginColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 12),
-          DetailSection(
+          DetailSectionCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
@@ -239,7 +260,7 @@ class ProductQuickViewContent extends StatelessWidget {
           ),
 
           const SizedBox(height: 12),
-          DetailSection(
+          DetailSectionCard(
             title: isSimple ? 'Presentación' : 'Variantes (${variants.length})',
             icon: isSimple ? Icons.inventory_2_outlined : Icons.style_outlined,
             trailing:
@@ -281,7 +302,7 @@ class ProductQuickViewContent extends StatelessWidget {
 
           if (p.description != null && p.description!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            DetailSection(
+            DetailSectionCard(
               title: 'Descripción',
               child: Text(
                 p.description!,
@@ -336,6 +357,50 @@ class ProductQuickViewContent extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MetricItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool emphasized;
+
+  const _MetricItem({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: emphasized ? 17 : 14.5,
+              fontWeight: emphasized ? FontWeight.w800 : FontWeight.w700,
+              color: valueColor ?? AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
