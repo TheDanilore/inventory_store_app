@@ -81,6 +81,37 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                 child: LayoutBuilder(
                   builder: (context, c) {
                     final compact = c.maxWidth < _wideBreakpoint;
+
+                    // La revisión hace scroll a TODO el ancho (así la barra de
+                    // desplazamiento queda pegada al borde derecho) y gestiona
+                    // ella misma su margen centrado.
+                    if (state.status == BulkImportStatus.review) {
+                      final pad = compact ? 16.0 : 24.0;
+                      return Column(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 1200,
+                                ),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: _StepHeader(
+                                    status: state.status,
+                                    compact: compact,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: compact ? 16 : 24),
+                          Expanded(child: _content(state, compact)),
+                        ],
+                      );
+                    }
+
                     return Padding(
                       padding: EdgeInsets.all(compact ? 16 : 24),
                       child: Center(
@@ -1218,78 +1249,103 @@ class _ReviewViewState extends State<_ReviewView> {
     final state = widget.state;
     final compact = widget.compact;
     final cubit = context.read<BulkImportCubit>();
+    final pad = compact ? 16.0 : 24.0;
 
-    if (state.fileErrors.isNotEmpty) return _fileErrors(context, state, cubit);
+    return LayoutBuilder(
+      builder: (context, c) {
+        // Contenido centrado (máx. 1200) con margen lateral propio: el scroll
+        // ocupa todo el ancho y su barra queda en el borde derecho.
+        final contentW = (c.maxWidth - 2 * pad).clamp(0.0, 1200.0).toDouble();
+        final side = (c.maxWidth - contentW) / 2;
+        final hPad = EdgeInsets.symmetric(horizontal: side);
 
-    final rows = _filtered(state.rows);
-    final intro = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _fileHeader(context, state, cubit),
-        if (state.importError != null) ...[
-          const SizedBox(height: 12),
-          _Banner(
-            icon: Icons.error_outline,
-            color: AppColors.error,
-            text: state.importError!,
-          ),
-        ],
-        const SizedBox(height: 14),
-        _StatsGrid(items: _stats(state.summary)),
-        const SizedBox(height: 14),
-        _statusBanner(state.summary),
-        const SizedBox(height: 6),
-      ],
-    );
+        if (state.fileErrors.isNotEmpty) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(side, 0, side, pad),
+            child: _fileErrors(context, state, cubit),
+          );
+        }
 
-    // Toda la revisión hace scroll junta (resumen + tabla); los filtros
-    // quedan fijos arriba y la barra de importar fija abajo.
-    final Widget body = Scrollbar(
-      controller: _scroll,
-      thumbVisibility: !compact,
-      child: CustomScrollView(
-        controller: _scroll,
-        slivers: [
-          SliverToBoxAdapter(child: intro),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _PinnedBarDelegate(
-              height: 56,
-              background: AppColors.bg(context),
-              child: _filters(state),
-            ),
-          ),
-          if (rows.isEmpty)
-            SliverToBoxAdapter(child: _empty(context))
-          else if (compact)
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) {
-                  if (i >= _maxShown) {
-                    return _moreNote(context, rows.length);
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _RowCard(row: rows[i], mode: state.stockMode),
-                  );
-                },
-                childCount:
-                    rows.length > _maxShown ? _maxShown + 1 : rows.length,
+        final rows = _filtered(state.rows);
+        final intro = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _fileHeader(context, state, cubit),
+            if (state.importError != null) ...[
+              const SizedBox(height: 12),
+              _Banner(
+                icon: Icons.error_outline,
+                color: AppColors.error,
+                text: state.importError!,
               ),
-            )
-          else
-            SliverToBoxAdapter(child: _table(context, rows, state.stockMode)),
-          const SliverToBoxAdapter(child: SizedBox(height: 12)),
-        ],
-      ),
-    );
+            ],
+            const SizedBox(height: 14),
+            _StatsGrid(items: _stats(state.summary)),
+            const SizedBox(height: 14),
+            _statusBanner(state.summary),
+            const SizedBox(height: 6),
+          ],
+        );
 
-    return Column(
-      children: [
-        Expanded(child: body),
-        const SizedBox(height: 12),
-        _actionBar(context, state, cubit),
-      ],
+        final Widget rowsSliver =
+            rows.isEmpty
+                ? SliverToBoxAdapter(child: _empty(context))
+                : compact
+                ? SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) {
+                      if (i >= _maxShown) {
+                        return _moreNote(context, rows.length);
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RowCard(row: rows[i], mode: state.stockMode),
+                      );
+                    },
+                    childCount:
+                        rows.length > _maxShown ? _maxShown + 1 : rows.length,
+                  ),
+                )
+                : SliverToBoxAdapter(
+                  child: _table(context, rows, state.stockMode),
+                );
+
+        // Toda la revisión hace scroll junta (resumen + tabla); los filtros
+        // quedan fijos arriba y la barra de importar fija abajo.
+        final Widget body = Scrollbar(
+          controller: _scroll,
+          thumbVisibility: !compact,
+          child: CustomScrollView(
+            controller: _scroll,
+            slivers: [
+              SliverPadding(
+                padding: hPad,
+                sliver: SliverToBoxAdapter(child: intro),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _PinnedBarDelegate(
+                  height: 56,
+                  background: AppColors.bg(context),
+                  child: Padding(padding: hPad, child: _filters(state)),
+                ),
+              ),
+              SliverPadding(padding: hPad, sliver: rowsSliver),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+            ],
+          ),
+        );
+
+        return Column(
+          children: [
+            Expanded(child: body),
+            Padding(
+              padding: EdgeInsets.fromLTRB(side, 12, side, pad),
+              child: _actionBar(context, state, cubit),
+            ),
+          ],
+        );
+      },
     );
   }
 
