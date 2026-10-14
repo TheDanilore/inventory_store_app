@@ -1141,6 +1141,138 @@ $$;
 ALTER FUNCTION "public"."get_customers_global_stats_rpc"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date" DEFAULT NULL::"date", "p_to" "date" DEFAULT NULL::"date", "p_warehouse_id" "uuid" DEFAULT NULL::"uuid", "p_tz" "text" DEFAULT 'America/Lima'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_from date;
+  v_to date;
+  v_days int;
+  v_bucket text;
+  v_prev_from date;
+  v_prev_to date;
+  v_trend jsonb;
+  v_weekday jsonb;
+  v_cur record;
+  v_prev record;
+BEGIN
+  v_to := COALESCE(p_to, (now() AT TIME ZONE p_tz)::date);
+
+  v_from := p_from;
+  IF v_from IS NULL THEN
+    SELECT min((created_at AT TIME ZONE p_tz)::date) INTO v_from
+    FROM orders
+    WHERE status = 'COMPLETED'
+      AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id);
+    v_from := COALESCE(v_from, v_to);
+  END IF;
+
+  IF v_from > v_to THEN
+    RAISE EXCEPTION 'La fecha inicial no puede ser mayor que la final.';
+  END IF;
+
+  v_days := (v_to - v_from) + 1;
+  v_bucket := CASE
+    WHEN v_days <= 62 THEN 'day'
+    WHEN v_days <= 366 THEN 'week'
+    ELSE 'month'
+  END;
+
+  -- Periodo anterior de igual duración (para "vs anterior")
+  v_prev_to := v_from - 1;
+  v_prev_from := v_prev_to - (v_days - 1);
+
+  -- Pedidos COMPLETED con su día local (se reutiliza en las 4 consultas)
+  -- (se repite el CTE en vez de usar tabla temporal: la función es STABLE)
+
+  SELECT COALESCE(sum(total_amount), 0) AS revenue,
+         COALESCE(sum(total_profit), 0) AS profit,
+         count(*) AS orders
+  INTO v_cur
+  FROM orders
+  WHERE status = 'COMPLETED'
+    AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id)
+    AND (created_at AT TIME ZONE p_tz)::date BETWEEN v_from AND v_to;
+
+  SELECT COALESCE(sum(total_amount), 0) AS revenue,
+         COALESCE(sum(total_profit), 0) AS profit,
+         count(*) AS orders
+  INTO v_prev
+  FROM orders
+  WHERE status = 'COMPLETED'
+    AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id)
+    AND (created_at AT TIME ZONE p_tz)::date BETWEEN v_prev_from AND v_prev_to;
+
+  -- Serie temporal con buckets completos (generate_series rellena huecos)
+  WITH buckets AS (
+    SELECT gs::date AS b_start
+    FROM generate_series(
+      date_trunc(v_bucket, v_from::timestamp),
+      date_trunc(v_bucket, v_to::timestamp),
+      ('1 ' || v_bucket)::interval
+    ) gs
+  ),
+  agg AS (
+    SELECT date_trunc(v_bucket, ((created_at AT TIME ZONE p_tz)::date)::timestamp)::date AS b_start,
+           sum(total_amount) AS revenue, sum(total_profit) AS profit, count(*) AS orders
+    FROM orders
+    WHERE status = 'COMPLETED'
+      AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id)
+      AND (created_at AT TIME ZONE p_tz)::date BETWEEN v_from AND v_to
+    GROUP BY 1
+  )
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'date', to_char(GREATEST(b.b_start, v_from), 'YYYY-MM-DD'),
+    'revenue', COALESCE(a.revenue, 0),
+    'profit', COALESCE(a.profit, 0),
+    'orders', COALESCE(a.orders, 0)
+  ) ORDER BY b.b_start), '[]'::jsonb)
+  INTO v_trend
+  FROM buckets b LEFT JOIN agg a USING (b_start);
+
+  -- Actividad por día de la semana (Lun..Dom) sobre TODO el rango
+  WITH dow AS (
+    SELECT i AS iso_dow FROM generate_series(1, 7) i
+  ),
+  agg AS (
+    SELECT extract(isodow FROM (created_at AT TIME ZONE p_tz)::date)::int AS iso_dow,
+           sum(total_amount) AS revenue, count(*) AS orders
+    FROM orders
+    WHERE status = 'COMPLETED'
+      AND (p_warehouse_id IS NULL OR warehouse_id = p_warehouse_id)
+      AND (created_at AT TIME ZONE p_tz)::date BETWEEN v_from AND v_to
+    GROUP BY 1
+  )
+  SELECT jsonb_agg(jsonb_build_object(
+    'iso_dow', dow.iso_dow,
+    'revenue', COALESCE(a.revenue, 0),
+    'orders', COALESCE(a.orders, 0)
+  ) ORDER BY dow.iso_dow)
+  INTO v_weekday
+  FROM dow LEFT JOIN agg a USING (iso_dow);
+
+  RETURN jsonb_build_object(
+    'from', to_char(v_from, 'YYYY-MM-DD'),
+    'to', to_char(v_to, 'YYYY-MM-DD'),
+    'days', v_days,
+    'bucket', v_bucket,
+    'total_revenue', v_cur.revenue,
+    'total_profit', v_cur.profit,
+    'total_orders', v_cur.orders,
+    'prev_revenue', v_prev.revenue,
+    'prev_profit', v_prev.profit,
+    'prev_orders', v_prev.orders,
+    'trend', v_trend,
+    'weekday', v_weekday
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date", "p_to" "date", "p_warehouse_id" "uuid", "p_tz" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -7165,6 +7297,12 @@ GRANT ALL ON FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query"
 GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_customers_global_stats_rpc"() TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date", "p_to" "date", "p_warehouse_id" "uuid", "p_tz" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date", "p_to" "date", "p_warehouse_id" "uuid", "p_tz" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dashboard_sales_overview"("p_from" "date", "p_to" "date", "p_warehouse_id" "uuid", "p_tz" "text") TO "service_role";
 
 
 

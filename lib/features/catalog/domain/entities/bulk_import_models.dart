@@ -119,6 +119,10 @@ class ImportRow {
   ExistingVariant? existing;
   bool effectiveUsesLots = false;
 
+  /// true si es un lote adicional de una variante que ya apareció antes en el
+  /// archivo (misma variante, otro lote): no crea producto ni variante nuevos.
+  bool isExtraLot = false;
+
   ImportRow({
     required this.line,
     required this.productName,
@@ -169,6 +173,9 @@ class ImportSummary extends Equatable {
   final int newVariants;
   final int updatedVariants;
   final int units;
+
+  /// Lotes de stock distintos que se cargarán (solo productos con lotes).
+  final int lots;
   final int newBrands;
   final int newCategories;
 
@@ -181,6 +188,7 @@ class ImportSummary extends Equatable {
     this.newVariants = 0,
     this.updatedVariants = 0,
     this.units = 0,
+    this.lots = 0,
     this.newBrands = 0,
     this.newCategories = 0,
   });
@@ -195,6 +203,7 @@ class ImportSummary extends Equatable {
     newVariants,
     updatedVariants,
     units,
+    lots,
     newBrands,
     newCategories,
   ];

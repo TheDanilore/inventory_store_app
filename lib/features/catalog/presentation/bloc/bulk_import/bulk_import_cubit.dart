@@ -242,9 +242,7 @@ class BulkImportCubit extends Cubit<BulkImportState> {
         mimeType: MimeType.csv,
       );
     } catch (e) {
-      emit(
-        state.copyWith(errorMessage: 'Error al descargar plantilla: $e'),
-      );
+      emit(state.copyWith(errorMessage: 'Error al descargar plantilla: $e'));
     }
   }
 
@@ -734,6 +732,7 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     });
 
     final seen = <String, int>{}; // variantKey|lote → línea
+    final seenVariants = <String>{}; // variantes ya vistas en el archivo
     final skuOwner = <String, String>{}; // sku → productKey
 
     for (final r in rows) {
@@ -792,7 +791,10 @@ class BulkImportCubit extends Cubit<BulkImportState> {
             r.error('lote', 'El producto usa lotes: indica el código de lote.');
           }
           if (r.expiryRaw.isEmpty) {
-            r.error('vencimiento', 'El producto usa lotes: indica el vencimiento.');
+            r.error(
+              'vencimiento',
+              'El producto usa lotes: indica el vencimiento.',
+            );
           }
         }
       } else if (r.lotCode.isNotEmpty || r.expiryRaw.isNotEmpty) {
@@ -810,9 +812,11 @@ class BulkImportCubit extends Cubit<BulkImportState> {
         );
       }
 
+      // Misma variante con otro lote → no es una variante/producto nuevo
+      r.isExtraLot = !seenVariants.add(r.variantKey) && lots;
+
       // Duplicados dentro del archivo
-      final dupKey =
-          '${r.variantKey}|${lots ? normalizeKey(r.lotCode) : ''}';
+      final dupKey = '${r.variantKey}|${lots ? normalizeKey(r.lotCode) : ''}';
       final first = seen[dupKey];
       if (first != null) {
         r.error(
@@ -865,6 +869,8 @@ class BulkImportCubit extends Cubit<BulkImportState> {
               .toSet()
               .length,
       units: valid.fold<int>(0, (a, r) => a + (r.stock ?? 0)),
+      lots:
+          valid.where((r) => r.effectiveUsesLots && (r.stock ?? 0) > 0).length,
       newBrands: newBrands.length,
       newCategories: newCats.length,
     );
@@ -936,9 +942,9 @@ class BulkImportCubit extends Cubit<BulkImportState> {
       for (final p in products.values)
         {
           ...p,
-          'variants': (p['variants'] as Map<String, Map<String, dynamic>>)
-              .values
-              .toList(),
+          'variants':
+              (p['variants'] as Map<String, Map<String, dynamic>>).values
+                  .toList(),
         },
     ];
   }
@@ -968,7 +974,8 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     emit(
       state.copyWith(
         status: BulkImportStatus.importing,
-        progress: _payload.isEmpty ? 0 : _nextBatch * _batchSize / _payload.length,
+        progress:
+            _payload.isEmpty ? 0 : _nextBatch * _batchSize / _payload.length,
         clearImportError: true,
         clearErrorMessage: true,
         canResume: false,

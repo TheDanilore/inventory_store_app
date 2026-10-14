@@ -294,7 +294,10 @@ class _Card extends StatelessWidget {
                     if (subtitle != null)
                       Text(
                         subtitle!,
-                        style: TextStyle(fontSize: 12.5, color: _muted(context)),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: _muted(context),
+                        ),
                       ),
                   ],
                 ),
@@ -336,7 +339,8 @@ class _SelectTile extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? primary.withValues(alpha: 0.07) : Colors.transparent,
+            color:
+                selected ? primary.withValues(alpha: 0.07) : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: selected ? primary : AppColors.brdSubtle(context),
@@ -697,10 +701,7 @@ class _DashedRRectPainter extends CustomPainter {
           ..strokeWidth = 1.6;
     final path =
         Path()..addRRect(
-          RRect.fromRectAndRadius(
-            Offset.zero & size,
-            Radius.circular(radius),
-          ),
+          RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
         );
     for (final m in path.computeMetrics()) {
       var d = 0.0;
@@ -918,9 +919,10 @@ class _ConfigView extends StatelessWidget {
                 'Elige primero el almacén destino.',
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: AppColors.isDark(context)
-                      ? AppColors.warning
-                      : AppColors.warningDark,
+                  color:
+                      AppColors.isDark(context)
+                          ? AppColors.warning
+                          : AppColors.warningDark,
                 ),
               ),
             ],
@@ -966,7 +968,11 @@ class _ColumnsGuide extends StatelessWidget {
       'Código único. Si falta, se identifica por nombre + marca + variante.',
     ),
     ('precio_mayor', false, 'Precio por mayor.'),
-    ('cantidad_mayor', false, 'Cantidad mínima para aplicar el precio por mayor.'),
+    (
+      'cantidad_mayor',
+      false,
+      'Cantidad mínima para aplicar el precio por mayor.',
+    ),
     ('stock', false, 'Cantidad entera. Vacío = 0 (solo catálogo).'),
     (
       'usa_lotes',
@@ -1189,15 +1195,19 @@ class _ReviewViewState extends State<_ReviewView> {
                   SliverToBoxAdapter(child: _empty(context))
                 else
                   SliverList(
-                    delegate: SliverChildBuilderDelegate((context, i) {
-                      if (i >= _maxShown) {
-                        return _moreNote(context, rows.length);
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _RowCard(row: rows[i], mode: state.stockMode),
-                      );
-                    }, childCount: rows.length > _maxShown ? _maxShown + 1 : rows.length),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) {
+                        if (i >= _maxShown) {
+                          return _moreNote(context, rows.length);
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _RowCard(row: rows[i], mode: state.stockMode),
+                        );
+                      },
+                      childCount:
+                          rows.length > _maxShown ? _maxShown + 1 : rows.length,
+                    ),
                   ),
                 const SliverToBoxAdapter(child: SizedBox(height: 4)),
               ],
@@ -1219,14 +1229,46 @@ class _ReviewViewState extends State<_ReviewView> {
   }
 
   List<_StatItem> _stats(ImportSummary s) => [
-    _StatItem(Icons.inventory_2_outlined, 'Productos nuevos', s.newProducts, AppColors.success),
-    _StatItem(Icons.style_outlined, 'Variantes nuevas', s.newVariants, AppColors.info),
-    _StatItem(Icons.sync_alt_rounded, 'Variantes existentes', s.updatedVariants, _violet),
-    _StatItem(Icons.layers_outlined, 'Unidades de stock', s.units, AppColors.amber),
+    _StatItem(
+      Icons.inventory_2_outlined,
+      'Productos nuevos',
+      s.newProducts,
+      AppColors.success,
+    ),
+    _StatItem(
+      Icons.style_outlined,
+      'Variantes nuevas',
+      s.newVariants,
+      AppColors.info,
+    ),
+    _StatItem(
+      Icons.sync_alt_rounded,
+      'Variantes existentes',
+      s.updatedVariants,
+      _violet,
+    ),
+    _StatItem(
+      Icons.layers_outlined,
+      'Unidades de stock',
+      s.units,
+      AppColors.amber,
+    ),
+    if (s.lots > 0)
+      _StatItem(Icons.inventory_outlined, 'Lotes de stock', s.lots, _violet),
     if (s.newBrands > 0)
-      _StatItem(Icons.local_offer_outlined, 'Marcas a crear', s.newBrands, AppColors.teal),
+      _StatItem(
+        Icons.local_offer_outlined,
+        'Marcas a crear',
+        s.newBrands,
+        AppColors.teal,
+      ),
     if (s.newCategories > 0)
-      _StatItem(Icons.category_outlined, 'Categorías a crear', s.newCategories, AppColors.teal),
+      _StatItem(
+        Icons.category_outlined,
+        'Categorías a crear',
+        s.newCategories,
+        AppColors.teal,
+      ),
   ];
 
   Widget _fileErrors(
@@ -1362,7 +1404,11 @@ class _ReviewViewState extends State<_ReviewView> {
                 children: [info, const SizedBox(height: 12), actions],
               )
               : Row(
-                children: [Expanded(child: info), const SizedBox(width: 12), actions],
+                children: [
+                  Expanded(child: info),
+                  const SizedBox(width: 12),
+                  actions,
+                ],
               ),
           const SizedBox(height: 12),
           Wrap(
@@ -1437,10 +1483,7 @@ class _ReviewViewState extends State<_ReviewView> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color:
-                        _filter == it.$1
-                            ? primary
-                            : AppColors.surf(context),
+                    color: _filter == it.$1 ? primary : AppColors.surf(context),
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
                       color:
@@ -1533,7 +1576,11 @@ class _ReviewViewState extends State<_ReviewView> {
   ];
   static final double _totalWidth = _cols.fold(0.0, (a, c) => a + c.$2);
 
-  Widget _table(BuildContext context, List<ImportRow> rows, ImportStockMode mode) {
+  Widget _table(
+    BuildContext context,
+    List<ImportRow> rows,
+    ImportStockMode mode,
+  ) {
     if (rows.isEmpty) {
       return Container(
         width: double.infinity,
@@ -1561,11 +1608,14 @@ class _ReviewViewState extends State<_ReviewView> {
                       children: [
                         for (final col in _cols)
                           SizedBox(
-                            width: col.$1 == 'Detalle'
-                                ? col.$2 + (width - _totalWidth)
-                                : col.$2,
+                            width:
+                                col.$1 == 'Detalle'
+                                    ? col.$2 + (width - _totalWidth)
+                                    : col.$2,
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                               child: Text(
                                 col.$1.toUpperCase(),
                                 style: TextStyle(
@@ -1582,7 +1632,8 @@ class _ReviewViewState extends State<_ReviewView> {
                   ),
                   Expanded(
                     child: ListView.separated(
-                      itemCount: shown.length + (rows.length > _maxShown ? 1 : 0),
+                      itemCount:
+                          shown.length + (rows.length > _maxShown ? 1 : 0),
                       separatorBuilder:
                           (_, _) =>
                               Divider(height: 1, color: AppColors.brd(context)),
@@ -1668,7 +1719,11 @@ class _ReviewViewState extends State<_ReviewView> {
                 children: [text, const SizedBox(height: 10), button],
               )
               : Row(
-                children: [Expanded(child: text), const SizedBox(width: 12), button],
+                children: [
+                  Expanded(child: text),
+                  const SizedBox(width: 12),
+                  button,
+                ],
               ),
     );
   }
@@ -1707,6 +1762,7 @@ class _ReviewViewState extends State<_ReviewView> {
                   line('Variantes nuevas', '${s.newVariants}'),
                   line('Variantes existentes', '${s.updatedVariants}'),
                   line('Unidades de stock', '${s.units}'),
+                  if (s.lots > 0) line('Lotes de stock', '${s.lots}'),
                   if (s.newBrands > 0) line('Marcas nuevas', '${s.newBrands}'),
                   if (s.newCategories > 0)
                     line('Categorías nuevas', '${s.newCategories}'),
@@ -1744,6 +1800,9 @@ Widget _statusBadge(ImportRow row) {
   if (row.hasError) {
     text = 'Error';
     color = AppColors.error;
+  } else if (row.isExtraLot) {
+    text = 'Lote adicional';
+    color = AppColors.teal;
   } else {
     switch (row.action) {
       case ImportRowAction.createProduct:
@@ -1887,9 +1946,10 @@ class _TableRow extends StatelessWidget {
         children: [
           for (var i = 0; i < cells.length; i++)
             SizedBox(
-              width: i == cells.length - 1
-                  ? cols[i].$2 + extraDetailWidth
-                  : cols[i].$2,
+              width:
+                  i == cells.length - 1
+                      ? cols[i].$2 + extraDetailWidth
+                      : cols[i].$2,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: cells[i],
@@ -1921,12 +1981,15 @@ class _RowCard extends StatelessWidget {
       children: [
         Text(k, style: TextStyle(fontSize: 11, color: _muted(context))),
         const SizedBox(height: 1),
-        Text(v, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+        Text(
+          v,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+        ),
       ],
     );
 
-    final hasDetail = row.issues.isNotEmpty ||
-        (row.existing != null && row.stock != null);
+    final hasDetail =
+        row.issues.isNotEmpty || (row.existing != null && row.stock != null);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1966,7 +2029,10 @@ class _RowCard extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           const SizedBox(height: 2),
-          Text(subtitle, style: TextStyle(fontSize: 12.5, color: _muted(context))),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 12.5, color: _muted(context)),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 22,
@@ -1974,7 +2040,8 @@ class _RowCard extends StatelessWidget {
             children: [
               kv('Compra', _money(row.cost)),
               kv('Venta', _money(row.salePrice)),
-              if (row.wholesalePrice != null) kv('Mayor', _money(row.wholesalePrice)),
+              if (row.wholesalePrice != null)
+                kv('Mayor', _money(row.wholesalePrice)),
               kv('Stock', row.stock?.toString() ?? '-'),
               if (row.effectiveUsesLots && row.lotCode.isNotEmpty)
                 kv('Lote', row.lotCode),
@@ -2103,10 +2170,30 @@ class _SuccessView extends StatelessWidget {
                 const SizedBox(height: 24),
                 _StatsGrid(
                   items: [
-                    _StatItem(Icons.inventory_2_outlined, 'Productos creados', r.createdProducts, AppColors.success),
-                    _StatItem(Icons.style_outlined, 'Variantes creadas', r.createdVariants, AppColors.info),
-                    _StatItem(Icons.sync_alt_rounded, 'Variantes actualizadas', r.updatedVariants, _violet),
-                    _StatItem(Icons.swap_vert_rounded, 'Movimientos de stock', r.stockMovements, AppColors.amber),
+                    _StatItem(
+                      Icons.inventory_2_outlined,
+                      'Productos creados',
+                      r.createdProducts,
+                      AppColors.success,
+                    ),
+                    _StatItem(
+                      Icons.style_outlined,
+                      'Variantes creadas',
+                      r.createdVariants,
+                      AppColors.info,
+                    ),
+                    _StatItem(
+                      Icons.sync_alt_rounded,
+                      'Variantes actualizadas',
+                      r.updatedVariants,
+                      _violet,
+                    ),
+                    _StatItem(
+                      Icons.swap_vert_rounded,
+                      'Movimientos de stock',
+                      r.stockMovements,
+                      AppColors.amber,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 28),
