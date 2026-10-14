@@ -743,6 +743,94 @@ $$;
 ALTER FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $_$
+DECLARE
+  v_actor uuid;
+  v_actor_role public.user_role;
+  v_auth_id uuid;
+  v_target_role public.user_role;
+  v_reassign uuid;
+  r record;
+BEGIN
+  -- Solo administradores
+  SELECT id, role INTO v_actor, v_actor_role
+  FROM profiles WHERE auth_user_id = auth.uid();
+
+  IF v_actor IS NULL OR v_actor_role <> 'admin' THEN
+    RETURN jsonb_build_object('success', false,
+      'message', 'No tienes permisos para eliminar usuarios.');
+  END IF;
+
+  IF p_user_id = v_actor THEN
+    RETURN jsonb_build_object('success', false,
+      'message', 'No puedes eliminar tu propia cuenta.');
+  END IF;
+
+  SELECT auth_user_id, role INTO v_auth_id, v_target_role
+  FROM profiles WHERE id = p_user_id;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false,
+      'message', 'El usuario no fue encontrado.');
+  END IF;
+
+  IF v_target_role = 'admin' AND
+     (SELECT count(*) FROM profiles
+      WHERE role = 'admin' AND is_active) <= 1 THEN
+    RETURN jsonb_build_object('success', false,
+      'message', 'No puedes eliminar al único administrador activo.');
+  END IF;
+
+  v_reassign := COALESCE(p_reassign_to, v_actor);
+
+  DELETE FROM customer_credit_movements
+  WHERE customer_credit_id IN
+        (SELECT id FROM customer_credits WHERE profile_id = p_user_id);
+  DELETE FROM customer_credits WHERE profile_id = p_user_id;
+
+  FOR r IN
+    SELECT c.conrelid::regclass::text AS tbl,
+           a.attname AS col,
+           a.attnotnull AS notnull
+    FROM pg_constraint c
+    JOIN pg_attribute a
+      ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+    WHERE c.contype = 'f'
+      AND c.confrelid = 'public.profiles'::regclass
+      AND c.conrelid <> 'public.profiles'::regclass
+      AND c.confdeltype IN ('a', 'r')
+  LOOP
+    IF r.col = 'profile_id' THEN
+      EXECUTE format('DELETE FROM %s WHERE %I = $1', r.tbl, r.col)
+        USING p_user_id;
+    ELSIF r.notnull THEN
+      EXECUTE format('UPDATE %s SET %I = $2 WHERE %I = $1', r.tbl, r.col, r.col)
+        USING p_user_id, v_reassign;
+    ELSE
+      EXECUTE format('UPDATE %s SET %I = NULL WHERE %I = $1', r.tbl, r.col, r.col)
+        USING p_user_id;
+    END IF;
+  END LOOP;
+
+  DELETE FROM profiles WHERE id = p_user_id;
+  IF v_auth_id IS NOT NULL THEN
+    DELETE FROM auth.users WHERE id = v_auth_id;
+  END IF;
+
+  RETURN jsonb_build_object('success', true,
+    'message', 'Usuario eliminado correctamente.');
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false,
+    'message', 'Error en el servidor: ' || SQLERRM);
+END;
+$_$;
+
+
+ALTER FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1282,6 +1370,42 @@ $$;
 
 
 ALTER FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_orders int; v_sales int; v_shifts int; v_movs int; v_credits int;
+  v_debt numeric; v_wallet int; v_points int;
+BEGIN
+  SELECT COALESCE(wallet_balance, 0) INTO v_points FROM profiles WHERE id = p_user_id;
+  SELECT count(*) INTO v_orders FROM orders WHERE customer_id = p_user_id;
+  SELECT count(*) INTO v_sales  FROM orders WHERE created_by = p_user_id;
+  SELECT count(*) INTO v_shifts FROM cash_shifts
+    WHERE opened_by = p_user_id OR closed_by = p_user_id;
+  SELECT count(*) INTO v_movs   FROM account_movements WHERE created_by = p_user_id;
+  SELECT count(*), COALESCE(sum(current_debt), 0) INTO v_credits, v_debt
+    FROM customer_credits WHERE profile_id = p_user_id;
+  SELECT count(*) INTO v_wallet FROM wallet_movements WHERE profile_id = p_user_id;
+
+  RETURN jsonb_build_object(
+    'orders', v_orders,
+    'sales_created', v_sales,
+    'cash_shifts', v_shifts,
+    'account_movements', v_movs,
+    'credit_accounts', v_credits,
+    'credit_debt_cents', round(v_debt * 100)::int,
+    'wallet_movements', v_wallet,
+    'wallet_points', v_points,
+    'blocking_total', v_orders + v_sales + v_shifts + v_movs + v_credits
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_update_timestamp"() RETURNS "trigger"
@@ -6624,6 +6748,12 @@ GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO
 
 
 
+REVOKE ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "service_role";
@@ -6681,6 +6811,12 @@ GRANT ALL ON FUNCTION "public"."get_top_customers"("p_limit" integer) TO "servic
 GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_top_customers_rpc"("p_limit" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_user_relations_summary"("p_user_id" "uuid") TO "service_role";
 
 
 

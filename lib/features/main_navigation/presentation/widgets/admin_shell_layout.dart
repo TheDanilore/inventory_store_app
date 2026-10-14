@@ -197,14 +197,14 @@ class AdminShellHelper {
   };
 
   static String resolveBreadcrumb(String path) {
-    if (path.isEmpty || path == '/') return 'Inicio  ›  Dashboard';
+    if (path.isEmpty || path == '/') return '';
     for (final entry in breadcrumbMap.entries) {
       if (entry.key == '/') continue;
       if (path == entry.key || path.startsWith('${entry.key}/')) {
         return entry.value;
       }
     }
-    return 'Panel de Administración ERP';
+    return '';
   }
 
   static String resolveTitle(String path) {
@@ -215,7 +215,7 @@ class AdminShellHelper {
         return entry.value;
       }
     }
-    return 'Panel ERP';
+    return '';
   }
 }
 
@@ -256,7 +256,7 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
   void initState() {
     super.initState();
     _headerNotifier = ValueNotifier<AdminHeaderConfig>(
-      const AdminHeaderConfig(title: 'Panel ERP'),
+      const AdminHeaderConfig(title: ''),
     );
     if (!AdminShellLayout.hasLoadedFromPrefs) {
       _loadSidebarState();
