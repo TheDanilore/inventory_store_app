@@ -1188,6 +1188,7 @@ BEGIN
 
   SELECT COALESCE(sum(total_amount), 0) AS revenue,
          COALESCE(sum(total_profit), 0) AS profit,
+         COALESCE(sum(LEAST(COALESCE(amount_paid, 0), total_amount)), 0) AS collected,
          count(*) AS orders
   INTO v_cur
   FROM orders
@@ -1197,6 +1198,7 @@ BEGIN
 
   SELECT COALESCE(sum(total_amount), 0) AS revenue,
          COALESCE(sum(total_profit), 0) AS profit,
+         COALESCE(sum(LEAST(COALESCE(amount_paid, 0), total_amount)), 0) AS collected,
          count(*) AS orders
   INTO v_prev
   FROM orders
@@ -1259,9 +1261,11 @@ BEGIN
     'bucket', v_bucket,
     'total_revenue', v_cur.revenue,
     'total_profit', v_cur.profit,
+    'total_collected', v_cur.collected,
     'total_orders', v_cur.orders,
     'prev_revenue', v_prev.revenue,
     'prev_profit', v_prev.profit,
+    'prev_collected', v_prev.collected,
     'prev_orders', v_prev.orders,
     'trend', v_trend,
     'weekday', v_weekday
@@ -2509,6 +2513,12 @@ DECLARE
   v_variant_id uuid;
   v_quantity int;
   v_remaining_qty int;
+
+  -- Costo y ganancia calculados EN EL SERVIDOR (no se confía en el cliente)
+  v_unit_cost numeric;
+  v_applied_price numeric;
+  v_total_cost numeric := 0;
+  v_total_profit numeric := 0;
   
   batch_assign jsonb;
   batch_row record;
@@ -2562,6 +2572,22 @@ BEGIN
     END IF;
   END IF;
 
+  -- Costo real desde product_variants.unit_cost (el payload solo aporta cantidades y precios)
+  FOR item IN SELECT * FROM jsonb_array_elements(payload->'items')
+  LOOP
+    SELECT unit_cost INTO v_unit_cost
+    FROM product_variants
+    WHERE id = (item->>'variantId')::uuid;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Variante no encontrada: %', item->>'variantId';
+    END IF;
+
+    v_total_cost := v_total_cost + COALESCE(v_unit_cost, 0) * (item->>'quantity')::int;
+  END LOOP;
+
+  v_total_profit := v_total_amount - v_total_cost;
+
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
   -- Insertar orden principal
@@ -2584,7 +2610,7 @@ BEGIN
     NULLIF(payload->>'customerName', ''),
     v_warehouse_id,
     v_total_amount,
-    COALESCE((payload->>'totalProfit')::numeric, 0.00),
+    v_total_profit,
     COALESCE((payload->>'discountAmount')::numeric, 0.00),
     payload->>'paymentMethod',
     payload->>'paymentStatus',
@@ -2600,13 +2626,19 @@ BEGIN
   LOOP
     v_variant_id := (item->>'variantId')::uuid;
     v_quantity := (item->>'quantity')::int;
-    
+
+    -- Costo vigente en BD y precio aplicado (el precio sí puede venir del POS:
+    -- mayorista, descuento manual, etc.)
+    SELECT COALESCE(unit_cost, 0) INTO v_unit_cost
+    FROM product_variants WHERE id = v_variant_id;
+    v_applied_price := (item->>'appliedPrice')::numeric;
+
     -- Validado con esquema de tabla order_items
     INSERT INTO order_items (
       order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit
     ) VALUES (
       v_order_id, (item->>'productId')::uuid, v_variant_id, v_quantity,
-      (item->>'unitCost')::numeric, (item->>'appliedPrice')::numeric, (item->>'netProfit')::numeric
+      v_unit_cost, v_applied_price, (v_applied_price - v_unit_cost) * v_quantity
     );
 
     IF NOT v_is_draft THEN
@@ -2636,7 +2668,7 @@ BEGIN
           INSERT INTO inventory_movements (
             variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
-            v_variant_id, v_warehouse_id, (batch_assign->>'batchId')::uuid, v_order_id, -v_take, v_old_qty, v_old_qty - v_take, (item->>'unitCost')::numeric, 'SALE', 
+            v_variant_id, v_warehouse_id, (batch_assign->>'batchId')::uuid, v_order_id, -v_take, v_old_qty, v_old_qty - v_take, v_unit_cost, 'SALE', 
             'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || v_batch_number, v_created_by
           );
         END LOOP;
@@ -2665,7 +2697,7 @@ BEGIN
           INSERT INTO inventory_movements (
             variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
-            v_variant_id, v_warehouse_id, batch_row.id, v_order_id, -v_take, batch_row.available_quantity, batch_row.available_quantity - v_take, (item->>'unitCost')::numeric, 'SALE', 
+            v_variant_id, v_warehouse_id, batch_row.id, v_order_id, -v_take, batch_row.available_quantity, batch_row.available_quantity - v_take, v_unit_cost, 'SALE', 
             'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || batch_row.batch_number, v_created_by
           );
           

@@ -57,6 +57,10 @@ class SalesOverview extends Equatable {
   final SalesBucket bucket;
   final double totalRevenue;
   final double totalProfit;
+
+  /// Cobrado de los pedidos del rango (orders.amount_paid). Las ventas a crédito
+  /// cuentan completas en ingresos; aquí solo lo ya pagado.
+  final double totalCollected;
   final int totalOrders;
   final double prevRevenue;
   final double prevProfit;
@@ -71,6 +75,7 @@ class SalesOverview extends Equatable {
     required this.bucket,
     required this.totalRevenue,
     required this.totalProfit,
+    this.totalCollected = 0,
     required this.totalOrders,
     required this.prevRevenue,
     required this.prevProfit,
@@ -92,20 +97,29 @@ class SalesOverview extends Equatable {
       ),
       totalRevenue: d('total_revenue'),
       totalProfit: d('total_profit'),
+      totalCollected: d('total_collected'),
       totalOrders: i('total_orders'),
       prevRevenue: d('prev_revenue'),
       prevProfit: d('prev_profit'),
       prevOrders: i('prev_orders'),
       trend:
           (j['trend'] as List? ?? [])
-              .map((e) => SalesTrendPoint.fromJson(Map<String, dynamic>.from(e)))
+              .map(
+                (e) => SalesTrendPoint.fromJson(Map<String, dynamic>.from(e)),
+              )
               .toList(),
       weekday:
           (j['weekday'] as List? ?? [])
-              .map((e) => WeekdayActivity.fromJson(Map<String, dynamic>.from(e)))
+              .map(
+                (e) => WeekdayActivity.fromJson(Map<String, dynamic>.from(e)),
+              )
               .toList(),
     );
   }
+
+  /// Por cobrar = ingresos - cobrado (nunca negativo).
+  double get pendingCollection =>
+      totalRevenue > totalCollected ? totalRevenue - totalCollected : 0;
 
   double get costOfGoods => totalRevenue - totalProfit;
   double get margin => totalRevenue > 0 ? totalProfit / totalRevenue * 100 : 0;
@@ -123,6 +137,7 @@ class SalesOverview extends Equatable {
     bucket,
     totalRevenue,
     totalProfit,
+    totalCollected,
     totalOrders,
     prevRevenue,
     prevProfit,

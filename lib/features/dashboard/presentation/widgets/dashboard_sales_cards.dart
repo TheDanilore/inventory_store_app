@@ -9,16 +9,42 @@ const Color _kRevenue = Color(0xFF2563EB);
 const Color _kProfit = Color(0xFF10B981);
 
 const _months = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
 ];
 const _monthsLong = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ];
 const _daysShort = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 const _daysLong = [
-  'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
 ];
 
 final _moneyFmt = NumberFormat('#,##0.00', 'en_US');
@@ -36,12 +62,15 @@ String _dayMonth(DateTime d) => '${d.day} ${_months[d.month - 1]}';
 String _rangeLabel(SalesOverview o) {
   if (o.from == o.to) return '${_dayMonth(o.from)} ${o.from.year}';
   final sameYear = o.from.year == o.to.year;
-  final a = sameYear ? _dayMonth(o.from) : '${_dayMonth(o.from)} ${o.from.year}';
+  final a =
+      sameYear ? _dayMonth(o.from) : '${_dayMonth(o.from)} ${o.from.year}';
   return '$a – ${_dayMonth(o.to)} ${o.to.year}';
 }
 
 String _bucketLabel(SalesBucket b) =>
-    b == SalesBucket.day ? 'por día' : (b == SalesBucket.week ? 'por semana' : 'por mes');
+    b == SalesBucket.day
+        ? 'por día'
+        : (b == SalesBucket.week ? 'por semana' : 'por mes');
 
 Color _soft(BuildContext c) =>
     AppColors.isDark(c) ? AppColors.darkSurfaceElevated : AppColors.surfaceDark;
@@ -264,7 +293,11 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
                 IconButton(
                   tooltip: 'Ocultar widget',
                   onPressed: widget.onHide,
-                  icon: Icon(Icons.visibility_off_outlined, size: 18, color: muted),
+                  icon: Icon(
+                    Icons.visibility_off_outlined,
+                    size: 18,
+                    color: muted,
+                  ),
                 ),
             ],
           ),
@@ -314,7 +347,8 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
           const SizedBox(height: 14),
           if (!hasData)
             const _EmptyState(
-              text: 'No hay ventas en este periodo.\nPrueba con otro rango de fechas.',
+              text:
+                  'No hay ventas en este periodo.\nPrueba con otro rango de fechas.',
               height: 220,
             )
           else
@@ -350,7 +384,8 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
       return (t * (pts.length - 1)).round();
     }
 
-    final hovered = _hovered != null && _hovered! < pts.length ? _hovered : null;
+    final hovered =
+        _hovered != null && _hovered! < pts.length ? _hovered : null;
 
     return SizedBox(
       height: height,
@@ -359,8 +394,10 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
         onExit: (_) => setState(() => _hovered = null),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (d) => setState(() => _hovered = indexFor(d.localPosition.dx)),
-          onPanUpdate: (d) => setState(() => _hovered = indexFor(d.localPosition.dx)),
+          onTapDown:
+              (d) => setState(() => _hovered = indexFor(d.localPosition.dx)),
+          onPanUpdate:
+              (d) => setState(() => _hovered = indexFor(d.localPosition.dx)),
           child: Stack(
             children: [
               Positioned.fill(
@@ -379,7 +416,8 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
                   ),
                 ),
               ),
-              if (hovered != null) _tooltip(context, width, pts[hovered], hovered),
+              if (hovered != null)
+                _tooltip(context, width, pts[hovered], hovered),
             ],
           ),
         ),
@@ -387,7 +425,12 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
     );
   }
 
-  Widget _tooltip(BuildContext context, double width, SalesTrendPoint p, int i) {
+  Widget _tooltip(
+    BuildContext context,
+    double width,
+    SalesTrendPoint p,
+    int i,
+  ) {
     const tipW = 190.0;
     final plotW = width - _TrendPainter.left - _TrendPainter.right;
     final x =
@@ -408,7 +451,10 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
           ),
           const SizedBox(width: 6),
           Expanded(child: Text(k, style: const TextStyle(fontSize: 12))),
-          Text(v, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          Text(
+            v,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -437,10 +483,15 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
             children: [
               Text(
                 _pointTitle(p),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-              if (_series != _Series.profit) row(_kRevenue, 'Ingresos', _money(p.revenue)),
-              if (_series != _Series.revenue) row(_kProfit, 'Ganancia', _money(p.profit)),
+              if (_series != _Series.profit)
+                row(_kRevenue, 'Ingresos', _money(p.revenue)),
+              if (_series != _Series.revenue)
+                row(_kProfit, 'Ganancia', _money(p.profit)),
               row(AppColors.txtMuted(context), 'Pedidos', '${p.orders}'),
             ],
           ),
@@ -456,7 +507,10 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 11.5, color: AppColors.txtSecondary(context)),
+          style: TextStyle(
+            fontSize: 11.5,
+            color: AppColors.txtSecondary(context),
+          ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -485,6 +539,13 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
           stat('Ganancia bruta', _money(o.totalProfit), color: _kProfit),
           stat('Margen', '${o.margin.toStringAsFixed(1)}%'),
           stat('Costo de reposición', _money(o.costOfGoods)),
+          stat('Cobrado', _money(o.totalCollected)),
+          if (o.pendingCollection > 0)
+            stat(
+              'Por cobrar',
+              _money(o.pendingCollection),
+              color: AppColors.warning,
+            ),
         ],
       ),
     );
@@ -526,7 +587,9 @@ class _TrendPainter extends CustomPainter {
     final exp = math.pow(10, (math.log(v) / math.ln10).floor()).toDouble();
     final f = v / exp;
     final double nf =
-        f <= 1 ? 1.0 : (f <= 2 ? 2.0 : (f <= 2.5 ? 2.5 : (f <= 5 ? 5.0 : 10.0)));
+        f <= 1
+            ? 1.0
+            : (f <= 2 ? 2.0 : (f <= 2.5 ? 2.5 : (f <= 5 ? 5.0 : 10.0)));
     return nf * exp;
   }
 
@@ -546,9 +609,10 @@ class _TrendPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
       textAlign: align,
     )..layout(maxWidth: maxWidth);
-    final dx = align == TextAlign.right
-        ? at.dx - tp.width
-        : (align == TextAlign.center ? at.dx - tp.width / 2 : at.dx);
+    final dx =
+        align == TextAlign.right
+            ? at.dx - tp.width
+            : (align == TextAlign.center ? at.dx - tp.width / 2 : at.dx);
     tp.paint(canvas, Offset(dx, at.dy - tp.height / 2));
   }
 
@@ -564,22 +628,35 @@ class _TrendPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final plot = Rect.fromLTRB(left, top, size.width - right, size.height - bottom);
+    final plot = Rect.fromLTRB(
+      left,
+      top,
+      size.width - right,
+      size.height - bottom,
+    );
     final niceMax = _niceMax(maxY * 1.05);
     final n = points.length;
 
-    double xAt(int i) => n == 1 ? plot.center.dx : plot.left + plot.width * i / (n - 1);
-    double yAt(double v) => plot.bottom - plot.height * (v / niceMax).clamp(0.0, 1.0);
+    double xAt(int i) =>
+        n == 1 ? plot.center.dx : plot.left + plot.width * i / (n - 1);
+    double yAt(double v) =>
+        plot.bottom - plot.height * (v / niceMax).clamp(0.0, 1.0);
 
     // Cuadrícula + eje Y
-    final grid = Paint()
-      ..color = gridColor
-      ..strokeWidth = 1;
+    final grid =
+        Paint()
+          ..color = gridColor
+          ..strokeWidth = 1;
     for (var i = 0; i <= 4; i++) {
       final y = plot.bottom - plot.height * i / 4;
       canvas.drawLine(Offset(plot.left, y), Offset(plot.right, y), grid);
-      _text(canvas, _compact(niceMax * i / 4), Offset(plot.left - 8, y),
-          align: TextAlign.right, maxWidth: left - 10);
+      _text(
+        canvas,
+        _compact(niceMax * i / 4),
+        Offset(plot.left - 8, y),
+        align: TextAlign.right,
+        maxWidth: left - 10,
+      );
     }
 
     // Eje X con fechas reales (máx. ~7 etiquetas, sin solaparse)
@@ -596,8 +673,13 @@ class _TrendPainter extends CustomPainter {
     for (final i in shown) {
       var x = xAt(i);
       x = x.clamp(plot.left + 18, plot.right - 18).toDouble();
-      _text(canvas, _xLabel(points[i]), Offset(x, size.height - 8),
-          align: TextAlign.center, maxWidth: 60);
+      _text(
+        canvas,
+        _xLabel(points[i]),
+        Offset(x, size.height - 8),
+        align: TextAlign.center,
+        maxWidth: 60,
+      );
     }
 
     // Línea del punto seleccionado
@@ -612,8 +694,14 @@ class _TrendPainter extends CustomPainter {
       );
     }
 
-    void drawSeries(double Function(SalesTrendPoint) v, Color color, bool fill) {
-      final coords = [for (var i = 0; i < n; i++) Offset(xAt(i), yAt(v(points[i])))];
+    void drawSeries(
+      double Function(SalesTrendPoint) v,
+      Color color,
+      bool fill,
+    ) {
+      final coords = [
+        for (var i = 0; i < n; i++) Offset(xAt(i), yAt(v(points[i]))),
+      ];
 
       if (n >= 2) {
         final line = Path()..moveTo(coords.first.dx, coords.first.dy);
@@ -625,10 +713,11 @@ class _TrendPainter extends CustomPainter {
           line.cubicTo(a.dx + mid, a.dy, b.dx - mid, b.dy, b.dx, b.dy);
         }
         if (fill) {
-          final area = Path.from(line)
-            ..lineTo(coords.last.dx, plot.bottom)
-            ..lineTo(coords.first.dx, plot.bottom)
-            ..close();
+          final area =
+              Path.from(line)
+                ..lineTo(coords.last.dx, plot.bottom)
+                ..lineTo(coords.first.dx, plot.bottom)
+                ..close();
           canvas.drawPath(
             area,
             Paint()
@@ -724,7 +813,8 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
 
     final maxVal = days.map(value).fold<double>(0, math.max);
     final total = days.map(value).fold<double>(0, (a, b) => a + b);
-    final peakIdx = maxVal > 0 ? days.indexWhere((d) => value(d) == maxVal) : -1;
+    final peakIdx =
+        maxVal > 0 ? days.indexWhere((d) => value(d) == maxVal) : -1;
     final hasData = o.totalOrders > 0;
 
     String fmt(double v) =>
@@ -763,7 +853,11 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
                 IconButton(
                   tooltip: 'Ocultar widget',
                   onPressed: widget.onHide,
-                  icon: Icon(Icons.visibility_off_outlined, size: 18, color: muted),
+                  icon: Icon(
+                    Icons.visibility_off_outlined,
+                    size: 18,
+                    color: muted,
+                  ),
                 ),
             ],
           ),
@@ -831,7 +925,10 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
                     Expanded(
                       child: Text(
                         '${_daysLong[focus]}${focus == peakIdx ? ' · mejor día' : ''}',
-                        style: TextStyle(fontWeight: FontWeight.w700, color: txt),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: txt,
+                        ),
                       ),
                     ),
                     Column(
@@ -839,7 +936,10 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
                       children: [
                         Text(
                           fmt(value(days[focus])),
-                          style: TextStyle(fontWeight: FontWeight.w800, color: txt),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: txt,
+                          ),
                         ),
                         Text(
                           total > 0
@@ -873,7 +973,9 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
     final color =
         v == 0
             ? AppColors.brdSubtle(context)
-            : (isFocus || isPeak ? _kRevenue : _kRevenue.withValues(alpha: 0.4));
+            : (isFocus || isPeak
+                ? _kRevenue
+                : _kRevenue.withValues(alpha: 0.4));
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -881,22 +983,26 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
       onExit: (_) => setState(() => _selected = null),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selected = _selected == index ? null : index),
+        onTap:
+            () => setState(() => _selected = _selected == index ? null : index),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             SizedBox(
               height: 20,
-              child: v > 0 && (isFocus || isPeak)
-                  ? Text(
-                      _metric == _Metric.revenue ? _compact(v) : '${v.toInt()}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: _kRevenue,
-                      ),
-                    )
-                  : null,
+              child:
+                  v > 0 && (isFocus || isPeak)
+                      ? Text(
+                        _metric == _Metric.revenue
+                            ? _compact(v)
+                            : '${v.toInt()}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: _kRevenue,
+                        ),
+                      )
+                      : null,
             ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 220),
