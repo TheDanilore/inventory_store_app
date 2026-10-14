@@ -3,7 +3,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_stock_batch_model.dart';
 
-/// Tarjeta individual para listar una variante de producto dentro del Quick View Sheet.
+/// Tarjeta individual para listar una variante dentro de la Ficha Rápida.
 class ProductQuickViewVariantCard extends StatelessWidget {
   final ProductVariantEntity variant;
   final String? productName;
@@ -22,107 +22,86 @@ class ProductQuickViewVariantCard extends StatelessWidget {
     this.batches,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    String displayTitle;
-    if (variant.attributeValues.isNotEmpty) {
-      displayTitle = variant.label;
-    } else if (variant.sku != null &&
-        variant.sku!.trim().isNotEmpty &&
-        variant.sku!.trim() != 'N/A') {
-      displayTitle = variant.sku!;
-    } else if (!isSingleVariant) {
-      displayTitle = 'Variante #${index + 1}';
-    } else if (productName != null && productName!.trim().isNotEmpty) {
-      displayTitle = productName!.trim();
-    } else {
-      displayTitle = 'Producto Base';
-    }
+  String _title() {
+    final sku = variant.sku?.trim();
+    final hasSku = sku != null && sku.isNotEmpty && sku != 'N/A';
+    if (variant.attributeValues.isNotEmpty) return variant.label;
+    if (hasSku) return sku;
+    if (!isSingleVariant) return 'Variante #${index + 1}';
+    final name = productName?.trim();
+    return (name != null && name.isNotEmpty) ? name : 'Producto Base';
+  }
 
-    final salePrice = variant.salePrice;
-    final cost = variant.unitCost;
-    final wholesalePrice = variant.wholesalePrice;
-    final sku = variant.sku;
+  /// Stock de la variante. Devuelve null cuando NO se puede saber
+  /// (así no mostramos un "Agotado" falso).
+  int? _variantStock() {
+    // Una sola variante: su stock ES el stock del producto.
+    if (isSingleVariant) return productStock;
 
-    // Calcular stock de la variante si hay lotes disponibles
-    final int variantStock;
+    // Varias variantes: solo podemos calcularlo si hay lotes.
     if (batches != null && batches!.isNotEmpty) {
-      variantStock = batches!
+      return batches!
           .where((b) => b.variantId == variant.id)
           .fold<double>(0, (s, b) => s + b.availableQuantity)
           .toInt();
-    } else {
-      variantStock = isSingleVariant ? productStock : 0;
     }
+    return null;
+  }
 
-    final isOut = variantStock <= 0;
+  @override
+  Widget build(BuildContext context) {
+    final title = _title();
+    final sku = variant.sku?.trim();
+    final showSku =
+        sku != null && sku.isNotEmpty && sku != 'N/A' && sku != title;
+
+    final stock = _variantStock();
+    final isOut = stock != null && stock <= 0;
+
+    final salePrice = variant.salePrice;
+    final cost = variant.unitCost;
+    final wholesale = variant.wholesalePrice;
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Dot activo
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: variant.isActive ? AppColors.success : AppColors.textMuted,
-              shape: BoxShape.circle,
+          Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color:
+                    variant.isActive ? AppColors.success : AppColors.textMuted,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
           const SizedBox(width: 10),
 
-          // Label y SKU
+          // Título + SKU + chip de stock (en Wrap: no desborda en móvil)
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        displayTitle,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Micro-chip de stock de variante
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            isOut
-                                ? AppColors.danger.withValues(alpha: 0.08)
-                                : AppColors.teal.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        isOut ? 'Agotado' : '$variantStock unid.',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: isOut ? AppColors.danger : AppColors.tealDark,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                if (sku != null &&
-                    sku.isNotEmpty &&
-                    sku.trim() != 'N/A' &&
-                    displayTitle != sku)
+                if (showSku)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
@@ -133,9 +112,34 @@ class ProductQuickViewVariantCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (stock != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isOut
+                              ? AppColors.danger.withValues(alpha: 0.08)
+                              : AppColors.teal.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      isOut ? 'Agotado' : '$stock unid.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: isOut ? AppColors.danger : AppColors.tealDark,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
+          const SizedBox(width: 10),
 
           // Precios
           Column(
@@ -146,8 +150,8 @@ class ProductQuickViewVariantCard extends StatelessWidget {
                     ? 'S/ ${salePrice.toStringAsFixed(2)}'
                     : 'Sin precio',
                 style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
@@ -159,13 +163,13 @@ class ProductQuickViewVariantCard extends StatelessWidget {
                     color: AppColors.textSecondary,
                   ),
                 ),
-              if (wholesalePrice != null)
+              if (wholesale != null)
                 Text(
-                  'Mayoreo: S/ ${wholesalePrice.toStringAsFixed(2)}',
+                  'Mayoreo: S/ ${wholesale.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 10.5,
                     color: AppColors.tealDark,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
             ],

@@ -19,8 +19,6 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/common/products_floating_bulk_bar.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_table.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_filters_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
@@ -241,11 +239,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     }
   }
 
-  void _handleBulkExportPdf(AdminCatalogCubit cubit) {
-    final selected = _selectedProductIdsNotifier.value;
-    if (selected.isEmpty) return;
-    cubit.exportCatalogPdf(optionsMode: 2, selectedIds: selected.toList());
-  }
 
   void _showProductQuickView(ProductEntity product, AdminCatalogCubit cubit) {
     ProductQuickViewSheet.show(
@@ -918,21 +911,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         ),
                       ),
 
-                      // ── Floating Bulk Action Bar ───────────────────────────────
-                      ValueListenableBuilder<Set<String>>(
-                        valueListenable: _selectedProductIdsNotifier,
-                        builder: (context, selectedIds, _) {
-                          if (selectedIds.isEmpty) {
-                            return const SizedBox.shrink();
-                          }
-                          return ProductsFloatingBulkBar(
-                            selectedCount: selectedIds.length,
-                            isDesktop: !isMobile,
-                            onExportPdf: () => _handleBulkExportPdf(cubit),
-                            onClearSelection: _clearSelection,
-                          );
-                        },
-                      ),
+
 
                       // ── Overlay de carga de acciones ───────────────────────────
                       if (state.actionState == ViewState.loading)
@@ -1083,7 +1062,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       color: AppColors.border.withValues(alpha: 0.8),
                     ),
                   ),
-                  child: const ProductsDesktopShimmer(rows: 6),
                 )
                 : ListView.builder(
                   shrinkWrap: true,

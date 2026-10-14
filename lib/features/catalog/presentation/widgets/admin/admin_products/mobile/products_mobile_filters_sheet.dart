@@ -1,331 +1,292 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 
-/// Modal Bottom Sheet de filtros de catálogo para dispositivos móviles adaptado a Apple HIG.
+/// Filtros del catálogo para móvil.
+///
+/// IMPORTANTE: se abre con el navigator raíz, que NO hereda los providers de
+/// la pantalla. Por eso se re-inyecta el cubit con BlocProvider.value; sin
+/// eso, cualquier BlocBuilder/context.read dentro del sheet lanza excepción
+/// y el modal queda vacío (solo se ve la barrera gris).
 class ProductsMobileFiltersSheet {
-  static void show(BuildContext context, AdminCatalogCubit cubit) {
-    showModalBottomSheet(
+  static Future<void> show(BuildContext context, AdminCatalogCubit cubit) {
+    return showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
-          builder: (context, currentState) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder:
+          (_) => BlocProvider.value(
+            value: cubit,
+            child: const _FiltersContent(),
+          ),
+    );
+  }
+}
+
+class _FiltersContent extends StatelessWidget {
+  const _FiltersContent();
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<AdminCatalogCubit>();
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
+        builder: (context, state) {
+          final activeCount = _activeCount(state);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
               ),
-              padding: EdgeInsets.fromLTRB(
-                20,
-                12,
-                20,
-                MediaQuery.of(context).viewInsets.bottom + 24,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 8, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Filtros',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (activeCount > 0)
+                      TextButton(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          cubit.setCategory(null);
+                          cubit.setStockFilter(CatalogStockFilter.all);
+                          cubit.setFilterIsActive(null);
+                          cubit.setSortOption(CatalogSortOption.recent);
+                          if (state.searchByIngredient) {
+                            cubit.toggleSearchByIngredient(false);
+                          }
+                        },
+                        child: const Text('Limpiar'),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
               ),
-              child: SafeArea(
-                top: false,
+              const Divider(height: 1, color: AppColors.border),
+              Flexible(
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Apple Drag Handle
-                      Center(
-                        child: Container(
-                          width: 36,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Filtros de Catálogo',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              cubit.setCategory(null);
-                              cubit.setBrand(null);
-                              cubit.setStockFilter(CatalogStockFilter.all);
-                              cubit.setFilterIsActive(null);
-                              if (currentState.searchByIngredient) {
-                                cubit.toggleSearchByIngredient(false);
-                              }
-                              Navigator.pop(ctx);
-                            },
-                            child: const Text(
-                              'Limpiar Todo',
-                              style: TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Sección: Búsqueda por Principio Activo
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        value: currentState.searchByIngredient,
-                        onChanged: (val) {
-                          cubit.toggleSearchByIngredient(val);
-                        },
-                        title: const Text(
-                          'Buscar por Principio Activo',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        subtitle: const Text(
-                          'Filtra por fórmula o componente farmacéutico',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        activeThumbColor: AppColors.accent,
-                      ),
-                      const Divider(color: AppColors.divider, height: 24),
-
-                      // Sección: Disponibilidad de Stock
-                      const Text(
-                        'Disponibilidad de Stock',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Todos'),
-                            selected:
-                                currentState.stockFilter ==
-                                CatalogStockFilter.all,
-                            onSelected: (_) {
-                              cubit.setStockFilter(CatalogStockFilter.all);
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('En Stock'),
-                            selected:
-                                currentState.stockFilter ==
-                                CatalogStockFilter.inStock,
-                            onSelected: (_) {
-                              cubit.setStockFilter(CatalogStockFilter.inStock);
-                            },
-                          ),
-                          ChoiceChip(
-                            label: const Text('Agotados'),
-                            selected:
-                                currentState.stockFilter ==
-                                CatalogStockFilter.outOfStock,
-                            onSelected: (_) {
-                              cubit.setStockFilter(
-                                CatalogStockFilter.outOfStock,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const Divider(color: AppColors.divider, height: 24),
-
-                      // Sección: Categoría
-                      const Text(
-                        'Categoría',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            ChoiceChip(
-                              label: const Text('Todas'),
-                              selected: currentState.selectedCategoryId == null,
-                              onSelected: (_) => cubit.setCategory(null),
-                            ),
-                            const SizedBox(width: 8),
-                            ...currentState.categories.map((cat) {
-                              final isSelected =
-                                  currentState.selectedCategoryId == cat.id;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(cat.name),
-                                  selected: isSelected,
-                                  onSelected:
-                                      (_) => cubit.setCategory(
-                                        isSelected ? null : cat.id,
-                                      ),
-                                ),
-                              );
-                            }),
+                      _Group(
+                        title: 'Estado',
+                        child: _Chips<bool?>(
+                          selected: state.filterIsActive,
+                          onSelected: cubit.setFilterIsActive,
+                          options: const [
+                            (null, 'Todos'),
+                            (true, 'Activos'),
+                            (false, 'Inactivos'),
                           ],
                         ),
                       ),
-                      const Divider(color: AppColors.divider, height: 24),
-
-                      // Sección: Marca
-                      if (currentState.brands.isNotEmpty) ...[
-                        const Text(
-                          'Marca',
+                      _Group(
+                        title: 'Stock',
+                        child: _Chips<CatalogStockFilter>(
+                          selected: state.stockFilter,
+                          onSelected: (v) => cubit.setStockFilter(v!),
+                          options: const [
+                            (CatalogStockFilter.all, 'Todos'),
+                            (CatalogStockFilter.inStock, 'En stock'),
+                            (CatalogStockFilter.outOfStock, 'Agotados'),
+                          ],
+                        ),
+                      ),
+                      _Group(
+                        title: 'Categoría',
+                        child: _Chips<String?>(
+                          selected: state.selectedCategoryId,
+                          onSelected: cubit.setCategory,
+                          options: [
+                            (null, 'Todas'),
+                            for (final c in state.categories) (c.id, c.name),
+                          ],
+                        ),
+                      ),
+                      _Group(
+                        title: 'Ordenar por',
+                        child: _Chips<CatalogSortOption>(
+                          selected: state.sortOption,
+                          onSelected: (v) => cubit.setSortOption(v!),
+                          options: [
+                            for (final o in CatalogSortOption.values)
+                              (o, o.label),
+                          ],
+                        ),
+                      ),
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: state.searchByIngredient,
+                        onChanged: cubit.toggleSearchByIngredient,
+                        title: const Text(
+                          'Buscar por principio activo',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              ChoiceChip(
-                                label: const Text('Todas'),
-                                selected: currentState.selectedBrandId == null,
-                                onSelected: (_) => cubit.setBrand(null),
-                              ),
-                              const SizedBox(width: 8),
-                              ...currentState.brands.map((brand) {
-                                final isSelected =
-                                    currentState.selectedBrandId == brand.id;
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(brand.name),
-                                    selected: isSelected,
-                                    onSelected:
-                                        (_) => cubit.setBrand(
-                                          isSelected ? null : brand.id,
-                                        ),
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
-                        const Divider(color: AppColors.divider, height: 24),
-                      ],
-
-                      // Sección: Estado de Visibilidad
-                      const Text(
-                        'Estado de Visibilidad',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          ChoiceChip(
-                            label: const Text('Todos'),
-                            selected: currentState.filterIsActive == null,
-                            onSelected: (_) => cubit.setFilterIsActive(null),
-                          ),
-                          ChoiceChip(
-                            label: const Text('Activos'),
-                            selected: currentState.filterIsActive == true,
-                            onSelected: (_) => cubit.setFilterIsActive(true),
-                          ),
-                          ChoiceChip(
-                            label: const Text('Inactivos'),
-                            selected: currentState.filterIsActive == false,
-                            onSelected: (_) => cubit.setFilterIsActive(false),
-                          ),
-                        ],
-                      ),
-                      const Divider(color: AppColors.divider, height: 24),
-
-                      // Sección: Ordenar por
-                      const Text(
-                        'Ordenar por',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children:
-                            CatalogSortOption.values.map((opt) {
-                              return ChoiceChip(
-                                label: Text(opt.label),
-                                selected: currentState.sortOption == opt,
-                                onSelected: (_) => cubit.setSortOption(opt),
-                              );
-                            }).toList(),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Botón Aplicar Filtros
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusSm + 4,
-                              ),
-                            ),
-                          ),
-                          child: const Text(
-                            'Aplicar Filtros',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
+                        subtitle: const Text(
+                          'Busca por fórmula en lugar de nombre/SKU',
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
+              const Divider(height: 1, color: AppColors.border),
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  12 + MediaQuery.paddingOf(context).bottom,
+                ),
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Ver ${state.totalCount} productos',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  static int _activeCount(AdminCatalogState s) {
+    var n = 0;
+    if (s.stockFilter != CatalogStockFilter.all) n++;
+    if (s.selectedCategoryId != null) n++;
+    if (s.filterIsActive != null) n++;
+    if (s.sortOption != CatalogSortOption.recent) n++;
+    if (s.searchByIngredient) n++;
+    return n;
+  }
+}
+
+class _Group extends StatelessWidget {
+  final String title;
+  final Widget child;
+  const _Group({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
+    ),
+  );
+}
+
+class _Chips<T> extends StatelessWidget {
+  final T selected;
+  final ValueChanged<T?> onSelected;
+  final List<(T, String)> options;
+
+  const _Chips({
+    required this.selected,
+    required this.onSelected,
+    required this.options,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final (value, label) in options)
+          ChoiceChip(
+            label: Text(label),
+            selected: selected == value,
+            showCheckmark: false,
+            onSelected: (_) {
+              HapticFeedback.selectionClick();
+              onSelected(value);
+            },
+            labelStyle: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color:
+                  selected == value ? Colors.white : AppColors.textPrimary,
+            ),
+            selectedColor: AppColors.primary,
+            backgroundColor: AppColors.background,
+            side: BorderSide(
+              color:
+                  selected == value ? AppColors.primary : AppColors.border,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+      ],
     );
   }
 }
