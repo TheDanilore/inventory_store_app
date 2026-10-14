@@ -2327,7 +2327,9 @@ class _SuccessView extends StatelessWidget {
                       label: const Text('Importar otro archivo'),
                     ),
                     ElevatedButton.icon(
-                      onPressed: () => context.pop(),
+                      // Se llega aquí con context.go (sin historial), por eso
+                      // pop() no hacía nada: se navega directo al catálogo.
+                      onPressed: () => context.go('/products'),
                       icon: const Icon(Icons.inventory_2_outlined),
                       label: const Text('Ver productos'),
                     ),
