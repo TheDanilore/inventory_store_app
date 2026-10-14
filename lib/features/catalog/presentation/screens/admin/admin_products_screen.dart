@@ -651,12 +651,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     }
     return SliverToBoxAdapter(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          isMobile ? 16.0 : 24.0,
-          16.0,
-          isMobile ? 16.0 : 24.0,
-          32.0,
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
@@ -811,8 +806,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     AdminHeaderButton.outlined(
                                       label: 'Importar',
                                       icon: Icons.upload_file_rounded,
-                                      tooltip:
-                                          'Importar lote de productos',
+                                      tooltip: 'Importar lote de productos',
                                       onPressed:
                                           () => context.go(
                                             '/products/bulk-import',
@@ -1058,7 +1052,19 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
   // ── CONTENIDO PRINCIPAL SLIVER ──────────────────────────────────────────────
 
+  /// Mismo margen que Gestión de Pedidos: 16 lateral, 4 arriba, 8 abajo.
   Widget _buildSliverBody(
+    AdminCatalogState state,
+    AdminCatalogCubit cubit, {
+    required bool isDesktop,
+  }) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      sliver: _buildSliverBodyContent(state, cubit, isDesktop: isDesktop),
+    );
+  }
+
+  Widget _buildSliverBodyContent(
     AdminCatalogState state,
     AdminCatalogCubit cubit, {
     required bool isDesktop,
@@ -1179,78 +1185,51 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     }
 
     if (isDesktop) {
-      return SliverPadding(
-        padding: EdgeInsets.zero,
-        sliver: SliverToBoxAdapter(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.8),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 24,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              child: ValueListenableBuilder<Set<String>>(
-                valueListenable: _selectedProductIdsNotifier,
-                builder: (context, selectedIds, _) {
-                  return ProductsDesktopTable(
-                    products: state.products,
-                    selectedProductIds: selectedIds,
-                    matchedIngredients: state.matchedIngredients,
-                    onProductSelected: _toggleProductSelected,
-                    onSelectAllPage:
-                        (selectAll) =>
-                            _selectAllPage(state.products, selectAll),
-                    onRowTap: (p) => _showProductQuickView(p, cubit),
-                    onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-                    onEdit: (p) {
-                      context.go(
-                        '/products/product-form/${p.id}',
-                        extra: {'productToEdit': p},
-                      );
-                    },
-                    onDelete: (p) => _confirmDeleteProduct(p, cubit),
-                  );
-                },
-              ),
-            ),
-          ),
+      // AdminProTable ya dibuja su propia tarjeta (igual que en Pedidos).
+      return SliverToBoxAdapter(
+        child: ValueListenableBuilder<Set<String>>(
+          valueListenable: _selectedProductIdsNotifier,
+          builder: (context, selectedIds, _) {
+            return ProductsDesktopTable(
+              products: state.products,
+              selectedProductIds: selectedIds,
+              matchedIngredients: state.matchedIngredients,
+              onProductSelected: _toggleProductSelected,
+              onSelectAllPage:
+                  (selectAll) => _selectAllPage(state.products, selectAll),
+              onRowTap: (p) => _showProductQuickView(p, cubit),
+              onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+              onEdit: (p) {
+                context.go(
+                  '/products/product-form/${p.id}',
+                  extra: {'productToEdit': p},
+                );
+              },
+              onDelete: (p) => _confirmDeleteProduct(p, cubit),
+            );
+          },
         ),
       );
     }
 
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      sliver: SliverToBoxAdapter(
-        child: ProductsMobileCardList(
-          products: state.products,
-          matchedIngredients: state.matchedIngredients,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          onTapProduct: (p) => _showProductQuickView(p, cubit),
-          onToggleActive: (p) => _toggleProductoActivo(p, cubit),
-          onEdit: (p) {
-            context.go(
-              '/products/product-form/${p.id}',
-              extra: {'productToEdit': p},
-            );
-          },
-          onDelete: (p) => _confirmDeleteProduct(p, cubit),
-          onOpenFullDetail: (p) {
-            context.go('/product/${p.id}', extra: p);
-          },
-        ),
+    return SliverToBoxAdapter(
+      child: ProductsMobileCardList(
+        products: state.products,
+        matchedIngredients: state.matchedIngredients,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        onTapProduct: (p) => _showProductQuickView(p, cubit),
+        onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+        onEdit: (p) {
+          context.go(
+            '/products/product-form/${p.id}',
+            extra: {'productToEdit': p},
+          );
+        },
+        onDelete: (p) => _confirmDeleteProduct(p, cubit),
+        onOpenFullDetail: (p) {
+          context.go('/product/${p.id}', extra: p);
+        },
       ),
     );
   }

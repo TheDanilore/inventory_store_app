@@ -53,6 +53,9 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         case 'category':
           cmp = (a.categoryName ?? '').toLowerCase().compareTo((b.categoryName ?? '').toLowerCase());
           break;
+        case 'cost':
+          cmp = (_costRange(a)?.min ?? 0.0).compareTo(_costRange(b)?.min ?? 0.0);
+          break;
         case 'price':
           final priceA = a.displaySalePrice ?? a.minSalePrice ?? 0.0;
           final priceB = b.displaySalePrice ?? b.minSalePrice ?? 0.0;
@@ -68,6 +71,19 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
       return _isSortAscending ? cmp : -cmp;
     });
     return list;
+  }
+
+  /// Costo de compra de referencia: (mín, máx) entre las variantes.
+  /// Null si el producto no tiene variantes.
+  ({double min, double max})? _costRange(ProductEntity p) {
+    if (p.productVariants.isEmpty) return null;
+    final costs = <double>[
+      for (final v in p.productVariants) ((v.unitCost as num?) ?? 0).toDouble(),
+    ];
+    return (
+      min: costs.reduce((a, b) => a < b ? a : b),
+      max: costs.reduce((a, b) => a > b ? a : b),
+    );
   }
 
   void _copyToClipboard(BuildContext context, String text, String label) {
@@ -104,7 +120,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         _sortColumnId = colId;
         _isSortAscending = asc;
       }),
-      minTableWidth: 920.0,
+      minTableWidth: 1080.0,
       margin: EdgeInsets.zero,
       onRowTap: widget.onRowTap,
       bulkActions: [
@@ -284,15 +300,49 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
         AdminTableColumn<ProductEntity>(
           id: 'type',
           label: 'TIPO',
-          fixedWidth: 120,
+          fixedWidth: 110,
           cellBuilder: (context, product) => ProductTypeBadge(type: product.productType),
         ),
 
-        // 4. Precio Venta
+        // 4. Precio Compra (costo de referencia)
+        AdminTableColumn<ProductEntity>(
+          id: 'cost',
+          label: 'P. COMPRA',
+          fixedWidth: 120,
+          isSortable: true,
+          cellBuilder: (context, product) {
+            final r = _costRange(product);
+            if (r == null) {
+              return const Text(
+                '—',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              );
+            }
+            final multi = product.productVariants.length > 1;
+            final value = r.min.toStringAsFixed(2);
+            return Text(
+              multi ? 'Desde S/ $value' : 'S/ $value',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                // Costo en 0 = dato pendiente de cargar → se resalta.
+                color:
+                    r.min <= 0
+                        ? AppColors.warningDark
+                        : AppColors.textSecondary,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            );
+          },
+        ),
+
+        // 5. Precio Venta
         AdminTableColumn<ProductEntity>(
           id: 'price',
           label: 'PRECIO VENTA',
-          fixedWidth: 135,
+          fixedWidth: 125,
           isSortable: true,
           cellBuilder: (context, product) {
             if (product.productVariants.length > 1 &&
@@ -327,7 +377,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           },
         ),
 
-        // 5. Stock Total
+        // 6. Stock Total
         AdminTableColumn<ProductEntity>(
           id: 'stock',
           label: 'STOCK TOTAL',
@@ -336,11 +386,11 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
         ),
 
-        // 6. Estado
+        // 7. Estado
         AdminTableColumn<ProductEntity>(
           id: 'status',
           label: 'ESTADO',
-          fixedWidth: 110,
+          fixedWidth: 100,
           isSortable: true,
           cellBuilder: (context, product) => ProductStatusPill(
             isActive: product.isActive,
@@ -348,7 +398,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           ),
         ),
 
-        // 7. Acciones
+        // 8. Acciones
         AdminTableColumn<ProductEntity>(
           id: 'actions',
           label: 'ACCIONES',
