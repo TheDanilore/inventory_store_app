@@ -3,13 +3,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/bulk_import_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_cubit.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/bulk_import_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
-final Color _warnColor = Colors.orange.shade700;
+const Color _violet = Color(0xFF7C3AED);
+const double _wideBreakpoint = 820;
+
+// ───────────────────────────── Helpers de estilo ─────────────────────────────
+
+Color _primary(BuildContext c) => Theme.of(c).colorScheme.primary;
+Color _muted(BuildContext c) => AppColors.txtSecondary(c);
+Color _soft(BuildContext c) =>
+    AppColors.isDark(c) ? AppColors.darkSurfaceElevated : AppColors.surfaceDark;
+
+String _money(double? v) => v == null ? '-' : v.toStringAsFixed(2);
+String _date(DateTime d) =>
+    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+// ───────────────────────────── Pantalla ─────────────────────────────
 
 class BulkImportScreen extends StatefulWidget {
   const BulkImportScreen({super.key});
@@ -63,19 +77,29 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
               showBackButton: true,
               onBack: importing ? warnBusy : null,
               body: Container(
-                color: AppColors.background,
-                padding: const EdgeInsets.all(24),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: Column(
-                      children: [
-                        _StepHeader(status: state.status),
-                        const SizedBox(height: 24),
-                        Expanded(child: _content(state)),
-                      ],
-                    ),
-                  ),
+                color: AppColors.bg(context),
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final compact = c.maxWidth < _wideBreakpoint;
+                    return Padding(
+                      padding: EdgeInsets.all(compact ? 16 : 24),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1200),
+                          child: Column(
+                            children: [
+                              _StepHeader(
+                                status: state.status,
+                                compact: compact,
+                              ),
+                              SizedBox(height: compact ? 16 : 24),
+                              Expanded(child: _content(state, compact)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -85,7 +109,7 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
     );
   }
 
-  Widget _content(BulkImportState state) {
+  Widget _content(BulkImportState state, bool compact) {
     switch (state.status) {
       case BulkImportStatus.loadingContext:
       case BulkImportStatus.parsing:
@@ -96,18 +120,18 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
                   : 'Cargando configuración...',
         );
       case BulkImportStatus.initial:
-        return _ConfigView(state: state);
+        return _ConfigView(state: state, compact: compact);
       case BulkImportStatus.review:
-        return _ReviewView(state: state);
+        return _ReviewView(state: state, compact: compact);
       case BulkImportStatus.importing:
         return _ImportingView(state: state);
       case BulkImportStatus.success:
-        return _SuccessView(state: state);
+        return _SuccessView(state: state, compact: compact);
     }
   }
 }
 
-// ───────────────────────────── Piezas comunes ─────────────────────────────
+// ───────────────────────────── Piezas reutilizables ─────────────────────────────
 
 class _Busy extends StatelessWidget {
   final String label;
@@ -120,7 +144,7 @@ class _Busy extends StatelessWidget {
       children: [
         const CircularProgressIndicator(),
         const SizedBox(height: 16),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(label, style: TextStyle(color: _muted(context))),
       ],
     ),
   );
@@ -128,7 +152,8 @@ class _Busy extends StatelessWidget {
 
 class _StepHeader extends StatelessWidget {
   final BulkImportStatus status;
-  const _StepHeader({required this.status});
+  final bool compact;
+  const _StepHeader({required this.status, required this.compact});
 
   int get _current {
     switch (status) {
@@ -148,17 +173,21 @@ class _StepHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     const labels = ['Configuración', 'Revisión', 'Resultado'];
     final done = status == BulkImportStatus.success;
+    final primary = _primary(context);
     return Row(
       children: [
         for (var i = 0; i < labels.length; i++) ...[
-          _dot(i, labels[i], done),
+          _dot(context, i, labels[i], done, primary),
           if (i < labels.length - 1)
             Expanded(
               child: Container(
                 height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                color:
-                    i < _current || done ? AppColors.primary : AppColors.border,
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color:
+                      (i < _current || done) ? primary : AppColors.brd(context),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
         ],
@@ -166,34 +195,53 @@ class _StepHeader extends StatelessWidget {
     );
   }
 
-  Widget _dot(int i, String label, bool allDone) {
-    final reached = i <= _current;
+  Widget _dot(
+    BuildContext context,
+    int i,
+    String label,
+    bool allDone,
+    Color primary,
+  ) {
+    final active = i == _current && !allDone;
     final completed = i < _current || (allDone && i == 2);
+    final reached = active || completed;
+    final showLabel = !compact || active;
     return Row(
       children: [
-        CircleAvatar(
-          radius: 14,
-          backgroundColor: reached ? AppColors.primary : AppColors.border,
+        Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: reached ? primary : Colors.transparent,
+            border: Border.all(
+              color: reached ? primary : AppColors.brdSubtle(context),
+              width: 1.5,
+            ),
+          ),
           child:
               completed
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
                   : Text(
                     '${i + 1}',
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: reached ? Colors.white : AppColors.textSecondary,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: reached ? Colors.white : _muted(context),
                     ),
                   ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: reached ? FontWeight.w600 : FontWeight.normal,
-            color: reached ? null : AppColors.textSecondary,
+        if (showLabel) ...[
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: reached ? FontWeight.w700 : FontWeight.w500,
+              color: reached ? AppColors.txtPrimary(context) : _muted(context),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -202,188 +250,596 @@ class _StepHeader extends StatelessWidget {
 class _Card extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final Widget child;
-  const _Card({required this.icon, required this.title, required this.child});
+  const _Card({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = _primary(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: AppColors.cardAdaptive(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15.5,
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle!,
+                        style: TextStyle(fontSize: 12.5, color: _muted(context)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Opción seleccionable tipo "tarjeta" (reemplaza SegmentedButton/ChoiceChip).
+class _SelectTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  const _SelectTile({
+    required this.icon,
+    required this.title,
+    required this.selected,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = _primary(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? primary.withValues(alpha: 0.07) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? primary : AppColors.brdSubtle(context),
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color:
+                      selected
+                          ? primary.withValues(alpha: 0.14)
+                          : _soft(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: selected ? primary : _muted(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          height: 1.35,
+                          color: _muted(context),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected ? primary : Colors.transparent,
+                  border: Border.all(
+                    color: selected ? primary : AppColors.brdSubtle(context),
+                    width: 1.5,
+                  ),
+                ),
+                child:
+                    selected
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _SwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = _primary(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: _muted(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SwitchTheme(
+              data: SwitchThemeData(
+                thumbColor: const WidgetStatePropertyAll(Colors.white),
+                trackColor: WidgetStateProperty.resolveWith(
+                  (s) =>
+                      s.contains(WidgetState.selected)
+                          ? primary
+                          : AppColors.brdSubtle(context),
+                ),
+                trackOutlineColor: const WidgetStatePropertyAll(
+                  Colors.transparent,
+                ),
+              ),
+              child: Switch(value: value, onChanged: onChanged),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoBox extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  const _InfoBox({required this.icon, required this.color, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.09),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: const TextStyle(height: 1.35))),
+      ],
+    ),
+  );
+}
+
+class _Banner extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  const _Banner({
+    required this.icon,
+    required this.color,
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
+      color: color.withValues(alpha: 0.09),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    child: Row(
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 20, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-            ),
-          ],
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.w500, height: 1.35),
+          ),
         ),
-        const SizedBox(height: 14),
-        child,
+        if (actionLabel != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+              foregroundColor: color,
+              minimumSize: const Size(0, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            child: Text(actionLabel!),
+          ),
       ],
     ),
   );
+}
+
+class _Badge extends StatelessWidget {
+  final String text;
+  final Color color;
+  const _Badge(this.text, this.color);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.13),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      text,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
+    ),
+  );
+}
+
+class _MiniChip extends StatelessWidget {
+  final IconData? icon;
+  final String text;
+  const _MiniChip(this.text, {this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: _soft(context),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 14, color: _muted(context)),
+          const SizedBox(width: 5),
+        ],
+        Text(text, style: TextStyle(fontSize: 12, color: _muted(context))),
+      ],
+    ),
+  );
+}
+
+class _StatItem {
+  final IconData icon;
+  final String label;
+  final int value;
+  final Color color;
+  const _StatItem(this.icon, this.label, this.value, this.color);
+}
+
+/// Cuadrícula responsive: 2 columnas en móvil, 3 en tablet, hasta 6 en escritorio.
+class _StatsGrid extends StatelessWidget {
+  final List<_StatItem> items;
+  const _StatsGrid({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        const gap = 12.0;
+        var cols = c.maxWidth >= 980 ? 6 : (c.maxWidth >= 620 ? 3 : 2);
+        if (cols > items.length) cols = items.length;
+        final w = (c.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [for (final i in items) _StatTile(item: i, width: w)],
+        );
+      },
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final _StatItem item;
+  final double width;
+  const _StatTile({required this.item, required this.width});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    padding: const EdgeInsets.all(14),
+    decoration: AppColors.cardAdaptive(context, elevated: false),
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: item.color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(item.icon, size: 20, color: item.color),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.value}',
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: _muted(context)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  _DashedRRectPainter({required this.color, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6;
+    final path =
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Offset.zero & size,
+            Radius.circular(radius),
+          ),
+        );
+    for (final m in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < m.length) {
+        canvas.drawPath(m.extractPath(d, d + 7), paint);
+        d += 12;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter old) =>
+      old.color != color || old.radius != radius;
 }
 
 // ───────────────────────────── Paso 1: Configuración ─────────────────────────────
 
 class _ConfigView extends StatelessWidget {
   final BulkImportState state;
-  const _ConfigView({required this.state});
+  final bool compact;
+  const _ConfigView({required this.state, required this.compact});
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<BulkImportCubit>();
     final left = Column(
       children: [
-        _warehouseCard(cubit),
+        _warehouseCard(context, cubit),
         const SizedBox(height: 16),
-        _modeCard(cubit),
+        _modeCard(context, cubit),
       ],
     );
     final right = Column(
       children: [
-        _dropZone(cubit),
+        _dropZone(context, cubit),
         const SizedBox(height: 16),
-        const _ColumnsGuide(),
+        _ColumnsGuide(compact: compact),
       ],
     );
 
-    return LayoutBuilder(
-      builder: (context, c) {
-        final wide = c.maxWidth >= 900;
-        return SingleChildScrollView(
-          child:
-              wide
-                  ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 5, child: left),
-                      const SizedBox(width: 20),
-                      Expanded(flex: 6, child: right),
-                    ],
-                  )
-                  : Column(children: [left, const SizedBox(height: 16), right]),
-        );
-      },
+    return SingleChildScrollView(
+      child:
+          compact
+              ? Column(children: [left, const SizedBox(height: 16), right])
+              : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 5, child: left),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 6, child: right),
+                ],
+              ),
     );
   }
 
-  Widget _warehouseCard(BulkImportCubit cubit) {
+  Widget _warehouseCard(BuildContext context, BulkImportCubit cubit) {
     final ws = state.warehouses;
     Widget body;
     if (ws.isEmpty) {
-      body = _note(
-        Icons.warning_amber_rounded,
-        _warnColor,
-        'No hay almacenes creados. Puedes importar el catálogo, pero las filas con stock serán rechazadas hasta que crees un almacén.',
+      body = const _InfoBox(
+        icon: Icons.warning_amber_rounded,
+        color: AppColors.warning,
+        text:
+            'No hay almacenes creados. Puedes importar el catálogo, pero las filas con stock serán rechazadas hasta que crees un almacén.',
       );
     } else if (ws.length == 1) {
-      body = _note(
-        Icons.check_circle_rounded,
-        AppColors.success,
-        'El stock se cargará en el almacén «${ws.first.name}».',
+      body = _InfoBox(
+        icon: Icons.check_circle_rounded,
+        color: AppColors.success,
+        text: 'El stock se cargará en el almacén «${ws.first.name}».',
       );
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tienes varios almacenes. Elige a cuál ingresará el stock:',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final w in ws)
-                ChoiceChip(
-                  avatar: const Icon(Icons.warehouse_outlined, size: 18),
-                  label: Text(w.name),
-                  selected: state.selectedWarehouseId == w.id,
-                  onSelected: (_) => cubit.setWarehouseId(w.id),
-                ),
-            ],
-          ),
-          if (state.needsWarehouseChoice) ...[
-            const SizedBox(height: 10),
-            const Text(
-              'Selecciona un almacén para continuar.',
-              style: TextStyle(color: AppColors.error, fontSize: 13),
+          for (final w in ws) ...[
+            _SelectTile(
+              icon: Icons.warehouse_outlined,
+              title: w.name,
+              selected: state.selectedWarehouseId == w.id,
+              onTap: () => cubit.setWarehouseId(w.id),
             ),
+            const SizedBox(height: 10),
           ],
+          if (state.needsWarehouseChoice)
+            const Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppColors.error),
+                SizedBox(width: 6),
+                Text(
+                  'Elige un almacén para continuar.',
+                  style: TextStyle(color: AppColors.error, fontSize: 13),
+                ),
+              ],
+            ),
         ],
       );
     }
     return _Card(
       icon: Icons.warehouse_outlined,
-      title: 'Almacén destino del stock',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          body,
-          const SizedBox(height: 12),
-          const Text(
-            'Los productos y variantes son globales; solo la cantidad entra al almacén elegido.',
-            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
-          ),
-        ],
-      ),
+      title: 'Almacén destino',
+      subtitle: 'Los productos son globales; solo el stock entra al almacén.',
+      child: body,
     );
   }
 
-  Widget _modeCard(BulkImportCubit cubit) {
+  Widget _modeCard(BuildContext context, BulkImportCubit cubit) {
     final add = state.stockMode == ImportStockMode.add;
     return _Card(
       icon: Icons.tune_rounded,
       title: 'Si el producto ya existe',
+      subtitle: 'Los productos nuevos siempre entran con la cantidad del CSV.',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SegmentedButton<ImportStockMode>(
-            segments: const [
-              ButtonSegment(
-                value: ImportStockMode.add,
-                icon: Icon(Icons.add_circle_outline),
-                label: Text('Sumar al stock'),
-              ),
-              ButtonSegment(
-                value: ImportStockMode.replace,
-                icon: Icon(Icons.sync_alt_rounded),
-                label: Text('Reemplazar stock'),
-              ),
-            ],
-            selected: {state.stockMode},
-            onSelectionChanged: (s) => cubit.setStockMode(s.first),
+          _SelectTile(
+            icon: Icons.add_circle_outline_rounded,
+            title: 'Sumar al stock',
+            subtitle:
+                'Registra una entrada. Ej: stock 50 + CSV 30 → queda 80. Ideal para recibir mercadería.',
+            selected: add,
+            onTap: () => cubit.setStockMode(ImportStockMode.add),
           ),
           const SizedBox(height: 10),
-          Text(
-            add
-                ? 'La cantidad del CSV se registra como una ENTRADA y se suma al stock actual. Ideal para recibir mercadería. Re-importar el mismo archivo la volvería a sumar.'
-                : 'El stock queda exactamente en la cantidad del CSV (se registra un AJUSTE por la diferencia). Ideal para conteos de inventario; es seguro repetir.',
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: AppColors.textSecondary,
-            ),
+          _SelectTile(
+            icon: Icons.sync_alt_rounded,
+            title: 'Reemplazar stock',
+            subtitle:
+                'Registra un ajuste. Ej: stock 50, CSV 30 → queda 30. Ideal para conteos; es seguro repetir.',
+            selected: !add,
+            onTap: () => cubit.setStockMode(ImportStockMode.replace),
           ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Actualizar precios de productos existentes'),
-            subtitle: const Text(
-              'Si está apagado, solo se toca el stock; los precios actuales se conservan.',
-              style: TextStyle(fontSize: 12.5),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Divider(height: 1, color: AppColors.brd(context)),
+          ),
+          _SwitchRow(
+            title: 'Actualizar precios de productos existentes',
+            subtitle:
+                'Apagado: solo se toca el stock y los precios actuales se conservan.',
             value: state.updatePrices,
             onChanged: cubit.setUpdatePrices,
           ),
@@ -392,92 +848,104 @@ class _ConfigView extends StatelessWidget {
     );
   }
 
-  Widget _dropZone(BulkImportCubit cubit) {
+  Widget _dropZone(BuildContext context, BulkImportCubit cubit) {
+    final primary = _primary(context);
     final blocked = state.needsWarehouseChoice;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.35),
-          width: 1.5,
-        ),
+    return CustomPaint(
+      painter: _DashedRRectPainter(
+        color:
+            blocked
+                ? AppColors.brdSubtle(context)
+                : primary.withValues(alpha: 0.45),
+        radius: 18,
       ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.upload_file_rounded,
-            size: 56,
-            color: AppColors.primary.withValues(alpha: 0.7),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Sube tu archivo CSV',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Revisarás todo antes de que se guarde algo.',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: cubit.downloadTemplate,
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Descargar plantilla'),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: compact ? 28 : 40,
+        ),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: blocked ? 0.015 : 0.035),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primary.withValues(alpha: blocked ? 0.06 : 0.12),
               ),
-              ElevatedButton.icon(
-                onPressed: blocked ? null : cubit.pickAndParseFile,
-                icon: const Icon(Icons.file_upload),
-                label: const Text('Seleccionar archivo CSV'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
+              child: Icon(
+                Icons.upload_file_rounded,
+                size: 34,
+                color: blocked ? _muted(context) : primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Sube tu archivo CSV',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Lo revisarás todo antes de que se guarde algo.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _muted(context)),
+            ),
+            const SizedBox(height: 14),
+            const Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                _MiniChip('.csv', icon: Icons.description_outlined),
+                _MiniChip('Hasta 5 000 filas'),
+                _MiniChip('Separador , ; o tab'),
+              ],
+            ),
+            const SizedBox(height: 22),
+            ElevatedButton.icon(
+              onPressed: blocked ? null : cubit.pickAndParseFile,
+              icon: const Icon(Icons.file_upload_outlined),
+              label: const Text('Seleccionar archivo'),
+            ),
+            if (blocked) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Elige primero el almacén destino.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.isDark(context)
+                      ? AppColors.warning
+                      : AppColors.warningDark,
                 ),
               ),
             ],
-          ),
-        ],
+            const SizedBox(height: 6),
+            TextButton.icon(
+              onPressed: cubit.downloadTemplate,
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Descargar plantilla de ejemplo'),
+            ),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _note(IconData icon, Color color, String text) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text)),
-      ],
-    ),
-  );
 }
 
 class _ColumnsGuide extends StatelessWidget {
-  const _ColumnsGuide();
+  final bool compact;
+  const _ColumnsGuide({required this.compact});
 
   static const _cols = <(String, bool, String)>[
     (
       'nombre',
       true,
-      'Nombre del producto. Varias filas con el mismo nombre + marca = un solo producto con varias variantes.',
+      'Nombre del producto. Varias filas con el mismo nombre + marca = un producto con varias variantes.',
     ),
     (
       'precio_compra',
@@ -498,11 +966,7 @@ class _ColumnsGuide extends StatelessWidget {
       'Código único. Si falta, se identifica por nombre + marca + variante.',
     ),
     ('precio_mayor', false, 'Precio por mayor.'),
-    (
-      'cantidad_mayor',
-      false,
-      'Cantidad mínima para aplicar el precio por mayor.',
-    ),
+    ('cantidad_mayor', false, 'Cantidad mínima para aplicar el precio por mayor.'),
     ('stock', false, 'Cantidad entera. Vacío = 0 (solo catálogo).'),
     (
       'usa_lotes',
@@ -530,80 +994,122 @@ class _ColumnsGuide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = _primary(context);
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: AppColors.cardAdaptive(context),
+      clipBehavior: Clip.antiAlias,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          leading: const Icon(Icons.info_outline, color: AppColors.primary),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.view_column_outlined, size: 18, color: primary),
+          ),
           title: const Text(
             'Columnas del archivo',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5),
           ),
-          subtitle: const Text(
-            'Una fila = una variante (y un lote, si aplica). Acepta separador , ; o tabulación.',
-            style: TextStyle(fontSize: 12.5),
+          subtitle: Text(
+            'Una fila = una variante (y un lote, si aplica)',
+            style: TextStyle(fontSize: 12.5, color: _muted(context)),
           ),
-          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           children: [
-            for (final c in _cols)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 130,
-                      child: Text(
-                        c.$1,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.only(right: 10, top: 1),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (c.$2
-                                ? AppColors.error
-                                : AppColors.textSecondary)
-                            .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        c.$2 ? 'Obligatoria' : 'Opcional',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color:
-                              c.$2 ? AppColors.error : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(c.$3, style: const TextStyle(fontSize: 13)),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 8),
-            const Text(
-              'Productos que ya existen: su categoría, componentes y descripción NO se modifican; solo se agregan variantes, lotes y stock.',
-              style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            _section(context, 'Obligatorias', true),
+            const SizedBox(height: 12),
+            _section(context, 'Opcionales', false),
+            const SizedBox(height: 12),
+            _InfoBox(
+              icon: Icons.info_outline,
+              color: AppColors.info,
+              text:
+                  'Si el producto ya existe, su categoría, componentes y descripción no se modifican; solo se agregan variantes, lotes y stock.',
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _section(BuildContext context, String title, bool required) {
+    final items = _cols.where((c) => c.$2 == required).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.8,
+            color: required ? AppColors.error : _muted(context),
+          ),
+        ),
+        const SizedBox(height: 6),
+        for (final c in items)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child:
+                compact
+                    ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _name(context, c.$1),
+                        const SizedBox(height: 4),
+                        Text(
+                          c.$3,
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.35,
+                            color: _muted(context),
+                          ),
+                        ),
+                      ],
+                    )
+                    : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 160, child: _name(context, c.$1)),
+                        Expanded(
+                          child: Text(
+                            c.$3,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.35,
+                              color: _muted(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+          ),
+      ],
+    );
+  }
+
+  Widget _name(BuildContext context, String n) => Align(
+    alignment: Alignment.centerLeft,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _soft(context),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        n,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+  );
 }
 
 // ───────────────────────────── Paso 2: Revisión ─────────────────────────────
@@ -612,7 +1118,8 @@ enum _Filter { all, created, existing, warnings, errors }
 
 class _ReviewView extends StatefulWidget {
   final BulkImportState state;
-  const _ReviewView({required this.state});
+  final bool compact;
+  const _ReviewView({required this.state, required this.compact});
 
   @override
   State<_ReviewView> createState() => _ReviewViewState();
@@ -622,65 +1129,19 @@ class _ReviewViewState extends State<_ReviewView> {
   _Filter _filter = _Filter.all;
   static const int _maxShown = 300;
 
-  @override
-  Widget build(BuildContext context) {
-    final state = widget.state;
-    final cubit = context.read<BulkImportCubit>();
-
-    if (state.fileErrors.isNotEmpty) return _fileErrors(state, cubit);
-
-    final s = state.summary;
-    final rows = _filtered(state.rows);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _header(state, cubit),
-        if (state.importError != null) ...[
-          const SizedBox(height: 12),
-          _banner(state.importError!, AppColors.error, Icons.error_outline),
-        ],
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _Stat('Productos nuevos', s.newProducts, AppColors.success),
-            _Stat('Variantes nuevas', s.newVariants, Colors.blue),
-            _Stat('Variantes existentes', s.updatedVariants, Colors.deepPurple),
-            _Stat('Unidades de stock', s.units, AppColors.primary),
-            if (s.newBrands > 0)
-              _Stat('Marcas a crear', s.newBrands, Colors.teal),
-            if (s.newCategories > 0)
-              _Stat('Categorías a crear', s.newCategories, Colors.teal),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _filters(state),
-        const SizedBox(height: 12),
-        Expanded(child: _table(rows)),
-        const SizedBox(height: 12),
-        _actionBar(state, cubit),
-      ],
-    );
-  }
+  bool _isCreated(ImportRow r) =>
+      !r.hasError && r.action != ImportRowAction.updateVariant;
+  bool _isExisting(ImportRow r) =>
+      !r.hasError && r.action == ImportRowAction.updateVariant;
 
   List<ImportRow> _filtered(List<ImportRow> all) {
     switch (_filter) {
       case _Filter.all:
         return all;
       case _Filter.created:
-        return all
-            .where(
-              (r) => !r.hasError && r.action != ImportRowAction.updateVariant,
-            )
-            .toList();
+        return all.where(_isCreated).toList();
       case _Filter.existing:
-        return all
-            .where(
-              (r) => !r.hasError && r.action == ImportRowAction.updateVariant,
-            )
-            .toList();
+        return all.where(_isExisting).toList();
       case _Filter.warnings:
         return all.where((r) => r.hasWarning).toList();
       case _Filter.errors:
@@ -688,275 +1149,527 @@ class _ReviewViewState extends State<_ReviewView> {
     }
   }
 
-  Widget _fileErrors(BulkImportState state, BulkImportCubit cubit) {
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final compact = widget.compact;
+    final cubit = context.read<BulkImportCubit>();
+
+    if (state.fileErrors.isNotEmpty) return _fileErrors(context, state, cubit);
+
+    final rows = _filtered(state.rows);
+    final top = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fileHeader(context, state, cubit),
+        if (state.importError != null) ...[
+          const SizedBox(height: 12),
+          _Banner(
+            icon: Icons.error_outline,
+            color: AppColors.error,
+            text: state.importError!,
+          ),
+        ],
+        const SizedBox(height: 16),
+        _StatsGrid(items: _stats(state.summary)),
+        const SizedBox(height: 16),
+        _statusBanner(state.summary),
+        const SizedBox(height: 16),
+        _filters(state),
+        const SizedBox(height: 12),
+      ],
+    );
+
+    final Widget body =
+        compact
+            ? CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: top),
+                if (rows.isEmpty)
+                  SliverToBoxAdapter(child: _empty(context))
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, i) {
+                      if (i >= _maxShown) {
+                        return _moreNote(context, rows.length);
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RowCard(row: rows[i], mode: state.stockMode),
+                      );
+                    }, childCount: rows.length > _maxShown ? _maxShown + 1 : rows.length),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 4)),
+              ],
+            )
+            : Column(
+              children: [
+                top,
+                Expanded(child: _table(context, rows, state.stockMode)),
+              ],
+            );
+
+    return Column(
+      children: [
+        Expanded(child: body),
+        const SizedBox(height: 12),
+        _actionBar(context, state, cubit),
+      ],
+    );
+  }
+
+  List<_StatItem> _stats(ImportSummary s) => [
+    _StatItem(Icons.inventory_2_outlined, 'Productos nuevos', s.newProducts, AppColors.success),
+    _StatItem(Icons.style_outlined, 'Variantes nuevas', s.newVariants, AppColors.info),
+    _StatItem(Icons.sync_alt_rounded, 'Variantes existentes', s.updatedVariants, _violet),
+    _StatItem(Icons.layers_outlined, 'Unidades de stock', s.units, AppColors.amber),
+    if (s.newBrands > 0)
+      _StatItem(Icons.local_offer_outlined, 'Marcas a crear', s.newBrands, AppColors.teal),
+    if (s.newCategories > 0)
+      _StatItem(Icons.category_outlined, 'Categorías a crear', s.newCategories, AppColors.teal),
+  ];
+
+  Widget _fileErrors(
+    BuildContext context,
+    BulkImportState state,
+    BulkImportCubit cubit,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _banner(
-          'No se puede procesar el archivo "${state.fileName ?? ''}"',
-          AppColors.error,
-          Icons.error_outline,
+        _Banner(
+          icon: Icons.error_outline,
+          color: AppColors.error,
+          text: 'No se puede procesar "${state.fileName ?? 'el archivo'}".',
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: ListView(
-            children: [
-              for (final e in state.fileErrors)
-                ListTile(
-                  leading: const Icon(Icons.close, color: AppColors.error),
-                  title: Text(e),
-                ),
-            ],
+          child: Container(
+            decoration: AppColors.cardAdaptive(context, elevated: false),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(8),
+              itemCount: state.fileErrors.length,
+              separatorBuilder:
+                  (_, __) => Divider(height: 1, color: AppColors.brd(context)),
+              itemBuilder:
+                  (_, i) => ListTile(
+                    leading: const Icon(
+                      Icons.close_rounded,
+                      color: AppColors.error,
+                    ),
+                    title: Text(state.fileErrors[i]),
+                  ),
+            ),
           ),
         ),
-        OutlinedButton.icon(
-          onPressed: cubit.reset,
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Elegir otro archivo'),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            onPressed: cubit.reset,
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Elegir otro archivo'),
+          ),
         ),
       ],
     );
   }
 
-  Widget _header(BulkImportState state, BulkImportCubit cubit) {
+  Widget _fileHeader(
+    BuildContext context,
+    BulkImportState state,
+    BulkImportCubit cubit,
+  ) {
+    final primary = _primary(context);
     final wh = state.selectedWarehouse?.name ?? 'Sin almacén';
     final mode =
         state.stockMode == ImportStockMode.add
             ? 'Sumar al stock'
             : 'Reemplazar stock';
-    return Wrap(
-      spacing: 10,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        const Icon(Icons.description_outlined, color: AppColors.primary),
-        Text(
-          state.fileName ?? 'archivo.csv',
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-        ),
-        _chip(Icons.warehouse_outlined, wh),
-        _chip(Icons.sync_alt_rounded, mode),
-        _chip(
-          Icons.sell_outlined,
-          state.updatePrices ? 'Actualiza precios' : 'Conserva precios',
-        ),
-        TextButton.icon(
-          onPressed: cubit.reset,
-          icon: const Icon(Icons.arrow_back, size: 18),
-          label: const Text('Cambiar archivo o configuración'),
-        ),
-        if (state.rows.any((r) => r.issues.isNotEmpty))
-          TextButton.icon(
-            onPressed: cubit.downloadIssuesReport,
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Descargar reporte'),
-          ),
-      ],
-    );
-  }
+    final hasIssues = state.rows.any((r) => r.issues.isNotEmpty);
 
-  Widget _chip(IconData i, String t) => Chip(
-    avatar: Icon(i, size: 16),
-    label: Text(t, style: const TextStyle(fontSize: 12.5)),
-    visualDensity: VisualDensity.compact,
-    backgroundColor: AppColors.surface,
-    side: const BorderSide(color: AppColors.border),
-  );
-
-  Widget _banner(String msg, Color color, IconData icon) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: color.withValues(alpha: 0.35)),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color),
-        const SizedBox(width: 10),
-        Expanded(child: Text(msg, style: TextStyle(color: color))),
-      ],
-    ),
-  );
-
-  Widget _filters(BulkImportState state) {
-    final s = state.summary;
-    final created =
-        state.rows
-            .where(
-              (r) => !r.hasError && r.action != ImportRowAction.updateVariant,
-            )
-            .length;
-    final existing =
-        state.rows
-            .where(
-              (r) => !r.hasError && r.action == ImportRowAction.updateVariant,
-            )
-            .length;
-    final items = <(_Filter, String)>[
-      (_Filter.all, 'Todas (${s.totalRows})'),
-      (_Filter.created, 'Se crean ($created)'),
-      (_Filter.existing, 'Ya existen ($existing)'),
-      (_Filter.warnings, 'Advertencias (${s.warningRows})'),
-      (_Filter.errors, 'Con errores (${s.errorRows})'),
-    ];
-    return Wrap(
+    final actions = Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        for (final it in items)
-          ChoiceChip(
-            label: Text(it.$2),
-            selected: _filter == it.$1,
-            onSelected: (_) => setState(() => _filter = it.$1),
+        if (hasIssues)
+          OutlinedButton.icon(
+            onPressed: cubit.downloadIssuesReport,
+            icon: const Icon(Icons.download_rounded, size: 18),
+            label: const Text('Reporte'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 42),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
           ),
+        OutlinedButton.icon(
+          onPressed: cubit.reset,
+          icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+          label: const Text('Cambiar archivo'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 42),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+        ),
       ],
+    );
+
+    final info = Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.description_outlined, color: primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.fileName ?? 'archivo.csv',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${state.summary.totalRows} filas leídas',
+                style: TextStyle(fontSize: 12.5, color: _muted(context)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: AppColors.cardAdaptive(context, elevated: false),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          widget.compact
+              ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [info, const SizedBox(height: 12), actions],
+              )
+              : Row(
+                children: [Expanded(child: info), const SizedBox(width: 12), actions],
+              ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MiniChip(wh, icon: Icons.warehouse_outlined),
+              _MiniChip(mode, icon: Icons.sync_alt_rounded),
+              _MiniChip(
+                state.updatePrices ? 'Actualiza precios' : 'Conserva precios',
+                icon: Icons.sell_outlined,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  // Columnas: (título, ancho)
-  static const _cols = <(String, double)>[
-    ('Fila', 52),
-    ('Estado', 130),
-    ('Producto', 220),
-    ('Marca', 130),
-    ('Variante', 110),
-    ('Compra', 72),
-    ('Venta', 72),
-    ('Mayor', 72),
-    ('Stock', 64),
-    ('Lote', 100),
-    ('Vence', 96),
-    ('Detalle', 360),
-  ];
-  static final double _totalWidth = _cols.fold(0.0, (a, c) => a + c.$2);
+  Widget _statusBanner(ImportSummary s) {
+    if (s.errorRows > 0) {
+      return _Banner(
+        icon: Icons.error_outline_rounded,
+        color: AppColors.error,
+        text:
+            '${s.errorRows} ${s.errorRows == 1 ? 'fila tiene' : 'filas tienen'} errores y no se importarán. Corrige el CSV y vuelve a subirlo si quieres incluirlas.',
+        actionLabel: 'Ver errores',
+        onAction: () => setState(() => _filter = _Filter.errors),
+      );
+    }
+    if (s.warningRows > 0) {
+      return _Banner(
+        icon: Icons.warning_amber_rounded,
+        color: AppColors.warning,
+        text:
+            '${s.warningRows} ${s.warningRows == 1 ? 'fila tiene' : 'filas tienen'} advertencias; se importarán igualmente.',
+        actionLabel: 'Revisar',
+        onAction: () => setState(() => _filter = _Filter.warnings),
+      );
+    }
+    return _Banner(
+      icon: Icons.check_circle_outline_rounded,
+      color: AppColors.success,
+      text: 'Todo en orden: ${s.validRows} filas listas para importar.',
+    );
+  }
 
-  Widget _table(List<ImportRow> rows) {
-    final shown = rows.take(_maxShown).toList();
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child:
-          rows.isEmpty
-              ? const Center(
-                child: Text(
-                  'No hay filas en este filtro.',
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              )
-              : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: _totalWidth,
-                  child: Column(
+  Widget _filters(BulkImportState state) {
+    final s = state.summary;
+    final items = <(_Filter, String, int)>[
+      (_Filter.all, 'Todas', s.totalRows),
+      (_Filter.created, 'Se crean', state.rows.where(_isCreated).length),
+      (_Filter.existing, 'Ya existen', state.rows.where(_isExisting).length),
+      (_Filter.warnings, 'Advertencias', s.warningRows),
+      (_Filter.errors, 'Errores', s.errorRows),
+    ];
+    final primary = _primary(context);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final it in items)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () => setState(() => _filter = it.$1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        _filter == it.$1
+                            ? primary
+                            : AppColors.surf(context),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color:
+                          _filter == it.$1
+                              ? primary
+                              : AppColors.brdSubtle(context),
+                    ),
+                  ),
+                  child: Row(
                     children: [
-                      Container(
-                        color: AppColors.background,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          children: [
-                            for (final c in _cols)
-                              SizedBox(
-                                width: c.$2,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Text(
-                                    c.$1,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                      Text(
+                        it.$2,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              _filter == it.$1
+                                  ? Colors.white
+                                  : AppColors.txtPrimary(context),
                         ),
                       ),
-                      Expanded(
-                        child: ListView.separated(
-                          itemCount:
-                              shown.length + (rows.length > _maxShown ? 1 : 0),
-                          separatorBuilder: (_, _) => const Divider(height: 1),
-                          itemBuilder: (context, i) {
-                            if (i >= shown.length) {
-                              return Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Text(
-                                  'Mostrando $_maxShown de ${rows.length} filas. Todas se procesan; usa los filtros o el reporte para revisar el resto.',
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              );
-                            }
-                            return _RowTile(
-                              row: shown[i],
-                              mode: widget.state.stockMode,
-                            );
-                          },
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              _filter == it.$1
+                                  ? Colors.white.withValues(alpha: 0.22)
+                                  : _soft(context),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${it.$3}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                _filter == it.$1
+                                    ? Colors.white
+                                    : _muted(context),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _actionBar(BulkImportState state, BulkImportCubit cubit) {
+  Widget _empty(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Center(
+      child: Text(
+        'No hay filas en este filtro.',
+        style: TextStyle(color: _muted(context)),
+      ),
+    ),
+  );
+
+  Widget _moreNote(BuildContext context, int total) => Padding(
+    padding: const EdgeInsets.all(14),
+    child: Text(
+      'Mostrando $_maxShown de $total filas. Todas se procesan; usa los filtros o el reporte para revisar el resto.',
+      style: TextStyle(color: _muted(context), fontSize: 12.5),
+    ),
+  );
+
+  // Tabla de escritorio. Columnas: (título, ancho)
+  static const _cols = <(String, double)>[
+    ('Fila', 52),
+    ('Estado', 140),
+    ('Producto', 210),
+    ('Marca', 120),
+    ('Variante', 100),
+    ('SKU', 100),
+    ('Compra', 72),
+    ('Venta', 72),
+    ('Mayor', 72),
+    ('Stock', 64),
+    ('Lote', 96),
+    ('Vence', 92),
+    ('Detalle', 340),
+  ];
+  static final double _totalWidth = _cols.fold(0.0, (a, c) => a + c.$2);
+
+  Widget _table(BuildContext context, List<ImportRow> rows, ImportStockMode mode) {
+    if (rows.isEmpty) {
+      return Container(
+        width: double.infinity,
+        decoration: AppColors.cardAdaptive(context, elevated: false),
+        child: _empty(context),
+      );
+    }
+    final shown = rows.take(_maxShown).toList();
+    return Container(
+      decoration: AppColors.cardAdaptive(context, elevated: false),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final width = c.maxWidth > _totalWidth ? c.maxWidth : _totalWidth;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: width,
+              child: Column(
+                children: [
+                  Container(
+                    color: _soft(context),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    child: Row(
+                      children: [
+                        for (final col in _cols)
+                          SizedBox(
+                            width: col.$1 == 'Detalle'
+                                ? col.$2 + (width - _totalWidth)
+                                : col.$2,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                col.$1.toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  letterSpacing: 0.5,
+                                  color: _muted(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: shown.length + (rows.length > _maxShown ? 1 : 0),
+                      separatorBuilder:
+                          (_, __) =>
+                              Divider(height: 1, color: AppColors.brd(context)),
+                      itemBuilder: (context, i) {
+                        if (i >= shown.length) {
+                          return _moreNote(context, rows.length);
+                        }
+                        return _TableRow(
+                          row: shown[i],
+                          mode: mode,
+                          extraDetailWidth: width - _totalWidth,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _actionBar(
+    BuildContext context,
+    BulkImportState state,
+    BulkImportCubit cubit,
+  ) {
     final s = state.summary;
     final canImport = s.validRows > 0;
     final label =
         state.canResume
             ? 'Reanudar importación'
             : 'Importar ${s.validRows} ${s.validRows == 1 ? 'fila' : 'filas'}';
-    return Row(
+
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Text(
-            s.errorRows > 0
-                ? '${s.errorRows} fila(s) con error se omitirán. Corrige el CSV y vuelve a subirlo si quieres incluirlas.'
-                : (s.warningRows > 0
-                    ? '${s.warningRows} fila(s) con advertencias; se importarán igualmente.'
-                    : 'Todo en orden.'),
-            style: TextStyle(
-              color:
-                  s.errorRows > 0 ? AppColors.error : AppColors.textSecondary,
-              fontSize: 13,
-            ),
-          ),
+        Text(
+          '${s.validRows} de ${s.totalRows} filas listas',
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(width: 12),
-        ElevatedButton.icon(
-          onPressed:
-              canImport
-                  ? () async {
-                    if (state.canResume) {
-                      cubit.resumeImport();
-                      return;
-                    }
-                    final ok = await _confirm(context, state);
-                    if (ok == true) cubit.startImport();
-                  }
-                  : null,
-          icon: const Icon(Icons.cloud_upload_rounded),
-          label: Text(label),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.success,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        if (s.errorRows > 0)
+          Text(
+            '${s.errorRows} con error se omitirán',
+            style: const TextStyle(fontSize: 12.5, color: AppColors.error),
           ),
-        ),
       ],
+    );
+
+    final button = ElevatedButton.icon(
+      onPressed:
+          canImport
+              ? () async {
+                if (state.canResume) {
+                  cubit.resumeImport();
+                  return;
+                }
+                final ok = await _confirm(context, state);
+                if (ok == true) cubit.startImport();
+              }
+              : null,
+      icon: Icon(
+        state.canResume ? Icons.play_arrow_rounded : Icons.cloud_upload_rounded,
+      ),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.success,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: _soft(context),
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: AppColors.cardAdaptive(context),
+      child:
+          widget.compact
+              ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [text, const SizedBox(height: 10), button],
+              )
+              : Row(
+                children: [Expanded(child: text), const SizedBox(width: 12), button],
+              ),
     );
   }
 
@@ -964,11 +1677,11 @@ class _ReviewViewState extends State<_ReviewView> {
     final s = state.summary;
     final replace = state.stockMode == ImportStockMode.replace;
     Widget line(String k, String v) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(k, style: const TextStyle(color: AppColors.textSecondary)),
+          Text(k, style: TextStyle(color: _muted(context))),
           Text(v, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
@@ -989,7 +1702,7 @@ class _ReviewViewState extends State<_ReviewView> {
                     'Precios existentes',
                     state.updatePrices ? 'Se actualizan' : 'Se conservan',
                   ),
-                  const Divider(),
+                  Divider(color: AppColors.brd(ctx)),
                   line('Productos nuevos', '${s.newProducts}'),
                   line('Variantes nuevas', '${s.newVariants}'),
                   line('Variantes existentes', '${s.updatedVariants}'),
@@ -998,7 +1711,7 @@ class _ReviewViewState extends State<_ReviewView> {
                   if (s.newCategories > 0)
                     line('Categorías nuevas', '${s.newCategories}'),
                   if (s.errorRows > 0) ...[
-                    const Divider(),
+                    Divider(color: AppColors.brd(ctx)),
                     line('Filas omitidas por error', '${s.errorRows}'),
                   ],
                 ],
@@ -1023,174 +1736,88 @@ class _ReviewViewState extends State<_ReviewView> {
   }
 }
 
-class _Stat extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-  const _Stat(this.label, this.value, this.color);
+// ───────────────────────────── Filas (tabla y tarjeta) ─────────────────────────────
 
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 170,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withValues(alpha: 0.25)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$value',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: color,
+Widget _statusBadge(ImportRow row) {
+  late final String text;
+  late final Color color;
+  if (row.hasError) {
+    text = 'Error';
+    color = AppColors.error;
+  } else {
+    switch (row.action) {
+      case ImportRowAction.createProduct:
+        text = 'Producto nuevo';
+        color = AppColors.success;
+      case ImportRowAction.addVariant:
+        text = 'Variante nueva';
+        color = AppColors.info;
+      case ImportRowAction.updateVariant:
+        text = 'Ya existe';
+        color = _violet;
+    }
+  }
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Flexible(child: _Badge(text, color)),
+      if (row.hasWarning)
+        const Padding(
+          padding: EdgeInsets.only(left: 5),
+          child: Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: AppColors.warning,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12.5,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    ),
+    ],
   );
 }
 
-class _RowTile extends StatelessWidget {
+class _DetailBlock extends StatelessWidget {
   final ImportRow row;
   final ImportStockMode mode;
-  const _RowTile({required this.row, required this.mode});
+  const _DetailBlock({required this.row, required this.mode});
 
   @override
   Widget build(BuildContext context) {
-    final cols = _ReviewViewState._cols;
-    Widget cell(int i, Widget child) => SizedBox(
-      width: cols[i].$2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: child,
-      ),
-    );
-    Text t(String s, {Color? color}) => Text(
-      s,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: 13, color: color),
-    );
-    String money(double? v) => v == null ? '-' : v.toStringAsFixed(2);
-
-    return Container(
-      color: row.hasError ? AppColors.error.withValues(alpha: 0.04) : null,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          cell(0, t('${row.line}', color: AppColors.textSecondary)),
-          cell(1, _badge()),
-          cell(2, t(row.productName.isEmpty ? '—' : row.productName)),
-          cell(3, t(row.brand.isEmpty ? '-' : row.brand)),
-          cell(4, t(row.variantName.isEmpty ? 'Único' : row.variantName)),
-          cell(5, t(money(row.cost))),
-          cell(6, t(money(row.salePrice))),
-          cell(7, t(money(row.wholesalePrice))),
-          cell(8, t(row.stock?.toString() ?? '-')),
-          cell(
-            9,
-            t(
-              row.effectiveUsesLots && row.lotCode.isNotEmpty
-                  ? row.lotCode
-                  : '-',
-            ),
-          ),
-          cell(
-            10,
-            t(
-              row.effectiveUsesLots && row.expiry != null
-                  ? _d(row.expiry!)
-                  : '-',
-            ),
-          ),
-          cell(11, _detail()),
-        ],
-      ),
-    );
-  }
-
-  String _d(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-
-  Widget _badge() {
-    late final String text;
-    late final Color color;
-    if (row.hasError) {
-      text = 'Error';
-      color = AppColors.error;
-    } else {
-      switch (row.action) {
-        case ImportRowAction.createProduct:
-          text = 'Producto nuevo';
-          color = AppColors.success;
-        case ImportRowAction.addVariant:
-          text = 'Variante nueva';
-          color = Colors.blue;
-        case ImportRowAction.updateVariant:
-          text = 'Ya existe';
-          color = Colors.deepPurple;
-      }
-    }
-    return Row(
-      children: [
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        if (row.hasWarning)
-          Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Icon(
-              Icons.warning_amber_rounded,
-              size: 16,
-              color: _warnColor,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _detail() {
     if (row.issues.isNotEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final i in row.issues)
-            Text(
-              '${i.column}: ${i.message}',
-              style: TextStyle(
-                fontSize: 12.5,
-                color:
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
                     i.severity == IssueSeverity.error
-                        ? AppColors.error
-                        : _warnColor,
+                        ? Icons.cancel_outlined
+                        : Icons.warning_amber_rounded,
+                    size: 14,
+                    color:
+                        i.severity == IssueSeverity.error
+                            ? AppColors.error
+                            : AppColors.warning,
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      '${i.column}: ${i.message}',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.3,
+                        color:
+                            i.severity == IssueSeverity.error
+                                ? AppColors.error
+                                : (AppColors.isDark(context)
+                                    ? AppColors.warning
+                                    : AppColors.warningDark),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -1200,12 +1827,168 @@ class _RowTile extends StatelessWidget {
     if (ex != null && row.stock != null) {
       final cur = ex.currentStock;
       final next = mode == ImportStockMode.add ? cur + row.stock! : row.stock!;
-      return Text(
-        'Stock: $cur → $next',
-        style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 14, color: _muted(context)),
+          const SizedBox(width: 5),
+          Text(
+            'Stock: $cur → $next',
+            style: TextStyle(fontSize: 12.5, color: _muted(context)),
+          ),
+        ],
       );
     }
-    return const Text('');
+    return const SizedBox.shrink();
+  }
+}
+
+class _TableRow extends StatelessWidget {
+  final ImportRow row;
+  final ImportStockMode mode;
+  final double extraDetailWidth;
+  const _TableRow({
+    required this.row,
+    required this.mode,
+    required this.extraDetailWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cols = _ReviewViewState._cols;
+    Text t(String s, {Color? color, FontWeight? w}) => Text(
+      s,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: 13, color: color, fontWeight: w),
+    );
+
+    final cells = <Widget>[
+      t('${row.line}', color: _muted(context)),
+      _statusBadge(row),
+      t(row.productName.isEmpty ? '—' : row.productName, w: FontWeight.w600),
+      t(row.brand.isEmpty ? '-' : row.brand),
+      t(row.variantName.isEmpty ? 'Único' : row.variantName),
+      t(row.sku.isEmpty ? '-' : row.sku),
+      t(_money(row.cost)),
+      t(_money(row.salePrice)),
+      t(_money(row.wholesalePrice)),
+      t(row.stock?.toString() ?? '-'),
+      t(row.effectiveUsesLots && row.lotCode.isNotEmpty ? row.lotCode : '-'),
+      t(row.effectiveUsesLots && row.expiry != null ? _date(row.expiry!) : '-'),
+      _DetailBlock(row: row, mode: mode),
+    ];
+
+    return Container(
+      color: row.hasError ? AppColors.error.withValues(alpha: 0.05) : null,
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < cells.length; i++)
+            SizedBox(
+              width: i == cells.length - 1
+                  ? cols[i].$2 + extraDetailWidth
+                  : cols[i].$2,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: cells[i],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tarjeta de fila para pantallas angostas.
+class _RowCard extends StatelessWidget {
+  final ImportRow row;
+  final ImportStockMode mode;
+  const _RowCard({required this.row, required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = [
+      if (row.brand.isNotEmpty) row.brand,
+      row.variantName.isEmpty ? 'Único' : row.variantName,
+      if (row.sku.isNotEmpty) row.sku,
+    ].join(' · ');
+
+    Widget kv(String k, String v) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(k, style: TextStyle(fontSize: 11, color: _muted(context))),
+        const SizedBox(height: 1),
+        Text(v, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+      ],
+    );
+
+    final hasDetail = row.issues.isNotEmpty ||
+        (row.existing != null && row.stock != null);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color:
+            row.hasError
+                ? AppColors.error.withValues(alpha: 0.05)
+                : AppColors.surf(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              row.hasError
+                  ? AppColors.error.withValues(alpha: 0.4)
+                  : AppColors.brd(context),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _statusBadge(row),
+                ),
+              ),
+              Text(
+                'Fila ${row.line}',
+                style: TextStyle(fontSize: 12, color: _muted(context)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            row.productName.isEmpty ? '—' : row.productName,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          const SizedBox(height: 2),
+          Text(subtitle, style: TextStyle(fontSize: 12.5, color: _muted(context))),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 22,
+            runSpacing: 10,
+            children: [
+              kv('Compra', _money(row.cost)),
+              kv('Venta', _money(row.salePrice)),
+              if (row.wholesalePrice != null) kv('Mayor', _money(row.wholesalePrice)),
+              kv('Stock', row.stock?.toString() ?? '-'),
+              if (row.effectiveUsesLots && row.lotCode.isNotEmpty)
+                kv('Lote', row.lotCode),
+              if (row.effectiveUsesLots && row.expiry != null)
+                kv('Vence', _date(row.expiry!)),
+            ],
+          ),
+          if (hasDetail) ...[
+            const SizedBox(height: 10),
+            _DetailBlock(row: row, mode: mode),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -1216,36 +1999,65 @@ class _ImportingView extends StatelessWidget {
   const _ImportingView({required this.state});
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 420),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Importando productos y stock...',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) {
+    final primary = _primary(context);
+    final pct = (state.progress * 100).round();
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: AppColors.cardAdaptive(context),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 84,
+                height: 84,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 84,
+                      height: 84,
+                      child: CircularProgressIndicator(
+                        value: state.progress == 0 ? null : state.progress,
+                        strokeWidth: 6,
+                        backgroundColor: primary.withValues(alpha: 0.12),
+                      ),
+                    ),
+                    Text(
+                      '$pct%',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Importando productos y stock',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'No cierres ni salgas de esta pantalla.',
+                style: TextStyle(color: _muted(context)),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          LinearProgressIndicator(
-            value: state.progress,
-            minHeight: 8,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${(state.progress * 100).round()}%  ·  No cierres esta pantalla',
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SuccessView extends StatelessWidget {
   final BulkImportState state;
-  const _SuccessView({required this.state});
+  final bool compact;
+  const _SuccessView({required this.state, required this.compact});
 
   @override
   Widget build(BuildContext context) {
@@ -1253,71 +2065,71 @@ class _SuccessView extends StatelessWidget {
     final cubit = context.read<BulkImportCubit>();
     return Center(
       child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.check_circle_rounded,
-              size: 72,
-              color: AppColors.success,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              '¡Importación completada!',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-            ),
-            if (state.selectedWarehouse != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Stock cargado en «${state.selectedWarehouse!.name}»',
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Container(
+            padding: EdgeInsets.all(compact ? 20 : 32),
+            decoration: AppColors.cardAdaptive(context),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _Stat(
-                  'Productos creados',
-                  r.createdProducts,
-                  AppColors.success,
-                ),
-                _Stat('Variantes creadas', r.createdVariants, Colors.blue),
-                _Stat(
-                  'Variantes actualizadas',
-                  r.updatedVariants,
-                  Colors.deepPurple,
-                ),
-                _Stat(
-                  'Movimientos de stock',
-                  r.stockMovements,
-                  AppColors.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 28),
-            Wrap(
-              spacing: 12,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: cubit.reset,
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Importar otro archivo'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => context.pop(),
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: const Text('Ver productos'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.success.withValues(alpha: 0.12),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    size: 44,
+                    color: AppColors.success,
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  '¡Importación completada!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                ),
+                if (state.selectedWarehouse != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Stock cargado en «${state.selectedWarehouse!.name}»',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _muted(context)),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                _StatsGrid(
+                  items: [
+                    _StatItem(Icons.inventory_2_outlined, 'Productos creados', r.createdProducts, AppColors.success),
+                    _StatItem(Icons.style_outlined, 'Variantes creadas', r.createdVariants, AppColors.info),
+                    _StatItem(Icons.sync_alt_rounded, 'Variantes actualizadas', r.updatedVariants, _violet),
+                    _StatItem(Icons.swap_vert_rounded, 'Movimientos de stock', r.stockMovements, AppColors.amber),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: cubit.reset,
+                      icon: const Icon(Icons.upload_file_rounded),
+                      label: const Text('Importar otro archivo'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      label: const Text('Ver productos'),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
