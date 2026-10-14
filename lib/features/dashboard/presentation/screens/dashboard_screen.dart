@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/dashboard/domain/entities/sales_tim
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_sales_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
@@ -909,6 +910,20 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         _visibleWidgets.contains('expiring_batches');
   }
 
+  /// Tendencia de ventas (RPC overview). Sin overview no se dibuja.
+  Widget _buildTrendCard(DashboardLoaded state) {
+    final overview = state.overview;
+    if (overview == null) return const SizedBox.shrink();
+    return SalesTrendCard(overview: overview);
+  }
+
+  /// Actividad por día de la semana (RPC overview). Sin overview no se dibuja.
+  Widget _buildWeeklyCard(DashboardLoaded state) {
+    final overview = state.overview;
+    if (overview == null) return const SizedBox.shrink();
+    return WeeklyActivityCard(overview: overview);
+  }
+
   Widget _buildDesktopBentoGrid(BuildContext context, DashboardLoaded state) {
     // ── NIVEL 1: GRÁFICOS ANALÍTICOS Y METAS ──────────────────────────────
     final hasSpline = _visibleWidgets.contains('profit_spline');
@@ -920,20 +935,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       level1Widget = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 7,
-            child: DashboardSplineChartCard(
-              sales: state.sales,
-              inventory: state.inventory,
-            ),
-          ),
+          Expanded(flex: 7, child: _buildTrendCard(state)),
           const SizedBox(width: 20),
           Expanded(
             flex: 5,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (hasWeekly) DashboardWeeklyActivityCard(sales: state.sales),
+                if (hasWeekly) _buildWeeklyCard(state),
                 if (hasWeekly && hasGoal) const SizedBox(height: 20),
                 if (hasGoal) const _DashboardAdminGoalCard(),
               ],
@@ -942,19 +951,12 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         ],
       );
     } else if (hasSpline) {
-      level1Widget = DashboardSplineChartCard(
-        sales: state.sales,
-        inventory: state.inventory,
-      );
+      level1Widget = _buildTrendCard(state);
     } else if (hasWeekly || hasGoal) {
       level1Widget = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasWeekly)
-            Expanded(
-              flex: 6,
-              child: DashboardWeeklyActivityCard(sales: state.sales),
-            ),
+          if (hasWeekly) Expanded(flex: 6, child: _buildWeeklyCard(state)),
           if (hasWeekly && hasGoal) const SizedBox(width: 20),
           if (hasGoal)
             const Expanded(flex: 6, child: _DashboardAdminGoalCard()),
@@ -1225,19 +1227,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       _buildExecutiveSubheader(context, state, isDesktop: false),
       if (_visibleWidgets.contains('kpi_strip'))
         _buildTabletKpiGrid(context, state),
-      if (_visibleWidgets.contains('profit_spline'))
-        DashboardSplineChartCard(
-          sales: state.sales,
-          inventory: state.inventory,
-        ),
+      if (_visibleWidgets.contains('profit_spline')) _buildTrendCard(state),
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty)
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.mobile,
         ),
-      if (_visibleWidgets.contains('weekly_activity'))
-        DashboardWeeklyActivityCard(sales: state.sales),
+      if (_visibleWidgets.contains('weekly_activity')) _buildWeeklyCard(state),
       if (_visibleWidgets.contains('radial_goal'))
         const _DashboardAdminGoalCard(),
       if (_visibleWidgets.contains('best_sellers'))

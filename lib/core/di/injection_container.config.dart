@@ -1279,6 +1279,15 @@ extension GetItInjectableX on _i174.GetIt {
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),
       ),
     );
+    gh.lazySingleton<_i58.DashboardCubit>(
+      () => _i58.DashboardCubit(
+        getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
+        getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
+        getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
+        getTopCustomers: gh<_i1019.GetTopCustomersUseCase>(),
+        dashboardRepository: gh<_i665.DashboardRepository>(),
+      ),
+    );
     gh.lazySingleton<_i382.CreateAttributeUseCase>(
       () => _i382.CreateAttributeUseCase(gh<_i570.ProductsRepository>()),
     );
@@ -1506,14 +1515,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i30.FinancialAccountsCubit(
         getAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i58.DashboardCubit>(
-      () => _i58.DashboardCubit(
-        getInventoryMetrics: gh<_i139.GetInventoryMetricsUseCase>(),
-        getSalesMetrics: gh<_i407.GetSalesMetricsUseCase>(),
-        getCriticalBatches: gh<_i622.GetCriticalBatchesUseCase>(),
-        getTopCustomers: gh<_i1019.GetTopCustomersUseCase>(),
       ),
     );
     gh.factory<_i977.InventoryEntryFormCubit>(

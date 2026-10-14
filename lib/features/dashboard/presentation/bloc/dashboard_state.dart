@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 
 abstract class DashboardState extends Equatable {
@@ -18,6 +19,10 @@ class DashboardLoading extends DashboardState {}
 class DashboardLoaded extends DashboardState {
   final InventoryMetricsEntity inventory;
   final SalesMetricsEntity sales;
+
+  /// Serie temporal + actividad por día de la semana (RPC). Null si aún no
+  /// cargó o si falló: las tarjetas que lo usan se ocultan.
+  final SalesOverview? overview;
   final List<Map<String, dynamic>> criticalBatches;
   final List<CustomerEntity> topCustomers;
   final SalesTimeFilter salesFilter;
@@ -29,6 +34,7 @@ class DashboardLoaded extends DashboardState {
   const DashboardLoaded({
     required this.inventory,
     required this.sales,
+    this.overview,
     required this.criticalBatches,
     this.topCustomers = const [],
     required this.salesFilter,
@@ -41,6 +47,8 @@ class DashboardLoaded extends DashboardState {
   DashboardLoaded copyWith({
     InventoryMetricsEntity? inventory,
     SalesMetricsEntity? sales,
+    SalesOverview? overview,
+    bool clearOverview = false,
     List<Map<String, dynamic>>? criticalBatches,
     List<CustomerEntity>? topCustomers,
     SalesTimeFilter? salesFilter,
@@ -52,6 +60,7 @@ class DashboardLoaded extends DashboardState {
     return DashboardLoaded(
       inventory: inventory ?? this.inventory,
       sales: sales ?? this.sales,
+      overview: clearOverview ? null : (overview ?? this.overview),
       criticalBatches: criticalBatches ?? this.criticalBatches,
       topCustomers: topCustomers ?? this.topCustomers,
       salesFilter: salesFilter ?? this.salesFilter,
@@ -66,6 +75,7 @@ class DashboardLoaded extends DashboardState {
   List<Object?> get props => [
     inventory,
     sales,
+    overview,
     criticalBatches,
     topCustomers,
     salesFilter,

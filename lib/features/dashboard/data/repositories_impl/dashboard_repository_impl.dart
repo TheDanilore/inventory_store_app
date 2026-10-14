@@ -1,5 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
@@ -24,32 +25,79 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   _DashboardCacheEntry<InventoryMetricsEntity>? _inventoryCache;
   final Map<String, _DashboardCacheEntry<SalesMetricsEntity>> _salesCache = {};
-  final Map<String, _DashboardCacheEntry<List<Map<String, dynamic>>>> _batchesCache =
-      {};
+  final Map<String, _DashboardCacheEntry<List<Map<String, dynamic>>>>
+  _batchesCache = {};
 
   DashboardRepositoryImpl(this._supabase);
+
+  /// Ventas por rango con serie temporal real y actividad por día de la semana
+  /// (RPC `get_dashboard_sales_overview`). from/to null = todo el histórico.
+  @override
+  Future<Either<Failure, SalesOverview>> getSalesOverview({
+    required DateTime? from,
+    required DateTime? to,
+    String? warehouseId,
+  }) async {
+    try {
+      String? fmt(DateTime? d) =>
+          d == null
+              ? null
+              : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final res = await _supabase.rpc(
+        'get_dashboard_sales_overview',
+        params: {
+          'p_from': fmt(from),
+          'p_to': fmt(to),
+          'p_warehouse_id': warehouseId,
+        },
+      );
+      return right(
+        SalesOverview.fromJson(Map<String, dynamic>.from(res as Map)),
+      );
+    } catch (e, stackTrace) {
+      LoggerService.e(
+        'Error al obtener resumen de ventas',
+        tag: 'DASHBOARD_REPO',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return left(
+        ServerFailure(message: 'Error al obtener resumen de ventas: $e'),
+      );
+    }
+  }
 
   @override
   Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _inventoryCache != null && !_inventoryCache!.isExpired) {
+    if (!forceRefresh &&
+        _inventoryCache != null &&
+        !_inventoryCache!.isExpired) {
       return right(_inventoryCache!.data);
     }
 
     // 1. Intentar RPC optimizada en Supabase para Data Egress casi nulo (cálculo en PostgreSQL)
     try {
-      final rpcResponse = await _supabase.rpc('get_dashboard_inventory_metrics');
+      final rpcResponse = await _supabase.rpc(
+        'get_dashboard_inventory_metrics',
+      );
       if (rpcResponse != null && rpcResponse is Map) {
         final totalStock = (rpcResponse['total_stock'] as num?)?.toInt() ?? 0;
-        final totalProducts = (rpcResponse['total_products'] as num?)?.toInt() ?? 0;
-        final lowStockProducts = (rpcResponse['low_stock_products'] as num?)?.toInt() ?? 0;
-        final totalInvestment = (rpcResponse['total_investment'] as num?)?.toDouble() ?? 0.0;
-        final retailValue = (rpcResponse['retail_value'] as num?)?.toDouble() ?? 0.0;
-        final grossProfit = (rpcResponse['gross_profit'] as num?)?.toDouble() ?? 0.0;
-        final grossMargin = totalInvestment > 0 && retailValue > 0
-            ? (grossProfit / retailValue) * 100
-            : 0.0;
+        final totalProducts =
+            (rpcResponse['total_products'] as num?)?.toInt() ?? 0;
+        final lowStockProducts =
+            (rpcResponse['low_stock_products'] as num?)?.toInt() ?? 0;
+        final totalInvestment =
+            (rpcResponse['total_investment'] as num?)?.toDouble() ?? 0.0;
+        final retailValue =
+            (rpcResponse['retail_value'] as num?)?.toDouble() ?? 0.0;
+        final grossProfit =
+            (rpcResponse['gross_profit'] as num?)?.toDouble() ?? 0.0;
+        final grossMargin =
+            totalInvestment > 0 && retailValue > 0
+                ? (grossProfit / retailValue) * 100
+                : 0.0;
 
         final inventoryEntity = InventoryMetricsEntity(
           totalStock: totalStock,
@@ -247,7 +295,15 @@ class DashboardRepositoryImpl implements DashboardRepository {
       switch (filter) {
         case SalesTimeFilter.today:
           final startOfDay = DateTime(now.year, now.month, now.day);
-          final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+          final endOfDay = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            23,
+            59,
+            59,
+            999,
+          );
           query = query
               .gte('created_at', startOfDay.toUtc().toIso8601String())
               .lte('created_at', endOfDay.toUtc().toIso8601String());
@@ -260,7 +316,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
             startOfWeek.day,
           );
           final endOfWeekDay = startOfWeekDay.add(
-            const Duration(days: 6, hours: 23, minutes: 59, seconds: 59, milliseconds: 999),
+            const Duration(
+              days: 6,
+              hours: 23,
+              minutes: 59,
+              seconds: 59,
+              milliseconds: 999,
+            ),
           );
           query = query
               .gte('created_at', startOfWeekDay.toUtc().toIso8601String())
@@ -268,10 +330,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           break;
         case SalesTimeFilter.thisMonth:
           final startOfMonth = DateTime(now.year, now.month, 1);
-          final nextMonth = now.month == 12
-              ? DateTime(now.year + 1, 1, 1)
-              : DateTime(now.year, now.month + 1, 1);
-          final endOfMonth = nextMonth.subtract(const Duration(milliseconds: 1));
+          final nextMonth =
+              now.month == 12
+                  ? DateTime(now.year + 1, 1, 1)
+                  : DateTime(now.year, now.month + 1, 1);
+          final endOfMonth = nextMonth.subtract(
+            const Duration(milliseconds: 1),
+          );
           query = query
               .gte('created_at', startOfMonth.toUtc().toIso8601String())
               .lte('created_at', endOfMonth.toUtc().toIso8601String());
@@ -321,8 +386,24 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
       // ── 1. Weekly Activity & Peak Day (In-Memory Processing from Filtered Orders) ──
       final dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-      final Map<int, double> dayTotals = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0, 6: 0.0, 7: 0.0};
-      final Map<int, int> dayCounts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
+      final Map<int, double> dayTotals = {
+        1: 0.0,
+        2: 0.0,
+        3: 0.0,
+        4: 0.0,
+        5: 0.0,
+        6: 0.0,
+        7: 0.0,
+      };
+      final Map<int, int> dayCounts = {
+        1: 0,
+        2: 0,
+        3: 0,
+        4: 0,
+        5: 0,
+        6: 0,
+        7: 0,
+      };
 
       for (var o in orders) {
         final createdAtStr = o['created_at'] as String?;
@@ -345,18 +426,54 @@ class DashboardRepositoryImpl implements DashboardRepository {
         }
       }
 
-      final String peakDayLabel = maxDayVal > 0
-          ? '${dayNames[peakWeekday - 1]} pico · S/ ${maxDayVal.toStringAsFixed(0)}'
-          : 'Sin ventas en período';
+      final String peakDayLabel =
+          maxDayVal > 0
+              ? '${dayNames[peakWeekday - 1]} pico · S/ ${maxDayVal.toStringAsFixed(0)}'
+              : 'Sin ventas en período';
 
       final List<Map<String, dynamic>> weeklyActivity = [
-        {'day': 'Dom', 'val': dayTotals[7] ?? 0.0, 'orders': dayCounts[7] ?? 0, 'active': peakWeekday == 7 && maxDayVal > 0},
-        {'day': 'Lun', 'val': dayTotals[1] ?? 0.0, 'orders': dayCounts[1] ?? 0, 'active': peakWeekday == 1 && maxDayVal > 0},
-        {'day': 'Mar', 'val': dayTotals[2] ?? 0.0, 'orders': dayCounts[2] ?? 0, 'active': peakWeekday == 2 && maxDayVal > 0},
-        {'day': 'Mié', 'val': dayTotals[3] ?? 0.0, 'orders': dayCounts[3] ?? 0, 'active': peakWeekday == 3 && maxDayVal > 0},
-        {'day': 'Jue', 'val': dayTotals[4] ?? 0.0, 'orders': dayCounts[4] ?? 0, 'active': peakWeekday == 4 && maxDayVal > 0},
-        {'day': 'Vie', 'val': dayTotals[5] ?? 0.0, 'orders': dayCounts[5] ?? 0, 'active': peakWeekday == 5 && maxDayVal > 0},
-        {'day': 'Sáb', 'val': dayTotals[6] ?? 0.0, 'orders': dayCounts[6] ?? 0, 'active': peakWeekday == 6 && maxDayVal > 0},
+        {
+          'day': 'Dom',
+          'val': dayTotals[7] ?? 0.0,
+          'orders': dayCounts[7] ?? 0,
+          'active': peakWeekday == 7 && maxDayVal > 0,
+        },
+        {
+          'day': 'Lun',
+          'val': dayTotals[1] ?? 0.0,
+          'orders': dayCounts[1] ?? 0,
+          'active': peakWeekday == 1 && maxDayVal > 0,
+        },
+        {
+          'day': 'Mar',
+          'val': dayTotals[2] ?? 0.0,
+          'orders': dayCounts[2] ?? 0,
+          'active': peakWeekday == 2 && maxDayVal > 0,
+        },
+        {
+          'day': 'Mié',
+          'val': dayTotals[3] ?? 0.0,
+          'orders': dayCounts[3] ?? 0,
+          'active': peakWeekday == 3 && maxDayVal > 0,
+        },
+        {
+          'day': 'Jue',
+          'val': dayTotals[4] ?? 0.0,
+          'orders': dayCounts[4] ?? 0,
+          'active': peakWeekday == 4 && maxDayVal > 0,
+        },
+        {
+          'day': 'Vie',
+          'val': dayTotals[5] ?? 0.0,
+          'orders': dayCounts[5] ?? 0,
+          'active': peakWeekday == 5 && maxDayVal > 0,
+        },
+        {
+          'day': 'Sáb',
+          'val': dayTotals[6] ?? 0.0,
+          'orders': dayCounts[6] ?? 0,
+          'active': peakWeekday == 6 && maxDayVal > 0,
+        },
       ];
 
       // ── 2. Revenue Spline Points ──────────────────────────────────────
@@ -377,7 +494,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
       // ── 3. Best Selling Products (Rotación Real) ──────────────────────
       List<Map<String, dynamic>> bestSellers = [];
-      final orderIds = orders.map((o) => o['id'] as String?).whereType<String>().take(40).toList();
+      final orderIds =
+          orders
+              .map((o) => o['id'] as String?)
+              .whereType<String>()
+              .take(40)
+              .toList();
 
       if (orderIds.isNotEmpty) {
         try {
@@ -398,7 +520,17 @@ class DashboardRepositoryImpl implements DashboardRepository {
               .inFilter('order_id', orderIds);
 
           final items = List<Map<String, dynamic>>.from(itemsResponse);
-          final Map<String, ({String name, String? imageUrl, String category, int qty, double revenue})> aggregated = {};
+          final Map<
+            String,
+            ({
+              String name,
+              String? imageUrl,
+              String category,
+              int qty,
+              double revenue,
+            })
+          >
+          aggregated = {};
 
           for (var item in items) {
             final prodId = item['product_id'] as String? ?? 'unknown';
@@ -411,15 +543,20 @@ class DashboardRepositoryImpl implements DashboardRepository {
               if (prodMap['name'] != null) {
                 prodName = prodMap['name'].toString();
               }
-              if (prodMap['categories'] is Map && prodMap['categories']['name'] != null) {
+              if (prodMap['categories'] is Map &&
+                  prodMap['categories']['name'] != null) {
                 category = prodMap['categories']['name'].toString();
               }
-              final prodImgs = prodMap['product_images'] as List<dynamic>? ?? [];
+              final prodImgs =
+                  prodMap['product_images'] as List<dynamic>? ?? [];
               if (prodImgs.isNotEmpty) {
-                final mainImg = prodImgs.firstWhere(
-                  (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                  orElse: () => prodImgs.first,
-                ) as Map<String, dynamic>?;
+                final mainImg =
+                    prodImgs.firstWhere(
+                          (img) =>
+                              (img as Map<String, dynamic>)['is_main'] == true,
+                          orElse: () => prodImgs.first,
+                        )
+                        as Map<String, dynamic>?;
                 imageUrl = mainImg?['image_url'] as String?;
               }
             }
@@ -428,10 +565,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
               final varMap = item['product_variants'] as Map<String, dynamic>;
               final varImgs = varMap['product_images'] as List<dynamic>? ?? [];
               if (varImgs.isNotEmpty) {
-                final mainImg = varImgs.firstWhere(
-                  (img) => (img as Map<String, dynamic>)['is_main'] == true,
-                  orElse: () => varImgs.first,
-                ) as Map<String, dynamic>?;
+                final mainImg =
+                    varImgs.firstWhere(
+                          (img) =>
+                              (img as Map<String, dynamic>)['is_main'] == true,
+                          orElse: () => varImgs.first,
+                        )
+                        as Map<String, dynamic>?;
                 imageUrl = mainImg?['image_url'] as String?;
               }
             }
@@ -452,29 +592,34 @@ class DashboardRepositoryImpl implements DashboardRepository {
               aggregated[prodId] = (
                 name: prodName,
                 imageUrl: existing.imageUrl ?? imageUrl,
-                category: existing.category != 'General' ? existing.category : category,
+                category:
+                    existing.category != 'General'
+                        ? existing.category
+                        : category,
                 qty: existing.qty + qty,
                 revenue: existing.revenue + (qty * price),
               );
             }
           }
 
-          final sorted = aggregated.entries.toList()
-            ..sort((a, b) => b.value.qty.compareTo(a.value.qty));
+          final sorted =
+              aggregated.entries.toList()
+                ..sort((a, b) => b.value.qty.compareTo(a.value.qty));
 
-          bestSellers = sorted.take(5).map((e) {
-            return {
-              'id': '#${e.key.length > 5 ? e.key.substring(0, 5) : e.key}',
-              'productId': e.key,
-              'name': e.value.name,
-              'imageUrl': e.value.imageUrl,
-              'category': e.value.category,
-              'sold': '${e.value.qty} unid.',
-              'revenue': 'S/ ${e.value.revenue.toStringAsFixed(2)}',
-              'rating': '★ 5.0',
-              'status': e.value.qty >= 5 ? 'Alta Rotación' : 'Estable',
-            };
-          }).toList();
+          bestSellers =
+              sorted.take(5).map((e) {
+                return {
+                  'id': '#${e.key.length > 5 ? e.key.substring(0, 5) : e.key}',
+                  'productId': e.key,
+                  'name': e.value.name,
+                  'imageUrl': e.value.imageUrl,
+                  'category': e.value.category,
+                  'sold': '${e.value.qty} unid.',
+                  'revenue': 'S/ ${e.value.revenue.toStringAsFixed(2)}',
+                  'rating': '★ 5.0',
+                  'status': e.value.qty >= 5 ? 'Alta Rotación' : 'Estable',
+                };
+              }).toList();
         } catch (itemErr) {
           LoggerService.w(
             'No se pudieron cargar items para productos top: $itemErr',

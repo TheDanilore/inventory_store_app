@@ -1250,7 +1250,7 @@ class _ReviewViewState extends State<_ReviewView> {
               padding: const EdgeInsets.all(8),
               itemCount: state.fileErrors.length,
               separatorBuilder:
-                  (_, __) => Divider(height: 1, color: AppColors.brd(context)),
+                  (_, _) => Divider(height: 1, color: AppColors.brd(context)),
               itemBuilder:
                   (_, i) => ListTile(
                     leading: const Icon(
@@ -1584,7 +1584,7 @@ class _ReviewViewState extends State<_ReviewView> {
                     child: ListView.separated(
                       itemCount: shown.length + (rows.length > _maxShown ? 1 : 0),
                       separatorBuilder:
-                          (_, __) =>
+                          (_, _) =>
                               Divider(height: 1, color: AppColors.brd(context)),
                       itemBuilder: (context, i) {
                         if (i >= shown.length) {

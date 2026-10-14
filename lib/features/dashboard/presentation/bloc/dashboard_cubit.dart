@@ -7,7 +7,9 @@ import 'package:inventory_store_app/features/customers/domain/entities/customer_
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/repositories/dashboard_repository.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_critical_batches_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_inventory_metrics_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_sales_metrics_usecase.dart';
@@ -19,6 +21,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   final GetSalesMetricsUseCase getSalesMetrics;
   final GetCriticalBatchesUseCase getCriticalBatches;
   final GetTopCustomersUseCase getTopCustomers;
+  final DashboardRepository dashboardRepository;
 
   int _currentFilterLoadId = 0;
 
@@ -27,6 +30,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     required this.getSalesMetrics,
     required this.getCriticalBatches,
     required this.getTopCustomers,
+    required this.dashboardRepository,
   }) : super(DashboardInitial());
 
   Future<void> loadDashboardData({
@@ -43,7 +47,9 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
 
     final activeFilter =
-        currentState is DashboardLoaded ? currentState.salesFilter : SalesTimeFilter.today;
+        currentState is DashboardLoaded
+            ? currentState.salesFilter
+            : SalesTimeFilter.today;
     final activeStartDate =
         currentState is DashboardLoaded ? currentState.customStartDate : null;
     final activeEndDate =
@@ -61,6 +67,7 @@ class DashboardCubit extends Cubit<DashboardState> {
         ),
         getCriticalBatches(daysThreshold: 30, forceRefresh: forceRefresh),
         _fetchTopCustomers(limit: 5),
+        _fetchOverview(activeFilter, activeStartDate, activeEndDate),
       ]);
 
       final inventoryResult =
@@ -69,39 +76,42 @@ class DashboardCubit extends Cubit<DashboardState> {
       final batchesResult =
           results[2] as Either<Failure, List<Map<String, dynamic>>>;
       final topCustomers = results[3] as List<CustomerEntity>;
+      final overviewResult = results[4] as Either<Failure, SalesOverview>;
 
       if (hasExistingData) {
         // Enfoque Stale-While-Revalidate: si ya hay datos previos en pantalla,
         // nunca destruir la UI si uno de los endpoints falla en segundo plano.
-        final inventory = inventoryResult.getOrElse(
-          (failure) {
-            LoggerService.w(
-              'Fallo al actualizar métricas de inventario en background: ${failure.message}',
-              tag: 'DASHBOARD_CUBIT',
-            );
-            return currentState.inventory;
-          },
-        );
+        final inventory = inventoryResult.getOrElse((failure) {
+          LoggerService.w(
+            'Fallo al actualizar métricas de inventario en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.inventory;
+        });
 
-        final sales = salesResult.getOrElse(
-          (failure) {
-            LoggerService.w(
-              'Fallo al actualizar métricas de ventas en background: ${failure.message}',
-              tag: 'DASHBOARD_CUBIT',
-            );
-            return currentState.sales;
-          },
-        );
+        final sales = salesResult.getOrElse((failure) {
+          LoggerService.w(
+            'Fallo al actualizar métricas de ventas en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.sales;
+        });
 
-        final batches = batchesResult.getOrElse(
-          (failure) {
-            LoggerService.w(
-              'Fallo al actualizar lotes críticos en background: ${failure.message}',
-              tag: 'DASHBOARD_CUBIT',
-            );
-            return currentState.criticalBatches;
-          },
-        );
+        final batches = batchesResult.getOrElse((failure) {
+          LoggerService.w(
+            'Fallo al actualizar lotes críticos en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.criticalBatches;
+        });
+
+        final overview = overviewResult.fold<SalesOverview?>((failure) {
+          LoggerService.w(
+            'Fallo al actualizar resumen de ventas en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.overview;
+        }, (o) => o);
 
         final finalTopCustomers =
             topCustomers.isNotEmpty ? topCustomers : currentState.topCustomers;
@@ -110,6 +120,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           DashboardLoaded(
             inventory: inventory,
             sales: sales,
+            overview: overview,
             criticalBatches: batches,
             topCustomers: finalTopCustomers,
             salesFilter: activeFilter,
@@ -134,6 +145,12 @@ class DashboardCubit extends Cubit<DashboardState> {
                       DashboardLoaded(
                         inventory: inventory,
                         sales: sales,
+                        // Si el overview falla no se tumba el dashboard:
+                        // solo se ocultan sus tarjetas.
+                        overview: overviewResult.fold<SalesOverview?>(
+                          (_) => null,
+                          (o) => o,
+                        ),
                         criticalBatches: batches,
                         topCustomers: topCustomers,
                         salesFilter: activeFilter,
@@ -163,6 +180,41 @@ class DashboardCubit extends Cubit<DashboardState> {
         emit(DashboardError('Error inesperado al cargar el dashboard: $e'));
       }
     }
+  }
+
+  /// Mismo rango que usa `getSalesMetrics` para cada filtro (null/null = todo).
+  ({DateTime? from, DateTime? to}) _rangeFor(
+    SalesTimeFilter filter,
+    DateTime? customStart,
+    DateTime? customEnd,
+  ) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (filter) {
+      case SalesTimeFilter.today:
+        return (from: today, to: today);
+      case SalesTimeFilter.thisWeek:
+        final monday = today.subtract(Duration(days: today.weekday - 1));
+        return (from: monday, to: monday.add(const Duration(days: 6)));
+      case SalesTimeFilter.thisMonth:
+        return (
+          from: DateTime(now.year, now.month, 1),
+          to: DateTime(now.year, now.month + 1, 0),
+        );
+      case SalesTimeFilter.custom:
+        return (from: customStart, to: customEnd);
+      case SalesTimeFilter.allTime:
+        return (from: null, to: null);
+    }
+  }
+
+  Future<Either<Failure, SalesOverview>> _fetchOverview(
+    SalesTimeFilter filter,
+    DateTime? customStart,
+    DateTime? customEnd,
+  ) {
+    final r = _rangeFor(filter, customStart, customEnd);
+    return dashboardRepository.getSalesOverview(from: r.from, to: r.to);
   }
 
   Future<List<CustomerEntity>> _fetchTopCustomers({int limit = 5}) async {
@@ -198,15 +250,29 @@ class DashboardCubit extends Cubit<DashboardState> {
         ),
       );
 
-      final salesResult = await getSalesMetrics(
-        filter: filter,
-        customStartDate: customStartDate,
-        customEndDate: customEndDate,
-        forceRefresh: forceRefresh,
-      );
+      final (salesResult, overviewResult) =
+          await (
+            getSalesMetrics(
+              filter: filter,
+              customStartDate: customStartDate,
+              customEndDate: customEndDate,
+              forceRefresh: forceRefresh,
+            ),
+            _fetchOverview(filter, customStartDate, customEndDate),
+          ).wait;
 
       // Mutex anti-race-conditions: descartar si hay una petición más reciente
       if (loadId != _currentFilterLoadId) return;
+
+      // Si el overview falla se limpia: mostrar el del rango anterior sería
+      // un dato incoherente con el filtro elegido.
+      final overview = overviewResult.fold<SalesOverview?>((failure) {
+        LoggerService.w(
+          'Error al actualizar resumen de ventas: ${failure.message}',
+          tag: 'DASHBOARD_CUBIT',
+        );
+        return null;
+      }, (o) => o);
 
       salesResult.fold(
         (failure) {
@@ -215,7 +281,13 @@ class DashboardCubit extends Cubit<DashboardState> {
             tag: 'DASHBOARD_CUBIT',
           );
           if (loadId == _currentFilterLoadId) {
-            emit(currentState.copyWith(isSalesLoading: false));
+            emit(
+              currentState.copyWith(
+                isSalesLoading: false,
+                overview: overview,
+                clearOverview: overview == null,
+              ),
+            );
           }
         },
         (sales) {
@@ -223,6 +295,8 @@ class DashboardCubit extends Cubit<DashboardState> {
             emit(
               currentState.copyWith(
                 sales: sales,
+                overview: overview,
+                clearOverview: overview == null,
                 salesFilter: filter,
                 customStartDate: customStartDate,
                 customEndDate: customEndDate,
