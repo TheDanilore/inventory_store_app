@@ -948,6 +948,40 @@ $$;
 ALTER FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."find_existing_variants_for_import"("p_names" "text"[], "p_skus" "text"[], "p_warehouse_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("variant_id" "uuid", "product_id" "uuid", "product_name" "text", "brand_name" "text", "sku" "text", "variant_name" "text", "uses_lots" boolean, "current_stock" numeric)
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+  SELECT
+    pv.id,
+    p.id,
+    p.name,
+    COALESCE(b.name, ''),
+    COALESCE(pv.sku, ''),
+    COALESCE((
+      SELECT string_agg(av.value, ' / ' ORDER BY a.name)
+      FROM variant_attribute_values vav
+      JOIN attribute_values av ON av.id = vav.attribute_value_id
+      JOIN attributes a ON a.id = av.attribute_id
+      WHERE vav.variant_id = pv.id
+    ), ''),
+    p.uses_batches,
+    COALESCE((
+      SELECT sum(w.available_quantity)
+      FROM warehouse_stock_batches w
+      WHERE w.variant_id = pv.id AND w.warehouse_id = p_warehouse_id
+    ), 0)
+  FROM products p
+  JOIN product_variants pv ON pv.product_id = p.id
+  LEFT JOIN brands b ON b.id = p.brand_id
+  WHERE import_norm(p.name) = ANY (COALESCE(p_names, '{}'))
+     OR lower(pv.sku) = ANY (COALESCE(p_skus, '{}'));
+$$;
+
+
+ALTER FUNCTION "public"."find_existing_variants_for_import"("p_names" "text"[], "p_skus" "text"[], "p_warehouse_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text" DEFAULT NULL::"text", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_profile_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1421,118 +1455,449 @@ $$;
 ALTER FUNCTION "public"."handle_update_timestamp"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."import_catalog_batch_v2"("p_products" "jsonb", "p_warehouse_id" "uuid", "p_stock_mode" "text", "p_update_prices" boolean, "p_batch_id" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions', 'auth'
     AS $$
 DECLARE
-    product_item jsonb;
-    variant_item jsonb;
-    v_product_id uuid;
-    v_variant_id uuid;
-    v_category_id uuid;
-    v_name text;
-    v_category_name text;
-    v_initial_stock numeric;
-BEGIN
-    -- Recorrer cada producto del JSON array 'payload'
-    FOR product_item IN SELECT * FROM jsonb_array_elements(payload)
-    LOOP
-        v_name := product_item->>'name';
-        v_category_name := product_item->>'category_name';
+  v_profile_id uuid;
+  v_role text;
+  v_prev jsonb;
+  v_result jsonb;
 
-        -- Buscar o crear categoría (si se proporciona)
+  v_prod jsonb;
+  v_var jsonb;
+  v_entry jsonb;
+
+  v_product_id uuid;
+  v_variant_id uuid;
+  v_brand_id uuid;
+  v_category_id uuid;
+  v_uses_lots boolean;
+  v_name text;
+  v_brand_name text;
+  v_cat_name text;
+  v_sku text;
+  v_variant_name text;
+  v_is_new_variant boolean;
+  v_touched boolean;
+
+  v_attr_id uuid;
+  v_attr_value_id uuid;
+  v_ing_name text;
+  v_ing_id uuid;
+
+  v_qty numeric;
+  v_lot text;
+  v_expiry date;
+  v_unit_cost numeric;
+  v_entry_id uuid;
+  v_entry_total numeric := 0;
+  v_stock_batch_id uuid;
+  v_prev_stock numeric;
+  v_new_stock numeric;
+  v_total_current numeric;
+  v_diff numeric;
+  v_remaining numeric;
+  v_take numeric;
+  r record;
+
+  v_created_products int := 0;
+  v_created_variants int := 0;
+  v_updated_variants int := 0;
+  v_movements int := 0;
+BEGIN
+  -- Autorización: solo admin / employee
+  SELECT id, role::text INTO v_profile_id, v_role
+  FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+  IF v_profile_id IS NULL OR v_role NOT IN ('admin', 'employee') THEN
+    RAISE EXCEPTION 'Operación rechazada: solo administradores o empleados pueden importar.';
+  END IF;
+
+  IF p_stock_mode NOT IN ('add', 'replace') THEN
+    RAISE EXCEPTION 'Modo de stock inválido: %', p_stock_mode;
+  END IF;
+  IF p_batch_id IS NULL OR btrim(p_batch_id) = '' THEN
+    RAISE EXCEPTION 'batch_id es obligatorio.';
+  END IF;
+
+  -- Idempotencia (con candado para llamadas simultáneas del mismo lote)
+  PERFORM pg_advisory_xact_lock(hashtext(p_batch_id));
+  SELECT result INTO v_prev FROM import_batches WHERE batch_id = p_batch_id;
+  IF FOUND THEN
+    RETURN v_prev;
+  END IF;
+
+  IF p_warehouse_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM warehouses WHERE id = p_warehouse_id AND is_active
+  ) THEN
+    RAISE EXCEPTION 'El almacén seleccionado no existe o está inactivo.';
+  END IF;
+
+  FOR v_prod IN SELECT * FROM jsonb_array_elements(p_products)
+  LOOP
+    v_name := btrim(v_prod->>'name');
+    v_brand_name := btrim(coalesce(v_prod->>'brand_name', ''));
+    v_cat_name := btrim(coalesce(v_prod->>'category_name', ''));
+    v_product_id := NULLIF(v_prod->>'product_id', '')::uuid;
+
+    IF v_product_id IS NOT NULL THEN
+      -- Producto existente: no se modifica nada de su ficha.
+      SELECT uses_batches INTO v_uses_lots FROM products WHERE id = v_product_id;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'El producto "%" ya no existe.', v_name;
+      END IF;
+    ELSE
+      -- Marca (buscar o crear)
+      v_brand_id := NULL;
+      IF v_brand_name <> '' THEN
+        SELECT id INTO v_brand_id FROM brands
+        WHERE import_norm(name) = import_norm(v_brand_name) LIMIT 1;
+        IF v_brand_id IS NULL THEN
+          INSERT INTO brands (name, created_by) VALUES (v_brand_name, v_profile_id)
+          RETURNING id INTO v_brand_id;
+        END IF;
+      END IF;
+
+      -- ¿Otro proceso ya lo creó? (mismo nombre + marca)
+      SELECT id, uses_batches INTO v_product_id, v_uses_lots FROM products
+      WHERE import_norm(name) = import_norm(v_name)
+        AND brand_id IS NOT DISTINCT FROM v_brand_id
+      LIMIT 1;
+
+      IF v_product_id IS NULL THEN
+        -- Categoría (buscar o crear)
         v_category_id := NULL;
-        IF v_category_name IS NOT NULL AND trim(v_category_name) != '' THEN
-            SELECT id INTO v_category_id FROM categories WHERE name ILIKE trim(v_category_name) LIMIT 1;
-            
-            IF v_category_id IS NULL THEN
-                INSERT INTO categories (name) VALUES (trim(v_category_name)) RETURNING id INTO v_category_id;
-            END IF;
+        IF v_cat_name <> '' THEN
+          SELECT id INTO v_category_id FROM categories
+          WHERE import_norm(name) = import_norm(v_cat_name) LIMIT 1;
+          IF v_category_id IS NULL THEN
+            INSERT INTO categories (name, created_by) VALUES (v_cat_name, v_profile_id)
+            RETURNING id INTO v_category_id;
+          END IF;
         END IF;
 
-        -- Crear el Producto principal
+        v_uses_lots := COALESCE((v_prod->>'uses_lots')::boolean, false);
+
         INSERT INTO products (
-            name,
-            description,
-            category_id,
-            is_active,
-            stock_control,
-            product_type
+          name, description, category_id, brand_id, is_active, details,
+          product_type, stock_control, uses_batches, created_by
         ) VALUES (
-            v_name,
-            product_item->>'description',
-            v_category_id,
-            true,
-            true,
-            'good'
+          v_name, NULLIF(btrim(coalesce(v_prod->>'description', '')), ''),
+          v_category_id, v_brand_id, true, '{}'::jsonb,
+          'good', true, v_uses_lots, v_profile_id
         ) RETURNING id INTO v_product_id;
+        v_created_products := v_created_products + 1;
 
-        -- Recorrer cada variante asociada a este producto
-        FOR variant_item IN SELECT * FROM jsonb_array_elements(product_item->'variants')
+        -- Componentes químicos / principios activos (a nivel de producto)
+        FOR v_ing_name IN
+          SELECT btrim(x) FROM regexp_split_to_table(coalesce(v_prod->>'components', ''), '[;|,]') AS x
         LOOP
-            -- Crear la Variante
-            INSERT INTO product_variants (
-                product_id,
-                sku,
-                unit_cost,
-                sale_price,
-                is_active
-            ) VALUES (
-                v_product_id,
-                variant_item->>'sku',
-                (variant_item->>'unit_cost')::numeric,
-                (variant_item->>'sale_price')::numeric,
-                true
-            ) RETURNING id INTO v_variant_id;
-
-            -- Insertar imagen de la variante si existe
-            IF variant_item->>'image_url' IS NOT NULL AND variant_item->>'image_url' != '' THEN
-                INSERT INTO product_images (
-                    product_id,
-                    variant_id,
-                    image_url,
-                    is_main,
-                    display_order
-                ) VALUES (
-                    v_product_id,
-                    v_variant_id,
-                    variant_item->>'image_url',
-                    true,
-                    0
-                );
-            END IF;
-
-            -- Si hay stock inicial para la variante
-            v_initial_stock := COALESCE((variant_item->>'initial_stock')::numeric, 0);
-            IF v_initial_stock > 0 THEN
-                IF p_warehouse_id IS NULL THEN
-                    SELECT id INTO p_warehouse_id FROM warehouses LIMIT 1;
-                END IF;
-
-                IF p_warehouse_id IS NOT NULL THEN
-                    INSERT INTO warehouse_stock_batches (
-                        warehouse_id,
-                        product_id,
-                        variant_id,
-                        batch_number,
-                        available_quantity
-                    ) VALUES (
-                        p_warehouse_id,
-                        v_product_id,
-                        v_variant_id,
-                        'BATCH-INITIAL',
-                        v_initial_stock
-                    );
-                END IF;
-            END IF;
-            
+          IF v_ing_name = '' THEN CONTINUE; END IF;
+          SELECT id INTO v_ing_id FROM active_ingredients
+          WHERE import_norm(name) = import_norm(v_ing_name) LIMIT 1;
+          IF v_ing_id IS NULL THEN
+            INSERT INTO active_ingredients (name) VALUES (v_ing_name)
+            RETURNING id INTO v_ing_id;
+          END IF;
+          INSERT INTO product_active_ingredients (product_id, ingredient_id)
+          VALUES (v_product_id, v_ing_id)
+          ON CONFLICT DO NOTHING;
         END LOOP;
+      END IF;
+    END IF;
+
+    -- ---------------------------- Variantes ----------------------------
+    FOR v_var IN SELECT * FROM jsonb_array_elements(v_prod->'variants')
+    LOOP
+      v_variant_id := NULLIF(v_var->>'variant_id', '')::uuid;
+      v_sku := NULLIF(btrim(coalesce(v_var->>'sku', '')), '');
+      v_variant_name := btrim(coalesce(v_var->>'variant_name', ''));
+      v_is_new_variant := false;
+      v_touched := false;
+
+      IF v_variant_id IS NULL AND v_sku IS NOT NULL THEN
+        SELECT id INTO v_variant_id FROM product_variants
+        WHERE lower(sku) = lower(v_sku) LIMIT 1;
+      END IF;
+
+      IF v_variant_id IS NOT NULL THEN
+        PERFORM 1 FROM product_variants WHERE id = v_variant_id AND product_id = v_product_id;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'El SKU "%" pertenece a otro producto (fila de "%").', coalesce(v_sku, ''), v_name;
+        END IF;
+      END IF;
+
+      IF v_variant_id IS NULL THEN
+        INSERT INTO product_variants (
+          product_id, sku, unit_cost, sale_price, wholesale_price,
+          wholesale_min_quantity, is_active, created_by
+        ) VALUES (
+          v_product_id, v_sku,
+          COALESCE((v_var->>'unit_cost')::numeric, 0),
+          COALESCE((v_var->>'sale_price')::numeric, 0),
+          (v_var->>'wholesale_price')::numeric,
+          (v_var->>'wholesale_min_quantity')::integer,
+          true, v_profile_id
+        ) RETURNING id INTO v_variant_id;
+        v_is_new_variant := true;
+        v_created_variants := v_created_variants + 1;
+
+        -- Nombre de variante = atributo "Variante" (las variantes de tu BD
+        -- se describen con attributes / attribute_values)
+        IF v_variant_name <> '' THEN
+          SELECT id INTO v_attr_id FROM attributes
+          WHERE import_norm(name) = 'variante' LIMIT 1;
+          IF v_attr_id IS NULL THEN
+            INSERT INTO attributes (name) VALUES ('Variante') RETURNING id INTO v_attr_id;
+          END IF;
+          SELECT id INTO v_attr_value_id FROM attribute_values
+          WHERE attribute_id = v_attr_id AND import_norm(value) = import_norm(v_variant_name)
+          LIMIT 1;
+          IF v_attr_value_id IS NULL THEN
+            INSERT INTO attribute_values (attribute_id, value) VALUES (v_attr_id, v_variant_name)
+            RETURNING id INTO v_attr_value_id;
+          END IF;
+          INSERT INTO variant_attribute_values (variant_id, attribute_value_id)
+          VALUES (v_variant_id, v_attr_value_id)
+          ON CONFLICT DO NOTHING;
+        END IF;
+
+        -- Imagen
+        IF NULLIF(btrim(coalesce(v_var->>'image_url', '')), '') IS NOT NULL THEN
+          INSERT INTO product_images (product_id, variant_id, image_url, is_main, display_order)
+          VALUES (v_product_id, v_variant_id, btrim(v_var->>'image_url'), true, 0);
+        END IF;
+
+      ELSIF p_update_prices THEN
+        UPDATE product_variants SET
+          unit_cost = COALESCE((v_var->>'unit_cost')::numeric, unit_cost),
+          sale_price = COALESCE((v_var->>'sale_price')::numeric, sale_price),
+          wholesale_price = COALESCE((v_var->>'wholesale_price')::numeric, wholesale_price),
+          wholesale_min_quantity = COALESCE((v_var->>'wholesale_min_quantity')::integer, wholesale_min_quantity),
+          updated_by = v_profile_id
+        WHERE id = v_variant_id;
+        v_touched := true;
+      END IF;
+
+      -- ----------------------------- Stock -----------------------------
+      IF p_warehouse_id IS NOT NULL
+         AND jsonb_array_length(coalesce(v_var->'stock_entries', '[]'::jsonb)) > 0 THEN
+        v_touched := true;
+        SELECT unit_cost INTO v_unit_cost FROM product_variants WHERE id = v_variant_id;
+
+        FOR v_entry IN SELECT * FROM jsonb_array_elements(v_var->'stock_entries')
+        LOOP
+          v_qty := COALESCE((v_entry->>'quantity')::numeric, 0);
+          IF v_uses_lots THEN
+            v_lot := NULLIF(btrim(coalesce(v_entry->>'lot_code', '')), '');
+            v_expiry := NULLIF(v_entry->>'expiry_date', '')::date;
+            IF v_lot IS NULL THEN CONTINUE; END IF;
+          ELSE
+            v_lot := 'DEFAULT';
+            v_expiry := NULL;
+          END IF;
+
+          IF p_stock_mode = 'add' OR v_is_new_variant THEN
+            -- ============ ENTRADA (suma) ============
+            IF v_qty <= 0 THEN CONTINUE; END IF;
+
+            IF v_entry_id IS NULL THEN
+              INSERT INTO inventory_entries (
+                warehouse_id, notes, created_by, document_type,
+                total_amount, payment_mode, status
+              ) VALUES (
+                p_warehouse_id, 'Importación masiva', v_profile_id, 'NINGUNO',
+                0, 'NINGUNO', 'COMPLETED'
+              ) RETURNING id INTO v_entry_id;
+            END IF;
+
+            INSERT INTO inventory_entry_items (
+              entry_id, product_id, variant_id, batch_number, expiry_date, quantity, unit_cost
+            ) VALUES (
+              v_entry_id, v_product_id, v_variant_id, v_lot, v_expiry, v_qty, v_unit_cost
+            );
+            v_entry_total := v_entry_total + v_qty * v_unit_cost;
+
+            SELECT id, available_quantity INTO v_stock_batch_id, v_prev_stock
+            FROM warehouse_stock_batches
+            WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id AND batch_number = v_lot
+            LIMIT 1 FOR UPDATE;
+
+            IF v_stock_batch_id IS NULL THEN
+              v_prev_stock := 0;
+              v_new_stock := v_qty;
+              INSERT INTO warehouse_stock_batches (
+                variant_id, warehouse_id, product_id, batch_number, expiry_date,
+                available_quantity, created_by, updated_by
+              ) VALUES (
+                v_variant_id, p_warehouse_id, v_product_id, v_lot, v_expiry,
+                v_new_stock, v_profile_id, v_profile_id
+              ) RETURNING id INTO v_stock_batch_id;
+            ELSE
+              v_new_stock := v_prev_stock + v_qty;
+              UPDATE warehouse_stock_batches
+              SET available_quantity = v_new_stock, updated_at = now(), updated_by = v_profile_id
+              WHERE id = v_stock_batch_id;
+            END IF;
+
+            INSERT INTO inventory_movements (
+              variant_id, warehouse_id, stock_batch_id, inventory_entry_id, quantity,
+              previous_stock, new_stock, unit_cost, total_cost, reason, notes, created_by
+            ) VALUES (
+              v_variant_id, p_warehouse_id, v_stock_batch_id, v_entry_id, v_qty,
+              v_prev_stock, v_new_stock, v_unit_cost, v_qty * v_unit_cost,
+              'ENTRY', 'Importación masiva', v_profile_id
+            );
+            v_movements := v_movements + 1;
+
+          ELSIF v_uses_lots THEN
+            -- ============ REEMPLAZAR (producto con lotes): ajusta ese lote ============
+            SELECT id, available_quantity INTO v_stock_batch_id, v_prev_stock
+            FROM warehouse_stock_batches
+            WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id AND batch_number = v_lot
+            LIMIT 1 FOR UPDATE;
+
+            IF v_stock_batch_id IS NULL THEN
+              IF v_qty > 0 THEN
+                INSERT INTO warehouse_stock_batches (
+                  variant_id, warehouse_id, product_id, batch_number, expiry_date,
+                  available_quantity, created_by, updated_by
+                ) VALUES (
+                  v_variant_id, p_warehouse_id, v_product_id, v_lot, v_expiry,
+                  v_qty, v_profile_id, v_profile_id
+                ) RETURNING id INTO v_stock_batch_id;
+                INSERT INTO inventory_movements (
+                  variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock,
+                  unit_cost, total_cost, reason, notes, created_by
+                ) VALUES (
+                  v_variant_id, p_warehouse_id, v_stock_batch_id, v_qty, 0, v_qty,
+                  v_unit_cost, v_qty * v_unit_cost, 'ADJUSTMENT',
+                  'Importación masiva (reemplazo de stock)', v_profile_id
+                );
+                v_movements := v_movements + 1;
+              END IF;
+            ELSIF v_prev_stock <> v_qty THEN
+              UPDATE warehouse_stock_batches
+              SET available_quantity = v_qty, updated_at = now(), updated_by = v_profile_id
+              WHERE id = v_stock_batch_id;
+              INSERT INTO inventory_movements (
+                variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock,
+                unit_cost, total_cost, reason, notes, created_by
+              ) VALUES (
+                v_variant_id, p_warehouse_id, v_stock_batch_id, v_qty - v_prev_stock,
+                v_prev_stock, v_qty, v_unit_cost, abs(v_qty - v_prev_stock) * v_unit_cost,
+                'ADJUSTMENT', 'Importación masiva (reemplazo de stock)', v_profile_id
+              );
+              v_movements := v_movements + 1;
+            END IF;
+
+          ELSE
+            -- ============ REEMPLAZAR (sin lotes): deja el TOTAL del almacén en v_qty ============
+            SELECT COALESCE(SUM(available_quantity), 0) INTO v_total_current
+            FROM warehouse_stock_batches
+            WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id;
+            v_diff := v_qty - v_total_current;
+
+            IF v_diff > 0 THEN
+              SELECT id, available_quantity INTO v_stock_batch_id, v_prev_stock
+              FROM warehouse_stock_batches
+              WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id AND batch_number = 'DEFAULT'
+              LIMIT 1 FOR UPDATE;
+
+              IF v_stock_batch_id IS NULL THEN
+                v_prev_stock := 0;
+                INSERT INTO warehouse_stock_batches (
+                  variant_id, warehouse_id, product_id, batch_number,
+                  available_quantity, created_by, updated_by
+                ) VALUES (
+                  v_variant_id, p_warehouse_id, v_product_id, 'DEFAULT',
+                  v_diff, v_profile_id, v_profile_id
+                ) RETURNING id INTO v_stock_batch_id;
+              ELSE
+                UPDATE warehouse_stock_batches
+                SET available_quantity = v_prev_stock + v_diff, updated_at = now(), updated_by = v_profile_id
+                WHERE id = v_stock_batch_id;
+              END IF;
+
+              INSERT INTO inventory_movements (
+                variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock,
+                unit_cost, total_cost, reason, notes, created_by
+              ) VALUES (
+                v_variant_id, p_warehouse_id, v_stock_batch_id, v_diff, v_prev_stock,
+                v_prev_stock + v_diff, v_unit_cost, v_diff * v_unit_cost,
+                'ADJUSTMENT', 'Importación masiva (reemplazo de stock)', v_profile_id
+              );
+              v_movements := v_movements + 1;
+
+            ELSIF v_diff < 0 THEN
+              v_remaining := -v_diff;
+              FOR r IN
+                SELECT id, available_quantity FROM warehouse_stock_batches
+                WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id
+                  AND available_quantity > 0
+                ORDER BY expiry_date NULLS LAST, created_at
+                FOR UPDATE
+              LOOP
+                EXIT WHEN v_remaining <= 0;
+                v_take := LEAST(r.available_quantity, v_remaining);
+                UPDATE warehouse_stock_batches
+                SET available_quantity = r.available_quantity - v_take,
+                    updated_at = now(), updated_by = v_profile_id
+                WHERE id = r.id;
+                INSERT INTO inventory_movements (
+                  variant_id, warehouse_id, stock_batch_id, quantity, previous_stock, new_stock,
+                  unit_cost, total_cost, reason, notes, created_by
+                ) VALUES (
+                  v_variant_id, p_warehouse_id, r.id, -v_take, r.available_quantity,
+                  r.available_quantity - v_take, v_unit_cost, v_take * v_unit_cost,
+                  'ADJUSTMENT', 'Importación masiva (reemplazo de stock)', v_profile_id
+                );
+                v_movements := v_movements + 1;
+                v_remaining := v_remaining - v_take;
+              END LOOP;
+            END IF;
+          END IF;
+        END LOOP;
+      END IF;
+
+      IF v_touched AND NOT v_is_new_variant THEN
+        v_updated_variants := v_updated_variants + 1;
+      END IF;
     END LOOP;
+  END LOOP;
+
+  IF v_entry_id IS NOT NULL THEN
+    UPDATE inventory_entries SET total_amount = v_entry_total WHERE id = v_entry_id;
+  END IF;
+
+  v_result := jsonb_build_object(
+    'created_products', v_created_products,
+    'created_variants', v_created_variants,
+    'updated_variants', v_updated_variants,
+    'stock_movements', v_movements
+  );
+
+  INSERT INTO import_batches (batch_id, result, created_by)
+  VALUES (p_batch_id, v_result, v_profile_id);
+
+  RETURN v_result;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."import_catalog_batch_v2"("p_products" "jsonb", "p_warehouse_id" "uuid", "p_stock_mode" "text", "p_update_prices" boolean, "p_batch_id" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."import_norm"("t" "text") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+  SELECT lower(unaccent(regexp_replace(btrim(coalesce(t, '')), '\s+', ' ', 'g')))
+$$;
+
+
+ALTER FUNCTION "public"."import_norm"("t" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) RETURNS "jsonb"
@@ -1572,7 +1937,7 @@ BEGIN
       RAISE EXCEPTION 'Stock insuficiente para la variante %', v_item.variant_id;
     END IF;
 
-    SELECT unit_price, wholesale_price, unit_cost INTO v_variant_record
+    SELECT sale_price, wholesale_price, unit_cost INTO v_variant_record
     FROM product_variants
     WHERE id = v_item.variant_id;
 
@@ -1580,7 +1945,7 @@ BEGIN
       RAISE EXCEPTION 'Variante no encontrada: %', v_item.variant_id;
     END IF;
 
-    v_item_price := v_variant_record.unit_price;
+    v_item_price := v_variant_record.sale_price;
     v_item_wholesale := COALESCE(v_variant_record.wholesale_price, v_item_price);
     v_item_cost := v_variant_record.unit_cost;
 
@@ -1647,11 +2012,11 @@ BEGIN
   -- 5. Insertar Ítems
   FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, variant_id UUID, quantity INT)
   LOOP
-    SELECT unit_price, wholesale_price, unit_cost INTO v_variant_record
+    SELECT sale_price, wholesale_price, unit_cost INTO v_variant_record
     FROM product_variants
     WHERE id = v_item.variant_id;
 
-    v_item_price := v_variant_record.unit_price;
+    v_item_price := v_variant_record.sale_price;
     v_item_cost := v_variant_record.unit_cost;
 
     INSERT INTO order_items (
@@ -4388,6 +4753,17 @@ CREATE TABLE IF NOT EXISTS "public"."financial_accounts" (
 ALTER TABLE "public"."financial_accounts" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."import_batches" (
+    "batch_id" "text" NOT NULL,
+    "result" "jsonb" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."import_batches" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."inventory_entries" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "warehouse_id" "uuid" NOT NULL,
@@ -4949,6 +5325,11 @@ ALTER TABLE ONLY "public"."daily_checkins"
 
 ALTER TABLE ONLY "public"."financial_accounts"
     ADD CONSTRAINT "financial_accounts_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."import_batches"
+    ADD CONSTRAINT "import_batches_pkey" PRIMARY KEY ("batch_id");
 
 
 
@@ -6423,6 +6804,9 @@ ALTER TABLE "public"."daily_checkins" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."financial_accounts" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."import_batches" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."inventory_entries" ENABLE ROW LEVEL SECURITY;
 
 
@@ -6760,6 +7144,12 @@ GRANT ALL ON FUNCTION "public"."delete_user_safely"("p_user_id" "uuid") TO "serv
 
 
 
+REVOKE ALL ON FUNCTION "public"."find_existing_variants_for_import"("p_names" "text"[], "p_skus" "text"[], "p_warehouse_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."find_existing_variants_for_import"("p_names" "text"[], "p_skus" "text"[], "p_warehouse_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_existing_variants_for_import"("p_names" "text"[], "p_skus" "text"[], "p_warehouse_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "service_role";
@@ -6826,9 +7216,15 @@ GRANT ALL ON FUNCTION "public"."handle_update_timestamp"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."import_catalog_batch"("payload" "jsonb", "p_warehouse_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."import_catalog_batch_v2"("p_products" "jsonb", "p_warehouse_id" "uuid", "p_stock_mode" "text", "p_update_prices" boolean, "p_batch_id" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."import_catalog_batch_v2"("p_products" "jsonb", "p_warehouse_id" "uuid", "p_stock_mode" "text", "p_update_prices" boolean, "p_batch_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."import_catalog_batch_v2"("p_products" "jsonb", "p_warehouse_id" "uuid", "p_stock_mode" "text", "p_update_prices" boolean, "p_batch_id" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."import_norm"("t" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."import_norm"("t" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."import_norm"("t" "text") TO "service_role";
 
 
 
@@ -7096,6 +7492,10 @@ GRANT ALL ON TABLE "public"."daily_checkins" TO "service_role";
 GRANT ALL ON TABLE "public"."financial_accounts" TO "anon";
 GRANT ALL ON TABLE "public"."financial_accounts" TO "authenticated";
 GRANT ALL ON TABLE "public"."financial_accounts" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."import_batches" TO "service_role";
 
 
 

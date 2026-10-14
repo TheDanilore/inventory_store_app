@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/bulk_import_models.dart';
 
 abstract class ProductsRepository {
   // Productos (Lectura)
@@ -185,10 +186,31 @@ abstract class ProductsRepository {
 
   // Guardado Atómico (RPC)
   Future<Either<Failure, void>> saveProductComplete(SaveProductPayload payload);
-  
-  // Importación Masiva (RPC)
-  Future<Either<Failure, void>> importCatalogBatch(List<Map<String, dynamic>> payload, String? warehouseId);
-  Future<Either<Failure, List<String>>> getExistingSkus(List<String> skus);
+
+  // 1) Datos para la pantalla (almacenes activos + nombres de marcas y categorías)
+  Future<Either<Failure, ImportCatalogContext>> getImportCatalogContext();
+
+  // 2) Qué de lo que viene en el CSV YA existe.
+  //    Debe devolver las variantes de los productos cuyo nombre (normalizado, sin
+  //    tildes/mayúsculas) esté en productNames, MÁS las variantes cuyo sku esté en skus.
+  //    currentStock = stock de esa variante en warehouseId (suma de lotes si usa lotes).
+  //    Parte las listas en trozos (p. ej. 200) si son muy grandes.
+
+  Future<Either<Failure, List<ExistingVariant>>> findExistingVariants({
+    required List<String> productNames,
+    required List<String> skus,
+    required String? warehouseId,
+  });
+
+  // 3) Reemplaza al antiguo importCatalogBatch(batch, warehouseId)
+
+  Future<Either<Failure, ImportBatchResult>> importCatalogBatch({
+    required List<Map<String, dynamic>> products,
+    required String? warehouseId,
+    required String stockMode, // 'add' | 'replace'
+    required bool updatePrices,
+    required String batchId,
+  });
 
   // Eliminación segura (RPC)
   Future<Either<Failure, void>> deleteProduct(String id);

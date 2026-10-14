@@ -812,7 +812,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       label: 'Importar',
                                       icon: Icons.upload_file_rounded,
                                       tooltip:
-                                          'Importar lote de productos desde CSV',
+                                          'Importar lote de productos',
                                       onPressed:
                                           () => context.go(
                                             '/products/bulk-import',
@@ -1180,7 +1180,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     if (isDesktop) {
       return SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: EdgeInsets.zero,
         sliver: SliverToBoxAdapter(
           child: Container(
             width: double.infinity,

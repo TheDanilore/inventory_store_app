@@ -23,7 +23,8 @@ class PurchaseOrdersTableView extends StatefulWidget {
   });
 
   @override
-  State<PurchaseOrdersTableView> createState() => _PurchaseOrdersTableViewState();
+  State<PurchaseOrdersTableView> createState() =>
+      _PurchaseOrdersTableViewState();
 }
 
 class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
@@ -53,7 +54,9 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           cmp = a.createdAt.compareTo(b.createdAt);
           break;
         case 'supplier':
-          cmp = a.supplierName.toLowerCase().compareTo(b.supplierName.toLowerCase());
+          cmp = a.supplierName.toLowerCase().compareTo(
+            b.supplierName.toLowerCase(),
+          );
           break;
         case 'status':
           cmp = a.status.toLowerCase().compareTo(b.status.toLowerCase());
@@ -156,10 +159,12 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
       );
     }
 
-    final isCredit = po.paymentMethod.toUpperCase().contains('CREDIT') ||
+    final isCredit =
+        po.paymentMethod.toUpperCase().contains('CREDIT') ||
         po.paymentMethod.toUpperCase().contains('CRÉDIT');
     final debt = (po.totalAmount - po.amountPaid).clamp(0.0, double.infinity);
-    final isPaid = po.paymentStatus.toUpperCase() == 'PAID' ||
+    final isPaid =
+        po.paymentStatus.toUpperCase() == 'PAID' ||
         (!isCredit && po.status == 'RECEIVED') ||
         (po.amountPaid >= po.totalAmount && po.totalAmount > 0);
 
@@ -176,7 +181,11 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle_rounded, size: 11, color: Color(0xFF047857)),
+            Icon(
+              Icons.check_circle_rounded,
+              size: 11,
+              color: Color(0xFF047857),
+            ),
             SizedBox(width: 4),
             Text(
               'Pagado',
@@ -261,7 +270,8 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         badgeWidget,
-        if (po.paymentMethod.isNotEmpty && po.paymentMethod != 'POR ACORDAR') ...[
+        if (po.paymentMethod.isNotEmpty &&
+            po.paymentMethod != 'POR ACORDAR') ...[
           const SizedBox(height: 2),
           Text(
             po.paymentMethod,
@@ -310,7 +320,12 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           icon: Icons.copy_rounded,
           onPressed: (selectedList) {
             final ids = selectedList
-                .map((po) => po.id.length >= 8 ? '#${po.id.substring(0, 8).toUpperCase()}' : '#${po.id.toUpperCase()}')
+                .map(
+                  (po) =>
+                      po.id.length >= 8
+                          ? '#${po.id.substring(0, 8).toUpperCase()}'
+                          : '#${po.id.toUpperCase()}',
+                )
                 .join(', ');
             _copyToClipboard(context, ids, '${selectedList.length} IDs');
           },
@@ -320,11 +335,18 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           icon: Icons.summarize_rounded,
           customColor: AppColors.teal,
           onPressed: (selectedList) {
-            final double total = selectedList.fold(0.0, (sum, po) => sum + po.totalAmount);
+            final double total = selectedList.fold(
+              0.0,
+              (sum, po) => sum + po.totalAmount,
+            );
             final summary = selectedList
-                .map((po) => '- #${po.id.substring(0, 8).toUpperCase()} | ${po.supplierName} | S/ ${po.totalAmount.toStringAsFixed(2)} [${po.status}]')
+                .map(
+                  (po) =>
+                      '- #${po.id.substring(0, 8).toUpperCase()} | ${po.supplierName} | S/ ${po.totalAmount.toStringAsFixed(2)} [${po.status}]',
+                )
                 .join('\n');
-            final fullText = 'RESUMEN DE ÓRDENES DE COMPRA (${selectedList.length})\n$summary\nTotal acumulado: S/ ${total.toStringAsFixed(2)}';
+            final fullText =
+                'RESUMEN DE ÓRDENES DE COMPRA (${selectedList.length})\n$summary\nTotal acumulado: S/ ${total.toStringAsFixed(2)}';
             _copyToClipboard(context, fullText, 'Resumen de compras');
           },
         ),
@@ -338,9 +360,10 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           isSortable: true,
           tooltip: 'Identificador de la orden de compra',
           cellBuilder: (context, po) {
-            final shortId = po.id.length >= 8
-                ? po.id.substring(0, 8).toUpperCase()
-                : po.id.toUpperCase();
+            final shortId =
+                po.id.length >= 8
+                    ? po.id.substring(0, 8).toUpperCase()
+                    : po.id.toUpperCase();
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -348,7 +371,10 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                   onTap: () => _copyToClipboard(context, shortId, 'ID'),
                   borderRadius: BorderRadius.circular(6),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
@@ -379,7 +405,10 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           tooltip: 'Fecha de emisión',
           cellBuilder: (context, po) {
             final date = po.createdAt.toLocal();
-            final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
+            final dateFormatted = DateFormat(
+              'dd MMM, hh:mm a',
+              'es',
+            ).format(date);
             return Text(
               dateFormatted,
               style: const TextStyle(
@@ -399,19 +428,23 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
           isSortable: true,
           tooltip: 'Proveedor y comprobante asociado',
           cellBuilder: (context, po) {
-            final hasDocument = po.documentType.isNotEmpty &&
+            final hasDocument =
+                po.documentType.isNotEmpty &&
                 po.documentType.toUpperCase() != 'NINGUNO' &&
                 po.documentType.toUpperCase() != 'SIN DOCUMENTO';
-            final docSubtitle = hasDocument
-                ? '${po.documentType} ${po.documentNumber ?? ""}'.trim()
-                : (po.warehouseName ?? 'Almacén Principal');
+            final docSubtitle =
+                hasDocument
+                    ? '${po.documentType} ${po.documentNumber ?? ""}'.trim()
+                    : (po.warehouseName ?? 'Almacén Principal');
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  po.supplierName.isNotEmpty ? po.supplierName : 'Sin Proveedor',
+                  po.supplierName.isNotEmpty
+                      ? po.supplierName
+                      : 'Sin Proveedor',
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
@@ -537,17 +570,20 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
         ),
       ],
       mobileCardBuilder: (context, po, isSelected, onSelect) {
-        final shortId = po.id.length >= 8
-            ? po.id.substring(0, 8).toUpperCase()
-            : po.id.toUpperCase();
+        final shortId =
+            po.id.length >= 8
+                ? po.id.substring(0, 8).toUpperCase()
+                : po.id.toUpperCase();
         final date = po.createdAt.toLocal();
         final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
-        final hasDocument = po.documentType.isNotEmpty &&
+        final hasDocument =
+            po.documentType.isNotEmpty &&
             po.documentType.toUpperCase() != 'NINGUNO' &&
             po.documentType.toUpperCase() != 'SIN DOCUMENTO';
-        final docSubtitle = hasDocument
-            ? '${po.documentType} ${po.documentNumber ?? ""}'.trim()
-            : (po.warehouseName ?? 'Almacén Principal');
+        final docSubtitle =
+            hasDocument
+                ? '${po.documentType} ${po.documentNumber ?? ""}'.trim()
+                : (po.warehouseName ?? 'Almacén Principal');
 
         return InkWell(
           onTap: () => widget.onSelectOrder(po),
@@ -572,7 +608,10 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
@@ -602,14 +641,18 @@ class _PurchaseOrdersTableViewState extends State<PurchaseOrdersTableView> {
                     Checkbox(
                       value: isSelected,
                       activeColor: AppColors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                       onChanged: (val) => onSelect(val ?? false),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  po.supplierName.isNotEmpty ? po.supplierName : 'Sin Proveedor',
+                  po.supplierName.isNotEmpty
+                      ? po.supplierName
+                      : 'Sin Proveedor',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
