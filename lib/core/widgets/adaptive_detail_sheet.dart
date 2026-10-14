@@ -1,18 +1,20 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Contenedor marco/contorno reutilizable para vistas de detalle:
-///  - Desktop / Tablet (>= 900px): Slide-over panel lateral flotante con bordes redondeados.
-///  - Móvil: Bottom Sheet con drag handle.
+///  - Desktop / Tablet (>= 900px): Slide-over panel lateral flotante con bordes redondeados y desenfoque de fondo.
+///  - Móvil: Bottom Sheet con drag handle táctil.
 class AdaptiveDetailSheet {
   static const double desktopBreakpoint = 900;
 
   static Future<T?> show<T>(
     BuildContext context, {
     required WidgetBuilder builder,
-    double desktopWidth = 520,
+    double desktopWidth = 540,
     double mobileMaxHeightFactor = 0.92,
+    bool enableGlassmorphism = true,
     Widget Function(Widget child)? wrap,
   }) {
     Widget wrapped(Widget child) => wrap != null ? wrap(child) : child;
@@ -23,9 +25,14 @@ class AdaptiveDetailSheet {
         context: context,
         barrierDismissible: true,
         barrierLabel: 'Cerrar detalle',
-        barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 220),
-        pageBuilder: (dialogContext, _, _) {
+        barrierColor: Colors.black.withValues(alpha: 0.28),
+        transitionDuration: const Duration(milliseconds: 240),
+        pageBuilder: (dialogContext, anim1, _) {
+          final curved = CurvedAnimation(
+            parent: anim1,
+            curve: Curves.easeOutCubic,
+          );
+
           return wrapped(
             _DetailSheetScope(
               isSideSheet: true,
@@ -36,41 +43,53 @@ class AdaptiveDetailSheet {
                 },
                 child: Focus(
                   autofocus: true,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Material(
-                        color: Colors.white,
-                        elevation: 8,
-                        shadowColor: Colors.black12,
-                        borderRadius: BorderRadius.circular(20),
-                        clipBehavior: Clip.antiAlias,
-                        child: SizedBox(
-                          width: desktopWidth.clamp(
-                            360.0,
-                            MediaQuery.sizeOf(dialogContext).width - 32,
-                          ),
-                          height: double.infinity,
-                          child: Builder(builder: builder),
+                  child: Stack(
+                    children: [
+                      // Fondo con borrosidad (Glassmorphism)
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(dialogContext).maybePop(),
+                          child: enableGlassmorphism
+                              ? BackdropFilter(
+                                  filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                                  child: Container(color: Colors.transparent),
+                                )
+                              : Container(color: Colors.transparent),
                         ),
                       ),
-                    ),
+                      // Panel Flotante
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(curved),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Material(
+                              color: Colors.white,
+                              elevation: 10,
+                              shadowColor: Colors.black12,
+                              borderRadius: BorderRadius.circular(24),
+                              clipBehavior: Clip.antiAlias,
+                              child: SizedBox(
+                                width: desktopWidth.clamp(
+                                  360.0,
+                                  MediaQuery.sizeOf(dialogContext).width - 32,
+                                ),
+                                height: double.infinity,
+                                child: Builder(builder: builder),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          );
-        },
-        transitionBuilder: (context, anim, _, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-            ),
-            child: child,
           );
         },
       );
@@ -169,7 +188,7 @@ class DetailSheetFrame extends StatelessWidget {
             ),
           ),
 
-        // ── Cabecera / Header ──
+        // Cabecera / Header
         Padding(
           padding: EdgeInsets.fromLTRB(20, isSide ? 16 : 8, 14, 12),
           child: Row(
@@ -243,7 +262,7 @@ class DetailSheetFrame extends StatelessWidget {
 
         const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
 
-        // ── Cuerpo Desplazable (Body) ──
+        // Cuerpo Desplazable (Body)
         Expanded(
           child: Container(
             color: bodyBackgroundColor ?? const Color(0xFFF8FAFC),
@@ -255,7 +274,7 @@ class DetailSheetFrame extends StatelessWidget {
           ),
         ),
 
-        // ── Pie Fijo (Footer) ──
+        // Pie Fijo (Footer)
         if (footer != null) ...[
           const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
           Container(

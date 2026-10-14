@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -28,7 +29,6 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_confirm_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_table_view.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -438,14 +438,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     final cubit = context.read<OrdersCubit>();
     final configCubit = context.read<AppConfigCubit>();
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    final result = await AdaptiveSideSheet.show<bool>(
-      context: context,
-      desktopWidth: drawerWidth,
-      barrierLabel: 'Cerrar detalle',
-      builder: (dialogCtx, isSlideOver) {
+    final result = await AdaptiveDetailSheet.show<bool>(
+      context,
+      desktopWidth: 620, // Define el ancho deseado para Pedidos
+      enableGlassmorphism: true, // Habilita el fondo desenfocado
+      builder: (dialogCtx) {
         return MultiBlocProvider(
           providers: [
             BlocProvider.value(value: cubit),
@@ -458,10 +456,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
             onOrderUpdated: (updated) {
               if (mounted) {
                 cubit.updateOrderInList(updated);
-                if (cubit.state.statusFilter != 'ALL' &&
-                    updated.status != cubit.state.statusFilter) {
-                  cubit.loadOrders(background: true);
-                }
               }
             },
           ),
