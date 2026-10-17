@@ -90,12 +90,25 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   }
 
   void _openProductDetail(InventoryStockItem item) {
-    context.push('/product/${item.productId}?variantId=${item.variantId}');
+    context.go(
+      Uri(
+        path: '/product/${item.productId}',
+        queryParameters: {'variantId': item.variantId},
+      ).toString(),
+    );
   }
 
   void _openKardex(InventoryStockItem item) {
-    context.push(
-      '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+    context.go(
+      Uri(
+        path: '/kardex',
+        queryParameters: {
+          'productId': item.productId,
+          'variantId': item.variantId,
+          'productName': item.productName,
+          'variantName': item.attrsText,
+        },
+      ).toString(),
     );
   }
 
@@ -1162,5 +1175,3 @@ class _InventoryStockSkeleton extends StatelessWidget {
     );
   }
 }
-
-/// Un solo chip "Categoría" que abre un menú, en vez de una fila de 10+ chips.

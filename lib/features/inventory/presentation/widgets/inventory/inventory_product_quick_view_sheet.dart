@@ -1182,8 +1182,11 @@ class _InventoryProductQuickViewContentState
                 flex: 2,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    final router = GoRouter.of(
+                      context,
+                    ); // capturar antes de cerrar
                     Navigator.pop(context);
-                    context.push(
+                    router.go(
                       '/product/${item.productId}?variantId=$_activeVariantId',
                     );
                   },
