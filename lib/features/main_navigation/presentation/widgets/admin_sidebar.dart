@@ -271,81 +271,76 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     _buildSectionHeader(context, 'CONFIGURACIÓN ERP'),
                   ],
 
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Cuentas',
-                      routePath: '/financial-accounts',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
+                  //"Maestros / Catálogos" (Categorías, Marcas, Atributos, Ingredientes Activos)
+                  _ExpandableSidebarGroup(
+                    isCollapsed: widget.isCollapsed,
+                    item: const AdminSidebarItem(
                       icon: Icons.category_outlined,
-                      title: 'Categorías',
-                      routePath: '/categories',
+                      title: 'Maestros / Catálogos',
+                      routePath: '',
+                      children: [
+                        AdminSidebarItem(
+                          icon: Icons.category_outlined,
+                          title: 'Categorías',
+                          routePath: '/categories',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.branding_watermark_outlined,
+                          title: 'Marcas',
+                          routePath: '/brands',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.local_offer,
+                          title: 'Atributos',
+                          routePath: '/attributes',
+                        ),
+                        AdminSidebarItem(
+                          icon: Icons.science_outlined,
+                          title: 'Ingredientes Activos',
+                          routePath: '/active-ingredients',
+                        ),
+                      ],
                     ),
                   ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.branding_watermark_outlined,
-                      title: 'Marcas',
-                      routePath: '/brands',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.warehouse_outlined,
-                      title: 'Almacenes',
-                      routePath: '/warehouses',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.tune_rounded,
-                      title: 'Atributos',
-                      routePath: '/attributes',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.science_rounded,
-                      title: 'Ingredientes Activos',
-                      routePath: '/active-ingredients',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Usuarios',
-                      routePath: '/users',
-                    ),
-                  ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.storefront_rounded,
-                      title: 'Negocio',
-                      routePath: '/business-info',
-                    ),
-                  ),
+
+                  // "Configuración del Sistema" : Usuarios, Cuentas, Almacenes y Negocio
                   BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                    selector:
-                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
+                    selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                     builder: (context, loyaltyEnabled) {
-                      if (!loyaltyEnabled) return const SizedBox.shrink();
-                      return _buildSidebarTile(
-                        context,
-                        const AdminSidebarItem(
-                          icon: Icons.stars_rounded,
-                          title: 'Puntos y Monedas',
-                          routePath: '/points-settings',
+                      return _ExpandableSidebarGroup(
+                        isCollapsed: widget.isCollapsed,
+                        item: AdminSidebarItem(
+                          icon: Icons.settings_outlined,
+                          title: 'Configuración del Sistema',
+                          routePath: '',
+                          children: [
+                            const AdminSidebarItem(
+                              icon: Icons.account_circle_outlined,
+                              title: 'Usuarios',
+                              routePath: '/users',
+                            ),
+                            const AdminSidebarItem(
+                              icon: Icons.account_balance_wallet_outlined,
+                              title: 'Cuentas',
+                              routePath: '/financial-accounts',
+                            ),
+                            const AdminSidebarItem(
+                              icon: Icons.warehouse_outlined,
+                              title: 'Almacenes',
+                              routePath: '/warehouses',
+                            ),
+                            const AdminSidebarItem(
+                              icon: Icons.storefront_outlined,
+                              title: 'Negocio',
+                              routePath: '/business-info',
+                            ),
+                            if (loyaltyEnabled)
+                              const AdminSidebarItem(
+                                icon: Icons.stars_rounded,
+                                title: 'Puntos y Monedas',
+                                routePath: '/points-settings',
+                              ),
+                          ],
                         ),
                       );
                     },

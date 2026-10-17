@@ -317,125 +317,111 @@ class _AppDrawerState extends State<AppDrawer> {
                   const _SectionDivider(),
                   _buildSectionTitle('CONFIGURACIÓN ERP'),
 
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: 'Cuentas',
-                      routePath: '/financial-accounts',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/financial-accounts');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.category_outlined,
-                      title: 'Categorías',
-                      routePath: '/categories',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/categories');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.branding_watermark_outlined,
-                      title: 'Marcas',
-                      routePath: '/brands',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/brands');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.warehouse_outlined,
-                      title: 'Almacenes',
-                      routePath: '/warehouses',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/warehouses');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.tune_rounded,
-                      title: 'Atributos',
-                      routePath: '/attributes',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/attributes');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.science_rounded,
-                      title: 'Ingredientes Activos',
-                      routePath: '/active-ingredients',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/active-ingredients');
-                      },
-                    ),
-                  ),
-
-                  _buildItem(
-                    context,
+                  //"Maestros / Catálogos" (Categorías, Marcas, Atributos, Ingredientes Activos)
+                  _ExpandableDrawerGroup(
                     _DrawerItem(
                       icon: Icons.people_outline_rounded,
-                      title: 'Usuarios',
-                      routePath: '/users',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/users');
-                      },
+                      title: 'Maestros / Catálogos',
+                      routePath: '',
+                      children: [
+                        _DrawerSubItem(
+                          icon: Icons.category_outlined,
+                          title: 'Categorías',
+                          routePath: '/categories',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/categories');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.branding_watermark_outlined,
+                          title: 'Marcas',
+                          routePath: '/brands',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/brands');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.local_offer,
+                          title: 'Atributos',
+                          routePath: '/attributes',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/attributes');
+                          },
+                        ),
+                        _DrawerSubItem(
+                          icon: Icons.science_outlined,
+                          title: 'Ingredientes activos',
+                          routePath: '/active-ingredients',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/active-ingredients');
+                          },
+                        ),
+                      ],
                     ),
                   ),
 
-                  _buildItem(
-                    context,
-                    _DrawerItem(
-                      icon: Icons.storefront_rounded,
-                      title: 'Negocio',
-                      routePath: '/business-info',
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.go('/business-info');
-                      },
-                    ),
-                  ),
-
+                  // "Configuración del Sistema" : Usuarios, Cuentas, Almacenes y Negocio
                   BlocSelector<AppConfigCubit, AppConfigState, bool>(
                     selector:
                         (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                     builder: (context, loyaltyEnabled) {
-                      if (!loyaltyEnabled) return const SizedBox.shrink();
-                      return _buildItem(
-                        context,
+                      return _ExpandableDrawerGroup(
                         _DrawerItem(
-                          icon: Icons.stars_rounded,
-                          title: 'Puntos y Monedas',
-                          routePath: '/points-settings',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.go('/points-settings');
-                          },
+                          icon: Icons.settings_outlined,
+                          title: 'Configuración del Sistema',
+                          routePath: '',
+                          children: [
+                            _DrawerSubItem(
+                              icon: Icons.account_circle_outlined,
+                              title: 'Usuarios',
+                              routePath: '/users',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.go('/users');
+                              },
+                            ),
+                            _DrawerSubItem(
+                              icon: Icons.account_balance_wallet_outlined,
+                              title: 'Cuentas',
+                              routePath: '/financial-accounts',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.go('/financial-accounts');
+                              },
+                            ),
+                            _DrawerSubItem(
+                              icon: Icons.warehouse_outlined,
+                              title: 'Almacenes',
+                              routePath: '/warehouses',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.go('/warehouses');
+                              },
+                            ),
+                            _DrawerSubItem(
+                              icon: Icons.storefront_outlined,
+                              title: 'Negocio',
+                              routePath: '/business-info',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.go('/business-info');
+                              },
+                            ),
+                            if (loyaltyEnabled)
+                              _DrawerSubItem(
+                                icon: Icons.stars_rounded,
+                                title: 'Puntos y Monedas',
+                                routePath: '/points-settings',
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  context.go('/points-settings');
+                                },
+                              ),
+                          ],
                         ),
                       );
                     },

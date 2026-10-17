@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
@@ -19,13 +19,16 @@ class AccountFormSheet extends StatefulWidget {
     FinancialAccountEntity? account,
   }) {
     final cubit = context.read<FinancialAccountsCubit>();
-    return AdaptiveSideSheet.show<bool>(
-      context: context,
+    return AdaptiveDetailSheet.show<bool>(
+      context,
       desktopWidth: 460.0,
       builder:
-          (dialogCtx, isSlideOver) => BlocProvider.value(
+          (dialogCtx) => BlocProvider.value(
             value: cubit,
-            child: AccountFormSheet(account: account, isSlideOver: isSlideOver),
+            child: AccountFormSheet(
+              account: account,
+              isSlideOver: AdaptiveDetailSheet.isSideSheet(dialogCtx),
+            ),
           ),
     );
   }

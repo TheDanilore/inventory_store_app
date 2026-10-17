@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_cubit.dart';
@@ -21,16 +21,18 @@ class MovementFormSheet extends StatefulWidget {
     final movCubit = context.read<AccountMovementsCubit>();
     final shiftCubit = context.read<CashShiftsCubit>();
 
-    return AdaptiveSideSheet.show<bool>(
-      context: context,
+    return AdaptiveDetailSheet.show<bool>(
+      context,
       desktopWidth: 500.0,
-      builder: (dialogCtx, isSlideOver) => MultiBlocProvider(
+      builder: (dialogCtx) => MultiBlocProvider(
         providers: [
           BlocProvider.value(value: accCubit),
           BlocProvider.value(value: movCubit),
           BlocProvider.value(value: shiftCubit),
         ],
-        child: MovementFormSheet(isSlideOver: isSlideOver),
+        child: MovementFormSheet(
+          isSlideOver: AdaptiveDetailSheet.isSideSheet(dialogCtx),
+        ),
       ),
     );
   }

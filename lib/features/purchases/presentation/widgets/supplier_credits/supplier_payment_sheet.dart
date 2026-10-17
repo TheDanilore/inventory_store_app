@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/supplie
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 
 class SupplierPaymentSheet extends StatefulWidget {
   final SupplierCreditEntity account;
@@ -33,16 +33,16 @@ class SupplierPaymentSheet extends StatefulWidget {
   }) {
     final cubit = context.read<SupplierCreditsCubit>();
 
-    return AdaptiveSideSheet.show<bool>(
-      context: context,
+    return AdaptiveDetailSheet.show<bool>(
+      context,
       desktopWidth: 540.0,
       barrierLabel: 'Cerrar registro de pago',
       builder:
-          (ctx, isSlideOver) => BlocProvider.value(
+          (ctx) => BlocProvider.value(
             value: cubit,
             child: SupplierPaymentSheet(
               account: account,
-              isDialog: isSlideOver,
+              isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
               onPaymentSaved: onPaymentSaved,
             ),
           ),

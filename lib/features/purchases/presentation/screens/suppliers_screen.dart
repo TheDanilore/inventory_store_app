@@ -17,7 +17,7 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/supp
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class SuppliersScreen extends StatefulWidget {
@@ -182,16 +182,16 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
 
   void _openSupplierModal(BuildContext context, [SupplierEntity? supplier]) {
     final cubit = context.read<SuppliersCubit>();
-    AdaptiveSideSheet.show<void>(
-      context: context,
+    AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: 540.0,
       barrierLabel: 'Cerrar proveedor',
       builder:
-          (ctx, isSlideOver) => BlocProvider.value(
+          (ctx) => BlocProvider.value(
             value: cubit,
             child: SupplierFormModal(
               supplierToEdit: supplier,
-              isDialog: isSlideOver,
+              isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
               onSaved: () {},
             ),
           ),

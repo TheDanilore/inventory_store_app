@@ -38,61 +38,55 @@ class AdaptiveDetailSheet {
           return wrapped(
             _DetailSheetScope(
               isSideSheet: true,
-              child: CallbackShortcuts(
-                bindings: {
-                  const SingleActivator(LogicalKeyboardKey.escape):
-                      () => Navigator.of(dialogContext).maybePop(),
-                },
-                child: Focus(
-                  autofocus: true,
-                  child: Stack(
-                    children: [
-                      // Fondo con borrosidad (Glassmorphism)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(dialogContext).maybePop(),
-                          child:
-                              enableGlassmorphism
-                                  ? BackdropFilter(
-                                    filter: ImageFilter.blur(
-                                      sigmaX: 6,
-                                      sigmaY: 6,
-                                    ),
-                                    child: Container(color: Colors.transparent),
-                                  )
-                                  : Container(color: Colors.transparent),
-                        ),
+              child: _DetailSheetKeyboardScope(
+                onDismiss: () => Navigator.of(dialogContext).maybePop(),
+                child: Stack(
+                  children: [
+                    // Fondo con borrosidad (Glassmorphism)
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(dialogContext).maybePop(),
+                        child:
+                            enableGlassmorphism
+                                ? BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 6,
+                                    sigmaY: 6,
+                                  ),
+                                  child: Container(color: Colors.transparent),
+                                )
+                                : Container(color: Colors.transparent),
                       ),
-                      // Panel Flotante
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(1, 0),
-                            end: Offset.zero,
-                          ).animate(curved),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Material(
-                              color: Colors.white,
-                              elevation: 10,
-                              shadowColor: Colors.black12,
-                              borderRadius: BorderRadius.circular(24),
-                              clipBehavior: Clip.antiAlias,
-                              child: SizedBox(
-                                width: desktopWidth.clamp(
-                                  360.0,
-                                  MediaQuery.sizeOf(dialogContext).width - 32,
-                                ),
-                                height: double.infinity,
-                                child: Builder(builder: builder),
+                    ),
+                    // Panel Flotante
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curved),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Material(
+                            color: Colors.white,
+                            elevation: 10,
+                            shadowColor: Colors.black12,
+                            borderRadius: BorderRadius.circular(24),
+                            clipBehavior: Clip.antiAlias,
+                            child: SizedBox(
+                              width: desktopWidth.clamp(
+                                360.0,
+                                MediaQuery.sizeOf(dialogContext).width - 32,
                               ),
+                              height: double.infinity,
+                              child: Builder(builder: builder),
                             ),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -126,6 +120,50 @@ class AdaptiveDetailSheet {
           ),
         );
       },
+    );
+  }
+
+  /// Indica si el contexto actual se está renderizando dentro del panel lateral de [AdaptiveDetailSheet].
+  static bool isSideSheet(BuildContext context) =>
+      _DetailSheetScope.isSide(context);
+}
+
+class _DetailSheetKeyboardScope extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onDismiss;
+
+  const _DetailSheetKeyboardScope({
+    required this.child,
+    required this.onDismiss,
+  });
+
+  bool _isInputFieldFocused() {
+    final primaryFocus = FocusManager.instance.primaryFocus;
+    if (primaryFocus == null) return false;
+    final context = primaryFocus.context;
+    if (context == null) return false;
+    return context.widget is EditableText ||
+        context.findAncestorWidgetOfExactType<EditableText>() != null ||
+        context.findAncestorStateOfType<EditableTextState>() != null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.escape) {
+          if (_isInputFieldFocused()) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            return KeyEventResult.handled;
+          }
+          onDismiss();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: child,
     );
   }
 }

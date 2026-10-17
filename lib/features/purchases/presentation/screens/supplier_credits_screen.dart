@@ -21,7 +21,7 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/supp
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credits/supplier_payment_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 
 class SupplierCreditsScreen extends StatefulWidget {
   const SupplierCreditsScreen({super.key});
@@ -204,13 +204,13 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   }
 
   void _openCreateAccountModal() {
-    AdaptiveSideSheet.show<void>(
-      context: context,
+    AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: 480.0,
       barrierLabel: 'Cerrar crédito',
       builder:
-          (ctx, isSlideOver) => SupplierCreditAccountSheet(
-            isDialog: isSlideOver,
+          (ctx) => SupplierCreditAccountSheet(
+            isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
             onSaved: () {
               context.read<SupplierCreditsCubit>().loadAccounts(refresh: true);
             },
@@ -239,14 +239,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
     BuildContext screenContext,
     SupplierCreditEntity account,
   ) async {
-    final action = await AdaptiveSideSheet.show<SupplierAccountAction>(
-      context: screenContext,
+    final action = await AdaptiveDetailSheet.show<SupplierAccountAction>(
+      screenContext,
       desktopWidth: 420.0,
       barrierLabel: 'Cerrar opciones',
       builder:
-          (ctx, isSlideOver) => SupplierAccountOptionsSheet(
+          (ctx) => SupplierAccountOptionsSheet(
             account: account,
-            isDialog: isSlideOver,
+            isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
           ),
     );
 
@@ -296,14 +296,14 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
   }
 
   void _openEditAccountModal(SupplierCreditEntity account) {
-    AdaptiveSideSheet.show<void>(
-      context: context,
+    AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: 480.0,
       barrierLabel: 'Cerrar edición de crédito',
       builder:
-          (ctx, isSlideOver) => SupplierCreditAccountSheet(
+          (ctx) => SupplierCreditAccountSheet(
             accountToEdit: account,
-            isDialog: isSlideOver,
+            isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
             onSaved: () {
               context.read<SupplierCreditsCubit>().loadAccounts(refresh: true);
             },

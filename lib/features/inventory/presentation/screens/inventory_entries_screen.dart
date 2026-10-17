@@ -25,7 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 
 class InventoryEntriesScreen extends StatefulWidget {
@@ -339,14 +339,14 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    await AdaptiveSideSheet.show<void>(
-      context: context,
+    await AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar detalle de entrada',
-      builder: (dialogContext, isSlideOver) {
+      builder: (dialogContext) {
         return InventoryEntryDetailSheet(
           entry: entry,
-          isBottomSheet: !isSlideOver,
+          isBottomSheet: !AdaptiveDetailSheet.isSideSheet(dialogContext),
           loadItems: () => _loadEntryItems(entry.id, null),
         );
       },

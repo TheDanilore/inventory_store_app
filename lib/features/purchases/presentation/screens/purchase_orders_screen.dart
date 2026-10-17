@@ -28,7 +28,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   final String? targetOrderId;
@@ -347,16 +347,16 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    await AdaptiveSideSheet.show<void>(
-      context: context,
+    await AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar detalle de compra',
-      builder: (dialogCtx, isSlideOver) {
+      builder: (dialogCtx) {
         return BlocProvider.value(
           value: cubit,
           child: PODetailSheet(
             po: po,
-            isDialog: isSlideOver,
+            isDialog: AdaptiveDetailSheet.isSideSheet(dialogCtx),
             onPaymentSuccess: () {
               _itemsCache.remove(po.id);
             },

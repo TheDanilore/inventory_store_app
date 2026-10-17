@@ -16,7 +16,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
@@ -268,14 +268,14 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
-    await AdaptiveSideSheet.show<void>(
-      context: context,
+    await AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar detalle de salida',
-      builder: (dialogContext, isSlideOver) {
+      builder: (dialogContext) {
         return InventoryExitDetailSheet(
           exitData: exit,
-          isBottomSheet: !isSlideOver,
+          isBottomSheet: !AdaptiveDetailSheet.isSideSheet(dialogContext),
           loadItems: () => _loadItems(exit),
         );
       },

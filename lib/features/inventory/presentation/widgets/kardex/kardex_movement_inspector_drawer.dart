@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 class KardexMovementInspectorDrawer extends StatelessWidget {
@@ -22,11 +22,11 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
     BuildContext context,
     KardexMovementEntity item,
   ) {
-    return AdaptiveSideSheet.show<void>(
-      context: context,
+    return AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: 440.0,
       barrierLabel: 'Cerrar detalle de movimiento',
-      builder: (ctx, isSlideOver) {
+      builder: (ctx) {
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: KardexMovementInspectorDrawer(
