@@ -51,6 +51,56 @@ class AdminProViewToggleConfig {
   });
 }
 
+/// Opción individual de un grupo de filtros.
+class AdminFilterOption<T> {
+  final T value;
+  final String label;
+  final IconData? icon;
+  final Color? color;
+
+  const AdminFilterOption({
+    required this.value,
+    required this.label,
+    this.icon,
+    this.color,
+  });
+}
+
+/// Grupo de filtros descrito como DATOS (no como widgets).
+///
+/// Con esto el toolbar puede dibujar el mismo filtro como dropdown en desktop
+/// y como chips dentro del bottom sheet en móvil, y el sheet se mantiene
+/// sincronizado con el estado de la pantalla.
+class AdminFilterGroup<T> {
+  final String title;
+  final IconData? icon;
+  final List<AdminFilterOption<T>> options;
+  final T selected;
+
+  /// Valor que significa "sin filtro" (ej. 'ALL', null). Sirve para el badge
+  /// de filtros activos y para el botón "Limpiar".
+  final T defaultValue;
+  final ValueChanged<T> onSelected;
+
+  const AdminFilterGroup({
+    required this.title,
+    required this.options,
+    required this.selected,
+    required this.defaultValue,
+    required this.onSelected,
+    this.icon,
+  });
+
+  bool get isActive => selected != defaultValue;
+
+  String get selectedLabel {
+    for (final o in options) {
+      if (o.value == selected) return o.label;
+    }
+    return title;
+  }
+}
+
 /// Toolbar Pro Unificado de alto rendimiento y diseño consistente para pantallas administrativas.
 ///
 /// Arquitectura Camaleónica y Adaptabilidad Multi-dispositivo:
@@ -94,6 +144,17 @@ class AdminProToolbar extends StatefulWidget {
 
   /// Conteo opcional de filtros actualmente activos para renderizar el badge semántico.
   final int? activeFiltersCount;
+
+  /// Filtros descritos como datos. Si se usan, el sheet móvil por defecto los
+  /// dibuja como chips con estado en vivo. [filterWidgets] sigue funcionando
+  /// para desktop/tablet y como respaldo.
+  final List<AdminFilterGroup<dynamic>> filterGroups;
+
+  /// Widgets extra que solo viven en el sheet móvil (ej. selector de fechas).
+  final List<Widget> mobileExtraFilters;
+
+  /// Texto del botón principal del sheet de filtros (ej. 'Ver 19 resultados').
+  final String mobileFiltersApplyLabel;
 
   /// Callback para abrir un BottomSheet personalizado de filtros en móvil (ej. ProductsMobileFiltersSheet).
   final VoidCallback? onOpenMobileFilters;
@@ -140,6 +201,9 @@ class AdminProToolbar extends StatefulWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     this.hidePrimaryActionOnMobile = true,
     this.activeFiltersCount,
+    this.filterGroups = const [],
+    this.mobileExtraFilters = const [],
+    this.mobileFiltersApplyLabel = 'Listo',
     this.onOpenMobileFilters,
     this.onClearFilters,
     this.mobileFiltersSheetBuilder,
@@ -159,6 +223,44 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   FocusNode get _effectiveSearchFocusNode =>
       widget.searchFocusNode ?? _internalSearchFocusNode;
 
+  /// Copia de los filtros que el sheet escucha. Se actualiza cada vez que la
+  /// pantalla reconstruye el toolbar, así el sheet nunca queda desfasado.
+  late final ValueNotifier<_FiltersSnapshot> _filtersSnapshot = ValueNotifier(
+    _FiltersSnapshot.from(widget),
+  );
+
+  @override
+  void didUpdateWidget(covariant AdminProToolbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _filtersSnapshot.value = _FiltersSnapshot.from(widget);
+  }
+
+  int get _effectiveActiveFilters =>
+      widget.activeFiltersCount ??
+      widget.filterGroups.where((g) => g.isActive).length;
+
+  bool get _hasFilters =>
+      widget.filterGroups.isNotEmpty ||
+      widget.filterWidgets.isNotEmpty ||
+      widget.onOpenMobileFilters != null ||
+      widget.mobileFiltersSheetBuilder != null;
+
+  void _openFilters() {
+    if (widget.onOpenMobileFilters != null) {
+      widget.onOpenMobileFilters!();
+    } else if (widget.mobileFiltersSheetBuilder != null) {
+      showModalBottomSheet(
+        context: context,
+        useRootNavigator: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: widget.mobileFiltersSheetBuilder!,
+      );
+    } else {
+      _showDefaultMobileFiltersSheet(context);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -173,6 +275,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     }
     _internalSearchFocusNode.dispose();
+    _filtersSnapshot.dispose();
     super.dispose();
   }
 
@@ -267,8 +370,8 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
     // 6. Atajo [F] o [Alt+F] -> Filtros
     if (event.logicalKey == LogicalKeyboardKey.keyF) {
-      if (widget.onOpenMobileFilters != null) {
-        widget.onOpenMobileFilters!();
+      if (_hasFilters) {
+        _openFilters();
         return true;
       }
     }
@@ -709,7 +812,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   // ── BOTÓN DE FILTROS AGRUPADOS PARA MÓVIL (STANDALONE 44X44 ESTILO PRODUCTS)
   Widget _buildMobileFiltersTriggerButton(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final count = widget.activeFiltersCount ?? 0;
+    final count = _effectiveActiveFilters;
     final hasActive = count > 0;
 
     return Stack(
@@ -743,19 +846,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           child: IconButton(
             onPressed: () {
               HapticFeedback.lightImpact();
-              if (widget.onOpenMobileFilters != null) {
-                widget.onOpenMobileFilters!();
-              } else if (widget.mobileFiltersSheetBuilder != null) {
-                showModalBottomSheet(
-                  context: context,
-                  useRootNavigator: true,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: widget.mobileFiltersSheetBuilder!,
-                );
-              } else {
-                _showDefaultMobileFiltersSheet(context);
-              }
+              _openFilters();
             },
             icon: Icon(
               Icons.tune_rounded,
@@ -797,108 +888,14 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurface : AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      builder:
+          (ctx) => _AdminFiltersSheet(
+            title: widget.mobileFiltersTitle,
+            snapshot: _filtersSnapshot,
+            onClearAll: widget.onClearFilters,
           ),
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        widget.mobileFiltersTitle,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (widget.onClearFilters != null)
-                        TextButton(
-                          onPressed: () {
-                            widget.onClearFilters!();
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text(
-                            'Limpiar Todo',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        )
-                      else
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 20),
-                          color: AppColors.textMuted,
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                    ],
-                  ),
-                  const Divider(color: AppColors.divider, height: 20),
-                  for (final filter in widget.filterWidgets) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: filter,
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Aplicar Filtros',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -1094,6 +1091,16 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     );
   }
 
+  /// Filtros para desktop/tablet: los widgets manuales tienen prioridad;
+  /// si no hay, se generan dropdowns desde [AdminProToolbar.filterGroups].
+  List<Widget> get _desktopFilters =>
+      widget.filterWidgets.isNotEmpty
+          ? widget.filterWidgets
+          : [
+            for (final g in widget.filterGroups) _AdminFilterDropdown(group: g),
+            ...widget.mobileExtraFilters,
+          ];
+
   // ── 1. DESKTOP LAYOUT (POWER-USER ERP, HIGH-DENSITY SINGLE ROW) ───────────
   Widget _buildDesktopLayout() {
     final primaryRow = Row(
@@ -1102,7 +1109,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         Expanded(flex: widget.searchFlex, child: _buildDesktopSearchField()),
 
         // 2. Filtros centrales modulares
-        for (final filter in widget.filterWidgets) ...[
+        for (final filter in _desktopFilters) ...[
           const SizedBox(width: 10),
           filter,
         ],
@@ -1154,7 +1161,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         widget.viewToggleConfig != null &&
         widget.viewToggleConfig!.showOnTablet;
     final hasSecondaryItems =
-        widget.filterWidgets.isNotEmpty ||
+        _desktopFilters.isNotEmpty ||
         showToggleOnTablet ||
         widget.onRefresh != null ||
         (widget.trailingActions != null && widget.trailingActions!.isNotEmpty);
@@ -1184,7 +1191,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: [
-                      for (final filter in widget.filterWidgets) ...[
+                      for (final filter in _desktopFilters) ...[
                         filter,
                         const SizedBox(width: 8),
                       ],
@@ -1221,10 +1228,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   // ── 3. MOBILE LAYOUT (APPLE HIG, STANDALONE ROW, CTA DELEGADO AL FAB) ────
   Widget _buildMobileLayout(BuildContext context) {
-    final hasFilters =
-        widget.filterWidgets.isNotEmpty ||
-        widget.onOpenMobileFilters != null ||
-        widget.mobileFiltersSheetBuilder != null;
+    final hasFilters = _hasFilters;
     final hasTrailing =
         widget.trailingActions != null && widget.trailingActions!.isNotEmpty;
     final showToggleOnMobile =
@@ -1343,6 +1347,405 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
         icon: RotationTransition(
           turns: _animCtrl,
           child: const Icon(Icons.refresh_rounded, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FILTROS: snapshot, dropdown de desktop y bottom sheet de móvil
+// ════════════════════════════════════════════════════════════════════════════
+
+class _FiltersSnapshot {
+  final List<AdminFilterGroup<dynamic>> groups;
+  final List<Widget> extras;
+  final List<Widget> legacyWidgets;
+  final String applyLabel;
+
+  const _FiltersSnapshot({
+    required this.groups,
+    required this.extras,
+    required this.legacyWidgets,
+    required this.applyLabel,
+  });
+
+  factory _FiltersSnapshot.from(AdminProToolbar w) => _FiltersSnapshot(
+    groups: w.filterGroups,
+    extras: w.mobileExtraFilters,
+    legacyWidgets: w.filterWidgets,
+    applyLabel: w.mobileFiltersApplyLabel,
+  );
+}
+
+/// Dropdown de desktop/tablet generado desde un [AdminFilterGroup].
+class _AdminFilterDropdown extends StatelessWidget {
+  final AdminFilterGroup<dynamic> group;
+  const _AdminFilterDropdown({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final active = group.isActive;
+    final accent = isDark ? const Color(0xFF2DD4BF) : AppColors.teal;
+
+    return PopupMenuButton<int>(
+      tooltip: group.title,
+      offset: const Offset(0, 44),
+      color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      onSelected: (i) => group.onSelected(group.options[i].value),
+      itemBuilder:
+          (_) => [
+            for (var i = 0; i < group.options.length; i++)
+              PopupMenuItem<int>(
+                value: i,
+                child: Row(
+                  children: [
+                    Icon(
+                      group.options[i].icon ??
+                          (group.options[i].value == group.selected
+                              ? Icons.check_rounded
+                              : Icons.circle_outlined),
+                      size: 16,
+                      color: group.options[i].color ?? AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      group.options[i].label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            group.options[i].value == group.selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                        color: group.options[i].color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color:
+              active
+                  ? accent.withValues(alpha: isDark ? 0.18 : 0.10)
+                  : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                active
+                    ? accent
+                    : (isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFCBD5E1)),
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              group.icon ?? Icons.filter_list_rounded,
+              size: 15,
+              color: active ? accent : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              active ? group.selectedLabel : group.title,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    active
+                        ? (isDark ? accent : AppColors.tealDark)
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: active ? accent : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet de filtros: chips agrupados, estado en vivo, sin menús
+/// flotantes encima. Se redibuja cuando la pantalla reconstruye el toolbar.
+class _AdminFiltersSheet extends StatelessWidget {
+  final String title;
+  final ValueNotifier<_FiltersSnapshot> snapshot;
+  final VoidCallback? onClearAll;
+
+  const _AdminFiltersSheet({
+    required this.title,
+    required this.snapshot,
+    this.onClearAll,
+  });
+
+  void _clear(_FiltersSnapshot s) {
+    HapticFeedback.selectionClick();
+    if (onClearAll != null) {
+      onClearAll!();
+      return;
+    }
+    for (final g in s.groups) {
+      if (g.isActive) g.onSelected(g.defaultValue);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ValueListenableBuilder<_FiltersSnapshot>(
+        valueListenable: snapshot,
+        builder: (context, s, _) {
+          final activeCount = s.groups.where((g) => g.isActive).length;
+          final hasGroups = s.groups.isNotEmpty;
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 8, 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (activeCount > 0 || onClearAll != null)
+                      TextButton(
+                        onPressed: () => _clear(s),
+                        child: const Text(
+                          'Limpiar',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      color: AppColors.textMuted,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.divider),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final g in s.groups) _FilterGroupSection(group: g),
+                      // Respaldo: filtros antiguos como widgets
+                      if (!hasGroups)
+                        for (final w in s.legacyWidgets)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: w,
+                          ),
+                      for (final w in s.extras)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: w,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.divider),
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomInset),
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    s.applyLabel,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _FilterGroupSection extends StatelessWidget {
+  final AdminFilterGroup<dynamic> group;
+  const _FilterGroupSection({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            group.title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final o in group.options)
+                _FilterChip(
+                  option: o,
+                  selected: o.value == group.selected,
+                  isDark: isDark,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    group.onSelected(o.value);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final AdminFilterOption<dynamic> option;
+  final bool selected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.option,
+    required this.selected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = option.color ?? AppColors.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color:
+                selected
+                    ? accent.withValues(alpha: isDark ? 0.22 : 0.10)
+                    : (isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.background),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color:
+                  selected
+                      ? accent
+                      : (isDark ? AppColors.darkBorder : AppColors.border),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected)
+                Icon(Icons.check_rounded, size: 15, color: accent)
+              else if (option.icon != null)
+                Icon(
+                  option.icon,
+                  size: 15,
+                  color: accent.withValues(alpha: 0.8),
+                ),
+              if (selected || option.icon != null) const SizedBox(width: 6),
+              Text(
+                option.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color:
+                      selected
+                          ? accent
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

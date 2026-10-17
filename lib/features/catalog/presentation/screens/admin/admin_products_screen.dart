@@ -20,7 +20,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_table.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_filters_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
 
@@ -238,7 +237,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       );
     }
   }
-
 
   void _showProductQuickView(ProductEntity product, AdminCatalogCubit cubit) {
     ProductQuickViewSheet.show(
@@ -881,11 +879,98 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   onRefresh: () => cubit.refreshProducts(),
                                   refreshTooltip:
                                       'Recargar catálogo (Atajo: R)',
-                                  onOpenMobileFilters:
-                                      () => ProductsMobileFiltersSheet.show(
-                                        context,
-                                        cubit,
+                                  filterGroups: [
+                                    AdminFilterGroup<bool?>(
+                                      title: 'Estado',
+                                      selected: state.filterIsActive,
+                                      defaultValue: null,
+                                      onSelected: cubit.setFilterIsActive,
+                                      options: const [
+                                        AdminFilterOption(
+                                          value: null,
+                                          label: 'Todos',
+                                        ),
+                                        AdminFilterOption(
+                                          value: true,
+                                          label: 'Activos',
+                                          color: AppColors.successDark,
+                                        ),
+                                        AdminFilterOption(
+                                          value: false,
+                                          label: 'Inactivos',
+                                        ),
+                                      ],
+                                    ),
+                                    AdminFilterGroup<CatalogStockFilter>(
+                                      title: 'Stock',
+                                      selected: state.stockFilter,
+                                      defaultValue: CatalogStockFilter.all,
+                                      onSelected: cubit.setStockFilter,
+                                      options: const [
+                                        AdminFilterOption(
+                                          value: CatalogStockFilter.all,
+                                          label: 'Todos',
+                                        ),
+                                        AdminFilterOption(
+                                          value: CatalogStockFilter.inStock,
+                                          label: 'En stock',
+                                          color: AppColors.tealDark,
+                                        ),
+                                        AdminFilterOption(
+                                          value: CatalogStockFilter.outOfStock,
+                                          label: 'Agotados',
+                                          color: AppColors.danger,
+                                        ),
+                                      ],
+                                    ),
+                                    AdminFilterGroup<String?>(
+                                      title: 'Categoría',
+                                      selected: state.selectedCategoryId,
+                                      defaultValue: null,
+                                      onSelected: cubit.setCategory,
+                                      options: [
+                                        const AdminFilterOption(
+                                          value: null,
+                                          label: 'Todas',
+                                        ),
+                                        for (final c in state.categories)
+                                          AdminFilterOption(
+                                            value: c.id,
+                                            label: c.name,
+                                          ),
+                                      ],
+                                    ),
+                                    AdminFilterGroup<CatalogSortOption>(
+                                      title: 'Ordenar por',
+                                      selected: state.sortOption,
+                                      defaultValue: CatalogSortOption.recent,
+                                      onSelected: cubit.setSortOption,
+                                      options: [
+                                        for (final o
+                                            in CatalogSortOption.values)
+                                          AdminFilterOption(
+                                            value: o,
+                                            label: o.label,
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                  mobileExtraFilters: [
+                                    SwitchListTile.adaptive(
+                                      contentPadding: EdgeInsets.zero,
+                                      value: state.searchByIngredient,
+                                      onChanged: cubit.toggleSearchByIngredient,
+                                      title: const Text(
+                                        'Buscar por principio activo',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
+                                    ),
+                                  ],
+                                  mobileFiltersApplyLabel:
+                                      'Ver ${state.totalCount} productos',
                                   activeFiltersCount: _countActiveFilters(
                                     state,
                                   ),
@@ -910,8 +995,6 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           ),
                         ),
                       ),
-
-
 
                       // ── Overlay de carga de acciones ───────────────────────────
                       if (state.actionState == ViewState.loading)
