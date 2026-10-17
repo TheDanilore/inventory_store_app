@@ -733,8 +733,28 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                 .read<InventoryEntriesCubit>()
                                 .setSearchQuery('');
                           },
-                          filterWidgets: [
-                            _buildWarehouseDropdown(context, currentState),
+                          filterGroups: [
+                            AdminFilterGroup<String>(
+                              title: 'Almacén',
+                              icon: Icons.storefront_rounded,
+                              selected: currentState.warehouseFilter,
+                              defaultValue: 'TODOS',
+                              onSelected:
+                                  context
+                                      .read<InventoryEntriesCubit>()
+                                      .setWarehouseFilter,
+                              options: [
+                                for (final w
+                                    in currentState.availableWarehouses)
+                                  AdminFilterOption<String>(
+                                    value: w,
+                                    label: w == 'TODOS' ? 'Todos' : w,
+                                    icon: Icons.storefront_rounded,
+                                  ),
+                              ],
+                            ),
+                          ],
+                          mobileExtraFilters: [
                             DateFilterCalendar(
                               height: 40,
                               borderRadius: BorderRadius.circular(10),
@@ -749,6 +769,16 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                       .setDateRange(null),
                             ),
                           ],
+                          activeFiltersCount:
+                              (currentState.warehouseFilter != 'TODOS'
+                                  ? 1
+                                  : 0) +
+                              (currentState.dateRange != null ? 1 : 0),
+                          onClearFilters: () {
+                            final c = context.read<InventoryEntriesCubit>();
+                            c.setWarehouseFilter('TODOS');
+                            c.setDateRange(null);
+                          },
                           viewToggleConfig: AdminProViewToggleConfig(
                             isTableView: _isTableView,
                             onToggleTableView:
@@ -785,87 +815,6 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildWarehouseDropdown(
-    BuildContext context,
-    InventoryEntriesLoaded state,
-  ) {
-    final cubit = context.read<InventoryEntriesCubit>();
-    final isFiltered = state.warehouseFilter != 'TODOS';
-
-    return PopupMenuButton<String>(
-      initialValue: state.warehouseFilter,
-      offset: const Offset(0, 44),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      onSelected: (val) => cubit.setWarehouseFilter(val),
-      itemBuilder:
-          (context) =>
-              state.availableWarehouses.map((w) {
-                return PopupMenuItem<String>(
-                  value: w,
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.storefront_rounded,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        w == 'TODOS' ? 'Todos los Almacenes' : w,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color:
-              isFiltered
-                  ? AppColors.teal.withValues(alpha: 0.1)
-                  : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
-            width: isFiltered ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.storefront_rounded,
-              size: 15,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              state.warehouseFilter == 'TODOS'
-                  ? 'Almacén: Todos'
-                  : state.warehouseFilter,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
     );
   }
 

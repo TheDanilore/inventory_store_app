@@ -568,7 +568,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                             _searchCtrl.clear();
                             cubit.updateSearch('');
                           },
-                          filterWidgets: [
+                          mobileExtraFilters: [
                             DateFilterCalendar(
                               height: 40,
                               borderRadius: BorderRadius.circular(10),
@@ -586,6 +586,12 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                               onClear: () => cubit.updateDateRange(null, null),
                             ),
                           ],
+                          activeFiltersCount:
+                              (state.startDate != null && state.endDate != null)
+                                  ? 1
+                                  : 0,
+                          onClearFilters:
+                              () => cubit.updateDateRange(null, null),
                           viewToggleConfig: AdminProViewToggleConfig(
                             isTableView: _isTableView,
                             onToggleTableView:

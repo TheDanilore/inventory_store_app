@@ -271,16 +271,13 @@ class _CustomerCreditsScreenContentState
             // FAB solo visible en móvil cuando no se está buscando
             floatingActionButton:
                 (isWide &&
-                    _tabController.index == 0 &&
-                    _searchCtrl.text.isEmpty)
+                        _tabController.index == 0 &&
+                        _searchCtrl.text.isEmpty)
                     ? FloatingActionButton.extended(
                       heroTag: 'add_customer_fab',
                       backgroundColor: AppColors.primary,
                       elevation: 4,
-                      icon: const Icon(
-                        Icons.add_rounded,
-                        color: Colors.white,
-                      ),
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
                       label: const Text(
                         'Nueva Línea',
                         style: TextStyle(
@@ -342,8 +339,33 @@ class _CustomerCreditsScreenContentState
                         _debounce?.cancel();
                         context.read<CustomerCreditListCubit>().setSearch('');
                       },
+                      // Desktop/tablet: control segmentado existente.
                       filterWidgets: [
                         _buildSegmentedFilter(accountsWithDebtCount),
+                      ],
+                      // Móvil: el mismo filtro como chips en el sheet (estado en vivo).
+                      filterGroups: [
+                        AdminFilterGroup<int>(
+                          title: 'Cuentas',
+                          icon: Icons.account_balance_wallet_outlined,
+                          selected: _tabController.index,
+                          defaultValue: 0,
+                          onSelected: (i) {
+                            _tabController.animateTo(i);
+                            setState(() {});
+                          },
+                          options: [
+                            const AdminFilterOption(value: 0, label: 'Todas'),
+                            AdminFilterOption(
+                              value: 1,
+                              label:
+                                  accountsWithDebtCount > 0
+                                      ? 'Por cobrar ($accountsWithDebtCount)'
+                                      : 'Por cobrar',
+                              color: AppColors.danger,
+                            ),
+                          ],
+                        ),
                       ],
                       viewToggleConfig: AdminProViewToggleConfig(
                         isTableView: _isTableView,

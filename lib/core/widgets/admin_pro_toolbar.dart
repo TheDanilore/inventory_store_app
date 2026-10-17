@@ -241,6 +241,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
 
   bool get _hasFilters =>
       widget.filterGroups.isNotEmpty ||
+      widget.mobileExtraFilters.isNotEmpty ||
       widget.filterWidgets.isNotEmpty ||
       widget.onOpenMobileFilters != null ||
       widget.mobileFiltersSheetBuilder != null;

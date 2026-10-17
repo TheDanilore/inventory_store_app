@@ -658,11 +658,43 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                 _searchCtrl.clear();
                                 context.read<CustomersCubit>().search('');
                               },
+                              // Desktop/tablet: control segmentado existente.
                               filterWidgets: [
                                 _buildSegmentedFilter(
                                   totalCount: totalCount,
                                   debtCount: debtCount,
                                   topCount: topCount,
+                                ),
+                              ],
+                              // Móvil: el mismo filtro como chips en el sheet (estado en vivo).
+                              filterGroups: [
+                                AdminFilterGroup<int>(
+                                  title: 'Clientes',
+                                  icon: Icons.people_alt_outlined,
+                                  selected: _tabCtrl.index,
+                                  defaultValue: 0,
+                                  onSelected:
+                                      (i) =>
+                                          setState(() => _tabCtrl.animateTo(i)),
+                                  options: [
+                                    AdminFilterOption(
+                                      value: 0,
+                                      label: 'Todos ($totalCount)',
+                                    ),
+                                    AdminFilterOption(
+                                      value: 1,
+                                      label:
+                                          debtCount > 0
+                                              ? 'Con deuda activa ($debtCount)'
+                                              : 'Con deuda activa',
+                                      color: AppColors.danger,
+                                    ),
+                                    AdminFilterOption(
+                                      value: 2,
+                                      label: '👑 Top VIP ($topCount)',
+                                      color: const Color(0xFFB45309),
+                                    ),
+                                  ],
                                 ),
                               ],
                               viewToggleConfig: AdminProViewToggleConfig(
