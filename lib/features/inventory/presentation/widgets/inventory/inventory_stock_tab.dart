@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_product_quick_view_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_table.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -17,20 +18,15 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_variant_panel.dart';
 
 class InventoryStockTab extends StatefulWidget {
   final String? initialSearch;
   final String? initialStatusFilter;
 
-  /// Se invoca con el SKU para saltar a la pestaña Lotes ya filtrada.
-  final void Function(String search)? onViewLots;
-
   const InventoryStockTab({
     super.key,
     this.initialSearch,
     this.initialStatusFilter,
-    this.onViewLots,
   });
 
   @override
@@ -44,9 +40,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   final _tabFocusNode = FocusNode();
   Timer? _debounce;
   InventoryStockItem? _selectedItem;
-
-  /// true cuando hay espacio para lista + panel (>= InventoryBreakpoints.split).
-  bool _splitLayout = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -289,15 +282,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 if (event.logicalKey == LogicalKeyboardKey.enter ||
                     event.logicalKey == LogicalKeyboardKey.numpadEnter) {
                   final item = _selectedItem ?? stockItems.first;
-                  if (_splitLayout) {
-                    if (_selectedItem == null) {
-                      setState(() => _selectedItem = item);
-                    } else {
-                      _openProductDetail(item);
-                    }
-                  } else {
-                    _showQuickView(item, currentState);
-                  }
+                  _showQuickView(item, currentState);
                   return KeyEventResult.handled;
                 }
               }
@@ -308,71 +293,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
             builder: (context, constraints) {
               final isDesktop =
                   constraints.maxWidth >= InventoryBreakpoints.split;
-              _splitLayout = isDesktop;
 
               if (isDesktop) {
-                final list = _buildDesktopLayout(
+                return _buildDesktopLayout(
                   currentState,
                   state is InventoryLoading,
                   cubit: context.read<InventoryCubit>(),
-                );
-
-                // Variante seleccionada con datos frescos (tras recargas)
-                InventoryStockItem? selected = _selectedItem;
-                if (selected != null) {
-                  for (final it in currentState.stockItems) {
-                    if (it.variantId == selected!.variantId &&
-                        it.productId == selected.productId) {
-                      selected = it;
-                      break;
-                    }
-                  }
-                }
-
-                final sel = selected;
-                final Widget? panel =
-                    sel == null
-                        ? null
-                        : SizedBox(
-                          width: InventoryBreakpoints.detailPaneWidth,
-                          child: InventoryVariantPanel(
-                            key: ValueKey(
-                              '${sel.productId}-${sel.variantId}',
-                            ),
-                            item: sel,
-                            warehouseName: currentState.selectedWarehouseName,
-                            onClose: () => setState(() => _selectedItem = null),
-                            onOpenDetail: () => _openProductDetail(sel),
-                            onKardex: () => _openKardex(sel),
-                            onViewLots:
-                                widget.onViewLots == null
-                                    ? null
-                                    : () => widget.onViewLots!(sel.sku ?? sel.productName),
-                          ),
-                        );
-
-                // Ancho suficiente para tabla (960) + panel (400): lo empuja.
-                // Si no, el panel se superpone para no forzar scroll horizontal.
-                if (constraints.maxWidth >= InventoryBreakpoints.wide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(child: list),
-                      if (panel != null) panel,
-                    ],
-                  );
-                }
-                return Stack(
-                  children: [
-                    Positioned.fill(child: list),
-                    if (panel != null)
-                      Positioned(
-                        top: 0,
-                        bottom: 0,
-                        right: 0,
-                        child: Material(elevation: 8, child: panel),
-                      ),
-                  ],
                 );
               }
 
@@ -458,130 +384,22 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                         ],
                       ),
                       const SizedBox(height: 14),
-                      // Toolbar Pro Unificado (Buscador, Estados Operativos, Categorías, Refresh)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: InventoryPalette.of(context).surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: InventoryPalette.of(context).border),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x050F172A),
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 7,
-                              child: _SearchField(
-                                controller: _searchCtrl,
-                                focusNode: _searchFocusNode,
-                                hint: 'Buscar producto o SKU... [ / ]',
-                                onChanged: _onSearchChanged,
-                                onSubmitted: _onSearchSubmitted,
-                                isLoading: state.isSearchingStock,
-                                onClear: () {
-                                  if (_debounce?.isActive ?? false) {
-                                    _debounce!.cancel();
-                                  }
-                                  _searchCtrl.clear();
-                                  cubit.setStockSearch('');
-                                },
-                                onScan: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'La función de escáner QR estará disponible pronto.',
-                                      ),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 13,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                child: Row(
-                                  children: [
-                                    // ── Segmented Control de Estados Operativos ──
-                                    _StatusPill(
-                                      label: 'Todos',
-                                      isSelected:
-                                          state.stockStatusFilter == 'all',
-                                      onTap:
-                                          () =>
-                                              cubit.setStockStatusFilter('all'),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    _StatusPill(
-                                      label:
-                                          'Bajo Stock (${state.globalLowStockCount})',
-                                      icon: Icons.warning_amber_rounded,
-                                      color: AppColors.warning,
-                                      isSelected:
-                                          state.stockStatusFilter ==
-                                          'low_stock',
-                                      onTap:
-                                          () => cubit.setStockStatusFilter(
-                                            state.stockStatusFilter ==
-                                                    'low_stock'
-                                                ? 'all'
-                                                : 'low_stock',
-                                          ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    _StatusPill(
-                                      label: 'Agotados',
-                                      icon: Icons.highlight_off_rounded,
-                                      color: AppColors.danger,
-                                      isSelected:
-                                          state.stockStatusFilter ==
-                                          'out_of_stock',
-                                      onTap:
-                                          () => cubit.setStockStatusFilter(
-                                            state.stockStatusFilter ==
-                                                    'out_of_stock'
-                                                ? 'all'
-                                                : 'out_of_stock',
-                                          ),
-                                    ),
-                                    if (state.categories.isNotEmpty) ...[
-                                      const SizedBox(width: 6),
-                                      _CategoryFilterChip(
-                                        categories: state.categories,
-                                        selected: state.stockCategoryFilter,
-                                        onSelected: cubit.setStockCategory,
-                                      ),
-                                    ],
-                                    if (state.stockStatusFilter != 'all' ||
-                                        state.stockCategoryFilter !=
-                                            'Todos') ...[
-                                      const SizedBox(width: 6),
-                                      _ClearFilterPill(
-                                        onTap: () {
-                                          cubit.setStockStatusFilter('all');
-                                          cubit.setStockCategory('Todos');
-                                        },
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                      // Toolbar Pro unificado (AdminProToolbar)
+                      _buildToolbar(
+                        state,
+                        cubit,
+                        isDesktop: true,
+                        isTablet: false,
+                        margin: EdgeInsets.zero,
                       ),
+                      if (state.isSearchingStock)
+                        const SizedBox(
+                          height: 2,
+                          child: LinearProgressIndicator(
+                            backgroundColor: Colors.transparent,
+                            color: AppColors.primary,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -612,8 +430,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             selectedItem: _selectedItem,
                             isLoading: state.isSearchingStock,
                             onQuickView: (item) {
-                              // Desktop: el panel derecho reemplaza al modal
                               setState(() => _selectedItem = item);
+                              _showQuickView(item, state);
                             },
                             onOpenDetail: (item) {
                               setState(() => _selectedItem = item);
@@ -649,6 +467,113 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           //Agregar espacio vacio para paginacion
           const SizedBox(height: 50),
       ],
+    );
+  }
+
+  /// Toolbar único para todos los tamaños. Los filtros se describen como datos
+  /// (AdminFilterGroup): dropdowns en desktop/tablet y chips en el bottom sheet
+  /// de móvil, siempre sincronizados con el estado del cubit.
+  Widget _buildToolbar(
+    InventoryLoaded state,
+    InventoryCubit cubit, {
+    required bool isDesktop,
+    required bool isTablet,
+    required EdgeInsetsGeometry margin,
+  }) {
+    final status =
+        state.stockStatusFilter == 'bajo_stock'
+            ? 'low_stock'
+            : state.stockStatusFilter;
+
+    final categories = <String>[
+      'Todos',
+      ...state.categories.where((c) => c != 'Todos'),
+    ];
+    final category =
+        categories.contains(state.stockCategoryFilter)
+            ? state.stockCategoryFilter
+            : 'Todos';
+
+    final groups = <AdminFilterGroup<dynamic>>[
+      AdminFilterGroup<String>(
+        title: 'Estado',
+        icon: Icons.inventory_2_outlined,
+        selected: status,
+        defaultValue: 'all',
+        options: [
+          const AdminFilterOption(value: 'all', label: 'Todos'),
+          const AdminFilterOption(
+            value: 'in_stock',
+            label: 'Con stock',
+            icon: Icons.check_circle_outline_rounded,
+            color: AppColors.success,
+          ),
+          AdminFilterOption(
+            value: 'low_stock',
+            label: 'Bajo stock (${state.globalLowStockCount})',
+            icon: Icons.warning_amber_rounded,
+            color: AppColors.warning,
+          ),
+          const AdminFilterOption(
+            value: 'out_of_stock',
+            label: 'Agotados',
+            icon: Icons.highlight_off_rounded,
+            color: AppColors.danger,
+          ),
+        ],
+        onSelected: cubit.setStockStatusFilter,
+      ),
+      if (state.categories.isNotEmpty)
+        AdminFilterGroup<String>(
+          title: 'Categoría',
+          icon: Icons.category_outlined,
+          selected: category,
+          defaultValue: 'Todos',
+          options: [
+            for (final c in categories) AdminFilterOption(value: c, label: c),
+          ],
+          onSelected: cubit.setStockCategory,
+        ),
+    ];
+
+    return AdminProToolbar(
+      searchController: _searchCtrl,
+      searchFocusNode: _searchFocusNode,
+      searchHint: 'Buscar producto o SKU...',
+      searchKeyHint: '/',
+      // Búsqueda mientras escribe (con debounce) y al presionar Enter.
+      searchOnSubmitOnly: false,
+      onSearchChanged: _onSearchChanged,
+      onSearchSubmitted: _onSearchSubmitted,
+      onClearSearch: () {
+        if (_debounce?.isActive ?? false) _debounce!.cancel();
+        _searchCtrl.clear();
+        cubit.setStockSearch('');
+      },
+      filterGroups: groups,
+      activeFiltersCount: groups.where((g) => g.isActive).length,
+      onClearFilters: () {
+        cubit.setStockStatusFilter('all');
+        cubit.setStockCategory('Todos');
+      },
+      mobileFiltersTitle: 'Filtrar inventario',
+      mobileFiltersApplyLabel: 'Ver resultados',
+      onRefresh: () {
+        cubit.refreshAll();
+        AppSnackbar.show(
+          context,
+          message: 'Actualizando catálogo de inventario...',
+          type: SnackbarType.info,
+          duration: const Duration(seconds: 2),
+        );
+      },
+      refreshTooltip: 'Recargar existencias',
+      // Los atajos (/, R, Esc, B, Enter...) ya los maneja esta pestaña y la
+      // pantalla; se desactivan aquí para no ejecutar la acción dos veces.
+      enableKeyboardShortcuts: false,
+      isDesktop: isDesktop,
+      isTablet: isTablet,
+      margin: margin,
     );
   }
 
@@ -825,107 +750,20 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
         ),
 
-        // ── Filtros Sticky Móvil con Segmented Status ──
+        // ── Toolbar Pro sticky (móvil: buscador + filtros en sheet; tablet: 2 filas) ──
         SliverPersistentHeader(
           pinned: true,
           delegate: _StickyStockFiltersDelegate(
-            height: 104.0,
+            height: isTablet ? 134.0 : 68.0,
             child: Container(
               color: InventoryPalette.of(context).background,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SearchField(
-                          controller: _searchCtrl,
-                          focusNode: _searchFocusNode,
-                          hint: 'Buscar producto o SKU...',
-                          onChanged: _onSearchChanged,
-                          onSubmitted: _onSearchSubmitted,
-                          isLoading: state.isSearchingStock,
-                          onClear: () {
-                            if (_debounce?.isActive ?? false) {
-                              _debounce!.cancel();
-                            }
-                            _searchCtrl.clear();
-                            cubit.setStockSearch('');
-                          },
-                          onScan: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'La función de escáner QR estará disponible pronto.',
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _StatusPill(
-                          label: 'Todos',
-                          isSelected: state.stockStatusFilter == 'all',
-                          onTap: () => cubit.setStockStatusFilter('all'),
-                        ),
-                        const SizedBox(width: 6),
-                        _StatusPill(
-                          label: 'Bajo Stock (${state.globalLowStockCount})',
-                          icon: Icons.warning_amber_rounded,
-                          color: AppColors.warning,
-                          isSelected: state.stockStatusFilter == 'low_stock',
-                          onTap:
-                              () => cubit.setStockStatusFilter(
-                                state.stockStatusFilter == 'low_stock'
-                                    ? 'all'
-                                    : 'low_stock',
-                              ),
-                        ),
-                        const SizedBox(width: 6),
-                        _StatusPill(
-                          label: 'Agotados',
-                          icon: Icons.highlight_off_rounded,
-                          color: AppColors.danger,
-                          isSelected: state.stockStatusFilter == 'out_of_stock',
-                          onTap:
-                              () => cubit.setStockStatusFilter(
-                                state.stockStatusFilter == 'out_of_stock'
-                                    ? 'all'
-                                    : 'out_of_stock',
-                              ),
-                        ),
-                        if (state.categories.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          _CategoryFilterChip(
-                            categories: state.categories,
-                            selected: state.stockCategoryFilter,
-                            onSelected: cubit.setStockCategory,
-                          ),
-                        ],
-                        if (state.stockStatusFilter != 'all' ||
-                            (state.stockCategoryFilter.isNotEmpty &&
-                                state.stockCategoryFilter != 'Todos')) ...[
-                          const SizedBox(width: 6),
-                          _ClearFilterPill(
-                            onTap: () {
-                              cubit.setStockStatusFilter('all');
-                              cubit.setStockCategory('Todos');
-                            },
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+              alignment: Alignment.topCenter,
+              child: _buildToolbar(
+                state,
+                cubit,
+                isDesktop: false,
+                isTablet: isTablet,
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               ),
             ),
           ),
@@ -1142,7 +980,9 @@ class _MetricCardState extends State<_MetricCard> {
             ? widget.color
             : (_isHovered
                 ? widget.color.withValues(alpha: 0.5)
-                : (widget.highlight ? widget.color : InventoryPalette.of(context).border));
+                : (widget.highlight
+                    ? widget.color
+                    : InventoryPalette.of(context).border));
     final effectiveBg =
         widget.isSelected
             ? widget.color.withValues(alpha: 0.08)
@@ -1281,277 +1121,6 @@ class _MetricCardState extends State<_MetricCard> {
   }
 }
 
-class _StatusPill extends StatefulWidget {
-  final String label;
-  final IconData? icon;
-  final bool isSelected;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _StatusPill({
-    required this.label,
-    this.icon,
-    required this.isSelected,
-    this.color,
-    required this.onTap,
-  });
-
-  @override
-  State<_StatusPill> createState() => _StatusPillState();
-}
-
-class _StatusPillState extends State<_StatusPill> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final activeColor = widget.color ?? AppColors.primary;
-    final bg =
-        widget.isSelected
-            ? activeColor
-            : (_isHovered
-                ? activeColor.withValues(alpha: 0.08)
-                : InventoryPalette.of(context).surface);
-    final border =
-        widget.isSelected
-            ? activeColor
-            : (_isHovered
-                ? activeColor.withValues(alpha: 0.3)
-                : InventoryPalette.of(context).border);
-    final textCol =
-        widget.isSelected
-            ? Colors.white
-            : (_isHovered ? activeColor : InventoryPalette.of(context).textPrimary);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: border,
-                width: widget.isSelected ? 1.5 : 1,
-              ),
-              boxShadow:
-                  widget.isSelected
-                      ? [
-                        BoxShadow(
-                          color: activeColor.withValues(alpha: 0.25),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                      : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(
-                    widget.icon,
-                    size: 13,
-                    color: widget.isSelected ? Colors.white : activeColor,
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight:
-                        widget.isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: textCol,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ClearFilterPill extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _ClearFilterPill({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5.5),
-          decoration: BoxDecoration(
-            color: AppColors.danger.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.close_rounded, size: 12, color: AppColors.danger),
-              SizedBox(width: 3),
-              Text(
-                'Limpiar',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.danger,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode? focusNode;
-  final String hint;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<String>? onSubmitted;
-  final VoidCallback onClear;
-  final VoidCallback onScan;
-  final bool isLoading;
-
-  const _SearchField({
-    required this.controller,
-    this.focusNode,
-    required this.hint,
-    required this.onChanged,
-    this.onSubmitted,
-    required this.onClear,
-    required this.onScan,
-    this.isLoading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: InventoryPalette.of(context).textPrimary,
-        ),
-        textAlignVertical: TextAlignVertical.center,
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: InventoryPalette.of(context).textMuted,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            size: 19,
-            color: AppColors.teal,
-          ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(right: 6),
-                  child: SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.teal,
-                    ),
-                  ),
-                ),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: controller,
-                builder: (context, val, _) {
-                  if (val.text.isNotEmpty && !isLoading) {
-                    return IconButton(
-                      icon: const Icon(Icons.cancel_rounded, size: 16),
-                      color: InventoryPalette.of(context).textMuted,
-                      onPressed: onClear,
-                    );
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: InventoryPalette.of(context).subtle,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: InventoryPalette.of(context).border),
-                      ),
-                      child: Text(
-                        '/',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: InventoryPalette.of(context).textMuted,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.qr_code_scanner_rounded, size: 17),
-                color: AppColors.teal,
-                tooltip: 'Escanear QR',
-                onPressed: onScan,
-              ),
-            ],
-          ),
-          filled: true,
-          fillColor: InventoryPalette.of(context).background,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 0,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: InventoryPalette.of(context).border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: InventoryPalette.of(context).border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _InventoryStockSkeleton extends StatelessWidget {
   const _InventoryStockSkeleton();
 
@@ -1595,103 +1164,3 @@ class _InventoryStockSkeleton extends StatelessWidget {
 }
 
 /// Un solo chip "Categoría" que abre un menú, en vez de una fila de 10+ chips.
-class _CategoryFilterChip extends StatelessWidget {
-  final List<String> categories;
-  final String selected;
-  final ValueChanged<String> onSelected;
-
-  const _CategoryFilterChip({
-    required this.categories,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  bool get _active => selected.isNotEmpty && selected != 'Todos';
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: 'Filtrar por categoría',
-      offset: const Offset(0, 40),
-      constraints: const BoxConstraints(maxHeight: 360, minWidth: 200),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: InventoryPalette.of(context).border),
-      ),
-      onSelected: onSelected,
-      itemBuilder:
-          (_) => [
-            for (final c in categories)
-              PopupMenuItem<String>(
-                value: c,
-                child: Row(
-                  children: [
-                    Icon(
-                      c == selected
-                          ? Icons.check_rounded
-                          : Icons.folder_outlined,
-                      size: 16,
-                      color:
-                          c == selected
-                              ? AppColors.primary
-                              : InventoryPalette.of(context).textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        c == 'Todos' ? 'Todas las categorías' : c,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              c == selected ? FontWeight.w700 : FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: _active ? AppColors.primary : InventoryPalette.of(context).surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: _active ? AppColors.primary : InventoryPalette.of(context).border,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.folder_outlined,
-              size: 14,
-              color: _active ? Colors.white : InventoryPalette.of(context).textSecondary,
-            ),
-            const SizedBox(width: 6),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 140),
-              child: Text(
-                _active ? selected : 'Categoría',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: _active ? FontWeight.w700 : FontWeight.w600,
-                  color: _active ? Colors.white : InventoryPalette.of(context).textPrimary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: _active ? Colors.white : InventoryPalette.of(context).textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

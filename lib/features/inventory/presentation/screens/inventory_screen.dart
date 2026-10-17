@@ -89,12 +89,6 @@ class _InventoryScreenState extends State<InventoryScreen>
     }
   }
 
-  /// Puente Stock -> Lotes: filtra Lotes por el SKU y cambia de pestaña.
-  void _showLotsOf(String search) {
-    context.read<InventoryCubit>().setBatchSearch(search);
-    _tabController.animateTo(1);
-  }
-
   void _openExportModal(InventoryLoaded? loadedState) {
     FocusManager.instance.primaryFocus?.unfocus();
     InventoryExportSheet.show(
@@ -263,7 +257,6 @@ class _InventoryScreenState extends State<InventoryScreen>
                   InventoryStockTab(
                     initialSearch: widget.initialSearch,
                     initialStatusFilter: widget.initialStatusFilter,
-                    onViewLots: _showLotsOf,
                   ),
                   const InventoryBatchesTab(),
                 ],
@@ -500,10 +493,6 @@ class _SegmentedTabs extends StatelessWidget {
                 const Icon(Icons.inventory_2_rounded, size: 16),
                 const SizedBox(width: 8),
                 const Text('Stock General'),
-                if (isDesktop) ...[
-                  const SizedBox(width: 6),
-                  _ShortcutKeyPill(text: '1'),
-                ],
               ],
             ),
           ),
@@ -536,43 +525,10 @@ class _SegmentedTabs extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (isDesktop) ...[
-                  const SizedBox(width: 6),
-                  _ShortcutKeyPill(text: '2'),
-                ],
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ShortcutKeyPill extends StatelessWidget {
-  final String text;
-
-  const _ShortcutKeyPill({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.border,
-        ),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-        ),
       ),
     );
   }
@@ -1219,34 +1175,6 @@ class _AdaptiveExportButtonState extends State<_AdaptiveExportButton> {
                           isDark
                               ? AppColors.darkTextPrimary
                               : AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? AppColors.darkSurfaceElevated
-                              : AppColors.surface,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: isDark ? AppColors.darkBorder : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      'Ctrl+E',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            isDark
-                                ? AppColors.darkTextMuted
-                                : AppColors.textMuted,
-                      ),
                     ),
                   ),
                 ],

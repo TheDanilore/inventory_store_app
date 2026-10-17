@@ -107,17 +107,6 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
         final currentState = loadedState;
 
-        // Si la búsqueda cambió desde fuera (p. ej. "Ver lotes" en Stock),
-        // reflejarla en el campo, salvo que la persona esté escribiendo.
-        if (!_searchFocusNode.hasFocus &&
-            _searchCtrl.text != currentState.batchSearchText) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && !_searchFocusNode.hasFocus) {
-              _searchCtrl.text = currentState.batchSearchText;
-            }
-          });
-        }
-
         return LayoutBuilder(
           builder: (context, constraints) {
             final isTablet = constraints.maxWidth >= InventoryBreakpoints.split;
