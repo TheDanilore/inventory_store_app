@@ -24,15 +24,21 @@ class PosAddToCartSheet extends StatefulWidget {
   final ProductEntity productEntity;
   final bool isDialogMode;
   final String? warehouseId;
+  final String? initialVariantId;
 
   const PosAddToCartSheet({
     super.key,
     required this.productEntity,
     this.isDialogMode = false,
     this.warehouseId,
+    this.initialVariantId,
   });
 
-  static Future<void> show(BuildContext context, ProductEntity product) async {
+  static Future<void> show(
+    BuildContext context,
+    ProductEntity product, {
+    String? initialVariantId,
+  }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     final cartCubit = context.read<CartCubit>();
     final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
@@ -48,7 +54,11 @@ class PosAddToCartSheet extends StatefulWidget {
                   create:
                       (_) =>
                           PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(product, warehouseId: warehouseId),
+                            ..loadData(
+                              product,
+                              warehouseId: warehouseId,
+                              initialVariantId: initialVariantId,
+                            ),
                 ),
               ],
               child: RepaintBoundary(
@@ -63,6 +73,7 @@ class PosAddToCartSheet extends StatefulWidget {
                       productEntity: product,
                       isDialogMode: true,
                       warehouseId: warehouseId,
+                      initialVariantId: initialVariantId,
                     ),
                   ),
                 ),
@@ -82,7 +93,11 @@ class PosAddToCartSheet extends StatefulWidget {
                   create:
                       (_) =>
                           PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(product, warehouseId: warehouseId),
+                            ..loadData(
+                              product,
+                              warehouseId: warehouseId,
+                              initialVariantId: initialVariantId,
+                            ),
                 ),
               ],
               child: Padding(
@@ -92,6 +107,7 @@ class PosAddToCartSheet extends StatefulWidget {
                 child: PosAddToCartSheet(
                   productEntity: product,
                   warehouseId: warehouseId,
+                  initialVariantId: initialVariantId,
                 ),
               ),
             ),
@@ -328,10 +344,13 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                                 : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
                                     ? v.sku!
                                     : 'Opción');
+                            final barcodeText = v.barcode != null && v.barcode!.isNotEmpty
+                                ? ' [${v.barcode}]'
+                                : '';
                             return DropdownMenuItem(
                               value: v,
                               child: Text(
-                                '$vName · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
+                                '$vName$barcodeText · S/ ${(v.salePrice)?.toStringAsFixed(2)} $stockLabel',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textPrimary,

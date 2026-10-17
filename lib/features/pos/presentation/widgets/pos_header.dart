@@ -17,6 +17,7 @@ class PosHeader extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final bool searchByIngredient;
   final ValueChanged<bool> onToggleIngredientSearch;
+  final VoidCallback? onScanBarcode;
   final VoidCallback? onBack;
 
   const PosHeader({
@@ -25,6 +26,7 @@ class PosHeader extends StatelessWidget {
     required this.onSearchChanged,
     required this.searchByIngredient,
     required this.onToggleIngredientSearch,
+    this.onScanBarcode,
     this.onBack,
     this.searchFocusNode,
   });
@@ -789,6 +791,57 @@ class PosHeader extends StatelessWidget {
             ),
           ),
         ),
+
+        // ── Botón de Escáner Cámara Barcode / QR ───────────────────────────
+        if (onScanBarcode != null) ...[
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'Escanear código de barras o QR',
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: onScanBarcode,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 42,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 12 : 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.teal.withValues(alpha: 0.4),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AppColors.tealDark,
+                        size: 20,
+                      ),
+                      if (isDesktop) ...[
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Escanear',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.tealDark,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

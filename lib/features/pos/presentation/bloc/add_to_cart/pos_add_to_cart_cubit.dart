@@ -10,7 +10,11 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
   PosAddToCartCubit(this._repository) : super(PosAddToCartInitial());
 
-  Future<void> loadData(ProductEntity product, {String? warehouseId}) async {
+  Future<void> loadData(
+    ProductEntity product, {
+    String? warehouseId,
+    String? initialVariantId,
+  }) async {
     emit(PosAddToCartLoading());
 
     try {
@@ -49,7 +53,13 @@ class PosAddToCartCubit extends Cubit<PosAddToCartState> {
 
       ProductVariantEntity? selectedVariant;
       if (variants.isNotEmpty) {
-        selectedVariant = variants.firstWhere(
+        if (initialVariantId != null && initialVariantId.isNotEmpty) {
+          selectedVariant = variants.cast<ProductVariantEntity?>().firstWhere(
+            (ProductVariantEntity? v) => v?.id == initialVariantId,
+            orElse: () => null,
+          );
+        }
+        selectedVariant ??= variants.firstWhere(
           (ProductVariantEntity v) => (stockByVariant[v.id] ?? 0) > 0,
           orElse: () => variants.first,
         );

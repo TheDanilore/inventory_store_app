@@ -26,6 +26,7 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
 class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
@@ -127,6 +128,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     _clienteCtrl.clear();
     _puntosCtrl.text = '0';
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openCameraScanner() async {
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+    final cartCubit = context.read<CartCubit>();
+    await PosBarcodeScannerService.openCameraScanner(
+      context: context,
+      cartCubit: cartCubit,
+      warehouseId: warehouseId,
+    );
   }
 
   //  CÁLCULOS (Movidos a PosCalculatorUtils)
@@ -570,39 +581,69 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                             MainAxisAlignment.spaceBetween,
                                         children: [
                                           PosSectionLabel('Productos en caja'),
-                                          BlocBuilder<CartCubit, CartState>(
-                                            builder: (context, cartState) {
-                                              if (cartState.items.isEmpty) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return TextButton.icon(
-                                                onPressed: _onClearCart,
-                                                icon: const Icon(
-                                                  Icons.delete_outline,
-                                                  color: AppColors.error,
-                                                  size: 20,
-                                                ),
-                                                label: const Text(
-                                                  'Vaciar Todo',
-                                                  style: TextStyle(
-                                                    color: AppColors.error,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Tooltip(
+                                                message: 'Escanear código de barra / QR',
+                                                child: TextButton.icon(
+                                                  onPressed: _openCameraScanner,
+                                                  icon: const Icon(
+                                                    Icons.qr_code_scanner_rounded,
+                                                    color: AppColors.teal,
+                                                    size: 18,
+                                                  ),
+                                                  label: const Text(
+                                                    'Escanear',
+                                                    style: TextStyle(
+                                                      color: AppColors.teal,
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  style: TextButton.styleFrom(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
+                                                    minimumSize: Size.zero,
+                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                                   ),
                                                 ),
-                                                style: TextButton.styleFrom(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
+                                              ),
+                                              const SizedBox(width: 8),
+                                              BlocBuilder<CartCubit, CartState>(
+                                                builder: (context, cartState) {
+                                                  if (cartState.items.isEmpty) {
+                                                    return const SizedBox.shrink();
+                                                  }
+                                                  return TextButton.icon(
+                                                    onPressed: _onClearCart,
+                                                    icon: const Icon(
+                                                      Icons.delete_outline,
+                                                      color: AppColors.error,
+                                                      size: 20,
+                                                    ),
+                                                    label: const Text(
+                                                      'Vaciar Todo',
+                                                      style: TextStyle(
+                                                        color: AppColors.error,
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    style: TextButton.styleFrom(
+                                                      padding: const EdgeInsets.symmetric(
                                                         horizontal: 12,
                                                         vertical: 8,
                                                       ),
-                                                  minimumSize: Size.zero,
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
-                                              );
-                                            },
+                                                      minimumSize: Size.zero,
+                                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -661,39 +702,72 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       PosSectionLabel('Productos en caja'),
-                                      BlocBuilder<CartCubit, CartState>(
-                                        builder: (context, cartState) {
-                                          if (cartState.items.isEmpty) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return TextButton.icon(
-                                            onPressed: _onClearCart,
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: AppColors.error,
-                                              size: 20,
-                                            ),
-                                            label: const Text(
-                                              'Vaciar Todo',
-                                              style: TextStyle(
-                                                color: AppColors.error,
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Tooltip(
+                                            message: 'Escanear código de barra / QR',
+                                            child: TextButton.icon(
+                                              onPressed: _openCameraScanner,
+                                              icon: const Icon(
+                                                Icons.qr_code_scanner_rounded,
+                                                color: AppColors.teal,
+                                                size: 18,
+                                              ),
+                                              label: const Text(
+                                                'Escanear',
+                                                style: TextStyle(
+                                                  color: AppColors.teal,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              style: TextButton.styleFrom(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 6,
+                                                ),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                               ),
                                             ),
-                                            style: TextButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          BlocBuilder<CartCubit, CartState>(
+                                            builder: (context, cartState) {
+                                              if (cartState.items.isEmpty) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return TextButton.icon(
+                                                onPressed: _onClearCart,
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  color: AppColors.error,
+                                                  size: 20,
+                                                ),
+                                                label: const Text(
+                                                  'Vaciar Todo',
+                                                  style: TextStyle(
+                                                    color: AppColors.error,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
-                                              minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
-                                            ),
-                                          );
-                                        },
+                                                ),
+                                                style: TextButton.styleFrom(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 8,
+                                                      ),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),

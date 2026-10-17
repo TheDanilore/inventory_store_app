@@ -35,6 +35,7 @@ import 'package:inventory_store_app/features/inventory/presentation/screens/inve
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -174,6 +175,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     );
   }
 
+  final StringBuffer _barcodeBuffer = StringBuffer();
+  DateTime _lastBarcodeKeystrokeTime = DateTime.now();
+
   bool _handleGlobalHardwareKey(KeyEvent event) {
     if (!mounted || event is! KeyDownEvent) return false;
 
@@ -183,12 +187,51 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       final isMeta = HardwareKeyboard.instance.isMetaPressed;
       final hasModifier = isAlt || isControl || isMeta;
 
+      // ── Detección de Pistola / Lector de Código de Barras Hardware (HID) ──
+      // Las pistolas envían una ráfaga muy rápida de pulsaciones (<60ms entre teclas)
+      // terminando con la tecla Enter.
+      final char = event.character;
+      final now = DateTime.now();
+      final diffMs = now.difference(_lastBarcodeKeystrokeTime).inMilliseconds;
+      _lastBarcodeKeystrokeTime = now;
+
+      if (!hasModifier) {
+        if (event.logicalKey == LogicalKeyboardKey.enter) {
+          if (_barcodeBuffer.length >= 3 && diffMs < 150) {
+            final scannedCode = _barcodeBuffer.toString().trim();
+            _barcodeBuffer.clear();
+            if (scannedCode.isNotEmpty) {
+              _processScannedBarcode(scannedCode);
+              return true;
+            }
+          }
+          _barcodeBuffer.clear();
+        } else if (char != null && char.isNotEmpty && char.codeUnitAt(0) >= 32) {
+          if (diffMs > 250) {
+            _barcodeBuffer.clear();
+          }
+          _barcodeBuffer.write(char);
+        }
+      } else {
+        _barcodeBuffer.clear();
+      }
+
       // ── Regla de Aislamiento de Foco Pro Tools ───────────────────────────
       // Si el usuario presiona una tecla SIN modificador pero tiene el foco
       // en un campo de texto editable, NO interceptamos la tecla para permitir
       // la escritura normal de caracteres.
       if (!hasModifier && _isInputFieldFocused()) {
         return false;
+      }
+
+      // 0. Atajo de apertura de escáner de cámara (F3 o Alt+E o Alt+S)
+      if (event.logicalKey == LogicalKeyboardKey.f3 ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.keyE) ||
+          (isAlt && event.logicalKey == LogicalKeyboardKey.keyS)) {
+        if (_selectedSidebarIndex == 0) {
+          _openCameraScanner();
+          return true;
+        }
       }
 
       // 1. Tab 0: Venta POS (V, Alt+V, Alt+1, 1 numpad)
@@ -277,6 +320,49 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     }
 
     return false;
+  }
+
+  Future<void> _openCameraScanner() async {
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+    final cartCubit = context.read<CartCubit>();
+    await PosBarcodeScannerService.openCameraScanner(
+      context: context,
+      cartCubit: cartCubit,
+      warehouseId: warehouseId,
+    );
+  }
+
+  Future<void> _processScannedBarcode(String code) async {
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+    final cartCubit = context.read<CartCubit>();
+
+    AppSnackbar.show(
+      context,
+      message: 'Escaneado: "$code"',
+      type: SnackbarType.info,
+    );
+
+    final scanResult = await PosBarcodeScannerService.resolveCode(
+      code,
+      warehouseId: warehouseId,
+    );
+
+    if (!mounted) return;
+
+    if (scanResult != null) {
+      await PosBarcodeScannerService.addScanResultToCart(
+        context: context,
+        scanResult: scanResult,
+        cartCubit: cartCubit,
+        warehouseId: warehouseId,
+      );
+    } else {
+      AppSnackbar.show(
+        context,
+        message: 'No se encontró producto con el código "$code"',
+        type: SnackbarType.warning,
+      );
+    }
   }
 
   Future<void> _openQuickCreateCustomer() async {
@@ -884,6 +970,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               searchByIngredient: searchByIngredient,
               onToggleIngredientSearch:
                   context.read<AdminCatalogCubit>().toggleSearchByIngredient,
+              onScanBarcode: _openCameraScanner,
               onBack: _onExitPos,
             );
           },
