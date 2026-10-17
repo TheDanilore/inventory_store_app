@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
@@ -21,17 +22,16 @@ class InventoryProductQuickViewSheet {
     String? selectedWarehouseId,
     String? selectedWarehouseName,
   }) {
-    return AdaptiveSideSheet.show<void>(
-      context: context,
+    return AdaptiveDetailSheet.show<void>(
+      context,
       desktopWidth: 520.0,
       breakpoint: 900.0,
       barrierLabel: 'Cerrar detalle de producto',
-      builder: (dialogContext, isSlideOver) {
+      builder: (dialogContext) {
         return _InventoryProductQuickViewContent(
           item: item,
           selectedWarehouseId: selectedWarehouseId,
           selectedWarehouseName: selectedWarehouseName,
-          isSideSheet: isSlideOver,
         );
       },
     );
@@ -42,13 +42,11 @@ class _InventoryProductQuickViewContent extends StatefulWidget {
   final InventoryStockItem item;
   final String? selectedWarehouseId;
   final String? selectedWarehouseName;
-  final bool isSideSheet;
 
   const _InventoryProductQuickViewContent({
     required this.item,
     this.selectedWarehouseId,
     this.selectedWarehouseName,
-    required this.isSideSheet,
   });
 
   @override
@@ -213,141 +211,114 @@ class _InventoryProductQuickViewContentState
 
     final isSingleVariant = variants.length <= 1 && !_isLoadingProduct;
 
-    return Column(
-      children: [
-        // ── Cabecera Superior: Ficha Rápida con Enfoque de Variante ──
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border(
-              bottom: BorderSide(
-                color: AppColors.border.withValues(alpha: 0.8),
+    return DetailSheetFrame(
+      title: item.productName,
+      fillMobileHeight: true,
+      bodyPadding: const EdgeInsets.all(20),
+      bodyBackgroundColor: AppColors.surface,
+      leading: Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: const Icon(
+          Icons.style_outlined,
+          size: 18,
+          color: AppColors.primary,
+        ),
+      ),
+      subtitle: Row(
+        children: [
+          if (variants.length > 1) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
               ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: const Icon(
-                  Icons.style_outlined,
-                  size: 18,
+              child: Text(
+                '${variants.length} var.',
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            item.productName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        if (variants.length > 1) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${variants.length} var.',
-                              style: const TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      _activeVariantTitle.isNotEmpty &&
-                              _activeVariantTitle != item.productName
-                          ? (item.category.isNotEmpty
-                              ? '$_activeVariantTitle · ${item.category}'
-                              : _activeVariantTitle)
-                          : item.category,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Expanded(
+            child: Text(
+              _activeVariantTitle.isNotEmpty &&
+                      _activeVariantTitle != item.productName
+                  ? (item.category.isNotEmpty
+                      ? '$_activeVariantTitle · ${item.category}'
+                      : _activeVariantTitle)
+                  : item.category,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 8),
-              // Badge de Almacén Activo
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.warehouse_rounded,
-                      size: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120),
-                      child: Text(
-                        warehouseLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+          ),
+        ],
+      ),
+      headerActions: [
+        // Código QR de la variante activa
+        IconButton(
+          icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+          tooltip: 'Código QR de la variante',
+          visualDensity: VisualDensity.compact,
+          onPressed:
+              () => InventoryQrSheet.show(
+                context,
+                productId: item.productId,
+                variantId: _activeVariantId,
+                productName: item.productName,
+                variantName: _activeVariantTitle,
+                sku: _activeVariantSku,
               ),
-              const SizedBox(width: 6),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 20),
-                tooltip: 'Cerrar (Esc)',
-                onPressed: () => Navigator.pop(context),
+        ),
+        // Badge de Almacén Activo
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.warehouse_rounded,
+                size: 13,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 5),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  warehouseLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ],
           ),
         ),
-
-        // ── Barra de Variantes Hermanas (Horizontal Chips - Linear/Superhuman Style) ──
-        if (!_isLoadingProduct && variants.length > 1)
-          Container(
+      ],
+      headerBottom: (!_isLoadingProduct && variants.length > 1)
+          ? Container(
             height: 46,
             decoration: BoxDecoration(
               color: AppColors.background,
@@ -460,756 +431,738 @@ class _InventoryProductQuickViewContentState
                 );
               },
             ),
-          ),
-
-        // ── Cuerpo con Scroll ──
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_errorMessage != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.warning.withValues(alpha: 0.3),
+          )
+          : null,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Mostrando datos locales de inventario. ($_errorMessage)',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          size: 16,
-                          color: AppColors.warning,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Mostrando datos locales de inventario. ($_errorMessage)',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
+                ],
+              ),
+            ),
 
-                // ── Hero de la Variante Activa ──
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar / Imagen
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child:
-                          primaryImg != null && primaryImg.isNotEmpty
-                              ? CachedNetworkImage(
-                                imageUrl: primaryImg,
+          // ── Hero de la Variante Activa ──
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar / Imagen
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child:
+                    primaryImg != null && primaryImg.isNotEmpty
+                        ? CachedNetworkImage(
+                          imageUrl: primaryImg,
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                          placeholder:
+                              (ctx, url) => Container(
                                 width: 72,
                                 height: 72,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (ctx, url) => Container(
-                                      width: 72,
-                                      height: 72,
-                                      color: AppColors.background,
-                                    ),
-                                errorWidget:
-                                    (ctx, url, err) =>
-                                        _buildMonogram(item.productName, 72),
-                              )
-                              : _buildMonogram(item.productName, 72),
-                    ),
-                    const SizedBox(width: 14),
+                                color: AppColors.background,
+                              ),
+                          errorWidget:
+                              (ctx, url, err) =>
+                                  _buildMonogram(item.productName, 72),
+                        )
+                        : _buildMonogram(item.productName, 72),
+              ),
+              const SizedBox(width: 14),
 
-                    // Título de Variante, SKU y Disponibilidad
+              // Título de Variante, SKU y Disponibilidad
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.productName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (_activeVariantTitle.isNotEmpty &&
+                        _activeVariantTitle != item.productName) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        _activeVariantTitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 5,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Badge de Disponibilidad WCAG AAA
+                        _buildSemanticAvailabilityBadge(
+                          currentStock,
+                          isLowStock,
+                        ),
+
+                        // SKU Chip interactivo
+                        if (_activeVariantSku != null &&
+                            _activeVariantSku!.isNotEmpty)
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: _activeVariantSku!),
+                              );
+                              HapticFeedback.lightImpact();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'SKU copiado al portapapeles',
+                                  ),
+                                  duration: Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.copy_rounded,
+                                    size: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _activeVariantSku!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'monospace',
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        // Categoría Pill
+                        if (item.category.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(
+                                alpha: 0.07,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              item.category,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (activeIngredient != null &&
+              activeIngredient.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.accentLight.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.science_outlined,
+                    size: 16,
+                    color: AppColors.accent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Principio Activo: $activeIngredient',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 18),
+
+          // ── Matriz de Métricas de la Variante (Stock, Precios, Margen) ──
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Stock Disponible en Almacén
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Text(
+                                widget.selectedWarehouseId != null
+                                    ? 'Stock Almacén'
+                                    : 'Stock Total',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
                           Text(
-                            item.productName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
+                            '$currentStock uds.',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color:
+                                  currentStock <= 0
+                                      ? AppColors.danger
+                                      : (isLowStock
+                                          ? AppColors.warningDark
+                                          : AppColors.tealDark),
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
                             ),
                           ),
-                          if (_activeVariantTitle.isNotEmpty &&
-                              _activeVariantTitle != item.productName) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              _activeVariantTitle,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 36,
+                      color: AppColors.border,
+                    ),
+                    const SizedBox(width: 14),
+
+                    // Precio Venta
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Precio Venta',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
                             ),
-                          ],
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 5,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              // Badge de Disponibilidad WCAG AAA
-                              _buildSemanticAvailabilityBadge(
-                                currentStock,
-                                isLowStock,
-                              ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'S/ ${_activeVariantSalePrice.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              fontFeatures: [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 36,
+                      color: AppColors.border,
+                    ),
+                    const SizedBox(width: 14),
 
-                              // SKU Chip interactivo
-                              if (_activeVariantSku != null &&
-                                  _activeVariantSku!.isNotEmpty)
-                                InkWell(
-                                  onTap: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: _activeVariantSku!),
-                                    );
-                                    HapticFeedback.lightImpact();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'SKU copiado al portapapeles',
-                                        ),
-                                        duration: Duration(seconds: 1),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: AppColors.border,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.copy_rounded,
-                                          size: 11,
-                                          color: AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          _activeVariantSku!,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            fontFamily: 'monospace',
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                              // Categoría Pill
-                              if (item.category.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.07,
-                                    ),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    item.category,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                    // Costo Unitario
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Costo Ref.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'S/ ${_activeVariantUnitCost.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              fontFeatures: [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-
-                if (activeIngredient != null &&
-                    activeIngredient.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentLight.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 10),
+                // Fila inferior de métricas: Margen y Punto de Reorden
+                Row(
+                  children: [
+                    // Margen Comercial
+                    Row(
                       children: [
                         const Icon(
-                          Icons.science_outlined,
-                          size: 16,
-                          color: AppColors.accent,
+                          Icons.trending_up_rounded,
+                          size: 14,
+                          color: AppColors.textMuted,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Principio Activo: $activeIngredient',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.accent,
-                            ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Margen: ${_activeVariantMargin.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                _activeVariantMargin >= 30
+                                    ? AppColors.tealDark
+                                    : (_activeVariantMargin >= 15
+                                        ? AppColors.warningDark
+                                        : AppColors.danger),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-
-                const SizedBox(height: 18),
-
-                // ── Matriz de Métricas de la Variante (Stock, Precios, Margen) ──
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          // Stock Disponible en Almacén
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      widget.selectedWarehouseId != null
-                                          ? 'Stock Almacén'
-                                          : 'Stock Total',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '$currentStock uds.',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                    color:
-                                        currentStock <= 0
-                                            ? AppColors.danger
-                                            : (isLowStock
-                                                ? AppColors.warningDark
-                                                : AppColors.tealDark),
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 36,
-                            color: AppColors.border,
-                          ),
-                          const SizedBox(width: 14),
-
-                          // Precio Venta
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Precio Venta',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'S/ ${_activeVariantSalePrice.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                    fontFeatures: [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 36,
-                            color: AppColors.border,
-                          ),
-                          const SizedBox(width: 14),
-
-                          // Costo Unitario
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Costo Ref.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textMuted,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'S/ ${_activeVariantUnitCost.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textSecondary,
-                                    fontFeatures: [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      const Divider(height: 1, color: AppColors.border),
-                      const SizedBox(height: 10),
-                      // Fila inferior de métricas: Margen y Punto de Reorden
-                      Row(
-                        children: [
-                          // Margen Comercial
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.trending_up_rounded,
-                                size: 14,
-                                color: AppColors.textMuted,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Margen: ${_activeVariantMargin.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      _activeVariantMargin >= 30
-                                          ? AppColors.tealDark
-                                          : (_activeVariantMargin >= 15
-                                              ? AppColors.warningDark
-                                              : AppColors.danger),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          // Punto de Reorden
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.flag_outlined,
-                                size: 13,
-                                color: AppColors.textMuted,
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Pto. reorden: ${item.reorderPoint} uds.',
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ── Lotes de la Variante Activa (si usa lotes) ──
-                if (item.usesBatches) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(
-                            Icons.batch_prediction_rounded,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Lotes de esta variante',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_activeVariantId == item.variantId)
+                    const Spacer(),
+                    // Punto de Reorden
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.flag_outlined,
+                          size: 13,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 5),
                         Text(
-                          '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
+                          'Pto. reorden: ${item.reorderPoint} uds.',
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.textSecondary,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-                  if (_activeVariantId == item.variantId &&
-                      item.batches.isNotEmpty)
-                    Column(
-                      children:
-                          item.batches.map((batch) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: _buildBatchRow(batch),
-                            );
-                          }).toList(),
-                    )
-                  else if (_activeVariantStock <= 0)
-                    Container(
+          const SizedBox(height: 20),
+
+          // ── Lotes de la Variante Activa (si usa lotes) ──
+          if (item.usesBatches) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.batch_prediction_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Lotes de esta variante',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_activeVariantId == item.variantId)
+                  Text(
+                    '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (_activeVariantId == item.variantId &&
+                item.batches.isNotEmpty)
+              Column(
+                children:
+                    item.batches.map((batch) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _buildBatchRow(batch),
+                      );
+                    }).toList(),
+              )
+            else if (_activeVariantStock <= 0)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Sin lotes activos en el almacén seleccionado',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 16,
+                      color: AppColors.tealDark,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lotes registrados en sistema ($_activeVariantStock uds. disponibles)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
+          ],
+
+          // ── Lista de Todas las Variantes del Producto (si hay más de 1) ──
+          if (!isSingleVariant) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.list_alt_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isLoadingProduct
+                          ? 'Variantes del producto...'
+                          : 'Todas las variantes (${variants.length})',
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Total prod: $totalProductStock uds.',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.tealDark,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Lista de Variantes o Shimmer
+            if (_isLoadingProduct)
+              Column(
+                children: List.generate(
+                  3,
+                  (idx) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: const Row(
                         children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 16,
-                            color: AppColors.textMuted,
+                          AppShimmer(
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Sin lotes activos en el almacén seleccionado',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_outline_rounded,
-                            size: 16,
-                            color: AppColors.tealDark,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Lotes registrados en sistema ($_activeVariantStock uds. disponibles)',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ── Lista de Todas las Variantes del Producto (si hay más de 1) ──
-                if (!isSingleVariant) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.list_alt_rounded,
-                            size: 16,
-                            color: AppColors.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _isLoadingProduct
-                                ? 'Variantes del producto...'
-                                : 'Todas las variantes (${variants.length})',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Total prod: $totalProductStock uds.',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.tealDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Lista de Variantes o Shimmer
-                  if (_isLoadingProduct)
-                    Column(
-                      children: List.generate(
-                        3,
-                        (idx) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Row(
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 AppShimmer(
-                                  width: 8,
-                                  height: 8,
+                                  width: 120,
+                                  height: 14,
                                   borderRadius: 4,
                                 ),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      AppShimmer(
-                                        width: 120,
-                                        height: 14,
-                                        borderRadius: 4,
-                                      ),
-                                      SizedBox(height: 4),
-                                      AppShimmer(
-                                        width: 80,
-                                        height: 10,
-                                        borderRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                SizedBox(height: 4),
                                 AppShimmer(
-                                  width: 60,
-                                  height: 16,
+                                  width: 80,
+                                  height: 10,
                                   borderRadius: 4,
                                 ),
                               ],
                             ),
                           ),
-                        ),
+                          AppShimmer(
+                            width: 60,
+                            height: 16,
+                            borderRadius: 4,
+                          ),
+                        ],
                       ),
-                    )
-                  else
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: variants.length,
-                      separatorBuilder:
-                          (context, index) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final v = variants[index];
-                        final isSelected = v.id == _activeVariantId;
-                        final vStock = _calculateVariantStockFor(v.id);
-                        final displayTitle =
-                            v.attributeValues.isNotEmpty
-                                ? v.label
-                                : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
-                                    ? v.sku!
-                                    : (variants.length == 1
-                                        ? item.productName
-                                        : 'Variante #${index + 1}'));
-
-                        return _VariantRowItem(
-                          title: displayTitle,
-                          sku: v.sku,
-                          salePrice: v.salePrice ?? item.salePrice,
-                          unitCost: v.unitCost ?? item.unitCost,
-                          stock: vStock,
-                          isActive: v.isActive,
-                          isSelected: isSelected,
-                          onSelect: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _activeVariantId = v.id);
-                          },
-                          onOpenKardex: () {
-                            Navigator.pop(context);
-                            context.push(
-                              '/kardex?productId=${item.productId}&variantId=${v.id}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(displayTitle)}',
-                            );
-                          },
-                        );
-                      },
                     ),
-                ],
-              ],
+                  ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: variants.length,
+                separatorBuilder:
+                    (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final v = variants[index];
+                  final isSelected = v.id == _activeVariantId;
+                  final vStock = _calculateVariantStockFor(v.id);
+                  final displayTitle =
+                      v.attributeValues.isNotEmpty
+                          ? v.label
+                          : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
+                              ? v.sku!
+                              : (variants.length == 1
+                                  ? item.productName
+                                  : 'Variante #${index + 1}'));
+
+                  return _VariantRowItem(
+                    title: displayTitle,
+                    sku: v.sku,
+                    salePrice: v.salePrice ?? item.salePrice,
+                    unitCost: v.unitCost ?? item.unitCost,
+                    stock: vStock,
+                    isActive: v.isActive,
+                    isSelected: isSelected,
+                    onSelect: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _activeVariantId = v.id);
+                    },
+                    onOpenKardex: () {
+                      Navigator.pop(context);
+                      context.push(
+                        '/kardex?productId=${item.productId}&variantId=${v.id}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(displayTitle)}',
+                      );
+                    },
+                  );
+                },
+              ),
+          ],
+        ],
+      ),
+      footer: Row(
+        children: [
+          // Botón Kárdex de la variante activa
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push(
+                  '/kardex?productId=${item.productId}&variantId=$_activeVariantId&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(_activeVariantTitle)}',
+                );
+              },
+              icon: const Icon(Icons.receipt_long_rounded, size: 16),
+              label: const Text(
+                'Kárdex',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
             ),
           ),
-        ),
+          const SizedBox(width: 8),
 
-        // ── Footer con Acciones Clave para la Variante Activa ──
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border(
-              top: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
+          // Botón Editar Producto
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                context.push(
+                  '/products/product-form/${item.productId}',
+                  extra: {'productToEdit': product},
+                );
+              },
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text(
+                'Editar',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
             ),
           ),
-          child: Row(
-            children: [
-              // Botón Kárdex de la variante activa
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    context.push(
-                      '/kardex?productId=${item.productId}&variantId=$_activeVariantId&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(_activeVariantTitle)}',
-                    );
-                  },
-                  icon: const Icon(Icons.receipt_long_rounded, size: 16),
-                  label: const Text(
-                    'Kárdex',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-              // Botón Editar Producto
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    context.push(
-                      '/products/product-form/${item.productId}',
-                      extra: {'productToEdit': product},
-                    );
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text(
-                    'Editar',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
+          // Botón Ver Ficha Completa
+          Expanded(
+            flex: 2,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final router = GoRouter.of(
+                  context,
+                ); // capturar antes de cerrar
+                Navigator.pop(context);
+                router.go(
+                  '/product/${item.productId}?variantId=$_activeVariantId',
+                );
+              },
+              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+              label: const Text(
+                'Ficha Completa',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // Botón Ver Ficha Completa
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    final router = GoRouter.of(
-                      context,
-                    ); // capturar antes de cerrar
-                    Navigator.pop(context);
-                    router.go(
-                      '/product/${item.productId}?variantId=$_activeVariantId',
-                    );
-                  },
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: const Text(
-                    'Ficha Completa',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

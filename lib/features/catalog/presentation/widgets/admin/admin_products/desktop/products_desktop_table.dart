@@ -20,6 +20,12 @@ class ProductsDesktopTable extends StatefulWidget {
   final void Function(ProductEntity product) onEdit;
   final void Function(ProductEntity product) onDelete;
 
+  /// Paginación integrada en el pie de la tabla (AdminProTable).
+  final AdminTablePaginationConfig? paginationConfig;
+
+  /// Muestra el skeleton de AdminProTable mientras carga el catálogo.
+  final bool isLoading;
+
   const ProductsDesktopTable({
     super.key,
     required this.products,
@@ -31,6 +37,8 @@ class ProductsDesktopTable extends StatefulWidget {
     required this.onToggleActive,
     required this.onEdit,
     required this.onDelete,
+    this.paginationConfig,
+    this.isLoading = false,
   });
 
   @override
@@ -51,10 +59,14 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
           break;
         case 'category':
-          cmp = (a.categoryName ?? '').toLowerCase().compareTo((b.categoryName ?? '').toLowerCase());
+          cmp = (a.categoryName ?? '').toLowerCase().compareTo(
+            (b.categoryName ?? '').toLowerCase(),
+          );
           break;
         case 'cost':
-          cmp = (_costRange(a)?.min ?? 0.0).compareTo(_costRange(b)?.min ?? 0.0);
+          cmp = (_costRange(a)?.min ?? 0.0).compareTo(
+            _costRange(b)?.min ?? 0.0,
+          );
           break;
         case 'price':
           final priceA = a.displaySalePrice ?? a.minSalePrice ?? 0.0;
@@ -116,12 +128,15 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
       },
       sortColumnId: _sortColumnId,
       isSortAscending: _isSortAscending,
-      onSort: (colId, asc) => setState(() {
-        _sortColumnId = colId;
-        _isSortAscending = asc;
-      }),
+      onSort:
+          (colId, asc) => setState(() {
+            _sortColumnId = colId;
+            _isSortAscending = asc;
+          }),
       minTableWidth: 1080.0,
       margin: EdgeInsets.zero,
+      paginationConfig: widget.paginationConfig,
+      isLoading: widget.isLoading,
       onRowTap: widget.onRowTap,
       bulkActions: [
         AdminBulkAction<ProductEntity>(
@@ -194,10 +209,14 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                                 vertical: 1.5,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.08),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.2),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
                                 ),
                               ),
                               child: Row(
@@ -248,7 +267,8 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                           ],
                         ],
                       ),
-                      if (activeIngredient != null && activeIngredient.isNotEmpty)
+                      if (activeIngredient != null &&
+                          activeIngredient.isNotEmpty)
                         Text(
                           '⚗️ $activeIngredient',
                           maxLines: 1,
@@ -284,16 +304,17 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           label: 'CATEGORÍA',
           flex: 2,
           isSortable: true,
-          cellBuilder: (context, product) => Text(
-            product.categoryName ?? 'Sin categoría',
-            style: const TextStyle(
-              fontSize: 12.5,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          cellBuilder:
+              (context, product) => Text(
+                product.categoryName ?? 'Sin categoría',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
         ),
 
         // 3. Tipo
@@ -301,7 +322,8 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           id: 'type',
           label: 'TIPO',
           fixedWidth: 110,
-          cellBuilder: (context, product) => ProductTypeBadge(type: product.productType),
+          cellBuilder:
+              (context, product) => ProductTypeBadge(type: product.productType),
         ),
 
         // 4. Precio Compra (costo de referencia)
@@ -369,10 +391,7 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
             }
             return const Text(
               '—',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textMuted,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             );
           },
         ),
@@ -383,7 +402,9 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           label: 'STOCK TOTAL',
           fixedWidth: 130,
           isSortable: true,
-          cellBuilder: (context, product) => ProductStockBadge(stock: product.totalStock),
+          cellBuilder:
+              (context, product) =>
+                  ProductStockBadge(stock: product.totalStock),
         ),
 
         // 7. Estado
@@ -392,10 +413,11 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           label: 'ESTADO',
           fixedWidth: 100,
           isSortable: true,
-          cellBuilder: (context, product) => ProductStatusPill(
-            isActive: product.isActive,
-            onTap: () => widget.onToggleActive(product),
-          ),
+          cellBuilder:
+              (context, product) => ProductStatusPill(
+                isActive: product.isActive,
+                onTap: () => widget.onToggleActive(product),
+              ),
         ),
 
         // 8. Acciones
@@ -403,97 +425,100 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           id: 'actions',
           label: 'ACCIONES',
           fixedWidth: 120,
-          cellBuilder: (context, product) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.visibility_outlined,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-                splashRadius: 16,
-                tooltip: 'Vista Rápida',
-                onPressed: () => widget.onRowTap(product),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.edit_outlined,
-                  size: 16,
-                  color: AppColors.textSecondary,
-                ),
-                splashRadius: 16,
-                tooltip: 'Editar Producto',
-                onPressed: () => widget.onEdit(product),
-              ),
-              PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_horiz_rounded,
-                  size: 18,
-                  color: AppColors.slate,
-                ),
-                tooltip: 'Más acciones',
-                splashRadius: 16,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                onSelected: (val) {
-                  if (val == 'toggle') {
-                    widget.onToggleActive(product);
-                  } else if (val == 'delete') {
-                    widget.onDelete(product);
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Row(
-                      children: [
-                        Icon(
-                          product.isActive
-                              ? Icons.pause_circle_outline_rounded
-                              : Icons.play_circle_outline_rounded,
-                          size: 16,
-                          color: product.isActive
-                              ? AppColors.warningDark
-                              : AppColors.successDark,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          product.isActive
-                              ? 'Desactivar producto'
-                              : 'Activar producto',
-                          style: const TextStyle(fontSize: 12.5),
-                        ),
-                      ],
+          cellBuilder:
+              (context, product) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.visibility_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
                     ),
+                    splashRadius: 16,
+                    tooltip: 'Vista Rápida',
+                    onPressed: () => widget.onRowTap(product),
                   ),
-                  const PopupMenuDivider(height: 1),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: const [
-                        Icon(
-                          Icons.delete_outline_rounded,
-                          size: 16,
-                          color: AppColors.error,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Eliminar producto',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: AppColors.error,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
                     ),
+                    splashRadius: 16,
+                    tooltip: 'Editar Producto',
+                    onPressed: () => widget.onEdit(product),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      size: 18,
+                      color: AppColors.slate,
+                    ),
+                    tooltip: 'Más acciones',
+                    splashRadius: 16,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    onSelected: (val) {
+                      if (val == 'toggle') {
+                        widget.onToggleActive(product);
+                      } else if (val == 'delete') {
+                        widget.onDelete(product);
+                      }
+                    },
+                    itemBuilder:
+                        (ctx) => [
+                          PopupMenuItem(
+                            value: 'toggle',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  product.isActive
+                                      ? Icons.pause_circle_outline_rounded
+                                      : Icons.play_circle_outline_rounded,
+                                  size: 16,
+                                  color:
+                                      product.isActive
+                                          ? AppColors.warningDark
+                                          : AppColors.successDark,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  product.isActive
+                                      ? 'Desactivar producto'
+                                      : 'Activar producto',
+                                  style: const TextStyle(fontSize: 12.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(height: 1),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: const [
+                                Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: AppColors.error,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Eliminar producto',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                   ),
                 ],
               ),
-            ],
-          ),
         ),
       ],
       // Mobile touch card

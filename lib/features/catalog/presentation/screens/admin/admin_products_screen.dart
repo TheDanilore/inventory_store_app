@@ -18,6 +18,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_table.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
@@ -984,13 +985,21 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                 isDesktop: !isMobile && _isTableView,
                               ),
 
-                              // ── 4. Paginación Integrada (AdminPageBlocks) ──
-                              _buildPaginationSliver(
-                                state,
-                                cubit,
-                                context,
-                                isMobile,
-                              ),
+                              // ── 4. Paginación ──
+                              // En vista tabla la paginación vive dentro de
+                              // AdminProTable (paginationConfig); en tarjetas
+                              // y móvil se usa AdminPageBlocks aparte.
+                              if (isMobile || !_isTableView)
+                                _buildPaginationSliver(
+                                  state,
+                                  cubit,
+                                  context,
+                                  isMobile,
+                                )
+                              else
+                                const SliverToBoxAdapter(
+                                  child: SizedBox(height: 28),
+                                ),
                             ],
                           ),
                         ),
@@ -1136,15 +1145,17 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       return SliverToBoxAdapter(
         child:
             isDesktop
-                ? Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                    border: Border.all(
-                      color: AppColors.border.withValues(alpha: 0.8),
-                    ),
-                  ),
+                ? ProductsDesktopTable(
+                  products: const [],
+                  selectedProductIds: const {},
+                  matchedIngredients: const {},
+                  isLoading: true,
+                  onProductSelected: (_, _) {},
+                  onSelectAllPage: (_) {},
+                  onRowTap: (_) {},
+                  onToggleActive: (_) {},
+                  onEdit: (_) {},
+                  onDelete: (_) {},
                 )
                 : ListView.builder(
                   shrinkWrap: true,
@@ -1267,6 +1278,20 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 );
               },
               onDelete: (p) => _confirmDeleteProduct(p, cubit),
+              paginationConfig: AdminTablePaginationConfig(
+                // El cubit usa páginas base 0; AdminProTable usa base 1.
+                currentPage: state.currentPage + 1,
+                pageSize: state.itemsPerPage,
+                totalItems: state.totalCount,
+                totalPagesOverride: state.totalPages,
+                pageSizeOptions:
+                    {15, 25, 50, 100, state.itemsPerPage}.toList()..sort(),
+                onPageChanged: (page) {
+                  _clearSelection();
+                  cubit.setPage(page - 1);
+                },
+                onPageSizeChanged: cubit.setItemsPerPage,
+              ),
             );
           },
         ),

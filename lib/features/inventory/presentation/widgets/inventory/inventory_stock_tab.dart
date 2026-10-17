@@ -8,6 +8,8 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_product_quick_view_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_table.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -40,6 +42,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   final _tabFocusNode = FocusNode();
   Timer? _debounce;
   InventoryStockItem? _selectedItem;
+
+  /// Vista de escritorio: tabla (AdminProTable) o cuadrícula de tarjetas.
+  bool _isTableView = true;
 
   @override
   bool get wantKeepAlive => true;
@@ -109,6 +114,81 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           'variantName': item.attrsText,
         },
       ).toString(),
+    );
+  }
+
+  void _showQr(InventoryStockItem item) {
+    InventoryQrSheet.show(
+      context,
+      productId: item.productId,
+      variantId: item.variantId,
+      productName: item.productName,
+      variantName: item.attrsText,
+      sku: item.sku,
+    );
+  }
+
+  bool _isSameItem(InventoryStockItem? a, InventoryStockItem b) =>
+      a != null &&
+      ((a.variantId.isNotEmpty && a.variantId == b.variantId) ||
+          (a.productId == b.productId && a.variantId == b.variantId));
+
+  /// Paginación integrada en el pie de AdminProTable.
+  /// El cubit pagina en base 0 con tamaño fijo de 15; AdminProTable usa base 1.
+  AdminTablePaginationConfig _buildPaginationConfig(
+    InventoryLoaded state,
+    InventoryCubit cubit,
+  ) {
+    const pageSize = 15;
+    final categoryActive =
+        state.stockCategoryFilter.isNotEmpty &&
+        state.stockCategoryFilter != 'Todos';
+    final hasWarehouse =
+        state.selectedWarehouseId != null &&
+        state.selectedWarehouseId!.isNotEmpty;
+    // El total global solo es válido sin ningún filtro activo.
+    final isUnfiltered =
+        state.stockSearchText.isEmpty &&
+        !categoryActive &&
+        state.stockStatusFilter == 'all' &&
+        !hasWarehouse;
+
+    return AdminTablePaginationConfig(
+      currentPage: state.currentStockPage + 1,
+      pageSize: pageSize,
+      totalItems: isUnfiltered ? state.globalTotalVariants : null,
+      totalPagesOverride: state.totalStockPages,
+      pageSizeOptions: const [pageSize],
+      onPageChanged: (page) => cubit.setStockPage(page - 1),
+      onPageSizeChanged: (_) {},
+    );
+  }
+
+  /// Vista de tarjetas para escritorio (misma tarjeta que tablet/móvil).
+  Widget _buildCardsGrid(InventoryLoaded state) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 440,
+        mainAxisExtent: 220,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+      ),
+      itemCount: state.stockItems.length,
+      itemBuilder: (context, i) {
+        final item = state.stockItems[i];
+        return RepaintBoundary(
+          child: InventoryStockCard(
+            item: item,
+            isSelected: _isSameItem(_selectedItem, item),
+            onTap: () {
+              setState(() => _selectedItem = item);
+              _showQuickView(item, state);
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -219,6 +299,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                   message: 'Filtros restablecidos a "Todos"',
                   type: SnackbarType.info,
                 );
+                return KeyEventResult.handled;
+              }
+
+              // [V] alterna vista tabla / tarjetas
+              if (event.logicalKey == LogicalKeyboardKey.keyV && !isModifier) {
+                setState(() => _isTableView = !_isTableView);
                 return KeyEventResult.handled;
               }
 
@@ -438,10 +524,16 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             height: 320,
                             child: _buildEmptyState(state, cubit),
                           )
+                          : !_isTableView
+                          ? _buildCardsGrid(state)
                           : InventoryStockTable(
                             items: state.stockItems,
                             selectedItem: _selectedItem,
                             isLoading: state.isSearchingStock,
+                            paginationConfig: _buildPaginationConfig(
+                              state,
+                              cubit,
+                            ),
                             onQuickView: (item) {
                               setState(() => _selectedItem = item);
                               _showQuickView(item, state);
@@ -451,6 +543,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                               _openProductDetail(item);
                             },
                             onKardex: _openKardex,
+                            onShowQr: _showQr,
                           ),
                 ),
               ),
@@ -459,8 +552,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           ),
         ),
 
-        // ── Paginación Inferior ──
-        if (!isLoading && state.totalStockPages > 1)
+        // ── Paginación Inferior (solo vista tarjetas; la tabla integra la suya) ──
+        if (!_isTableView && !isLoading && state.totalStockPages > 1)
           Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: AdminPageBlocks(
@@ -476,7 +569,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               onPageChanged: (page) => cubit.setStockPage(page),
             ),
           )
-        else if (!isLoading && state.totalStockPages == 1)
+        else if (!_isTableView && !isLoading && state.totalStockPages == 1)
           //Agregar espacio vacio para paginacion
           const SizedBox(height: 50),
       ],
@@ -581,6 +674,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         );
       },
       refreshTooltip: 'Recargar existencias',
+      // Cambio de vista Tabla / Tarjetas (solo escritorio; en tablet y móvil
+      // ya se usan tarjetas).
+      viewToggleConfig:
+          isDesktop
+              ? AdminProViewToggleConfig(
+                isTableView: _isTableView,
+                onToggleTableView: (val) => setState(() => _isTableView = val),
+              )
+              : null,
       // Los atajos (/, R, Esc, B, Enter...) ya los maneja esta pestaña y la
       // pantalla; se desactivan aquí para no ejecutar la acción dos veces.
       enableKeyboardShortcuts: false,

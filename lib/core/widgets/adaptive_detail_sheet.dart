@@ -13,18 +13,20 @@ class AdaptiveDetailSheet {
     BuildContext context, {
     required WidgetBuilder builder,
     double desktopWidth = 540,
+    double breakpoint = desktopBreakpoint,
+    String barrierLabel = 'Cerrar detalle',
     double mobileMaxHeightFactor = 0.92,
     bool enableGlassmorphism = true,
     Widget Function(Widget child)? wrap,
   }) {
     Widget wrapped(Widget child) => wrap != null ? wrap(child) : child;
-    final isDesktop = MediaQuery.sizeOf(context).width >= desktopBreakpoint;
+    final isDesktop = MediaQuery.sizeOf(context).width >= breakpoint;
 
     if (isDesktop) {
       return showGeneralDialog<T>(
         context: context,
         barrierDismissible: true,
-        barrierLabel: 'Cerrar detalle',
+        barrierLabel: barrierLabel,
         barrierColor: Colors.black.withValues(alpha: 0.28),
         transitionDuration: const Duration(milliseconds: 240),
         pageBuilder: (dialogContext, anim1, _) {
@@ -49,12 +51,16 @@ class AdaptiveDetailSheet {
                       Positioned.fill(
                         child: GestureDetector(
                           onTap: () => Navigator.of(dialogContext).maybePop(),
-                          child: enableGlassmorphism
-                              ? BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                                  child: Container(color: Colors.transparent),
-                                )
-                              : Container(color: Colors.transparent),
+                          child:
+                              enableGlassmorphism
+                                  ? BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 6,
+                                      sigmaY: 6,
+                                    ),
+                                    child: Container(color: Colors.transparent),
+                                  )
+                                  : Container(color: Colors.transparent),
                         ),
                       ),
                       // Panel Flotante
@@ -146,10 +152,17 @@ class DetailSheetFrame extends StatelessWidget {
   final Widget? leading;
   final List<Widget> headerActions;
   final Widget body;
+
+  /// Franja fija opcional bajo la cabecera (p. ej. chips de variantes).
+  final Widget? headerBottom;
   final Widget? footer;
   final EdgeInsetsGeometry bodyPadding;
   final Color? bodyBackgroundColor;
   final VoidCallback? onClose;
+
+  /// En móvil el cuerpo ocupa solo lo necesario; con `true` llena la altura
+  /// máxima del sheet (útil si el contenido cambia de tamaño al cargar).
+  final bool fillMobileHeight;
 
   const DetailSheetFrame({
     super.key,
@@ -158,10 +171,12 @@ class DetailSheetFrame extends StatelessWidget {
     this.subtitle,
     this.leading,
     this.headerActions = const [],
+    this.headerBottom,
     this.footer,
     this.bodyPadding = const EdgeInsets.all(16),
     this.bodyBackgroundColor,
     this.onClose,
+    this.fillMobileHeight = false,
   });
 
   @override
@@ -262,8 +277,11 @@ class DetailSheetFrame extends StatelessWidget {
 
         const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
 
+        if (headerBottom != null) headerBottom!,
+
         // Cuerpo Desplazable (Body)
-        Expanded(
+        Flexible(
+          fit: isSide || fillMobileHeight ? FlexFit.tight : FlexFit.loose,
           child: Container(
             color: bodyBackgroundColor ?? const Color(0xFFF8FAFC),
             child: SingleChildScrollView(

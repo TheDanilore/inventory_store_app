@@ -22,7 +22,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
@@ -296,11 +296,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 560.0 : 500.0;
 
-    await AdaptiveSideSheet.show(
-      context: context,
+    await AdaptiveDetailSheet.show(
+      context,
       desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar inspector',
-      builder: (dialogContext, isSlideOver) {
+      builder: (dialogContext) {
         return _CustomerSideSheetInspector(
           customer: customer,
           onClose: () => Navigator.of(dialogContext).maybePop(),
@@ -1231,350 +1231,314 @@ class _CustomerSideSheetInspector extends StatelessWidget {
             ? (c.currentDebt / c.creditLimit).clamp(0.0, 1.0)
             : 0.0;
 
-    return Column(
-      children: [
-        // Top Inspector Bar
-        Container(
-          height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Ficha Rápida del Cliente',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              const _KbdBadge(label: 'Esc'),
-              const SizedBox(width: 6),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, size: 20),
-                splashRadius: 18,
-                onPressed: onClose,
-              ),
-            ],
-          ),
-        ),
-
-        // Inspector Content Scrollable
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return DetailSheetFrame(
+      title: 'Ficha Rápida del Cliente',
+      leading: const Icon(
+        Icons.info_outline_rounded,
+        size: 20,
+        color: AppColors.primary,
+      ),
+      onClose: onClose,
+      bodyPadding: const EdgeInsets.all(20),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Profile Card
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+              boxShadow: AppColors.cardShadow(opacity: 0.02),
+            ),
+            child: Row(
               children: [
-                // Header Profile Card
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: AppColors.cardShadow(opacity: 0.02),
-                  ),
-                  child: Row(
-                    children: [
-                      _CustomerAvatarLarge(customer: c),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              c.fullName,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        c.isActive
-                                            ? AppColors.successLight
-                                            : AppColors.slateLight,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    c.isActive ? 'Activo' : 'Inactivo',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          c.isActive
-                                              ? AppColors.successDark
-                                              : AppColors.slate,
-                                    ),
-                                  ),
-                                ),
-                                if (c.currentDebt > 0) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.dangerLight,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Con Saldo Deudor',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.danger,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Contact Details Box
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      _InspectorDetailRow(
-                        icon: Icons.badge_outlined,
-                        label: c.documentType ?? 'Documento',
-                        value: c.documentNumber ?? 'No registrado',
-                        onCopy:
-                            c.documentNumber != null
-                                ? () => onCopy(c.documentNumber!, 'Documento')
-                                : null,
-                      ),
-                      const Divider(height: 16, color: AppColors.divider),
-                      _InspectorDetailRow(
-                        icon: Icons.phone_outlined,
-                        label: 'Teléfono',
-                        value: c.phone ?? 'No registrado',
-                        onCopy:
-                            c.phone != null
-                                ? () => onCopy(c.phone!, 'Teléfono')
-                                : null,
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Financial Overview Card
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
+                _CustomerAvatarLarge(customer: c),
+                const SizedBox(width: 16),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'ESTADO DE CUENTA Y CRÉDITO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                      Text(
+                        c.fullName,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          Expanded(
-                            child: _BalanceMiniCard(
-                              title: 'Deuda Actual',
-                              value: 'S/ ${c.currentDebt.toStringAsFixed(2)}',
-                              isAlert: c.currentDebt > 0,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  c.isActive
+                                      ? AppColors.successLight
+                                      : AppColors.slateLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              c.isActive ? 'Activo' : 'Inactivo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    c.isActive
+                                        ? AppColors.successDark
+                                        : AppColors.slate,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _BalanceMiniCard(
-                              title: 'Límite Crédito',
-                              value:
-                                  isUnlimited
-                                      ? 'Sin límite (∞)'
-                                      : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
+                          if (c.currentDebt > 0) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.dangerLight,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Con Saldo Deudor',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.danger,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _BalanceMiniCard(
-                              title: 'Crédito Disponible',
-                              value:
-                                  isUnlimited
-                                      ? 'Ilimitado'
-                                      : 'S/ ${availableCredit.toStringAsFixed(2)}',
-                              isSuccess: isUnlimited || availableCredit > 0,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _BalanceMiniCard(
-                              title: 'Facturación Total',
-                              value: 'S/ ${c.totalRevenue.toStringAsFixed(2)}',
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (!isUnlimited && c.creditLimit > 0) ...[
-                        const SizedBox(height: 14),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: creditUsageRatio,
-                            minHeight: 6,
-                            backgroundColor: AppColors.border,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              creditUsageRatio > 0.85
-                                  ? AppColors.danger
-                                  : (creditUsageRatio > 0.5
-                                      ? AppColors.warning
-                                      : AppColors.teal),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${(creditUsageRatio * 100).toStringAsFixed(0)}% del límite de crédito consumido',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Direct Contact Action Buttons
-                if (c.phone != null && c.phone!.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          icon: const Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 16,
-                          ),
-                          label: const Text('WhatsApp'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF25D366),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: () => onWhatsApp(c.phone!),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.phone_outlined, size: 16),
-                          label: const Text('Llamar'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            side: const BorderSide(color: AppColors.border),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          onPressed: () => onCall(c.phone!),
-                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Action Buttons Full Detail & Edit
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Editar datos'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textPrimary,
-                          side: const BorderSide(color: AppColors.border),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: onEdit,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                        label: const Text('Ficha completa'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: onOpenFullDetail,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
           ),
-        ),
-      ],
+
+          const SizedBox(height: 16),
+
+          // Contact Details Box
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              children: [
+                _InspectorDetailRow(
+                  icon: Icons.badge_outlined,
+                  label: c.documentType ?? 'Documento',
+                  value: c.documentNumber ?? 'No registrado',
+                  onCopy:
+                      c.documentNumber != null
+                          ? () => onCopy(c.documentNumber!, 'Documento')
+                          : null,
+                ),
+                const Divider(height: 16, color: AppColors.divider),
+                _InspectorDetailRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Teléfono',
+                  value: c.phone ?? 'No registrado',
+                  onCopy:
+                      c.phone != null
+                          ? () => onCopy(c.phone!, 'Teléfono')
+                          : null,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Financial Overview Card
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'ESTADO DE CUENTA Y CRÉDITO',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _BalanceMiniCard(
+                        title: 'Deuda Actual',
+                        value: 'S/ ${c.currentDebt.toStringAsFixed(2)}',
+                        isAlert: c.currentDebt > 0,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _BalanceMiniCard(
+                        title: 'Límite Crédito',
+                        value:
+                            isUnlimited
+                                ? 'Sin límite (∞)'
+                                : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _BalanceMiniCard(
+                        title: 'Crédito Disponible',
+                        value:
+                            isUnlimited
+                                ? 'Ilimitado'
+                                : 'S/ ${availableCredit.toStringAsFixed(2)}',
+                        isSuccess: isUnlimited || availableCredit > 0,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _BalanceMiniCard(
+                        title: 'Facturación Total',
+                        value: 'S/ ${c.totalRevenue.toStringAsFixed(2)}',
+                      ),
+                    ),
+                  ],
+                ),
+                if (!isUnlimited && c.creditLimit > 0) ...[
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: creditUsageRatio,
+                      minHeight: 6,
+                      backgroundColor: AppColors.border,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        creditUsageRatio > 0.85
+                            ? AppColors.danger
+                            : (creditUsageRatio > 0.5
+                                ? AppColors.warning
+                                : AppColors.teal),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${(creditUsageRatio * 100).toStringAsFixed(0)}% del límite de crédito consumido',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Direct Contact Action Buttons
+          if (c.phone != null && c.phone!.isNotEmpty) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 16,
+                    ),
+                    label: const Text('WhatsApp'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => onWhatsApp(c.phone!),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.phone_outlined, size: 16),
+                    label: const Text('Llamar'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => onCall(c.phone!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Action Buttons Full Detail & Edit
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Editar datos'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: onEdit,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: const Text('Ficha completa'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: onOpenFullDetail,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1844,31 +1808,6 @@ class _CustomerAvatarLarge extends StatelessWidget {
           color: color,
           fontWeight: FontWeight.bold,
           fontSize: 20,
-        ),
-      ),
-    );
-  }
-}
-
-class _KbdBadge extends StatelessWidget {
-  final String label;
-
-  const _KbdBadge({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.border,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: AppColors.slate,
         ),
       ),
     );

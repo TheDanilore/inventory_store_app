@@ -13,6 +13,9 @@ class InventoryStockTable extends StatefulWidget {
   final ValueChanged<InventoryStockItem> onQuickView;
   final ValueChanged<InventoryStockItem> onOpenDetail;
   final ValueChanged<InventoryStockItem> onKardex;
+
+  /// Muestra el código QR de la variante (icono extra en la columna acciones).
+  final ValueChanged<InventoryStockItem>? onShowQr;
   final AdminTablePaginationConfig? paginationConfig;
   final bool isLoading;
 
@@ -23,6 +26,7 @@ class InventoryStockTable extends StatefulWidget {
     required this.onQuickView,
     required this.onOpenDetail,
     required this.onKardex,
+    this.onShowQr,
     this.paginationConfig,
     this.isLoading = false,
   });
@@ -412,7 +416,7 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
         AdminTableColumn<InventoryStockItem>(
           id: 'actions',
           label: 'ACCIONES',
-          fixedWidth: 130,
+          fixedWidth: widget.onShowQr != null ? 164 : 130,
           alignment: Alignment.centerRight,
           isSortable: false,
           cellBuilder: (context, item) {
@@ -429,6 +433,17 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
+                if (widget.onShowQr != null)
+                  Tooltip(
+                    message: 'Código QR',
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code_2_rounded, size: 17),
+                      color: InventoryPalette.of(context).textSecondary,
+                      onPressed: () => widget.onShowQr!(item),
+                      splashRadius: 16,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
                 Tooltip(
                   message: 'Ver en Kárdex',
                   child: IconButton(
