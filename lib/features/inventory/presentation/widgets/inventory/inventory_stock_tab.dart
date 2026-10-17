@@ -15,15 +15,22 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_variant_panel.dart';
 
 class InventoryStockTab extends StatefulWidget {
   final String? initialSearch;
   final String? initialStatusFilter;
 
+  /// Se invoca con el SKU para saltar a la pestaña Lotes ya filtrada.
+  final void Function(String search)? onViewLots;
+
   const InventoryStockTab({
     super.key,
     this.initialSearch,
     this.initialStatusFilter,
+    this.onViewLots,
   });
 
   @override
@@ -37,6 +44,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
   final _tabFocusNode = FocusNode();
   Timer? _debounce;
   InventoryStockItem? _selectedItem;
+
+  /// true cuando hay espacio para lista + panel (>= InventoryBreakpoints.split).
+  bool _splitLayout = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -88,6 +98,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
   void _openProductDetail(InventoryStockItem item) {
     context.push('/product/${item.productId}?variantId=${item.variantId}');
+  }
+
+  void _openKardex(InventoryStockItem item) {
+    context.push(
+      '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
+    );
   }
 
   void _showQuickView(InventoryStockItem item, InventoryLoaded state) {
@@ -273,7 +289,15 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 if (event.logicalKey == LogicalKeyboardKey.enter ||
                     event.logicalKey == LogicalKeyboardKey.numpadEnter) {
                   final item = _selectedItem ?? stockItems.first;
-                  _showQuickView(item, currentState);
+                  if (_splitLayout) {
+                    if (_selectedItem == null) {
+                      setState(() => _selectedItem = item);
+                    } else {
+                      _openProductDetail(item);
+                    }
+                  } else {
+                    _showQuickView(item, currentState);
+                  }
                   return KeyEventResult.handled;
                 }
               }
@@ -282,13 +306,73 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           },
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isDesktop = constraints.maxWidth >= 900;
+              final isDesktop =
+                  constraints.maxWidth >= InventoryBreakpoints.split;
+              _splitLayout = isDesktop;
 
               if (isDesktop) {
-                return _buildDesktopLayout(
+                final list = _buildDesktopLayout(
                   currentState,
                   state is InventoryLoading,
                   cubit: context.read<InventoryCubit>(),
+                );
+
+                // Variante seleccionada con datos frescos (tras recargas)
+                InventoryStockItem? selected = _selectedItem;
+                if (selected != null) {
+                  for (final it in currentState.stockItems) {
+                    if (it.variantId == selected!.variantId &&
+                        it.productId == selected.productId) {
+                      selected = it;
+                      break;
+                    }
+                  }
+                }
+
+                final sel = selected;
+                final Widget? panel =
+                    sel == null
+                        ? null
+                        : SizedBox(
+                          width: InventoryBreakpoints.detailPaneWidth,
+                          child: InventoryVariantPanel(
+                            key: ValueKey(
+                              '${sel.productId}-${sel.variantId}',
+                            ),
+                            item: sel,
+                            warehouseName: currentState.selectedWarehouseName,
+                            onClose: () => setState(() => _selectedItem = null),
+                            onOpenDetail: () => _openProductDetail(sel),
+                            onKardex: () => _openKardex(sel),
+                            onViewLots:
+                                widget.onViewLots == null
+                                    ? null
+                                    : () => widget.onViewLots!(sel.sku ?? sel.productName),
+                          ),
+                        );
+
+                // Ancho suficiente para tabla (960) + panel (400): lo empuja.
+                // Si no, el panel se superpone para no forzar scroll horizontal.
+                if (constraints.maxWidth >= InventoryBreakpoints.wide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: list),
+                      if (panel != null) panel,
+                    ],
+                  );
+                }
+                return Stack(
+                  children: [
+                    Positioned.fill(child: list),
+                    if (panel != null)
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        right: 0,
+                        child: Material(elevation: 8, child: panel),
+                      ),
+                  ],
                 );
               }
 
@@ -381,9 +465,9 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: InventoryPalette.of(context).surface,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: InventoryPalette.of(context).border),
                           boxShadow: const [
                             BoxShadow(
                               color: Color(0x050F172A),
@@ -528,17 +612,14 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             selectedItem: _selectedItem,
                             isLoading: state.isSearchingStock,
                             onQuickView: (item) {
+                              // Desktop: el panel derecho reemplaza al modal
                               setState(() => _selectedItem = item);
-                              _showQuickView(item, state);
                             },
                             onOpenDetail: (item) {
                               setState(() => _selectedItem = item);
                               _openProductDetail(item);
                             },
-                            onKardex:
-                                (item) => context.push(
-                                  '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
-                                ),
+                            onKardex: _openKardex,
                           ),
                 ),
               ),
@@ -685,8 +766,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     final cubit = context.read<InventoryCubit>();
     final isTablet =
         constraints != null &&
-        constraints.maxWidth >= 600 &&
-        constraints.maxWidth < 900;
+        constraints.maxWidth >= InventoryBreakpoints.mobile &&
+        constraints.maxWidth < InventoryBreakpoints.split;
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -750,7 +831,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           delegate: _StickyStockFiltersDelegate(
             height: 104.0,
             child: Container(
-              color: AppColors.background,
+              color: InventoryPalette.of(context).background,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -872,17 +953,17 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 children: [
                   Text(
                     'Productos (${state.stockItems.length})',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: InventoryPalette.of(context).textPrimary,
                     ),
                   ),
                   Text(
                     'Página ${state.currentStockPage + 1} de ${state.totalStockPages}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textSecondary,
+                      color: InventoryPalette.of(context).textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1061,13 +1142,13 @@ class _MetricCardState extends State<_MetricCard> {
             ? widget.color
             : (_isHovered
                 ? widget.color.withValues(alpha: 0.5)
-                : (widget.highlight ? widget.color : AppColors.border));
+                : (widget.highlight ? widget.color : InventoryPalette.of(context).border));
     final effectiveBg =
         widget.isSelected
             ? widget.color.withValues(alpha: 0.08)
             : (_isHovered
                 ? widget.color.withValues(alpha: 0.03)
-                : AppColors.surface);
+                : InventoryPalette.of(context).surface);
 
     final cardWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -1123,7 +1204,7 @@ class _MetricCardState extends State<_MetricCard> {
                         widget.label,
                         style: TextStyle(
                           fontSize: widget.isCompact ? 10 : 11,
-                          color: AppColors.textSecondary,
+                          color: InventoryPalette.of(context).textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -1164,7 +1245,7 @@ class _MetricCardState extends State<_MetricCard> {
                       color:
                           (widget.highlight || widget.isSelected)
                               ? widget.color
-                              : AppColors.textPrimary,
+                              : InventoryPalette.of(context).textPrimary,
                       height: 1.1,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -1230,17 +1311,17 @@ class _StatusPillState extends State<_StatusPill> {
             ? activeColor
             : (_isHovered
                 ? activeColor.withValues(alpha: 0.08)
-                : AppColors.surface);
+                : InventoryPalette.of(context).surface);
     final border =
         widget.isSelected
             ? activeColor
             : (_isHovered
                 ? activeColor.withValues(alpha: 0.3)
-                : AppColors.border);
+                : InventoryPalette.of(context).border);
     final textCol =
         widget.isSelected
             ? Colors.white
-            : (_isHovered ? activeColor : AppColors.textPrimary);
+            : (_isHovered ? activeColor : InventoryPalette.of(context).textPrimary);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1372,17 +1453,17 @@ class _SearchField extends StatelessWidget {
         focusNode: focusNode,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary,
+          color: InventoryPalette.of(context).textPrimary,
         ),
         textAlignVertical: TextAlignVertical.center,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
+          hintStyle: TextStyle(
+            color: InventoryPalette.of(context).textMuted,
             fontSize: 12.5,
           ),
           prefixIcon: const Icon(
@@ -1411,7 +1492,7 @@ class _SearchField extends StatelessWidget {
                   if (val.text.isNotEmpty && !isLoading) {
                     return IconButton(
                       icon: const Icon(Icons.cancel_rounded, size: 16),
-                      color: AppColors.textMuted,
+                      color: InventoryPalette.of(context).textMuted,
                       onPressed: onClear,
                     );
                   }
@@ -1423,16 +1504,16 @@ class _SearchField extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: InventoryPalette.of(context).subtle,
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(color: InventoryPalette.of(context).border),
                       ),
-                      child: const Text(
+                      child: Text(
                         '/',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textMuted,
+                          color: InventoryPalette.of(context).textMuted,
                         ),
                       ),
                     ),
@@ -1448,18 +1529,18 @@ class _SearchField extends StatelessWidget {
             ],
           ),
           filled: true,
-          fillColor: const Color(0xFFF8FAFC),
+          fillColor: InventoryPalette.of(context).background,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 0,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: InventoryPalette.of(context).border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: InventoryPalette.of(context).border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -1486,9 +1567,9 @@ class _InventoryStockSkeleton extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: InventoryPalette.of(context).surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: InventoryPalette.of(context).border),
           ),
           child: Row(
             children: [
@@ -1535,7 +1616,7 @@ class _CategoryFilterChip extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 360, minWidth: 200),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: InventoryPalette.of(context).border),
       ),
       onSelected: onSelected,
       itemBuilder:
@@ -1553,7 +1634,7 @@ class _CategoryFilterChip extends StatelessWidget {
                       color:
                           c == selected
                               ? AppColors.primary
-                              : AppColors.textSecondary,
+                              : InventoryPalette.of(context).textSecondary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1574,10 +1655,10 @@ class _CategoryFilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: _active ? AppColors.primary : AppColors.surface,
+          color: _active ? AppColors.primary : InventoryPalette.of(context).surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: _active ? AppColors.primary : AppColors.border,
+            color: _active ? AppColors.primary : InventoryPalette.of(context).border,
           ),
         ),
         child: Row(
@@ -1586,7 +1667,7 @@ class _CategoryFilterChip extends StatelessWidget {
             Icon(
               Icons.folder_outlined,
               size: 14,
-              color: _active ? Colors.white : AppColors.textSecondary,
+              color: _active ? Colors.white : InventoryPalette.of(context).textSecondary,
             ),
             const SizedBox(width: 6),
             ConstrainedBox(
@@ -1598,7 +1679,7 @@ class _CategoryFilterChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: _active ? FontWeight.w700 : FontWeight.w600,
-                  color: _active ? Colors.white : AppColors.textPrimary,
+                  color: _active ? Colors.white : InventoryPalette.of(context).textPrimary,
                 ),
               ),
             ),
@@ -1606,7 +1687,7 @@ class _CategoryFilterChip extends StatelessWidget {
             Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 16,
-              color: _active ? Colors.white : AppColors.textSecondary,
+              color: _active ? Colors.white : InventoryPalette.of(context).textSecondary,
             ),
           ],
         ),

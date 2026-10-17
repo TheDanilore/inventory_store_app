@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 
 class InventoryBatchCard extends StatefulWidget {
   final InventoryBatchItem batch;
@@ -41,7 +42,7 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
             color:
                 widget.isSelected
                     ? AppColors.primary.withValues(alpha: 0.02)
-                    : AppColors.surface,
+                    : InventoryPalette.of(context).surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color:
@@ -49,7 +50,7 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                       ? AppColors.primary
                       : _isHovered
                       ? AppColors.primary.withValues(alpha: 0.4)
-                      : AppColors.border,
+                      : InventoryPalette.of(context).border,
               width: widget.isSelected ? 1.8 : 1,
             ),
             boxShadow:
@@ -97,9 +98,11 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: InventoryPalette.of(context).background,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(
+                                color: InventoryPalette.of(context).border,
+                              ),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(9),
@@ -107,25 +110,34 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                   widget.batch.imageUrl != null &&
                                           widget.batch.imageUrl!.isNotEmpty
                                       ? CachedNetworkImage(
-                                          imageUrl: widget.batch.imageUrl!,
-                                          memCacheWidth: 120,
-                                          memCacheHeight: 120,
-                                          fit: BoxFit.cover,
+                                        imageUrl: widget.batch.imageUrl!,
+                                        memCacheWidth: 120,
+                                        memCacheHeight: 120,
+                                        fit: BoxFit.cover,
                                         placeholder:
                                             (context, url) => Container(
-                                              color: AppColors.background,
+                                              color:
+                                                  InventoryPalette.of(
+                                                    context,
+                                                  ).background,
                                             ),
                                         errorWidget:
-                                            (context, url, error) => const Icon(
+                                            (context, url, error) => Icon(
                                               Icons.broken_image_outlined,
                                               size: 18,
-                                              color: AppColors.textMuted,
+                                              color:
+                                                  InventoryPalette.of(
+                                                    context,
+                                                  ).textMuted,
                                             ),
                                       )
-                                      : const Icon(
+                                      : Icon(
                                         Icons.inventory_2_outlined,
                                         size: 20,
-                                        color: AppColors.textMuted,
+                                        color:
+                                            InventoryPalette.of(
+                                              context,
+                                            ).textMuted,
                                       ),
                             ),
                           ),
@@ -144,7 +156,10 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                             ? FontWeight.w800
                                             : FontWeight.w700,
                                     fontSize: 14.5,
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        InventoryPalette.of(
+                                          context,
+                                        ).textPrimary,
                                     height: 1.2,
                                   ),
                                   maxLines: 1,
@@ -175,9 +190,12 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                                     if (widget.batch.warehouseName != null)
                                       widget.batch.warehouseName!,
                                   ].join(' · '),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color:
+                                        InventoryPalette.of(
+                                          context,
+                                        ).textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
@@ -241,28 +259,36 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                               vertical: 3.5,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: InventoryPalette.of(context).background,
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.border),
+                              border: Border.all(
+                                color: InventoryPalette.of(context).border,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.tag_rounded,
                                   size: 12,
-                                  color: AppColors.textSecondary,
+                                  color:
+                                      InventoryPalette.of(
+                                        context,
+                                      ).textSecondary,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   widget.batch.batchNumber == 'DEFAULT'
                                       ? 'Sin lote'
                                       : widget.batch.batchNumber,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     fontFamily: 'monospace',
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        InventoryPalette.of(
+                                          context,
+                                        ).textPrimary,
                                   ),
                                 ),
                               ],
@@ -345,17 +371,20 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.local_shipping_outlined,
                                   size: 12,
-                                  color: AppColors.textMuted,
+                                  color: InventoryPalette.of(context).textMuted,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   widget.batch.supplierName!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.textSecondary,
+                                    color:
+                                        InventoryPalette.of(
+                                          context,
+                                        ).textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
@@ -418,11 +447,11 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
         PopupMenuItem<String>(
           value: 'copy',
           child: Row(
-            children: const [
+            children: [
               Icon(
                 Icons.copy_rounded,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: InventoryPalette.of(context).textSecondary,
               ),
               SizedBox(width: 8),
               Text('Copiar código de lote', style: TextStyle(fontSize: 13)),
@@ -493,7 +522,7 @@ class _InventoryBatchCardState extends State<InventoryBatchCard> {
         );
       default:
         return _StatusConfig(
-          color: AppColors.textSecondary,
+          color: InventoryPalette.of(context).textSecondary,
           icon: Icons.remove_circle_outline_rounded,
           label: 'SIN VTO.',
         );

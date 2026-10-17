@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_side_sheet.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 
 class InventoryBatchDetailPane extends StatelessWidget {
   final InventoryBatchItem batch;
@@ -43,14 +44,14 @@ class InventoryBatchDetailPane extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: InventoryPalette.of(context).surface,
         borderRadius:
             isEmbedded
                 ? BorderRadius.circular(AppColors.radiusLg)
                 : BorderRadius.zero,
         border:
             isEmbedded
-                ? Border.all(color: AppColors.border.withValues(alpha: 0.8))
+                ? Border.all(color: InventoryPalette.of(context).border.withValues(alpha: 0.8))
                 : null,
         boxShadow: isEmbedded ? AppColors.cardShadow(opacity: 0.03) : null,
       ),
@@ -113,9 +114,9 @@ class InventoryBatchDetailPane extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: InventoryPalette.of(context).surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.6)),
+          bottom: BorderSide(color: InventoryPalette.of(context).border.withValues(alpha: 0.6)),
         ),
       ),
       child: Row(
@@ -151,10 +152,10 @@ class InventoryBatchDetailPane extends StatelessWidget {
           Tooltip(
             message: 'Copiar código de lote',
             child: IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.copy_rounded,
                 size: 18,
-                color: AppColors.textSecondary,
+                color: InventoryPalette.of(context).textSecondary,
               ),
               onPressed: () => _copyBatchCode(context),
               splashRadius: 18,
@@ -162,10 +163,10 @@ class InventoryBatchDetailPane extends StatelessWidget {
           ),
           if (onClose != null)
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.close_rounded,
                 size: 20,
-                color: AppColors.textSecondary,
+                color: InventoryPalette.of(context).textSecondary,
               ),
               onPressed: onClose,
               splashRadius: 18,
@@ -184,9 +185,9 @@ class InventoryBatchDetailPane extends StatelessWidget {
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: InventoryPalette.of(context).background,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: InventoryPalette.of(context).border),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
@@ -199,7 +200,7 @@ class InventoryBatchDetailPane extends StatelessWidget {
                       fit: BoxFit.cover,
                       placeholder:
                           (context, url) => Container(
-                            color: AppColors.background,
+                            color: InventoryPalette.of(context).background,
                             child: const Center(
                               child: SizedBox(
                                 width: 20,
@@ -212,16 +213,16 @@ class InventoryBatchDetailPane extends StatelessWidget {
                             ),
                           ),
                       errorWidget:
-                          (context, url, error) => const Icon(
+                          (context, url, error) => Icon(
                             Icons.broken_image_outlined,
                             size: 28,
-                            color: AppColors.textMuted,
+                            color: InventoryPalette.of(context).textMuted,
                           ),
                     )
-                    : const Icon(
+                    : Icon(
                       Icons.inventory_2_outlined,
                       size: 32,
-                      color: AppColors.textMuted,
+                      color: InventoryPalette.of(context).textMuted,
                     ),
           ),
         ),
@@ -234,10 +235,10 @@ class InventoryBatchDetailPane extends StatelessWidget {
               Text(
                 batch.productName ??
                     'Producto ${batch.productId.substring(0, 8)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: InventoryPalette.of(context).textPrimary,
                   height: 1.25,
                 ),
               ),
@@ -323,26 +324,26 @@ class InventoryBatchDetailPane extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: InventoryPalette.of(context).background,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: InventoryPalette.of(context).border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  children: const [
+                  children: [
                     Icon(
                       Icons.inventory_2_rounded,
                       size: 15,
-                      color: AppColors.textSecondary,
+                      color: InventoryPalette.of(context).textSecondary,
                     ),
                     SizedBox(width: 6),
                     Text(
                       'Stock Disponible',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: InventoryPalette.of(context).textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -355,19 +356,19 @@ class InventoryBatchDetailPane extends StatelessWidget {
                   children: [
                     Text(
                       '${batch.availableQuantity}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
+                        color: InventoryPalette.of(context).textPrimary,
                         letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Text(
+                    Text(
                       'unidades',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: InventoryPalette.of(context).textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -383,9 +384,9 @@ class InventoryBatchDetailPane extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: InventoryPalette.of(context).background,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: InventoryPalette.of(context).border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,11 +399,11 @@ class InventoryBatchDetailPane extends StatelessWidget {
                       color: statusConfig.color,
                     ),
                     const SizedBox(width: 6),
-                    const Text(
+                    Text(
                       'Vencimiento',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: InventoryPalette.of(context).textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -429,19 +430,19 @@ class InventoryBatchDetailPane extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: InventoryPalette.of(context).surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: InventoryPalette.of(context).border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Datos de Rastreo y Origen',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
+              color: InventoryPalette.of(context).textSecondary,
               letterSpacing: 0.3,
             ),
           ),
@@ -513,8 +514,8 @@ class InventoryBatchDetailPane extends StatelessWidget {
           icon: const Icon(Icons.open_in_new_rounded, size: 16),
           label: const Text('Abrir Ficha de Producto'),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.textPrimary,
-            side: const BorderSide(color: AppColors.border),
+            foregroundColor: InventoryPalette.of(context).textPrimary,
+            side: BorderSide(color: InventoryPalette.of(context).border),
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -635,21 +636,21 @@ class _TagBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: InventoryPalette.of(context).background,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: InventoryPalette.of(context).border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppColors.textSecondary),
+          Icon(icon, size: 12, color: InventoryPalette.of(context).textSecondary),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: InventoryPalette.of(context).textSecondary,
             ),
           ),
         ],
@@ -678,14 +679,14 @@ class _DataRow extends StatelessWidget {
     return Row(
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 16, color: AppColors.textSecondary),
+          Icon(icon, size: 16, color: InventoryPalette.of(context).textSecondary),
           const SizedBox(width: 8),
         ],
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
-            color: AppColors.textSecondary,
+            color: InventoryPalette.of(context).textSecondary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -695,7 +696,7 @@ class _DataRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: InventoryPalette.of(context).textPrimary,
             fontFamily: isMonospace ? 'monospace' : null,
           ),
         ),

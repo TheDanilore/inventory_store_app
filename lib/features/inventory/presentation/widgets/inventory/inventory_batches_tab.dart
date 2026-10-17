@@ -12,6 +12,8 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
 
 class InventoryBatchesTab extends StatefulWidget {
   const InventoryBatchesTab({super.key});
@@ -105,9 +107,20 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
 
         final currentState = loadedState;
 
+        // Si la búsqueda cambió desde fuera (p. ej. "Ver lotes" en Stock),
+        // reflejarla en el campo, salvo que la persona esté escribiendo.
+        if (!_searchFocusNode.hasFocus &&
+            _searchCtrl.text != currentState.batchSearchText) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_searchFocusNode.hasFocus) {
+              _searchCtrl.text = currentState.batchSearchText;
+            }
+          });
+        }
+
         return LayoutBuilder(
           builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 840;
+            final isTablet = constraints.maxWidth >= InventoryBreakpoints.split;
 
             // Determinación reactiva y limpia del lote activo sin agendar setState en build
             final activeBatch =
@@ -131,7 +144,9 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                       decoration: BoxDecoration(
                         border: Border(
                           right: BorderSide(
-                            color: AppColors.border.withValues(alpha: 0.7),
+                            color: InventoryPalette.of(
+                              context,
+                            ).border.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
@@ -148,7 +163,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                   Expanded(
                     flex: 7,
                     child: Container(
-                      color: AppColors.background,
+                      color: InventoryPalette.of(context).background,
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                       child:
                           activeBatch == null
@@ -159,13 +174,17 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                                     Icon(
                                       Icons.inventory_2_outlined,
                                       size: 56,
-                                      color: AppColors.border,
+                                      color:
+                                          InventoryPalette.of(context).border,
                                     ),
                                     const SizedBox(height: 14),
-                                    const Text(
+                                    Text(
                                       'No hay lotes disponibles para inspeccionar',
                                       style: TextStyle(
-                                        color: AppColors.textSecondary,
+                                        color:
+                                            InventoryPalette.of(
+                                              context,
+                                            ).textSecondary,
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
                                       ),
@@ -385,7 +404,7 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
             pinned: true,
             delegate: _StickyBatchesHeaderDelegate(
               child: Container(
-                color: AppColors.background,
+                color: InventoryPalette.of(context).background,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: _SearchField(
                   controller: _searchCtrl,
@@ -431,10 +450,10 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                       children: [
                         Text(
                           'Lotes Encontrados (${state.batchItems.length})',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: InventoryPalette.of(context).textPrimary,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -444,16 +463,18 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: InventoryPalette.of(context).surface,
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(
+                              color: InventoryPalette.of(context).border,
+                            ),
                           ),
-                          child: const Text(
+                          child: Text(
                             '↑ ↓ navegar',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textMuted,
+                              color: InventoryPalette.of(context).textMuted,
                             ),
                           ),
                         ),
@@ -461,9 +482,9 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
                     ),
                     Text(
                       'Página ${state.currentBatchPage + 1} de ${state.totalBatchPages}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: InventoryPalette.of(context).textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -593,10 +614,12 @@ class _InteractiveMetricCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color:
-                isSelected ? color.withValues(alpha: 0.12) : AppColors.surface,
+                isSelected
+                    ? color.withValues(alpha: 0.12)
+                    : InventoryPalette.of(context).surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? color : AppColors.border,
+              color: isSelected ? color : InventoryPalette.of(context).border,
               width: isSelected ? 1.8 : 1,
             ),
             boxShadow:
@@ -635,7 +658,10 @@ class _InteractiveMetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? color : AppColors.textSecondary,
+                      color:
+                          isSelected
+                              ? color
+                              : InventoryPalette.of(context).textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -644,7 +670,10 @@ class _InteractiveMetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: isSelected ? color : AppColors.textPrimary,
+                      color:
+                          isSelected
+                              ? color
+                              : InventoryPalette.of(context).textPrimary,
                       height: 1.1,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -689,14 +718,14 @@ class _SearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-          color: AppColors.textSecondary,
+        hintStyle: TextStyle(
+          color: InventoryPalette.of(context).textSecondary,
           fontSize: 13,
         ),
-        prefixIcon: const Icon(
+        prefixIcon: Icon(
           Icons.search_rounded,
           size: 19,
-          color: AppColors.textSecondary,
+          color: InventoryPalette.of(context).textSecondary,
         ),
         suffixIcon: Row(
           mainAxisSize: MainAxisSize.min,
@@ -719,7 +748,7 @@ class _SearchField extends StatelessWidget {
                 if (val.text.isNotEmpty && !isLoading) {
                   return IconButton(
                     icon: const Icon(Icons.close_rounded, size: 18),
-                    color: AppColors.textSecondary,
+                    color: InventoryPalette.of(context).textSecondary,
                     onPressed: onClear,
                   );
                 }
@@ -729,18 +758,18 @@ class _SearchField extends StatelessWidget {
           ],
         ),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: InventoryPalette.of(context).surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: InventoryPalette.of(context).border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: InventoryPalette.of(context).border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -768,7 +797,7 @@ class _InventoryBatchesSkeleton extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: InventoryPalette.of(context).border),
           ),
           child: Row(
             children: [

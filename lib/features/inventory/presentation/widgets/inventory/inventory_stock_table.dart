@@ -5,6 +5,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 
 class InventoryStockTable extends StatefulWidget {
   final List<InventoryStockItem> items;
@@ -51,10 +52,14 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
       int cmp = 0;
       switch (_sortColumnId) {
         case 'product':
-          cmp = a.productName.toLowerCase().compareTo(b.productName.toLowerCase());
+          cmp = a.productName.toLowerCase().compareTo(
+            b.productName.toLowerCase(),
+          );
           break;
         case 'sku':
-          cmp = (a.sku ?? '').toLowerCase().compareTo((b.sku ?? '').toLowerCase());
+          cmp = (a.sku ?? '').toLowerCase().compareTo(
+            (b.sku ?? '').toLowerCase(),
+          );
           break;
         case 'pricing':
           cmp = a.salePrice.compareTo(b.salePrice);
@@ -81,21 +86,23 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
           memCacheHeight: 120,
           maxWidthDiskCache: 250,
           maxHeightDiskCache: 250,
-          placeholder: (context, url) => Container(
-            width: size,
-            height: size,
-            color: AppColors.background,
-          ),
-          errorWidget: (context, url, error) => Container(
-            width: size,
-            height: size,
-            color: AppColors.background,
-            child: const Icon(
-              Icons.image_not_supported_outlined,
-              color: AppColors.border,
-              size: 16,
-            ),
-          ),
+          placeholder:
+              (context, url) => Container(
+                width: size,
+                height: size,
+                color: AppColors.background,
+              ),
+          errorWidget:
+              (context, url, error) => Container(
+                width: size,
+                height: size,
+                color: AppColors.background,
+                child: const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: AppColors.border,
+                  size: 16,
+                ),
+              ),
         ),
       );
     }
@@ -121,7 +128,8 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
 
     return AdminProTable<InventoryStockItem>(
       items: sortedList,
-      itemId: (item) => item.variantId.isNotEmpty ? item.variantId : item.productId,
+      itemId:
+          (item) => item.variantId.isNotEmpty ? item.variantId : item.productId,
       selectedIds: _selectedIds,
       onSelectionChanged: (newSet) {
         setState(() {
@@ -159,9 +167,13 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
           customColor: AppColors.teal,
           onPressed: (selectedList) {
             final summary = selectedList
-                .map((i) => '- ${i.productName} (${i.attrsText}): ${i.stock} uds. | Venta: S/ ${i.salePrice.toStringAsFixed(2)}')
+                .map(
+                  (i) =>
+                      '- ${i.productName} (${i.attrsText}): ${i.stock} uds. | Venta: S/ ${i.salePrice.toStringAsFixed(2)}',
+                )
                 .join('\n');
-            final fullText = 'RESUMEN DE STOCK (${selectedList.length} productos)\n$summary';
+            final fullText =
+                'RESUMEN DE STOCK (${selectedList.length} productos)\n$summary';
             _copyToClipboard(context, fullText, 'Resumen de stock');
           },
         ),
@@ -186,22 +198,23 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                     children: [
                       Text(
                         item.productName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: Color(0xFF0F172A),
+                          color: InventoryPalette.of(context).textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (item.attrsText.trim().isNotEmpty &&
                           item.attrsText.trim() != 'Única' &&
-                          item.attrsText.trim().toLowerCase() != 'variante estándar')
+                          item.attrsText.trim().toLowerCase() !=
+                              'variante estándar')
                         Text(
                           item.attrsText,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Color(0xFF64748B),
+                            color: InventoryPalette.of(context).textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -232,19 +245,24 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                     onTap: () => _copyToClipboard(context, item.sku!, 'SKU'),
                     borderRadius: BorderRadius.circular(4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: InventoryPalette.of(context).subtle,
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                        border: Border.all(
+                          color: InventoryPalette.of(context).borderStrong,
+                        ),
                       ),
                       child: Text(
                         item.sku!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
-                          color: Color(0xFF0F172A),
+                          color: InventoryPalette.of(context).textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -253,16 +271,19 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1.5,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: InventoryPalette.of(context).subtle,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Sin SKU',
                       style: TextStyle(
                         fontSize: 10,
-                        color: Color(0xFF64748B),
+                        color: InventoryPalette.of(context).textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -270,9 +291,9 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                 const SizedBox(height: 2),
                 Text(
                   item.category,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF64748B),
+                    color: InventoryPalette.of(context).textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -297,8 +318,8 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
               children: [
                 Text(
                   'Costo: S/ ${item.unitCost.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
+                  style: TextStyle(
+                    color: InventoryPalette.of(context).textSecondary,
                     fontSize: 11,
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
@@ -306,10 +327,10 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                 const SizedBox(height: 1),
                 Text(
                   'Venta: S/ ${item.salePrice.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
-                    color: Color(0xFF0F172A),
+                    color: InventoryPalette.of(context).textPrimary,
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
@@ -329,23 +350,38 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
             final isOut = item.stock <= 0;
             final isLow = item.isLowStock;
 
-            final Color badgeBg = isOut
-                ? const Color(0xFFFEE2E2)
-                : (isLow ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7));
-            final Color badgeBorder = isOut
-                ? const Color(0xFFFCA5A5)
-                : (isLow ? const Color(0xFFFCD34D) : const Color(0xFF86EFAC));
-            final Color badgeColor = isOut
-                ? const Color(0xFF991B1B)
-                : (isLow ? const Color(0xFF92400E) : const Color(0xFF166534));
-            final IconData badgeIcon = isOut
-                ? Icons.highlight_off_rounded
-                : (isLow ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded);
+            final Color badgeBg =
+                isOut
+                    ? InventoryPalette.of(context).dangerBg
+                    : (isLow
+                        ? InventoryPalette.of(context).warnBg
+                        : InventoryPalette.of(context).okBg);
+            final Color badgeBorder =
+                isOut
+                    ? InventoryPalette.of(context).dangerBd
+                    : (isLow
+                        ? InventoryPalette.of(context).warnBd
+                        : InventoryPalette.of(context).okBd);
+            final Color badgeColor =
+                isOut
+                    ? InventoryPalette.of(context).dangerFg
+                    : (isLow
+                        ? InventoryPalette.of(context).warnFg
+                        : InventoryPalette.of(context).okFg);
+            final IconData badgeIcon =
+                isOut
+                    ? Icons.highlight_off_rounded
+                    : (isLow
+                        ? Icons.warning_amber_rounded
+                        : Icons.check_circle_outline_rounded);
 
             return Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
                 decoration: BoxDecoration(
                   color: badgeBg,
                   borderRadius: BorderRadius.circular(6),
@@ -397,7 +433,7 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                   message: 'Ver en Kárdex',
                   child: IconButton(
                     icon: const Icon(Icons.receipt_long_rounded, size: 17),
-                    color: const Color(0xFF64748B),
+                    color: InventoryPalette.of(context).textSecondary,
                     onPressed: () => widget.onKardex(item),
                     splashRadius: 16,
                     visualDensity: VisualDensity.compact,
@@ -407,7 +443,7 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                   message: 'Ficha Completa de Producto',
                   child: IconButton(
                     icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                    color: const Color(0xFF64748B),
+                    color: InventoryPalette.of(context).textSecondary,
                     onPressed: () => widget.onOpenDetail(item),
                     splashRadius: 16,
                     visualDensity: VisualDensity.compact,
@@ -421,12 +457,18 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
       mobileCardBuilder: (context, item, isSelected, onSelect) {
         final isOut = item.stock <= 0;
         final isLow = item.isLowStock;
-        final Color badgeBg = isOut
-            ? const Color(0xFFFEE2E2)
-            : (isLow ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7));
-        final Color badgeColor = isOut
-            ? const Color(0xFF991B1B)
-            : (isLow ? const Color(0xFF92400E) : const Color(0xFF166534));
+        final Color badgeBg =
+            isOut
+                ? InventoryPalette.of(context).dangerBg
+                : (isLow
+                    ? InventoryPalette.of(context).warnBg
+                    : InventoryPalette.of(context).okBg);
+        final Color badgeColor =
+            isOut
+                ? InventoryPalette.of(context).dangerFg
+                : (isLow
+                    ? InventoryPalette.of(context).warnFg
+                    : InventoryPalette.of(context).okFg);
 
         return InkWell(
           onTap: () => widget.onQuickView(item),
@@ -434,10 +476,16 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFF0FDFA) : AppColors.surface,
+              color:
+                  isSelected
+                      ? InventoryPalette.of(context).selectedTint
+                      : InventoryPalette.of(context).surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected ? AppColors.teal : AppColors.border,
+                color:
+                    isSelected
+                        ? AppColors.teal
+                        : InventoryPalette.of(context).border,
                 width: isSelected ? 1.6 : 1,
               ),
               boxShadow: AppColors.cardShadow(opacity: 0.03),
@@ -452,36 +500,51 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                     children: [
                       Text(
                         item.productName,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: InventoryPalette.of(context).textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (item.attrsText.isNotEmpty && item.attrsText != 'Única')
+                      if (item.attrsText.isNotEmpty &&
+                          item.attrsText != 'Única')
                         Text(
                           item.attrsText,
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: InventoryPalette.of(context).textSecondary,
+                          ),
                         ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: badgeBg,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '${item.stock} uds.',
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: badgeColor),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: badgeColor,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'S/ ${item.salePrice.toStringAsFixed(2)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                              color: InventoryPalette.of(context).textPrimary,
                               fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
@@ -493,7 +556,9 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
                 Checkbox(
                   value: isSelected,
                   activeColor: AppColors.teal,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   onChanged: (val) => onSelect(val ?? false),
                 ),
               ],

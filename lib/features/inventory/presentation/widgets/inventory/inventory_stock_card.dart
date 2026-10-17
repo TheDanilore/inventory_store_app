@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 
 class InventoryStockCard extends StatelessWidget {
   final InventoryStockItem item;
@@ -35,10 +36,13 @@ class InventoryStockCard extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: InventoryPalette.of(context).surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? AppColors.primary : AppColors.border,
+          color:
+              isSelected
+                  ? AppColors.primary
+                  : InventoryPalette.of(context).border,
           width: isSelected ? 1.5 : 1,
         ),
         boxShadow: AppColors.cardShadow(),
@@ -67,9 +71,11 @@ class InventoryStockCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: InventoryPalette.of(context).background,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(
+                          color: InventoryPalette.of(context).border,
+                        ),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(11),
@@ -82,7 +88,10 @@ class InventoryStockCard extends StatelessWidget {
                                   fit: BoxFit.cover,
                                   placeholder:
                                       (context, url) => Container(
-                                        color: AppColors.background,
+                                        color:
+                                            InventoryPalette.of(
+                                              context,
+                                            ).background,
                                         child: const Center(
                                           child: SizedBox(
                                             width: 16,
@@ -95,16 +104,19 @@ class InventoryStockCard extends StatelessWidget {
                                         ),
                                       ),
                                   errorWidget:
-                                      (context, url, error) => const Icon(
+                                      (context, url, error) => Icon(
                                         Icons.broken_image_outlined,
                                         size: 20,
-                                        color: AppColors.textMuted,
+                                        color:
+                                            InventoryPalette.of(
+                                              context,
+                                            ).textMuted,
                                       ),
                                 )
-                                : const Icon(
+                                : Icon(
                                   Icons.inventory_2_outlined,
                                   size: 22,
-                                  color: AppColors.textMuted,
+                                  color: InventoryPalette.of(context).textMuted,
                                 ),
                       ),
                     ),
@@ -121,10 +133,13 @@ class InventoryStockCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   item.productName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15,
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        InventoryPalette.of(
+                                          context,
+                                        ).textPrimary,
                                     height: 1.2,
                                   ),
                                   maxLines: 2,
@@ -189,9 +204,9 @@ class InventoryStockCard extends StatelessWidget {
                                   item.sku!.trim() != 'N/A')
                                 'SKU: ${item.sku}',
                             ].join(' · '),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary,
+                              color: InventoryPalette.of(context).textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -278,10 +293,10 @@ class InventoryStockCard extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.flag_outlined,
                       size: 13,
-                      color: AppColors.textSecondary,
+                      color: InventoryPalette.of(context).textSecondary,
                     ),
                     const SizedBox(width: 5),
                     Expanded(
@@ -289,9 +304,9 @@ class InventoryStockCard extends StatelessWidget {
                         'Reorden: ${item.reorderPoint} uds.',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
-                          color: AppColors.textSecondary,
+                          color: InventoryPalette.of(context).textSecondary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -299,8 +314,8 @@ class InventoryStockCard extends StatelessWidget {
                     _FooterChip(
                       icon: Icons.receipt_long_rounded,
                       label: 'Kárdex',
-                      foreground: AppColors.textSecondary,
-                      background: const Color(0xFFF1F5F9),
+                      foreground: InventoryPalette.of(context).textSecondary,
+                      background: InventoryPalette.of(context).subtle,
                       onTap: () {
                         context.push(
                           '/kardex?productId=${item.productId}&variantId=${item.variantId}&productName=${Uri.encodeComponent(item.productName)}&variantName=${Uri.encodeComponent(item.attrsText)}',
@@ -335,7 +350,7 @@ class _BatchSummary extends StatelessWidget {
       if (d != null && (nearest == null || d.isBefore(nearest))) nearest = d;
     }
 
-    Color color = AppColors.textSecondary;
+    Color color = InventoryPalette.of(context).textSecondary;
     String label = 'Sin vencimiento';
     if (nearest != null) {
       final diff = nearest.difference(DateTime.now()).inDays;
@@ -356,9 +371,9 @@ class _BatchSummary extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: InventoryPalette.of(context).background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: InventoryPalette.of(context).border),
       ),
       child: Row(
         children: [
@@ -370,10 +385,10 @@ class _BatchSummary extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             '${active.length} lote${active.length != 1 ? 's' : ''}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: InventoryPalette.of(context).textPrimary,
             ),
           ),
           const Spacer(),

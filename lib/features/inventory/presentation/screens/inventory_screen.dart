@@ -10,14 +10,15 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_export_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
 
 /// Pantalla principal de Control de Inventario & Stock.
 ///
 /// Arquitectura Camaleónica y Multi-dispositivo:
-/// - **Desktop (>= 1024dp)**: Filosofía Power User / ERP Pro Tool (Linear/Stripe).
+/// - **Desktop (>= 900dp)**: Filosofía Power User / ERP Pro Tool (Linear/Stripe).
 ///   Barra de herramientas compacta con atajos de tecla única (Focus Shield),
 ///   indicador de urgencia cruzada entre stock y lotes, selector con hover y exportador rápido.
-/// - **Tablet (640dp - 1024dp)**: Eficiencia híbrida, distribución balanceada y modales contenidos.
+/// - **Tablet (640dp - 900dp)**: Eficiencia híbrida, distribución balanceada y modales contenidos.
 /// - **Móvil (< 640dp)**: Filosofía Apple HIG. Selector de almacén mediante modal BottomSheet táctil,
 ///   targets táctiles mínimos de 48x48dp, bordes curvos (16-24dp) y optimización estricta del pulgar.
 class InventoryScreen extends StatefulWidget {
@@ -86,6 +87,12 @@ class _InventoryScreenState extends State<InventoryScreen>
         cubit.initBatchesTab();
       }
     }
+  }
+
+  /// Puente Stock -> Lotes: filtra Lotes por el SKU y cambia de pestaña.
+  void _showLotsOf(String search) {
+    context.read<InventoryCubit>().setBatchSearch(search);
+    _tabController.animateTo(1);
   }
 
   void _openExportModal(InventoryLoaded? loadedState) {
@@ -256,6 +263,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                   InventoryStockTab(
                     initialSearch: widget.initialSearch,
                     initialStatusFilter: widget.initialStatusFilter,
+                    onViewLots: _showLotsOf,
                   ),
                   const InventoryBatchesTab(),
                 ],
@@ -326,8 +334,8 @@ class _AdaptiveInventoryHeader extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isMobile = constraints.maxWidth < 640;
-          final isDesktop = constraints.maxWidth >= 1024;
+          final isMobile = constraints.maxWidth < InventoryBreakpoints.mobile;
+          final isDesktop = constraints.maxWidth >= InventoryBreakpoints.split;
 
           final tabBarWidget = _SegmentedTabs(
             controller: tabController,
