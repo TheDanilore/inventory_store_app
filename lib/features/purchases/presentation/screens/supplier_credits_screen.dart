@@ -498,7 +498,29 @@ class _SupplierCreditsScreenState extends State<SupplierCreditsScreen>
                             '',
                           );
                         },
+                        // Desktop/tablet: control segmentado existente.
                         filterWidgets: [_buildSegmentedFilter(debtCount)],
+                        // Móvil: el mismo filtro como chips en el sheet (estado en vivo).
+                        filterGroups: [
+                          AdminFilterGroup<int>(
+                            title: 'Cuentas',
+                            icon: Icons.account_balance_wallet_outlined,
+                            selected: _tabCtrl.index,
+                            defaultValue: 0,
+                            onSelected: (i) => _tabCtrl.animateTo(i),
+                            options: [
+                              const AdminFilterOption(value: 0, label: 'Todas'),
+                              AdminFilterOption(
+                                value: 1,
+                                label:
+                                    debtCount > 0
+                                        ? 'Por pagar ($debtCount)'
+                                        : 'Por pagar',
+                                color: AppColors.danger,
+                              ),
+                            ],
+                          ),
+                        ],
                         viewToggleConfig: AdminProViewToggleConfig(
                           isTableView: _isTableView,
                           onToggleTableView:

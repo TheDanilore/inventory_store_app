@@ -35,15 +35,6 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
   const PurchaseOrdersScreen({super.key, this.targetOrderId});
 
-  static const _statusLabels = {
-    'Todos': 'Todos',
-    'PENDING': 'Pendiente',
-    'SENT': 'Enviado',
-    'PARTIAL': 'Parcial',
-    'RECEIVED': 'Recibido',
-    'CANCELLED': 'Cancelado',
-  };
-
   @override
   State<PurchaseOrdersScreen> createState() => _PurchaseOrdersScreenState();
 }
@@ -647,177 +638,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     );
   }
 
-  String _getStatusLabel(String status) {
-    return PurchaseOrdersScreen._statusLabels[status] ?? status;
-  }
-
-  Widget _buildStatusDropdown(
-    BuildContext context,
-    _PurchaseOrdersViewModel viewModel,
-  ) {
-    final isFiltered = viewModel.statusFilter != 'Todos';
-
-    return PopupMenuButton<String>(
-      initialValue: viewModel.statusFilter,
-      offset: const Offset(0, 44),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      onSelected: (val) => viewModel.setStatusFilter(val),
-      itemBuilder:
-          (context) => [
-            const PopupMenuItem(
-              value: 'Todos',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.list_alt_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  SizedBox(width: 8),
-                  Text('Todos los estados', style: TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'PENDING',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.hourglass_top_rounded,
-                    size: 16,
-                    color: AppColors.warning,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Pendientes',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.warningDark,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'SENT',
-              child: Row(
-                children: [
-                  Icon(Icons.send_rounded, size: 16, color: Color(0xFF3B82F6)),
-                  SizedBox(width: 8),
-                  Text(
-                    'Enviados',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D4ED8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'PARTIAL',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.pie_chart_rounded,
-                    size: 16,
-                    color: Colors.amber.shade800,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Parciales',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.amber.shade900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'RECEIVED',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    size: 16,
-                    color: AppColors.teal,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Recibidos',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.tealDark,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'CANCELLED',
-              child: Row(
-                children: [
-                  Icon(Icons.cancel_rounded, size: 16, color: AppColors.error),
-                  SizedBox(width: 8),
-                  Text(
-                    'Cancelados',
-                    style: TextStyle(fontSize: 13, color: AppColors.error),
-                  ),
-                ],
-              ),
-            ),
-          ],
-      child: Container(
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color:
-              isFiltered
-                  ? AppColors.teal.withValues(alpha: 0.1)
-                  : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isFiltered ? AppColors.teal : const Color(0xFFE2E8F0),
-            width: isFiltered ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.filter_list_rounded,
-              size: 15,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Estado: ${_getStatusLabel(viewModel.statusFilter)}',
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isFiltered ? FontWeight.w800 : FontWeight.w600,
-                color: isFiltered ? AppColors.tealDark : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: isFiltered ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
@@ -1108,8 +928,54 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                   _searchCtrl.clear();
                                   viewModel.setSearchText('');
                                 },
-                                filterWidgets: [
-                                  _buildStatusDropdown(context, viewModel),
+                                filterGroups: [
+                                  AdminFilterGroup<String>(
+                                    title: 'Estado',
+                                    icon: Icons.filter_list_rounded,
+                                    selected: viewModel.statusFilter,
+                                    defaultValue: 'Todos',
+                                    onSelected: viewModel.setStatusFilter,
+                                    options: [
+                                      const AdminFilterOption(
+                                        value: 'Todos',
+                                        label: 'Todos',
+                                        icon: Icons.list_alt_rounded,
+                                      ),
+                                      const AdminFilterOption(
+                                        value: 'PENDING',
+                                        label: 'Pendientes',
+                                        icon: Icons.hourglass_top_rounded,
+                                        color: AppColors.warningDark,
+                                      ),
+                                      const AdminFilterOption(
+                                        value: 'SENT',
+                                        label: 'Enviados',
+                                        icon: Icons.send_rounded,
+                                        color: Color(0xFF1D4ED8),
+                                      ),
+                                      AdminFilterOption(
+                                        value: 'PARTIAL',
+                                        label: 'Parciales',
+                                        icon: Icons.pie_chart_rounded,
+                                        color: Colors.amber.shade900,
+                                      ),
+                                      const AdminFilterOption(
+                                        value: 'RECEIVED',
+                                        label: 'Recibidos',
+                                        icon: Icons.check_circle_rounded,
+                                        color: AppColors.tealDark,
+                                      ),
+                                      const AdminFilterOption(
+                                        value: 'CANCELLED',
+                                        label: 'Cancelados',
+                                        icon: Icons.cancel_rounded,
+                                        color: AppColors.error,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                // Fecha: filtro en desktop y sección dentro del sheet móvil
+                                mobileExtraFilters: [
                                   DateFilterCalendar(
                                     height: 40,
                                     borderRadius: BorderRadius.circular(10),
@@ -1122,6 +988,15 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     },
                                   ),
                                 ],
+                                activeFiltersCount:
+                                    (viewModel.statusFilter != 'Todos'
+                                        ? 1
+                                        : 0) +
+                                    (viewModel.dateRange != null ? 1 : 0),
+                                onClearFilters: () {
+                                  viewModel.setStatusFilter('Todos');
+                                  viewModel.setDateRange(null);
+                                },
                                 viewToggleConfig: AdminProViewToggleConfig(
                                   isTableView: _isTableView,
                                   onToggleTableView:

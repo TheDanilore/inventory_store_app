@@ -36,6 +36,9 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   bool _isTableView = true; // Por defecto en Desktop: Tabla Pro 100%
   SupplierEntity? _selectedSupplier;
 
+  /// Filtro de estado: null = todos, true = activos, false = inactivos.
+  bool? _filterIsActive;
+
   @override
   void initState() {
     super.initState();
@@ -281,6 +284,12 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                   suppliers
                       .where((s) => s.taxId != null && s.taxId!.isNotEmpty)
                       .length;
+              final visibleSuppliers =
+                  _filterIsActive == null
+                      ? suppliers
+                      : suppliers
+                          .where((s) => s.isActive == _filterIsActive)
+                          .toList();
 
               return RefreshIndicator(
                 onRefresh:
@@ -339,6 +348,34 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                           _searchCtrl.clear();
                           context.read<SuppliersCubit>().setSearchQuery('');
                         },
+                        filterGroups: [
+                          AdminFilterGroup<bool?>(
+                            title: 'Estado',
+                            icon: Icons.toggle_on_outlined,
+                            selected: _filterIsActive,
+                            defaultValue: null,
+                            onSelected:
+                                (v) => setState(() => _filterIsActive = v),
+                            options: const [
+                              AdminFilterOption<bool?>(
+                                value: null,
+                                label: 'Todos',
+                              ),
+                              AdminFilterOption<bool?>(
+                                value: true,
+                                label: 'Activos',
+                                icon: Icons.check_circle_rounded,
+                                color: AppColors.successDark,
+                              ),
+                              AdminFilterOption<bool?>(
+                                value: false,
+                                label: 'Inactivos',
+                                icon: Icons.pause_circle_rounded,
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
+                          ),
+                        ],
                         viewToggleConfig: AdminProViewToggleConfig(
                           isTableView: _isTableView,
                           onToggleTableView:
@@ -356,7 +393,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     // --- 3. LISTADO / TABLA O GRILLA RESPONSIVA EN SLIVERS ---
                     ..._buildSupplierContentSlivers(
                       isLoading: isLoading,
-                      suppliers: suppliers,
+                      suppliers: visibleSuppliers,
                       isWide: isWide,
                       searchQuery: searchQuery,
                     ),
@@ -385,6 +422,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     required bool isWide,
     required String searchQuery,
   }) {
+    final hasStatusFilter = _filterIsActive != null;
     if (isLoading && suppliers.isEmpty) {
       return [_buildSkeletonsSliver(isWide)];
     }
@@ -397,22 +435,23 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
             child: AppEmptyState(
               icon: Icons.storefront_rounded,
               title:
-                  searchQuery.isNotEmpty
+                  (searchQuery.isNotEmpty || hasStatusFilter)
                       ? 'No se encontraron resultados'
                       : 'No hay proveedores registrados',
               message:
-                  searchQuery.isNotEmpty
-                      ? 'Intenta con otro término o limpia el buscador.'
+                  (searchQuery.isNotEmpty || hasStatusFilter)
+                      ? 'Intenta con otro término o limpia los filtros.'
                       : 'Registra un nuevo proveedor para comenzar.',
               action:
-                  searchQuery.isNotEmpty
+                  (searchQuery.isNotEmpty || hasStatusFilter)
                       ? OutlinedButton.icon(
                         onPressed: () {
                           _searchCtrl.clear();
+                          setState(() => _filterIsActive = null);
                           context.read<SuppliersCubit>().setSearchQuery('');
                         },
                         icon: const Icon(Icons.clear_all_rounded),
-                        label: const Text('Limpiar búsqueda'),
+                        label: const Text('Limpiar filtros'),
                       )
                       : ElevatedButton.icon(
                         onPressed: () => _openSupplierModal(context),
