@@ -473,32 +473,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                           ),
                                     ),
                                     if (state.categories.isNotEmpty) ...[
-                                      // Divisor sutil
-                                      Container(
-                                        height: 18,
-                                        width: 1,
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                        ),
-                                        color: const Color(0xFFE2E8F0),
+                                      const SizedBox(width: 6),
+                                      _CategoryFilterChip(
+                                        categories: state.categories,
+                                        selected: state.stockCategoryFilter,
+                                        onSelected: cubit.setStockCategory,
                                       ),
-                                      // ── Categorías ──
-                                      ...state.categories.map((cat) {
-                                        final isSelected =
-                                            cat == state.stockCategoryFilter;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 6,
-                                          ),
-                                          child: _CategoryPill(
-                                            label: cat,
-                                            isSelected: isSelected,
-                                            onTap:
-                                                () =>
-                                                    cubit.setStockCategory(cat),
-                                          ),
-                                        );
-                                      }),
                                     ],
                                     if (state.stockStatusFilter != 'all' ||
                                         state.stockCategoryFilter !=
@@ -514,13 +494,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                                   ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.refresh_rounded, size: 20),
-                              color: AppColors.textSecondary,
-                              tooltip: 'Refrescar inventario [R]',
-                              onPressed: () => cubit.refreshAll(),
                             ),
                           ],
                         ),
@@ -811,13 +784,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           },
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.refresh_rounded, size: 20),
-                        color: AppColors.textSecondary,
-                        tooltip: 'Refrescar',
-                        onPressed: () => cubit.refreshAll(),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -857,23 +823,12 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                               ),
                         ),
                         if (state.categories.isNotEmpty) ...[
-                          Container(
-                            height: 18,
-                            width: 1,
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            color: const Color(0xFFE2E8F0),
+                          const SizedBox(width: 6),
+                          _CategoryFilterChip(
+                            categories: state.categories,
+                            selected: state.stockCategoryFilter,
+                            onSelected: cubit.setStockCategory,
                           ),
-                          ...state.categories.map((cat) {
-                            final isSelected = cat == state.stockCategoryFilter;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: _CategoryPill(
-                                label: cat,
-                                isSelected: isSelected,
-                                onTap: () => cubit.setStockCategory(cat),
-                              ),
-                            );
-                          }),
                         ],
                         if (state.stockStatusFilter != 'all' ||
                             (state.stockCategoryFilter.isNotEmpty &&
@@ -1198,20 +1153,23 @@ class _MetricCardState extends State<_MetricCard> {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  widget.value,
-                  style: TextStyle(
-                    fontSize: widget.isCompact ? 13 : 15,
-                    fontWeight: FontWeight.w900,
-                    color:
-                        (widget.highlight || widget.isSelected)
-                            ? widget.color
-                            : AppColors.textPrimary,
-                    height: 1.1,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.value,
+                    style: TextStyle(
+                      fontSize: widget.isCompact ? 13 : 15,
+                      fontWeight: FontWeight.w900,
+                      color:
+                          (widget.highlight || widget.isSelected)
+                              ? widget.color
+                              : AppColors.textPrimary,
+                      height: 1.1,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1513,56 +1471,6 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _CategoryPill extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryPill({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color:
-                  isSelected
-                      ? AppColors.primary
-                      : AppColors.primary.withValues(alpha: 0.12),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? Colors.white : AppColors.primary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _InventoryStockSkeleton extends StatelessWidget {
   const _InventoryStockSkeleton();
 
@@ -1601,6 +1509,108 @@ class _InventoryStockSkeleton extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Un solo chip "Categoría" que abre un menú, en vez de una fila de 10+ chips.
+class _CategoryFilterChip extends StatelessWidget {
+  final List<String> categories;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  const _CategoryFilterChip({
+    required this.categories,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  bool get _active => selected.isNotEmpty && selected != 'Todos';
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'Filtrar por categoría',
+      offset: const Offset(0, 40),
+      constraints: const BoxConstraints(maxHeight: 360, minWidth: 200),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      onSelected: onSelected,
+      itemBuilder:
+          (_) => [
+            for (final c in categories)
+              PopupMenuItem<String>(
+                value: c,
+                child: Row(
+                  children: [
+                    Icon(
+                      c == selected
+                          ? Icons.check_rounded
+                          : Icons.folder_outlined,
+                      size: 16,
+                      color:
+                          c == selected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        c == 'Todos' ? 'Todas las categorías' : c,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              c == selected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: _active ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _active ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.folder_outlined,
+              size: 14,
+              color: _active ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: Text(
+                _active ? selected : 'Categoría',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: _active ? FontWeight.w700 : FontWeight.w600,
+                  color: _active ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: _active ? Colors.white : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

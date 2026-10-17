@@ -499,7 +499,8 @@ class _InventoryBatchesTabState extends State<InventoryBatchesTab>
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate((context, i) {
                   final batch = state.batchItems[i];
-                  final isSelected = activeBatchId == batch.id;
+                  // En móvil no hay panel lateral: no marcar ningún lote como seleccionado
+                  final isSelected = isTablet && activeBatchId == batch.id;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: RepaintBoundary(

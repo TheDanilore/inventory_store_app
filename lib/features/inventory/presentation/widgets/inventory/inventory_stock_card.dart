@@ -58,14 +58,14 @@ class InventoryStockCard extends StatelessWidget {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Thumbnail de Producto Premium ──
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
@@ -108,7 +108,7 @@ class InventoryStockCard extends StatelessWidget {
                                 ),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
 
                     // ── Información Principal del Stock ──
                     Expanded(
@@ -258,55 +258,43 @@ class InventoryStockCard extends StatelessWidget {
               // ── Indicador de Nivel de Stock (Progress Bar) ──
               if (item.stockControl)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: stockRatio,
                       backgroundColor: stockColor.withValues(alpha: 0.1),
                       valueColor: AlwaysStoppedAnimation(stockColor),
-                      minHeight: 6,
+                      minHeight: 4,
                     ),
                   ),
                 ),
 
               if (item.usesBatches && item.batches.isNotEmpty)
-                _BatchMiniList(batches: item.batches),
+                _BatchSummary(batches: item.batches),
 
-              // ── Pie de Tarjeta ──
+              // ── Pie de Tarjeta (una sola fila) ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.flag_outlined,
-                          size: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Punto de reorden: ${item.reorderPoint} uds.',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
+                    const Icon(
+                      Icons.flag_outlined,
+                      size: 13,
+                      color: AppColors.textSecondary,
                     ),
-                    _FooterChip(
-                      icon: Icons.visibility_outlined,
-                      label: 'Variantes',
-                      foreground: AppColors.primary,
-                      background: AppColors.primary.withValues(alpha: 0.08),
-                      onTap: onTap,
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        'Reorden: ${item.reorderPoint} uds.',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     _FooterChip(
                       icon: Icons.receipt_long_rounded,
@@ -319,13 +307,6 @@ class InventoryStockCard extends StatelessWidget {
                         );
                       },
                     ),
-                    if (item.usesBatches)
-                      _Badge(
-                        icon: Icons.batch_prediction_rounded,
-                        label:
-                            '${item.batches.length} lote${item.batches.length != 1 ? 's' : ''}',
-                        color: AppColors.primary,
-                      ),
                   ],
                 ),
               ),
@@ -337,108 +318,74 @@ class InventoryStockCard extends StatelessWidget {
   }
 }
 
-class _BatchMiniList extends StatelessWidget {
+/// Resumen de lotes en UNA línea: cantidad de lotes + vencimiento más próximo.
+class _BatchSummary extends StatelessWidget {
   final List<InventoryBatchItem> batches;
-  const _BatchMiniList({required this.batches});
+  const _BatchSummary({required this.batches});
 
   @override
   Widget build(BuildContext context) {
     final active = batches.where((b) => b.availableQuantity > 0).toList();
     if (active.isEmpty) return const SizedBox.shrink();
 
+    // Vencimiento más próximo entre los lotes con stock
+    DateTime? nearest;
+    for (final b in active) {
+      final d = b.expiryDate != null ? DateTime.tryParse(b.expiryDate!) : null;
+      if (d != null && (nearest == null || d.isBefore(nearest))) nearest = d;
+    }
+
+    Color color = AppColors.textSecondary;
+    String label = 'Sin vencimiento';
+    if (nearest != null) {
+      final diff = nearest.difference(DateTime.now()).inDays;
+      if (diff < 0) {
+        color = AppColors.danger;
+        label = 'Vencido';
+      } else if (diff <= 30) {
+        color = AppColors.warning;
+        label = 'Vence en $diff días';
+      } else {
+        color = AppColors.success;
+        label =
+            '${nearest.day.toString().padLeft(2, '0')}/${nearest.month.toString().padLeft(2, '0')}/${nearest.year}';
+      }
+    }
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children:
-            active.map((b) {
-              Color expiryColor = AppColors.textSecondary;
-              String expiryLabel = 'Sin vencimiento';
-
-              if (b.expiryDate != null) {
-                final expiry = DateTime.tryParse(b.expiryDate!);
-                if (expiry != null) {
-                  final diff = expiry.difference(DateTime.now()).inDays;
-                  if (diff < 0) {
-                    expiryColor = AppColors.danger;
-                    expiryLabel = 'Vencido';
-                  } else if (diff <= 30) {
-                    expiryColor = AppColors.warning;
-                    expiryLabel = 'Vence en $diff días';
-                  } else {
-                    expiryColor = AppColors.success;
-                    expiryLabel =
-                        '${expiry.day.toString().padLeft(2, '0')}/${expiry.month.toString().padLeft(2, '0')}/${expiry.year}';
-                  }
-                }
-              }
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: expiryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      b.batchNumber == 'DEFAULT'
-                          ? 'Sin lote'
-                          : 'Lote ${b.batchNumber}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${b.availableQuantity} uds.',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    if (b.warehouseName != null) ...[
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '· ${b.warehouseName}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ] else
-                      const Spacer(),
-                    Text(
-                      expiryLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: expiryColor,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+      child: Row(
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${active.length} lote${active.length != 1 ? 's' : ''}',
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            nearest != null && active.length > 1 ? 'Próx. $label' : label,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
