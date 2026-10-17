@@ -547,7 +547,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                           ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              // Espaciado inferior de respiro para permitir apertura completa del popup de paginación
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           ),
         ),
@@ -568,10 +569,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               itemName: 'variantes',
               onPageChanged: (page) => cubit.setStockPage(page),
             ),
-          )
-        else if (!_isTableView && !isLoading && state.totalStockPages == 1)
-          //Agregar espacio vacio para paginacion
-          const SizedBox(height: 50),
+          ),
       ],
     );
   }

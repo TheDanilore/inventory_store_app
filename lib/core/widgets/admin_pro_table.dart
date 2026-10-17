@@ -396,7 +396,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           ),
         ),
 
-        // Barra Flotante de Acciones en Lote (Floating Bulk Action Bar)
+        // Barra Flotante de Acciones en Lote (Floating Bulk Action Bar estilo Linear/Stripe)
         if (_isMultiSelectEnabled && widget.selectedIds.isNotEmpty)
           _buildFloatingBulkActionBar(),
       ],
@@ -745,124 +745,161 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
       right: 0,
       child: Center(
         child: TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutBack,
           tween: Tween(begin: 0.0, end: 1.0),
           builder: (context, val, child) {
             return Transform.translate(
-              offset: Offset(0, 16 * (1 - val)),
-              child: Opacity(opacity: val, child: child),
+              offset: Offset(0, 20 * (1 - val)),
+              child: Opacity(
+                opacity: val.clamp(0.0, 1.0),
+                child: child,
+              ),
             );
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F172A), // Dark Slate / Charcoal
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFF334155), width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.28),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
+          child: Material(
+            color: Colors.transparent,
+            elevation: 16,
+            shadowColor: Colors.black.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF334155),
+                  width: 1.2,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Badge de contador
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 32,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 10),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.5),
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Badge de contador destacado
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.55),
+                        width: 1.1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 15,
+                          color: Color(0xFF60A5FA),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          '$selectedCount seleccionados',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        size: 14,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$selectedCount seleccionados',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+
+                  const SizedBox(width: 10),
+                  const SizedBox(
+                    height: 22,
+                    child: VerticalDivider(
+                      color: Color(0xFF334155),
+                      thickness: 1.2,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // Botones de acciones masivas
+                  for (final action in widget.bulkActions) ...[
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => action.onPressed(selectedItemsList),
+                        hoverColor: Colors.white.withValues(alpha: 0.08),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                action.icon,
+                                size: 15,
+                                color:
+                                    action.isDestructive
+                                        ? const Color(0xFFFCA5A5)
+                                        : (action.customColor ?? Colors.white),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                action.label,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      action.isDestructive
+                                          ? const Color(0xFFFCA5A5)
+                                          : (action.customColor ?? Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-                const SizedBox(
-                  height: 20,
-                  child: VerticalDivider(
-                    color: Color(0xFF475569),
-                    thickness: 1,
-                  ),
-                ),
-                const SizedBox(width: 8),
-
-                // Botones de acciones masivas
-                for (final action in widget.bulkActions) ...[
-                  TextButton.icon(
-                    onPressed: () => action.onPressed(selectedItemsList),
-                    icon: Icon(
-                      action.icon,
-                      size: 15,
-                      color:
-                          action.isDestructive
-                              ? const Color(0xFFFCA5A5)
-                              : (action.customColor ?? Colors.white),
                     ),
-                    label: Text(
-                      action.label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            action.isDestructive
-                                ? const Color(0xFFFCA5A5)
-                                : (action.customColor ?? Colors.white),
+                    const SizedBox(width: 4),
+                  ],
+
+                  // Botón Deseleccionar todo (ESC / Cerrar)
+                  Tooltip(
+                    message: 'Deseleccionar todo (Esc)',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        hoverColor: Colors.white.withValues(alpha: 0.1),
+                        onTap: _clearSelection,
+                        child: const Padding(
+                          padding: EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
                       ),
                     ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      visualDensity: VisualDensity.compact,
-                    ),
                   ),
-                  const SizedBox(width: 4),
                 ],
-
-                // Botón Deseleccionar todo
-                Tooltip(
-                  message: 'Deseleccionar todos los elementos',
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: Color(0xFF94A3B8),
-                    ),
-                    splashRadius: 16,
-                    onPressed: _clearSelection,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

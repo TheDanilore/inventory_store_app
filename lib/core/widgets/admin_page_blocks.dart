@@ -534,14 +534,15 @@ class AdminPageBlocks extends StatelessWidget {
     return PopupMenuButton<int>(
       initialValue: currentSize,
       tooltip: 'Elementos por página',
-      offset: const Offset(0, 36),
+      position: PopupMenuPosition.over,
+      offset: const Offset(0, -6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(
           color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
         ),
       ),
-      elevation: 4,
+      elevation: 6,
       color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
       onSelected: (val) {
         if (val != currentSize) {
