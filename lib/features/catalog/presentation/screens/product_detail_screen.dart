@@ -13,13 +13,14 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ima
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_state.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_details_card.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_admin_info_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_availability_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_details_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_detail_header.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_ingredients_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_input_field.dart';
@@ -203,6 +204,20 @@ class _ProductDetailScreenContentState
         Navigator.of(context, rootNavigator: true).pop();
       }
     }
+  }
+
+  void _showQrCode() {
+    InventoryQrSheet.show(
+      context,
+      productId: product.id,
+      variantId: _selectedVariant?.id ??
+          (product.productVariants.isNotEmpty
+              ? product.productVariants.first.id
+              : ''),
+      productName: product.name,
+      variantName: _selectedVariant?.label,
+      sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
+    );
   }
 
   void _showVariantPickerModal() {
@@ -1208,15 +1223,16 @@ class _ProductDetailScreenContentState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero Header sin botones duplicados en TopBar
+          // Hero Header con botones de acción y QR
           ProductDetailHeader(
             product: product,
             isActive: _isActive,
             effectiveStock: _effectiveStock,
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
             onExportPdf: _exportPdf,
+            onShowQr: _showQrCode,
             isMobile: false,
-            showActions: false,
+            showActions: true,
             variantCount: _variants.length,
           ),
           Center(
@@ -1497,8 +1513,9 @@ class _ProductDetailScreenContentState
             effectiveStock: _effectiveStock,
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
             onExportPdf: _exportPdf,
+            onShowQr: _showQrCode,
             isMobile: false,
-            showActions: false,
+            showActions: true,
             variantCount: _variants.length,
           ),
           const SizedBox(height: 16),

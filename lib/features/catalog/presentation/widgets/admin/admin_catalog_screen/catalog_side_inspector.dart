@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 
 /// Panel lateral de inspección rápida (Master-Detail) para Desktop/Tablet
 /// y BottomSheet modal para Móvil.
@@ -619,6 +620,48 @@ class CatalogSideInspector extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final firstVariant = product.productVariants.isNotEmpty
+                        ? product.productVariants.first
+                        : null;
+                    InventoryQrSheet.show(
+                      context,
+                      productId: product.id,
+                      variantId: firstVariant?.id ?? '',
+                      productName: product.name,
+                      variantName: firstVariant?.label,
+                      sku: firstVariant?.sku,
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.qr_code_2_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  label: const Text(
+                    'Ver Código QR',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor:
+                        isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                    side: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                    ),
+                    minimumSize: const Size.fromHeight(40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

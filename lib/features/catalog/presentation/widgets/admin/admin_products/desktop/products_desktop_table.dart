@@ -19,6 +19,7 @@ class ProductsDesktopTable extends StatefulWidget {
   final void Function(ProductEntity product) onToggleActive;
   final void Function(ProductEntity product) onEdit;
   final void Function(ProductEntity product) onDelete;
+  final void Function(ProductEntity product)? onShowQr;
 
   /// Paginación integrada en el pie de la tabla (AdminProTable).
   final AdminTablePaginationConfig? paginationConfig;
@@ -37,6 +38,7 @@ class ProductsDesktopTable extends StatefulWidget {
     required this.onToggleActive,
     required this.onEdit,
     required this.onDelete,
+    this.onShowQr,
     this.paginationConfig,
     this.isLoading = false,
   });
@@ -449,6 +451,17 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                     tooltip: 'Editar Producto',
                     onPressed: () => widget.onEdit(product),
                   ),
+                  if (widget.onShowQr != null)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.qr_code_2_rounded,
+                        size: 17,
+                        color: AppColors.textSecondary,
+                      ),
+                      splashRadius: 16,
+                      tooltip: 'Código QR',
+                      onPressed: () => widget.onShowQr!(product),
+                    ),
                   PopupMenuButton<String>(
                     icon: const Icon(
                       Icons.more_horiz_rounded,
@@ -461,7 +474,9 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     onSelected: (val) {
-                      if (val == 'toggle') {
+                      if (val == 'qr') {
+                        widget.onShowQr?.call(product);
+                      } else if (val == 'toggle') {
                         widget.onToggleActive(product);
                       } else if (val == 'delete') {
                         widget.onDelete(product);
@@ -469,6 +484,24 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                     },
                     itemBuilder:
                         (ctx) => [
+                          PopupMenuItem(
+                            value: 'qr',
+                            child: Row(
+                              children: const [
+                                Icon(
+                                  Icons.qr_code_2_rounded,
+                                  size: 16,
+                                  color: AppColors.textSecondary,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Ver Código QR',
+                                  style: TextStyle(fontSize: 12.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(height: 1),
                           PopupMenuItem(
                             value: 'toggle',
                             child: Row(

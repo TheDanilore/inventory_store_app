@@ -10,6 +10,7 @@ class ProductDetailHeader extends StatelessWidget {
   final int effectiveStock;
   final String? sku;
   final VoidCallback onExportPdf;
+  final VoidCallback? onShowQr;
   final bool isMobile;
   final bool showActions;
   final int variantCount;
@@ -21,6 +22,7 @@ class ProductDetailHeader extends StatelessWidget {
     required this.effectiveStock,
     this.sku,
     required this.onExportPdf,
+    this.onShowQr,
     this.isMobile = false,
     this.showActions = false,
     this.variantCount = 0,
@@ -260,6 +262,42 @@ class ProductDetailHeader extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (onShowQr != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: onShowQr,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          isDark
+                              ? const Color(0xFFF8FAFC)
+                              : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      backgroundColor:
+                          isDark ? AppColors.darkSurface : Colors.white,
+                    ),
+                    icon: const Icon(
+                      Icons.qr_code_2_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    label: const Text(
+                      'Código QR',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: onExportPdf,
                   style: OutlinedButton.styleFrom(
@@ -449,6 +487,16 @@ class ProductDetailHeader extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onShowQr != null)
+                IconButton(
+                  tooltip: 'Código QR',
+                  icon: const Icon(
+                    Icons.qr_code_2_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                  onPressed: onShowQr,
+                ),
               IconButton(
                 tooltip: 'Exportar PDF',
                 icon: const Icon(

@@ -23,6 +23,7 @@ import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/desktop/products_desktop_table.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 
 /// Pantalla Principal de Catálogo e Inventario de Productos para Administradores.
 /// Diseño camaleónico de alta densidad para Desktop, eficiencia híbrida para Tablet
@@ -255,6 +256,20 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       onOpenFullDetail: () {
         context.go('/product/${product.id}', extra: product);
       },
+    );
+  }
+
+  void _showProductQr(ProductEntity product) {
+    final firstVariant = product.productVariants.isNotEmpty
+        ? product.productVariants.first
+        : null;
+    InventoryQrSheet.show(
+      context,
+      productId: product.id,
+      variantId: firstVariant?.id ?? '',
+      productName: product.name,
+      variantName: firstVariant?.label,
+      sku: firstVariant?.sku,
     );
   }
 
@@ -1273,6 +1288,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   (selectAll) => _selectAllPage(state.products, selectAll),
               onRowTap: (p) => _showProductQuickView(p, cubit),
               onToggleActive: (p) => _toggleProductoActivo(p, cubit),
+              onShowQr: _showProductQr,
               onEdit: (p) {
                 context.go(
                   '/products/product-form/${p.id}',
