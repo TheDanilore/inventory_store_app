@@ -351,7 +351,7 @@ class _ProductVariantsTableViewState extends State<ProductVariantsTableView> {
                             const Expanded(
                               flex: 2,
                               child: Text(
-                                'STOCK',
+                                'P. REORDEN',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -888,28 +888,61 @@ class _VariantTableRowState extends State<_VariantTableRow> {
               ),
             ),
 
-            // SKU - Monospace estilo Imagen 4
+            // SKU y Código de barras
             Expanded(
               flex: 3,
               child: Container(
-                height: 34,
                 margin: const EdgeInsets.only(right: 8),
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  _skuCtrl.text.isNotEmpty ? _skuCtrl.text : 'SKU-PENDIENTE',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _skuCtrl.text.isNotEmpty
+                          ? _skuCtrl.text
+                          : 'SKU-PENDIENTE',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.draft.barcode.isNotEmpty) ...[
+                      const SizedBox(height: 1),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.barcode_reader,
+                            size: 10,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(width: 3),
+                          Flexible(
+                            child: Text(
+                              widget.draft.barcode,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontFamily: 'monospace',
+                                color: Color(0xFF94A3B8),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
 
-            // STOCK - Micro-input de la Imagen 4
+            // P. REORDEN - Micro-input de reorden
             Expanded(
               flex: 2,
               child: Container(

@@ -359,7 +359,7 @@ class _ProductPricingInventorySectionState
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Los precios, códigos SKU y stock se gestionan de forma independiente para cada variante en la sección de "Variantes" a continuación.',
+                          'Los precios, códigos SKU, códigos de barras y punto de reorden se gestionan de forma independiente para cada variante en la sección de "Variantes" a continuación.',
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey.shade700,

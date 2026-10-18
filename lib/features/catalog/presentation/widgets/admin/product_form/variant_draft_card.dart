@@ -464,6 +464,48 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             },
                           ),
 
+                          // Chip de Código de Barras
+                          ListenableBuilder(
+                            listenable: barcodeCtrl,
+                            builder: (context, _) {
+                              final bc = barcodeCtrl.text.trim();
+                              if (bc.isEmpty) return const SizedBox.shrink();
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.blueGrey.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.blueGrey.shade200,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.barcode_reader,
+                                      size: 11,
+                                      color: Colors.blueGrey.shade700,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      bc,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontFamily: 'monospace',
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blueGrey.shade800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+
                           // Precio de venta y Margen
                           ListenableBuilder(
                             listenable: Listenable.merge([
@@ -622,7 +664,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 16),
-                          // ── FILA 1: SKU + Punto de Reorden ─────────────────────────────
+                          // ── FILA 1: SKU + Código de Barras ─────────────────────────────
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -645,26 +687,36 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: AppTextField(
-                                  label: 'Punto de Reorden',
-                                  controller: reorderPointCtrl,
-                                  icon: Icons.warning_amber_rounded,
-                                  keyboardType: TextInputType.number,
-                                  hintText: 'Ej: 5',
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  validator: (val) {
-                                    if (val != null && val.trim().isNotEmpty) {
-                                      final n = int.tryParse(val.trim());
-                                      if (n == null || n < 0) {
-                                        return 'No negativo';
-                                      }
-                                    }
-                                    return null;
-                                  },
+                                  label: 'Código de Barras (Opcional)',
+                                  controller: barcodeCtrl,
+                                  icon: Icons.barcode_reader,
+                                  hintText: 'Ej: 7751234567890',
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ── FILA 2: Punto de Reorden ──────────────────────────────────
+                          AppTextField(
+                            label: 'Punto de Reorden',
+                            controller: reorderPointCtrl,
+                            icon: Icons.warning_amber_rounded,
+                            keyboardType: TextInputType.number,
+                            hintText: 'Ej: 5',
+                            helperText: 'Alerta de stock bajo para esta variante',
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            validator: (val) {
+                              if (val != null && val.trim().isNotEmpty) {
+                                final n = int.tryParse(val.trim());
+                                if (n == null || n < 0) {
+                                  return 'No negativo';
+                                }
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
 
