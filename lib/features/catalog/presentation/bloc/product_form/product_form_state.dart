@@ -27,8 +27,11 @@ class ProductFormState extends Equatable {
   final bool ingredientsEnabled;
 
   // ── Omnicanalidad, Estado y SEO ──────────────────────────────────────────
-  /// Estado actual del producto: 'active', 'draft', 'archived'
-  final String publicationStatus;
+  /// Estado activo/inactivo del producto (fuente única de verdad)
+  final bool isActive;
+
+  /// Estado de publicación ('active' o 'inactive')
+  String get publicationStatus => isActive ? 'active' : 'inactive';
 
   /// Canales de venta activos: {'web': bool, 'pos': bool, 'mercadolibre': bool, 'social': bool}
   final Map<String, bool> salesChannels;
@@ -80,7 +83,7 @@ class ProductFormState extends Equatable {
     this.batchManagementEnabled = false,
     this.ingredientsEnabled = false,
     this.hasMultipleVariants = false,
-    this.publicationStatus = 'active',
+    this.isActive = true,
     this.salesChannels = const {
       'web': true,
       'pos': true,
@@ -123,6 +126,7 @@ class ProductFormState extends Equatable {
     bool? batchManagementEnabled,
     bool? ingredientsEnabled,
     bool? hasMultipleVariants,
+    bool? isActive,
     String? publicationStatus,
     Map<String, bool>? salesChannels,
     String? slug,
@@ -158,7 +162,10 @@ class ProductFormState extends Equatable {
           batchManagementEnabled ?? this.batchManagementEnabled,
       ingredientsEnabled: ingredientsEnabled ?? this.ingredientsEnabled,
       hasMultipleVariants: hasMultipleVariants ?? this.hasMultipleVariants,
-      publicationStatus: publicationStatus ?? this.publicationStatus,
+      isActive: isActive ??
+          (publicationStatus != null
+              ? publicationStatus == 'active'
+              : this.isActive),
       salesChannels: salesChannels ?? this.salesChannels,
       slug: slug ?? this.slug,
       seoTitle: seoTitle ?? this.seoTitle,
@@ -194,7 +201,7 @@ class ProductFormState extends Equatable {
     batchManagementEnabled,
     ingredientsEnabled,
     hasMultipleVariants,
-    publicationStatus,
+    isActive,
     salesChannels,
     slug,
     seoTitle,

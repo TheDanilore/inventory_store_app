@@ -4175,6 +4175,7 @@ BEGIN
                 v_variant_id := (v_variant->>'id')::uuid;
                 UPDATE product_variants SET
                     sku = v_variant->>'sku',
+                    barcode = NULLIF(TRIM(v_variant->>'barcode'), ''),
                     unit_cost = (v_variant->>'unit_cost')::numeric,
                     sale_price = (v_variant->>'sale_price')::numeric,
                     wholesale_price = (v_variant->>'wholesale_price')::numeric,
@@ -4186,10 +4187,11 @@ BEGIN
                 WHERE id = v_variant_id;
             ELSE
                 INSERT INTO product_variants (
-                    product_id, sku, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_by
+                    product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_by
                 ) VALUES (
                     v_product_id,
                     v_variant->>'sku',
+                    NULLIF(TRIM(v_variant->>'barcode'), ''),
                     COALESCE((v_variant->>'unit_cost')::numeric, 0.00),
                     COALESCE((v_variant->>'sale_price')::numeric, 0.00),
                     (v_variant->>'wholesale_price')::numeric,

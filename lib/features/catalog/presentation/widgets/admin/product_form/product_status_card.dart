@@ -12,26 +12,13 @@ class ProductStatusCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen: (p, c) => p.publicationStatus != c.publicationStatus,
+      buildWhen: (p, c) => p.isActive != c.isActive,
       builder: (context, state) {
-        final status = state.publicationStatus;
+        final isActive = state.isActive;
 
-        String helperText;
-        switch (status) {
-          case 'draft':
-            helperText =
-                'Este producto está en modo borrador y no es visible para los clientes en la tienda.';
-            break;
-          case 'archived':
-            helperText =
-                'Este producto está archivado e inactivo. No está disponible para la compra.';
-            break;
-          case 'active':
-          default:
-            helperText =
-                'Este producto está disponible para la compra en todos los canales de venta activos.';
-            break;
-        }
+        final helperText = isActive
+            ? 'Este producto está activo y disponible para la venta en el catálogo, POS y canales habilitados.'
+            : 'Este producto está desactivado. No estará disponible para la compra ni venta en ningún canal.';
 
         return Container(
           width: double.infinity,
@@ -82,8 +69,8 @@ class ProductStatusCard extends StatelessWidget {
                   vertical: 2,
                 ),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: status,
+                  child: DropdownButton<bool>(
+                    value: isActive,
                     isExpanded: true,
                     icon: Icon(
                       Icons.keyboard_arrow_down_rounded,
@@ -95,16 +82,14 @@ class ProductStatusCard extends StatelessWidget {
                     ),
                     items: [
                       DropdownMenuItem(
-                        value: 'active',
+                        value: true,
                         child: Row(
                           children: [
                             Container(
                               width: 12,
                               height: 12,
                               decoration: const BoxDecoration(
-                                color: Color(
-                                  0xFF10B981,
-                                ), // Verde esmeralda vivo
+                                color: Color(0xFF10B981), // Verde esmeralda vivo
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -115,43 +100,19 @@ class ProductStatusCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
-                              'Activo (Visible en tienda)',
+                            Text(
+                              'Activo (Visible en tienda y POS)',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
                               ),
                             ),
                           ],
                         ),
                       ),
                       DropdownMenuItem(
-                        value: 'draft',
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF94A3B8), // Gris suave
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Borrador (No visible en tienda)',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: 'archived',
+                        value: false,
                         child: Row(
                           children: [
                             Container(
@@ -163,12 +124,12 @@ class ProductStatusCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
-                              'Inactivo (Archivado)',
+                            Text(
+                              'Inactivo (Desactivado / Oculto)',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF334155),
+                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
                               ),
                             ),
                           ],
@@ -177,7 +138,7 @@ class ProductStatusCard extends StatelessWidget {
                     ],
                     onChanged: (val) {
                       if (val != null) {
-                        cubit.setPublicationStatus(val);
+                        cubit.setIsActive(val);
                       }
                     },
                   ),

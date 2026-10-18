@@ -261,6 +261,7 @@ class ImagePayload {
 class VariantPayload {
   final String? id;
   final String? sku;
+  final String? barcode;
   final double unitCost;
   final double? salePrice;
   final double? wholesalePrice;
@@ -275,6 +276,7 @@ class VariantPayload {
   VariantPayload({
     this.id,
     this.sku,
+    this.barcode,
     required this.unitCost,
     this.salePrice,
     this.wholesalePrice,

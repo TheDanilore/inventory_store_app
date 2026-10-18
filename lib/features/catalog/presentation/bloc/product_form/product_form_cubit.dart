@@ -69,7 +69,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   final List<String> _removedVariantIds = [];
 
   // Omnicanalidad, Estado y SEO
-  String _publicationStatus = 'active';
+  bool _isActive = true;
   Map<String, bool> _salesChannels = const {
     'web': true,
     'pos': true,
@@ -140,11 +140,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   // ── Omnicanalidad, Estado y SEO ──────────────────────────────────────────
-  void setPublicationStatus(String status) {
-    if (_publicationStatus == status) return;
-    _publicationStatus = status;
+  void setIsActive(bool value) {
+    if (_isActive == value) return;
+    _isActive = value;
     markAsDirty();
     _syncState();
+  }
+
+  void setPublicationStatus(String status) {
+    setIsActive(status == 'active');
   }
 
   void toggleSalesChannel(String channelKey) {
@@ -302,7 +306,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         batchManagementEnabled: _batchManagementEnabled,
         ingredientsEnabled: _ingredientsEnabled,
         hasMultipleVariants: _hasMultipleVariants,
-        publicationStatus: _publicationStatus,
+        isActive: _isActive,
+        publicationStatus: _isActive ? 'active' : 'inactive',
         salesChannels: _salesChannels,
         slug: _slug,
         seoTitle: _seoTitle,
@@ -389,9 +394,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           }
         });
 
-        // Hidratar Omnicanalidad, Estado y SEO
+        // Hidratar Omnicanalidad, Estado y SEO (fuente única: isActive)
         final d = targetProduct.details;
-        _publicationStatus = (d['publication_status'] as String?) ?? (targetProduct.isActive ? 'active' : 'draft');
+        _isActive = targetProduct.isActive;
         if (d['sales_channels'] is Map) {
           final rawCh = d['sales_channels'] as Map;
           _salesChannels = {
@@ -455,7 +460,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       } else {
         _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
         _hasMultipleVariants = false;
-        _publicationStatus = 'active';
+        _isActive = true;
         _salesChannels = const {
           'web': true,
           'pos': true,
@@ -1048,14 +1053,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       final productEntity = ProductEntity(
         id: isUpdating ? _productToEdit!.id : '',
         name: nombre.trim(),
-        isActive: _publicationStatus == 'active',
+        isActive: _isActive,
         description: desc.trim().isEmpty ? null : desc.trim(),
         categoryId: _selectedCategoryId,
         brandId: _selectedBrandId,
         details: {
           for (final d in _detailRows)
             if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),
-          'publication_status': _publicationStatus,
           'sales_channels': _salesChannels,
           'slug': _slug.trim().isEmpty ? _slugify(nombre) : _slug.trim(),
           'seo_title': _seoTitle.trim().isEmpty ? '$nombre | Tienda Oficial' : _seoTitle.trim(),
@@ -1093,9 +1097,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
                     .map((attr) => attr['value_id'] as String)
                     .toList();
             final skuValue = draft.sku.trim();
+            final barcodeValue = draft.barcode.trim();
             return VariantPayload(
               id: draft.id,
               sku: skuValue.isEmpty ? null : skuValue,
+              barcode: barcodeValue.isEmpty ? null : barcodeValue,
               unitCost: _parseDecimal(draft.unitCost) ?? 0.0,
               salePrice: _parseDecimal(draft.price),
               wholesalePrice: _parseDecimal(draft.wholesalePrice),

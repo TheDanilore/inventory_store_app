@@ -281,9 +281,9 @@ class _ProductPreviewModalState extends State<ProductPreviewModal> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  widget.state.publicationStatus == 'active'
-                      ? '🟢 Visible en tienda'
-                      : '⚪ Borrador interno',
+                  widget.state.isActive
+                      ? '🟢 Activo en tienda'
+                      : '🔴 Inactivo / Oculto',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF64748B),

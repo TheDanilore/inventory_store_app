@@ -1300,6 +1300,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
             return {
               'id': draft.id,
               'sku': draft.sku,
+              'barcode': draft.barcode,
               'unit_cost': draft.unitCost,
               'sale_price': draft.salePrice ?? payload.baseSalePrice,
               'wholesale_price':
@@ -1324,6 +1325,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
       if (variantsJson.isEmpty) {
         variantsJson.add({
           'is_active': true,
+          'barcode': null,
           'sale_price': payload.baseSalePrice,
           'wholesale_price': payload.baseWholesalePrice,
           'wholesale_min_quantity': payload.baseWholesaleMinQuantity,
