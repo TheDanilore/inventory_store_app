@@ -222,7 +222,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
-  Future<void> _handleExportPdf(
+  Future<void> _handleExport(
     AdminCatalogCubit cubit,
     AdminCatalogState state,
   ) async {
@@ -232,7 +232,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       state.products.length,
     );
     if (res != null && mounted) {
-      await cubit.exportCatalogPdf(
+      await cubit.exportCatalog(
+        format: res.format,
         optionsMode: res.mode,
         selectedIds: res.selectedIds.toList(),
       );
@@ -725,13 +726,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       isMobile
                           ? [
                             IconButton(
-                              icon: const Icon(Icons.picture_as_pdf_rounded),
-                              tooltip: 'Exportar PDF',
-                              onPressed: () => _handleExportPdf(cubit, state),
+                              icon: const Icon(Icons.file_download_outlined),
+                              tooltip: 'Exportar catálogo (Excel / PDF / CSV)',
+                              onPressed: () => _handleExport(cubit, state),
                             ),
                             IconButton(
                               icon: const Icon(Icons.upload_file_rounded),
-                              tooltip: 'Importar Lote (CSV)',
+                              tooltip: 'Importar Lote (Excel / CSV)',
                               onPressed:
                                   () => context.go('/products/bulk-import'),
                             ),
@@ -805,12 +806,13 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                           ),
                                     ),
                                     AdminHeaderButton.outlined(
-                                      label: 'Exportar CSV',
-                                      icon: Icons.table_chart_outlined,
+                                      label: 'Exportar',
+                                      icon: Icons.file_download_outlined,
                                       iconColor: const Color(0xFF10B981),
-                                      tooltip: 'Exportar catálogo en PDF / CSV',
+                                      tooltip:
+                                          'Exportar catálogo en Excel, PDF o CSV',
                                       onPressed:
-                                          () => _handleExportPdf(cubit, state),
+                                          () => _handleExport(cubit, state),
                                     ),
                                     AdminHeaderButton.primary(
                                       label: 'Nuevo Producto',

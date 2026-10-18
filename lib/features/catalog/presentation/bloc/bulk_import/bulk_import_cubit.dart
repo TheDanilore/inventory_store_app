@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -120,7 +121,9 @@ class BulkImportCubit extends Cubit<BulkImportState> {
 
   // ───────────────────────────── Plantilla / reporte ─────────────────────────────
 
-  Future<void> downloadTemplate() async {
+  // ───────────────────────────── Plantilla / reporte ─────────────────────────────
+
+  Future<void> downloadTemplate({bool asExcel = true}) async {
     try {
       final rows = <List<dynamic>>[
         [
@@ -232,21 +235,58 @@ class BulkImportCubit extends Cubit<BulkImportState> {
           '',
         ],
       ];
-      final csv = Csv().encode(rows);
-      // BOM UTF-8 para que Excel muestre bien las tildes.
-      final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);
-      await FileSaver.instance.saveFile(
-        name: 'plantilla_productos',
-        bytes: bytes,
-        fileExtension: 'csv',
-        mimeType: MimeType.csv,
-      );
+
+      if (asExcel) {
+        final excel = Excel.createExcel();
+        final defaultSheet = excel.getDefaultSheet() ?? 'Sheet1';
+        excel.rename(defaultSheet, 'Plantilla Productos');
+        final sheet = excel['Plantilla Productos'];
+
+        for (final row in rows) {
+          final cellRow = <CellValue?>[];
+          for (final cell in row) {
+            if (cell is int) {
+              cellRow.add(IntCellValue(cell));
+            } else if (cell is double) {
+              cellRow.add(DoubleCellValue(cell));
+            } else {
+              cellRow.add(TextCellValue(cell.toString()));
+            }
+          }
+          sheet.appendRow(cellRow);
+        }
+
+        final fileBytes = excel.save();
+        if (fileBytes != null) {
+          await FileSaver.instance.saveFile(
+            name: 'plantilla_productos',
+            bytes: Uint8List.fromList(fileBytes),
+            fileExtension: 'xlsx',
+            mimeType: MimeType.microsoftExcel,
+          );
+        }
+      } else {
+        final csv = Csv().encode(rows);
+        // BOM UTF-8 para que Excel muestre bien las tildes.
+        final bytes = Uint8List.fromList([
+          0xEF,
+          0xBB,
+          0xBF,
+          ...utf8.encode(csv),
+        ]);
+        await FileSaver.instance.saveFile(
+          name: 'plantilla_productos',
+          bytes: bytes,
+          fileExtension: 'csv',
+          mimeType: MimeType.csv,
+        );
+      }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Error al descargar plantilla: $e'));
     }
   }
 
-  Future<void> downloadIssuesReport() async {
+  Future<void> downloadIssuesReport({bool asExcel = true}) async {
     try {
       final rows = <List<dynamic>>[
         ['fila', 'columna', 'tipo', 'mensaje'],
@@ -260,18 +300,48 @@ class BulkImportCubit extends Cubit<BulkImportState> {
             ],
         for (final e in state.fileErrors) ['-', '-', 'error', e],
       ];
-      final bytes = Uint8List.fromList([
-        0xEF,
-        0xBB,
-        0xBF,
-        ...utf8.encode(Csv().encode(rows)),
-      ]);
-      await FileSaver.instance.saveFile(
-        name: 'reporte_importacion',
-        bytes: bytes,
-        fileExtension: 'csv',
-        mimeType: MimeType.csv,
-      );
+
+      if (asExcel) {
+        final excel = Excel.createExcel();
+        final defaultSheet = excel.getDefaultSheet() ?? 'Sheet1';
+        excel.rename(defaultSheet, 'Reporte Incidencias');
+        final sheet = excel['Reporte Incidencias'];
+
+        for (final row in rows) {
+          final cellRow = <CellValue?>[];
+          for (final cell in row) {
+            if (cell is int) {
+              cellRow.add(IntCellValue(cell));
+            } else {
+              cellRow.add(TextCellValue(cell.toString()));
+            }
+          }
+          sheet.appendRow(cellRow);
+        }
+
+        final fileBytes = excel.save();
+        if (fileBytes != null) {
+          await FileSaver.instance.saveFile(
+            name: 'reporte_importacion',
+            bytes: Uint8List.fromList(fileBytes),
+            fileExtension: 'xlsx',
+            mimeType: MimeType.microsoftExcel,
+          );
+        }
+      } else {
+        final bytes = Uint8List.fromList([
+          0xEF,
+          0xBB,
+          0xBF,
+          ...utf8.encode(Csv().encode(rows)),
+        ]);
+        await FileSaver.instance.saveFile(
+          name: 'reporte_importacion',
+          bytes: bytes,
+          fileExtension: 'csv',
+          mimeType: MimeType.csv,
+        );
+      }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Error al descargar reporte: $e'));
     }
@@ -289,35 +359,13 @@ class BulkImportCubit extends Cubit<BulkImportState> {
     try {
       final files = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv'],
+        allowedExtensions: ['csv', 'xlsx', 'xls'],
       );
       if (files.isEmpty) return;
 
-      emit(
-        state.copyWith(
-          status: BulkImportStatus.parsing,
-          clearErrorMessage: true,
-          clearImportError: true,
-        ),
-      );
-
       final file = files.first;
       final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) {
-        emit(
-          state.copyWith(
-            status: BulkImportStatus.initial,
-            errorMessage: 'El archivo está vacío.',
-          ),
-        );
-        return;
-      }
-
-      var text = _decode(bytes);
-      if (text.startsWith('\uFEFF')) text = text.substring(1);
-
-      final table = _parseCsv(text, _detectDelimiter(text));
-      await _analyze(file.name, table);
+      await parseBytes(fileName: file.name, bytes: bytes);
     } catch (e) {
       if (isClosed) return;
       emit(
@@ -327,6 +375,114 @@ class BulkImportCubit extends Cubit<BulkImportState> {
         ),
       );
     }
+  }
+
+  /// Procesa bytes directamente desde un archivo seleccionado o arrastrado (drag & drop).
+  Future<void> parseBytes({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    if (state.needsWarehouseChoice) {
+      emit(
+        state.copyWith(errorMessage: 'Selecciona primero el almacén destino.'),
+      );
+      return;
+    }
+    if (bytes.isEmpty) {
+      emit(
+        state.copyWith(
+          status: BulkImportStatus.initial,
+          errorMessage: 'El archivo está vacío.',
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        status: BulkImportStatus.parsing,
+        clearErrorMessage: true,
+        clearImportError: true,
+      ),
+    );
+
+    try {
+      List<List<String>> table;
+      if (_isExcelFile(fileName, bytes)) {
+        table = _parseExcel(bytes);
+      } else {
+        var text = _decode(bytes);
+        if (text.startsWith('\uFEFF')) text = text.substring(1);
+        table = _parseCsv(text, _detectDelimiter(text));
+      }
+      await _analyze(fileName, table);
+    } catch (e) {
+      if (isClosed) return;
+      emit(
+        state.copyWith(
+          status: BulkImportStatus.initial,
+          errorMessage: 'Error al procesar archivo: $e',
+        ),
+      );
+    }
+  }
+
+  bool _isExcelFile(String fileName, Uint8List bytes) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) return true;
+    if (bytes.length >= 4 && bytes[0] == 0x50 && bytes[1] == 0x4B) return true;
+    if (bytes.length >= 8 &&
+        bytes[0] == 0xD0 &&
+        bytes[1] == 0xCF &&
+        bytes[2] == 0x11 &&
+        bytes[3] == 0xE0) {
+      return true;
+    }
+    return false;
+  }
+
+  List<List<String>> _parseExcel(Uint8List bytes) {
+    final excel = Excel.decodeBytes(bytes);
+    if (excel.tables.isEmpty) return const [];
+    Sheet? sheet;
+    for (final name in excel.tables.keys) {
+      final s = excel.tables[name];
+      if (s != null && s.maxRows > 0) {
+        sheet = s;
+        break;
+      }
+    }
+    if (sheet == null) return const [];
+
+    final result = <List<String>>[];
+    for (final row in sheet.rows) {
+      final rowStrings = <String>[];
+      for (final cell in row) {
+        rowStrings.add(_cellToString(cell?.value));
+      }
+      result.add(rowStrings);
+    }
+    return result;
+  }
+
+  String _cellToString(CellValue? val) {
+    if (val == null) return '';
+    if (val is TextCellValue) return val.value.text ?? '';
+    if (val is IntCellValue) return val.value.toString();
+    if (val is DoubleCellValue) {
+      if (val.value % 1 == 0) return val.value.toInt().toString();
+      return val.value.toString();
+    }
+    if (val is BoolCellValue) return val.value ? 'si' : 'no';
+    if (val is DateCellValue) {
+      return '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
+    }
+    if (val is DateTimeCellValue) {
+      return '${val.year}-${val.month.toString().padLeft(2, '0')}-${val.day.toString().padLeft(2, '0')}';
+    }
+    if (val is TimeCellValue) return val.toString();
+    if (val is FormulaCellValue) return val.formula;
+    return val.toString();
   }
 
   String _decode(Uint8List bytes) {

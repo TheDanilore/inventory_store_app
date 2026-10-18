@@ -68,10 +68,14 @@ dependencies:
   injectable: ^3.0.0
   fpdart: ^1.2.0
   csv: ^8.0.0
+  excel: ^4.0.6
   file_picker: ^12.1.0
   desktop_drop: ^0.8.4
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.2
+
+dependency_overrides:
+  xml: ^6.5.3
 
 dev_dependencies:
   flutter_test:

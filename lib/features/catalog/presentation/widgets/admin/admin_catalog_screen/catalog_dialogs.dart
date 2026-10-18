@@ -2,21 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
+enum ExportFormat { excel, pdf, csv }
+
 class CatalogDialogs {
-  static Future<({int mode, Set<String> selectedIds})?> showExportOptionsDialog(
+  static Future<({int mode, Set<String> selectedIds, ExportFormat format})?>
+  showExportOptionsDialog(
     BuildContext context,
     List<ProductEntity> max50Products,
-    int visibleCount,
-  ) {
-    return showDialog<({int mode, Set<String> selectedIds})>(
+    int visibleCount, {
+    ExportFormat initialFormat = ExportFormat.excel,
+  }) {
+    return showDialog<
+      ({int mode, Set<String> selectedIds, ExportFormat format})
+    >(
       context: context,
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         int selectedMode = 1;
+        ExportFormat selectedFormat = initialFormat;
         final selectedIds = <String>{};
 
         return StatefulBuilder(
           builder: (context, setLocalState) {
+            Color formatPrimaryColor() {
+              switch (selectedFormat) {
+                case ExportFormat.excel:
+                  return const Color(0xFF059669);
+                case ExportFormat.pdf:
+                  return const Color(0xFFDC2626);
+                case ExportFormat.csv:
+                  return const Color(0xFF0284C7);
+              }
+            }
+
             return Dialog(
               backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
               shape: RoundedRectangleBorder(
@@ -40,19 +58,58 @@ class CatalogDialogs {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF7F1D1D).withValues(alpha: 0.35)
-                                  : const Color(0xFFFEF2F2),
+                              color:
+                                  selectedFormat == ExportFormat.excel
+                                      ? (isDark
+                                          ? const Color(
+                                            0xFF064E3B,
+                                          ).withValues(alpha: 0.35)
+                                          : const Color(0xFFECFDF5))
+                                      : (selectedFormat == ExportFormat.pdf
+                                          ? (isDark
+                                              ? const Color(
+                                                0xFF7F1D1D,
+                                              ).withValues(alpha: 0.35)
+                                              : const Color(0xFFFEF2F2))
+                                          : (isDark
+                                              ? const Color(
+                                                0xFF0C4A6E,
+                                              ).withValues(alpha: 0.35)
+                                              : const Color(0xFFF0F9FF))),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFFDC2626).withValues(alpha: 0.5)
-                                    : const Color(0xFFFCA5A5),
+                                color:
+                                    selectedFormat == ExportFormat.excel
+                                        ? (isDark
+                                            ? const Color(0xFF059669)
+                                            : const Color(0xFFA7F3D0))
+                                        : (selectedFormat == ExportFormat.pdf
+                                            ? (isDark
+                                                ? const Color(0xFFDC2626)
+                                                : const Color(0xFFFCA5A5))
+                                            : (isDark
+                                                ? const Color(0xFF0284C7)
+                                                : const Color(0xFFBAE6FD))),
                               ),
                             ),
                             child: Icon(
-                              Icons.picture_as_pdf_rounded,
-                              color: isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626),
+                              selectedFormat == ExportFormat.excel
+                                  ? Icons.table_chart_rounded
+                                  : (selectedFormat == ExportFormat.pdf
+                                      ? Icons.picture_as_pdf_rounded
+                                      : Icons.insert_drive_file_outlined),
+                              color:
+                                  selectedFormat == ExportFormat.excel
+                                      ? (isDark
+                                          ? const Color(0xFF34D399)
+                                          : const Color(0xFF059669))
+                                      : (selectedFormat == ExportFormat.pdf
+                                          ? (isDark
+                                              ? const Color(0xFFF87171)
+                                              : const Color(0xFFDC2626))
+                                          : (isDark
+                                              ? const Color(0xFF38BDF8)
+                                              : const Color(0xFF0284C7))),
                               size: 22,
                             ),
                           ),
@@ -62,19 +119,25 @@ class CatalogDialogs {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Exportar Catálogo a PDF',
+                                  'Exportar Catálogo',
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
-                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Configura los productos a incluir',
+                                  'Selecciona el formato y los productos a incluir',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.textSecondary,
                                   ),
                                 ),
                               ],
@@ -84,14 +147,86 @@ class CatalogDialogs {
                             icon: Icon(
                               Icons.close_rounded,
                               size: 20,
-                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextMuted
+                                      : AppColors.textMuted,
                             ),
                             onPressed: () => Navigator.pop(context),
                             tooltip: 'Cerrar',
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
+
+                      // ── Selector de formato (Excel / PDF / CSV) ──
+                      const Text(
+                        'FORMATO DE DESCARGA',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _FormatTile(
+                              title: 'Excel',
+                              subtitle: '.xlsx',
+                              icon: Icons.table_chart_rounded,
+                              activeColor: const Color(0xFF059669),
+                              isSelected: selectedFormat == ExportFormat.excel,
+                              onTap:
+                                  () => setLocalState(
+                                    () => selectedFormat = ExportFormat.excel,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _FormatTile(
+                              title: 'PDF',
+                              subtitle: '.pdf',
+                              icon: Icons.picture_as_pdf_rounded,
+                              activeColor: const Color(0xFFDC2626),
+                              isSelected: selectedFormat == ExportFormat.pdf,
+                              onTap:
+                                  () => setLocalState(
+                                    () => selectedFormat = ExportFormat.pdf,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _FormatTile(
+                              title: 'CSV',
+                              subtitle: '.csv',
+                              icon: Icons.insert_drive_file_outlined,
+                              activeColor: const Color(0xFF0284C7),
+                              isSelected: selectedFormat == ExportFormat.csv,
+                              onTap:
+                                  () => setLocalState(
+                                    () => selectedFormat = ExportFormat.csv,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      const Text(
+                        'PRODUCTOS A INCLUIR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
 
                       _ExportRadioOption(
                         title: 'Solo esta página',
@@ -106,7 +241,7 @@ class CatalogDialogs {
 
                       _ExportRadioOption(
                         title: 'Todos los productos',
-                        subtitle: 'Máximo 50 productos en formato catálogo',
+                        subtitle: 'Hasta 50 productos filtrados actualmente',
                         value: 1,
                         groupValue: selectedMode,
                         onChanged:
@@ -127,12 +262,18 @@ class CatalogDialogs {
                       if (selectedMode == 2) ...[
                         const SizedBox(height: 12),
                         Container(
-                          constraints: const BoxConstraints(maxHeight: 240),
+                          constraints: const BoxConstraints(maxHeight: 220),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                            color:
+                                isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFE2E8F0),
                             ),
                           ),
                           child: ListView.builder(
@@ -148,7 +289,7 @@ class CatalogDialogs {
                               return CheckboxListTile(
                                 dense: true,
                                 value: isSelected,
-                                activeColor: AppColors.primary,
+                                activeColor: formatPrimaryColor(),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -157,14 +298,20 @@ class CatalogDialogs {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : AppColors.textPrimary,
                                   ),
                                 ),
                                 subtitle: Text(
                                   'Stock: ${product.totalStock > 0 ? product.totalStock : "Sin stock"} · ${product.isActive ? "Activo" : "Inactivo"}',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.textMuted,
                                   ),
                                 ),
                                 onChanged: (checked) {
@@ -192,7 +339,10 @@ class CatalogDialogs {
                                   vertical: 14,
                                 ),
                                 side: BorderSide(
-                                  color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
+                                  color:
+                                      isDark
+                                          ? AppColors.darkBorder
+                                          : const Color(0xFFCBD5E1),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -201,7 +351,10 @@ class CatalogDialogs {
                               child: Text(
                                 'Cancelar',
                                 style: TextStyle(
-                                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -216,9 +369,13 @@ class CatalogDialogs {
                                       : () => Navigator.pop(context, (
                                         mode: selectedMode,
                                         selectedIds: selectedIds,
+                                        format: selectedFormat,
                                       )),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? AppColors.primary : const Color(0xFF0F172A),
+                                backgroundColor:
+                                    isDark
+                                        ? AppColors.primary
+                                        : formatPrimaryColor(),
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(
@@ -228,13 +385,21 @@ class CatalogDialogs {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              icon: const Icon(
-                                Icons.picture_as_pdf_rounded,
+                              icon: Icon(
+                                selectedFormat == ExportFormat.excel
+                                    ? Icons.table_chart_rounded
+                                    : (selectedFormat == ExportFormat.pdf
+                                        ? Icons.picture_as_pdf_rounded
+                                        : Icons.insert_drive_file_outlined),
                                 size: 18,
                               ),
-                              label: const Text(
-                                'Generar PDF',
-                                style: TextStyle(
+                              label: Text(
+                                selectedFormat == ExportFormat.excel
+                                    ? 'Exportar a Excel'
+                                    : (selectedFormat == ExportFormat.pdf
+                                        ? 'Generar PDF'
+                                        : 'Exportar a CSV'),
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
                                 ),
@@ -284,10 +449,14 @@ class CatalogDialogs {
                       color:
                           willActivate
                               ? (isDark
-                                  ? const Color(0xFF064E3B).withValues(alpha: 0.4)
+                                  ? const Color(
+                                    0xFF064E3B,
+                                  ).withValues(alpha: 0.4)
                                   : AppColors.successLight)
                               : (isDark
-                                  ? const Color(0xFF7F1D1D).withValues(alpha: 0.4)
+                                  ? const Color(
+                                    0xFF7F1D1D,
+                                  ).withValues(alpha: 0.4)
                                   : AppColors.dangerLight),
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -297,8 +466,12 @@ class CatalogDialogs {
                           : Icons.hide_source_rounded,
                       color:
                           willActivate
-                              ? (isDark ? const Color(0xFF34D399) : AppColors.success)
-                              : (isDark ? const Color(0xFFF87171) : AppColors.danger),
+                              ? (isDark
+                                  ? const Color(0xFF34D399)
+                                  : AppColors.success)
+                              : (isDark
+                                  ? const Color(0xFFF87171)
+                                  : AppColors.danger),
                       size: 28,
                     ),
                   ),
@@ -308,7 +481,10 @@ class CatalogDialogs {
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -319,7 +495,10 @@ class CatalogDialogs {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
                       height: 1.5,
                     ),
                   ),
@@ -336,14 +515,20 @@ class CatalogDialogs {
                                 AppColors.radius,
                               ),
                               side: BorderSide(
-                                color: isDark ? AppColors.darkBorder : AppColors.border,
+                                color:
+                                    isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.border,
                               ),
                             ),
                           ),
                           child: Text(
                             'Cancelar',
                             style: TextStyle(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -408,15 +593,17 @@ class _ExportRadioOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark
-                  ? const Color(0xFF064E3B).withValues(alpha: 0.35)
-                  : AppColors.tealLight.withValues(alpha: 0.3))
-              : (isDark ? AppColors.darkSurfaceElevated : null),
+          color:
+              isSelected
+                  ? (isDark
+                      ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                      : AppColors.tealLight.withValues(alpha: 0.3))
+                  : (isDark ? AppColors.darkSurfaceElevated : null),
           border: Border.all(
-            color: isSelected
-                ? (isDark ? const Color(0xFF34D399) : AppColors.teal)
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color:
+                isSelected
+                    ? (isDark ? const Color(0xFF34D399) : AppColors.teal)
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
           ),
           borderRadius: BorderRadius.circular(AppColors.radius),
         ),
@@ -441,17 +628,113 @@ class _ExportRadioOption extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FormatTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color activeColor;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FormatTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.activeColor,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? activeColor.withValues(alpha: isDark ? 0.25 : 0.08)
+                  : (isDark
+                      ? AppColors.darkSurfaceElevated
+                      : const Color(0xFFF8FAFC)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                isSelected
+                    ? activeColor
+                    : (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
+            width: isSelected ? 1.8 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color:
+                  isSelected
+                      ? activeColor
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    isSelected
+                        ? (isDark ? Colors.white : activeColor)
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color:
+                    isSelected
+                        ? activeColor
+                        : (isDark
+                            ? AppColors.darkTextMuted
+                            : AppColors.textMuted),
               ),
             ),
           ],

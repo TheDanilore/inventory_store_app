@@ -14,6 +14,8 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/export_cata
 import 'package:inventory_store_app/features/catalog/domain/usecases/delete_product_uc.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
+import 'package:inventory_store_app/features/catalog/data/utils/catalog_excel_exporter.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 
 @injectable
 class AdminCatalogCubit extends Cubit<AdminCatalogState> {
@@ -418,6 +420,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> exportCatalogPdf({
     required int optionsMode,
     required List<String> selectedIds,
+  }) => exportCatalog(
+    format: ExportFormat.pdf,
+    optionsMode: optionsMode,
+    selectedIds: selectedIds,
+  );
+
+  Future<void> exportCatalog({
+    required ExportFormat format,
+    required int optionsMode,
+    required List<String> selectedIds,
   }) async {
     if (state.isLoadingAction) return;
     emit(state.copyWith(actionState: ViewState.loading));
@@ -439,7 +451,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
       final allProducts = result.fold((failure) {
         LoggerService.e(
-          'Error al cargar productos para PDF: ${failure.message}',
+          'Error al cargar productos para exportar: ${failure.message}',
           tag: 'ADMIN_CATALOG_CUBIT',
           error: failure,
           stackTrace: StackTrace.current,
@@ -487,29 +499,42 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         return;
       }
 
-      final exportResult = await exportCatalogPdfUC(products: filteredProducts);
-
-      exportResult.fold(
-        (failure) {
-          LoggerService.e(
-            'Error en exportCatalogPdfUC: ${failure.message}',
-            tag: 'ADMIN_CATALOG_CUBIT',
-            error: failure,
+      switch (format) {
+        case ExportFormat.pdf:
+          final exportResult = await exportCatalogPdfUC(
+            products: filteredProducts,
           );
-          emit(
-            state.copyWith(
-              actionState: ViewState.error,
-              errorMessage: 'Error al generar PDF: ${failure.message}',
-            ),
+          exportResult.fold(
+            (failure) {
+              LoggerService.e(
+                'Error en exportCatalogPdfUC: ${failure.message}',
+                tag: 'ADMIN_CATALOG_CUBIT',
+                error: failure,
+              );
+              emit(
+                state.copyWith(
+                  actionState: ViewState.error,
+                  errorMessage: 'Error al generar PDF: ${failure.message}',
+                ),
+              );
+            },
+            (_) {
+              emit(state.copyWith(actionState: ViewState.success));
+            },
           );
-        },
-        (_) {
+          break;
+        case ExportFormat.excel:
+          await CatalogExcelExporter.exportToExcel(filteredProducts);
           emit(state.copyWith(actionState: ViewState.success));
-        },
-      );
+          break;
+        case ExportFormat.csv:
+          await CatalogExcelExporter.exportToCsv(filteredProducts);
+          emit(state.copyWith(actionState: ViewState.success));
+          break;
+      }
     } catch (e, st) {
       LoggerService.e(
-        'Error inesperado en exportCatalogPdf',
+        'Error inesperado en exportCatalog',
         tag: 'ADMIN_CATALOG_CUBIT',
         error: e,
         stackTrace: st,
