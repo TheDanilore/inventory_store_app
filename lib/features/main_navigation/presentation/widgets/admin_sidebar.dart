@@ -6,7 +6,6 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 import 'package:url_launcher/link.dart';
 
@@ -305,7 +304,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                   // "Configuración del Sistema" : Usuarios, Cuentas, Almacenes y Negocio
                   BlocSelector<AppConfigCubit, AppConfigState, bool>(
-                    selector: (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
+                    selector:
+                        (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                     builder: (context, loyaltyEnabled) {
                       return _ExpandableSidebarGroup(
                         isCollapsed: widget.isCollapsed,
@@ -364,7 +364,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   context,
                   icon: Icons.settings_outlined,
                   title: 'Configuraciones',
-                  onTap: () => AdminSettingsDialog.show(context),
+                  isSelected: GoRouterState.of(context).uri.path == '/settings',
+                  onTap: () => context.go('/settings'),
                 ),
                 _buildActionTile(
                   context,
@@ -385,6 +386,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    bool isSelected = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -402,6 +404,22 @@ class _AdminSidebarState extends State<AdminSidebar> {
             padding: EdgeInsets.symmetric(
               horizontal: widget.isCollapsed ? 0 : 10,
             ),
+            decoration:
+                isSelected
+                    ? BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                              : const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
+                                : const Color(0xFFBFDBFE),
+                      ),
+                    )
+                    : null,
             child: ClipRect(
               child: Row(
                 mainAxisAlignment:
@@ -413,9 +431,11 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     icon,
                     size: 19,
                     color:
-                        isDark
-                            ? AppColors.darkTextSecondary
-                            : const Color(0xFF64748B),
+                        isSelected
+                            ? const Color(0xFF3B82F6)
+                            : (isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B)),
                   ),
                   if (!widget.isCollapsed) ...[
                     const SizedBox(width: 12),
@@ -426,11 +446,16 @@ class _AdminSidebarState extends State<AdminSidebar> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
                           color:
-                              isDark
-                                  ? AppColors.darkTextSecondary
-                                  : const Color(0xFF475569),
+                              isSelected
+                                  ? (isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : const Color(0xFF1D4ED8))
+                                  : (isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF475569)),
                         ),
                       ),
                     ),

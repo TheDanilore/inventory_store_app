@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
+import 'package:go_router/go_router.dart';
 
 class PosHeader extends StatelessWidget {
   final TextEditingController searchController;
@@ -871,7 +871,7 @@ class PosHeader extends StatelessWidget {
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
-                onTap: () => AdminSettingsDialog.show(context, initialTabIndex: 5),
+                onTap: () => context.push('/settings?tab=5'),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   height: 42,

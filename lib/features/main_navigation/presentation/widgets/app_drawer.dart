@@ -11,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 
 // ---------------------------------------------------------------------------
@@ -435,10 +434,10 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.settings_outlined,
                       title: 'Configuraciones',
-                      routePath: '__settings__',
+                      routePath: '/settings',
                       onTap: () {
                         Navigator.pop(context);
-                        AdminSettingsDialog.show(context);
+                        context.go('/settings');
                       },
                     ),
                   ),

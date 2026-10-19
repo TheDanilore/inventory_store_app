@@ -12,17 +12,11 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 class AdminSettingsDialog extends StatefulWidget {
   final int initialTabIndex;
 
-  const AdminSettingsDialog({
-    super.key,
-    this.initialTabIndex = 0,
-  });
+  const AdminSettingsDialog({super.key, this.initialTabIndex = 0});
 
   static Future<void> show(BuildContext context, {int initialTabIndex = 0}) {
-    return showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (_) => AdminSettingsDialog(initialTabIndex: initialTabIndex),
-    );
+    context.push('/settings?tab=$initialTabIndex');
+    return Future.value();
   }
 
   @override
