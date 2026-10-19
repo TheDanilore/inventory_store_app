@@ -47,6 +47,7 @@ class PosCameraScannerDialog extends StatefulWidget {
         barrierDismissible: true,
         builder:
             (_) => Dialog(
+              backgroundColor: Colors.black,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
@@ -523,64 +524,47 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     return LayoutBuilder(
       builder: (context, constraints) {
         final boxSize = (constraints.maxWidth * 0.70).clamp(210.0, 300.0);
+        final leftOffset = (constraints.maxWidth - boxSize) / 2;
         final topOffset = (constraints.maxHeight - boxSize) / 2 - 20;
+        final scanRect = Rect.fromLTWH(leftOffset, topOffset, boxSize, boxSize);
 
         return Stack(
           children: [
-            // Máscara oscura recortada con orificio central
-            ColorFiltered(
-              colorFilter: ColorFilter.mode(
-                Colors.black.withValues(alpha: 0.55),
-                BlendMode.srcOut,
-              ),
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                      backgroundBlendMode: BlendMode.dstOut,
-                    ),
-                  ),
-                  Positioned(
-                    top: topOffset,
-                    left: (constraints.maxWidth - boxSize) / 2,
-                    width: boxSize,
-                    height: boxSize,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  ),
-                ],
+            // 1. Máscara oscura limpia mediante CustomPainter (sin BlendModes destructivos)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ScannerOverlayPainter(
+                  scanWindow: scanRect,
+                  borderRadius: 22,
+                  overlayColor: Colors.black.withValues(alpha: 0.58),
+                ),
               ),
             ),
 
-            // Marco con esquinas redondeadas color Neón Teal
+            // 2. Marco con esquinas redondeadas color Neón Teal
             Positioned(
               top: topOffset,
-              left: (constraints.maxWidth - boxSize) / 2,
+              left: leftOffset,
               width: boxSize,
               height: boxSize,
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(22),
                   border: Border.all(
-                    color: AppColors.teal.withValues(alpha: 0.9),
+                    color: AppColors.teal.withValues(alpha: 0.95),
                     width: 2.5,
                   ),
                 ),
               ),
             ),
 
-            // Línea láser animada
+            // 3. Línea láser animada
             AnimatedBuilder(
               animation: _scanAnimation,
               builder: (context, child) {
                 return Positioned(
                   top: topOffset + (_scanAnimation.value * (boxSize - 4)),
-                  left: (constraints.maxWidth - boxSize) / 2 + 8,
+                  left: leftOffset + 8,
                   width: boxSize - 16,
                   height: 2.5,
                   child: Container(
@@ -835,3 +819,54 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     );
   }
 }
+
+/// Dibuja una máscara oscura sobre la pantalla excluyendo la ventana de escaneo,
+/// calculada mediante geometría de trazados vectoriales (Path.combine con PathOperation.difference).
+///
+/// Esto previene el bug de Flutter Web CanvasKit donde `BlendMode.srcOut` / `BlendMode.dstOut`
+/// borran el canal alfa del canvas y dejan traslúcido el contenido del fondo (pantallas previas).
+class _ScannerOverlayPainter extends CustomPainter {
+  final Rect scanWindow;
+  final double borderRadius;
+  final Color overlayColor;
+
+  const _ScannerOverlayPainter({
+    required this.scanWindow,
+    required this.borderRadius,
+    required this.overlayColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final backgroundPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final cutoutPath = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          scanWindow,
+          Radius.circular(borderRadius),
+        ),
+      );
+
+    // Sustrae el visor central del fondo para oscurecer solo los bordes
+    final overlayPath = Path.combine(
+      PathOperation.difference,
+      backgroundPath,
+      cutoutPath,
+    );
+
+    final paint = Paint()
+      ..color = overlayColor
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(overlayPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScannerOverlayPainter oldDelegate) {
+    return oldDelegate.scanWindow != scanWindow ||
+        oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.overlayColor != overlayColor;
+  }
+}
+
