@@ -20,7 +20,7 @@ class PosCameraScannerDialog extends StatefulWidget {
   final String? warehouseId;
   final String? title;
   final bool continuousMode;
-  final Future<void> Function(PosScanResult result)? onContinuousScan;
+  final FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan;
 
   const PosCameraScannerDialog({
     super.key,
@@ -37,7 +37,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     String? warehouseId,
     String? title,
     bool continuousMode = false,
-    Future<void> Function(PosScanResult result)? onContinuousScan,
+    FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan,
   }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     PosScanResult? result;
@@ -205,7 +205,14 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
         if (widget.continuousMode || widget.onContinuousScan != null) {
           // Modo Rápido / Continuo: agrega a la lista y se mantiene escaneando
           if (widget.onContinuousScan != null) {
-            await widget.onContinuousScan!(result);
+            final scanSuccess = await widget.onContinuousScan!(result);
+            if (scanSuccess == false) {
+              // Si la operación falló (ej: producto agotado o sin precio), no agregamos ni mostramos feedback falso
+              if (mounted) {
+                setState(() => _isResolving = false);
+              }
+              return;
+            }
           }
 
           if (mounted) {
@@ -838,9 +845,11 @@ class _ScannerOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final backgroundPath = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height));
-    final cutoutPath = Path()
+    // Usamos PathFillType.evenOdd para vaciar el marco central sin costosas
+    // operaciones booleanas (Path.combine), evitando glitches de renderizado en Flutter Web/CanvasKit.
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(
         RRect.fromRectAndRadius(
           scanWindow,
@@ -848,18 +857,11 @@ class _ScannerOverlayPainter extends CustomPainter {
         ),
       );
 
-    // Sustrae el visor central del fondo para oscurecer solo los bordes
-    final overlayPath = Path.combine(
-      PathOperation.difference,
-      backgroundPath,
-      cutoutPath,
-    );
-
     final paint = Paint()
       ..color = overlayColor
       ..style = PaintingStyle.fill;
 
-    canvas.drawPath(overlayPath, paint);
+    canvas.drawPath(path, paint);
   }
 
   @override

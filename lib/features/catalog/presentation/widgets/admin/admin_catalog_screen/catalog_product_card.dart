@@ -37,6 +37,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
   bool _isCardPressed = false;
   bool _isHovered = false;
 
+  /// Matriz de escala de grises de alto rendimiento (evita shaders no separables como BlendMode.saturation
+  /// que provocan sangrado de texturas y fallos de composición sobre vistas de plataforma HTML en Flutter Web).
+  static const ColorFilter _grayscaleMatrix = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0,      0,      0,      1, 0,
+  ]);
+
   /// Devuelve el color del badge de stock según nivel de alerta.
   Color _stockBadgeColor(int stock) {
     if (stock <= 5) return const Color(0xFFEF4444); //  crítico
@@ -213,92 +222,85 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(AppColors.radius),
                         ),
-                        child: ColorFiltered(
-                          colorFilter:
-                              isAgotado
-                                  ? ColorFilter.mode(
-                                    isDark ? Colors.grey.shade700 : Colors.grey.shade400,
-                                    BlendMode.saturation,
-                                  )
-                                  : const ColorFilter.mode(
-                                    Colors.transparent,
-                                    BlendMode.dst,
-                                  ),
-                          child: Opacity(
-                            opacity:
-                                isDesactivado ? 0.45 : (isAgotado ? 0.75 : 1.0),
-                            child:
-                                widget.product.images.isNotEmpty
-                                    ? CachedNetworkImage(
-                                      imageUrl:
-                                          widget.product.images
-                                              .firstWhere(
-                                                (img) => img.isMain,
-                                                orElse:
-                                                    () =>
-                                                        widget
-                                                            .product
-                                                            .images
-                                                            .first,
-                                              )
-                                              .imageUrl,
-                                      fit: BoxFit.cover,
-                                      memCacheWidth: 350,
-                                      memCacheHeight: 350,
-                                      maxWidthDiskCache: 600,
-                                      maxHeightDiskCache: 600,
-                                      placeholder:
-                                          (_, _) => ColoredBox(
-                                            color: isDark
-                                                ? AppColors.darkSurfaceElevated
-                                                : const Color(0xFFF1F5F9),
-                                            child: Center(
-                                              child: SizedBox(
-                                                width: 24,
-                                                height: 24,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      color:
-                                                          Theme.of(
-                                                            context,
-                                                          ).colorScheme.primary,
-                                                    ),
+                        child: Builder(
+                          builder: (context) {
+                            final imageWidget = Opacity(
+                              opacity: isDesactivado ? 0.45 : (isAgotado ? 0.75 : 1.0),
+                              child: widget.product.images.isNotEmpty
+                                  ? CachedNetworkImage(
+                                    imageUrl:
+                                        widget.product.images
+                                            .firstWhere(
+                                              (img) => img.isMain,
+                                              orElse:
+                                                  () =>
+                                                      widget
+                                                          .product
+                                                          .images
+                                                          .first,
+                                            )
+                                            .imageUrl,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 350,
+                                    memCacheHeight: 350,
+                                    maxWidthDiskCache: 600,
+                                    maxHeightDiskCache: 600,
+                                    placeholder:
+                                        (_, _) => ColoredBox(
+                                          color: isDark
+                                              ? AppColors.darkSurfaceElevated
+                                              : const Color(0xFFF1F5F9),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 24,
+                                              height: 24,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Theme.of(context).colorScheme.primary,
                                               ),
                                             ),
                                           ),
-                                      errorWidget:
-                                          (_, _, _) => _buildProductPlaceholder(
-                                            widget.product.name,
-                                            isDark,
-                                          ),
-                                    )
-                                    : _buildProductPlaceholder(
-                                      widget.product.name,
-                                      isDark,
-                                    ),
-                          ),
+                                        ),
+                                    errorWidget:
+                                        (_, _, _) => _buildProductPlaceholder(
+                                          widget.product.name,
+                                          isDark,
+                                        ),
+                                  )
+                                  : _buildProductPlaceholder(
+                                    widget.product.name,
+                                    isDark,
+                                  ),
+                            );
+
+                            if (isAgotado) {
+                              return ColorFiltered(
+                                colorFilter: _grayscaleMatrix,
+                                child: imageWidget,
+                              );
+                            }
+                            return imageWidget;
+                          },
                         ),
                       ),
 
                       // Overlay de carga al hacer toggle
                       if (_isToggling)
                         Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(AppColors.radius),
-                            ),
-                            child: ColoredBox(
+                          child: Container(
+                            decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.40),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(AppColors.radius),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
                               ),
                             ),
                           ),
@@ -306,38 +308,38 @@ class _AdminProductCardState extends State<AdminProductCard> {
                       // Overlay INACTIVO (sin blur que cause jank o distorsión)
                       else if (isDesactivado)
                         Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(AppColors.radius),
-                            ),
-                            child: ColoredBox(
+                          child: Container(
+                            decoration: BoxDecoration(
                               color: isDark
                                   ? Colors.black.withValues(alpha: 0.50)
                                   : Colors.white.withValues(alpha: 0.45),
-                              child: const Center(
-                                child: _StatusBadge(
-                                  label: 'INACTIVO',
-                                  color: Color(0xFFEF4444),
-                                ),
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(AppColors.radius),
                               ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const _StatusBadge(
+                              label: 'INACTIVO',
+                              color: Color(0xFFEF4444),
                             ),
                           ),
                         )
                       // Overlay AGOTADO (imagen nítida reconocible + badge de alto contraste)
                       else if (isAgotado)
                         Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(AppColors.radius),
-                            ),
-                            child: ColoredBox(
-                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
-                              child: const Center(
-                                child: _StatusBadge(
-                                  label: 'AGOTADO',
-                                  color: Color(0xFF334155),
-                                ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.35 : 0.12,
                               ),
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(AppColors.radius),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const _StatusBadge(
+                              label: 'AGOTADO',
+                              color: Color(0xFF334155),
                             ),
                           ),
                         ),

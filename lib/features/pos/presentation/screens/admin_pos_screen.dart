@@ -514,7 +514,8 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     }
 
     // Si tiene múltiples variantes (> 1), se abre el modal
-    PosAddToCartSheet.show(context, product);
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+    PosAddToCartSheet.show(context, product, warehouseId: warehouseId);
   }
 
   @override

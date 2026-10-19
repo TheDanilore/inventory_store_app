@@ -19,6 +19,13 @@ class CatalogProductCard extends StatefulWidget {
 }
 
 class _CatalogProductCardState extends State<CatalogProductCard> {
+  static const ColorFilter _grayscaleMatrix = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0,      0,      0,      1, 0,
+  ]);
+
   bool _isCardHovered = false;
   bool _isCardPressed = false;
   bool _isButtonHovered = false;
@@ -116,10 +123,7 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                             child: ColorFiltered(
                               colorFilter:
                                   isAgotado
-                                      ? ColorFilter.mode(
-                                        Colors.grey.shade400,
-                                        BlendMode.saturation,
-                                      )
+                                      ? _grayscaleMatrix
                                       : const ColorFilter.mode(
                                         Colors.transparent,
                                         BlendMode.dst,

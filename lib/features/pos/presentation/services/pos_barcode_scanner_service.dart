@@ -105,12 +105,12 @@ class PosBarcodeScannerService {
         }
       }
 
-      // 3. Buscar en Supabase por SKU exacto en product_variants
+      // 3. Buscar en Supabase por SKU (insensible a mayúsculas/minúsculas) en product_variants
       final variantBySkuRes =
           await supabase
               .from('product_variants')
               .select('id, product_id, sku, barcode, is_active')
-              .eq('sku', trimmed)
+              .ilike('sku', trimmed)
               .maybeSingle();
 
       if (variantBySkuRes != null) {
@@ -184,7 +184,9 @@ class PosBarcodeScannerService {
   /// Añade el resultado al carrito del POS de forma inteligente:
   /// - Si la variante está resuelta o el producto tiene 1 sola variante -> se agrega directamente al carrito.
   /// - Si el producto tiene múltiples variantes y no se pudo determinar cuál es -> abre [PosAddToCartSheet].
-  static Future<void> addScanResultToCart({
+  ///
+  /// Retorna `true` si el producto se agregó exitosamente (o abrió selector), o `false` si falló (ej: agotado).
+  static Future<bool> addScanResultToCart({
     required BuildContext context,
     required PosScanResult scanResult,
     required CartCubit cartCubit,
@@ -197,14 +199,45 @@ class PosBarcodeScannerService {
     if (variant != null || product.productVariants.length <= 1) {
       final targetVariant = variant ?? product.defaultVariant;
 
+      // Calcular stock disponible real para la variante y/o almacén seleccionado
+      int availableStock = product.totalStock;
+      if (product.warehouseStockBatches.isNotEmpty) {
+        if (targetVariant != null) {
+          final batches = product.warehouseStockBatches.where((b) {
+            final matchVariant = b.variantId == targetVariant.id;
+            final matchWh =
+                warehouseId == null ||
+                warehouseId.isEmpty ||
+                b.warehouseId == warehouseId;
+            return matchVariant && matchWh;
+          });
+          availableStock = batches.fold<int>(
+            0,
+            (sum, b) => sum + b.availableQuantity.toInt(),
+          );
+        } else if (warehouseId != null && warehouseId.isNotEmpty) {
+          final batches = product.warehouseStockBatches.where(
+            (b) => b.warehouseId == warehouseId,
+          );
+          availableStock = batches.fold<int>(
+            0,
+            (sum, b) => sum + b.availableQuantity.toInt(),
+          );
+        }
+      }
+
       // Verificar control de stock si aplica
-      if (product.stockControl && product.totalStock <= 0) {
+      if (product.stockControl && availableStock <= 0) {
+        final variantText =
+            targetVariant != null && targetVariant.shortLabel.isNotEmpty
+                ? ' (${targetVariant.shortLabel})'
+                : '';
         AppSnackbar.show(
           context,
-          message: '${product.name} está agotado.',
+          message: '${product.name}$variantText está agotado.',
           type: SnackbarType.warning,
         );
-        return;
+        return false;
       }
 
       final unitPrice =
@@ -215,7 +248,7 @@ class PosBarcodeScannerService {
           message: '${product.name} no tiene precio de venta asignado.',
           type: SnackbarType.warning,
         );
-        return;
+        return false;
       }
 
       final cartKey = targetVariant?.id ?? product.id;
@@ -231,7 +264,7 @@ class PosBarcodeScannerService {
             targetVariant?.unitCost ?? product.defaultVariant?.unitCost ?? 0.0,
         availableStock:
             product.stockControl
-                ? product.totalStock
+                ? availableStock
                 : CartItemEntity.unlimitedStock,
         usesBatches: product.usesBatches,
         wholesalePrice: targetVariant?.wholesalePrice,
@@ -251,15 +284,17 @@ class PosBarcodeScannerService {
         message: 'Agregado: ${product.name} ${targetVariant?.shortLabel ?? ''}',
         type: SnackbarType.success,
       );
-      return;
+      return true;
     }
 
     // Caso 2: Múltiples variantes sin variante resuelta -> abrir selector modal
     await PosAddToCartSheet.show(
       context,
       product,
+      warehouseId: warehouseId,
       initialVariantId: variant?.id,
     );
+    return true;
   }
 
   /// Despliega la cámara de escaneo y procesa automáticamente el resultado en el carrito en modo continuo.
@@ -274,8 +309,8 @@ class PosBarcodeScannerService {
       title: 'POS: Escaneo Rápido de Productos',
       continuousMode: true,
       onContinuousScan: (scanResult) async {
-        if (!context.mounted) return;
-        await addScanResultToCart(
+        if (!context.mounted) return false;
+        return await addScanResultToCart(
           context: context,
           scanResult: scanResult,
           cartCubit: cartCubit,

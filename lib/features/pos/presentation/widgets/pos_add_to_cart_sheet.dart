@@ -37,11 +37,13 @@ class PosAddToCartSheet extends StatefulWidget {
   static Future<void> show(
     BuildContext context,
     ProductEntity product, {
+    String? warehouseId,
     String? initialVariantId,
   }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     final cartCubit = context.read<CartCubit>();
-    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+    final effectiveWarehouseId =
+        warehouseId ?? context.read<PosCubit>().state.selectedWarehouseId;
 
     if (isDesktop) {
       await showDialog<void>(
@@ -56,7 +58,7 @@ class PosAddToCartSheet extends StatefulWidget {
                           PosAddToCartCubit(sl<ProductsRepository>())
                             ..loadData(
                               product,
-                              warehouseId: warehouseId,
+                              warehouseId: effectiveWarehouseId,
                               initialVariantId: initialVariantId,
                             ),
                 ),
@@ -72,7 +74,7 @@ class PosAddToCartSheet extends StatefulWidget {
                     child: PosAddToCartSheet(
                       productEntity: product,
                       isDialogMode: true,
-                      warehouseId: warehouseId,
+                      warehouseId: effectiveWarehouseId,
                       initialVariantId: initialVariantId,
                     ),
                   ),
@@ -95,7 +97,7 @@ class PosAddToCartSheet extends StatefulWidget {
                           PosAddToCartCubit(sl<ProductsRepository>())
                             ..loadData(
                               product,
-                              warehouseId: warehouseId,
+                              warehouseId: effectiveWarehouseId,
                               initialVariantId: initialVariantId,
                             ),
                 ),
@@ -106,7 +108,7 @@ class PosAddToCartSheet extends StatefulWidget {
                 ),
                 child: PosAddToCartSheet(
                   productEntity: product,
-                  warehouseId: warehouseId,
+                  warehouseId: effectiveWarehouseId,
                   initialVariantId: initialVariantId,
                 ),
               ),
