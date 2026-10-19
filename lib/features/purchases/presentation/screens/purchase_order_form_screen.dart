@@ -14,6 +14,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/utils/hardware_barcode_gun_detector.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class PurchaseOrderFormScreen extends StatefulWidget {
@@ -30,6 +32,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _documentNumberCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _gunDetector = HardwareBarcodeGunDetector();
 
   static const List<String> _docTypes = [
     'NINGUNO',
@@ -179,6 +182,75 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     );
   }
 
+  Future<void> _handleGunBarcode(String rawBarcode) async {
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
+
+    if (viewModel.selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message:
+            'Selecciona un almacén de destino antes de escanear productos.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosBarcodeScannerService.resolveCode(
+      rawBarcode,
+      warehouseId: viewModel.selectedWarehouseId,
+    );
+    if (!mounted) return;
+    if (res == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Código "$rawBarcode" no encontrado en catálogo',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    final product = res.product;
+    final targetVariant = res.variant ?? product.defaultVariant;
+
+    final existingIndex = viewModel.items.indexWhere(
+      (item) =>
+          item.productId == product.id &&
+          (targetVariant == null || item.variantId == targetVariant.id),
+    );
+
+    HapticFeedback.mediumImpact();
+    if (existingIndex != -1) {
+      final currentItem = viewModel.items[existingIndex];
+      viewModel.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+      AppSnackbar.show(
+        context,
+        message: '+1 a "${product.name}"',
+        type: SnackbarType.info,
+      );
+    } else {
+      final entryItem = InventoryEntryItemEntity(
+        productId: product.id,
+        productName: product.name,
+        variantId: targetVariant?.id ?? product.id,
+        variantLabel: targetVariant?.label ?? targetVariant?.sku ?? 'Estándar',
+        usesBatches: product.usesBatches,
+        quantity: 1.0,
+        unitCost: targetVariant?.unitCost ?? 0.0,
+        batchNumber: '',
+        expiryDate: null,
+        imageUrl: product.primaryImageUrl,
+      );
+      viewModel.addItem(entryItem);
+      AppSnackbar.show(
+        context,
+        message: 'Agregado a la orden: "${product.name}"',
+        type: SnackbarType.success,
+      );
+    }
+  }
+
   Future<void> _handleSave() async {
     if (_formKey.currentState != null && !_formKey.currentState!.validate()) {
       AppSnackbar.show(
@@ -273,341 +345,354 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<PurchaseOrderFormCubit, PurchaseOrderFormState>(
-      listener: (context, state) {
-        if (state is PurchaseOrderFormLoaded && state.isEditing) {
-          if (_documentNumberCtrl.text.isEmpty &&
-              state.documentNumber.isNotEmpty) {
-            _documentNumberCtrl.text = state.documentNumber;
-          }
-          if (_notesCtrl.text.isEmpty && state.notes.isNotEmpty) {
-            _notesCtrl.text = state.notes;
-          }
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        final barcode = _gunDetector.onKeyEvent(event);
+        if (barcode != null) {
+          _handleGunBarcode(barcode);
+          return KeyEventResult.handled;
         }
+        return KeyEventResult.ignored;
       },
-      builder: (context, state) {
-        final viewModel = _PurchaseOrderFormViewModel(
-          context.read<PurchaseOrderFormCubit>(),
-          state,
-        );
-        if (viewModel.isLoading) {
-          return AdminLayout(
-            title: widget.editOrderId != null ? 'Editar Orden' : 'Nueva Orden',
-            showBackButton: true,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            ),
+      child: BlocConsumer<PurchaseOrderFormCubit, PurchaseOrderFormState>(
+        listener: (context, state) {
+          if (state is PurchaseOrderFormLoaded && state.isEditing) {
+            if (_documentNumberCtrl.text.isEmpty &&
+                state.documentNumber.isNotEmpty) {
+              _documentNumberCtrl.text = state.documentNumber;
+            }
+            if (_notesCtrl.text.isEmpty && state.notes.isNotEmpty) {
+              _notesCtrl.text = state.notes;
+            }
+          }
+        },
+        builder: (context, state) {
+          final viewModel = _PurchaseOrderFormViewModel(
+            context.read<PurchaseOrderFormCubit>(),
+            state,
           );
-        }
+          if (viewModel.isLoading) {
+            return AdminLayout(
+              title:
+                  widget.editOrderId != null ? 'Editar Orden' : 'Nueva Orden',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            );
+          }
 
-        if (viewModel.errorMessage.isNotEmpty && viewModel.suppliers.isEmpty) {
-          return AdminLayout(
-            title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
-            showBackButton: true,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      size: 64,
-                      color: AppColors.danger,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      viewModel.errorMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+          if (viewModel.errorMessage.isNotEmpty &&
+              viewModel.suppliers.isEmpty) {
+            return AdminLayout(
+              title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 64,
+                        color: AppColors.danger,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed:
-                          () => context.read<PurchaseOrderFormCubit>().initForm(
-                            editOrderId: widget.editOrderId,
+                      const SizedBox(height: 16),
+                      Text(
+                        viewModel.errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed:
+                            () => context
+                                .read<PurchaseOrderFormCubit>()
+                                .initForm(editOrderId: widget.editOrderId),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          if (viewModel.suppliers.isEmpty || viewModel.warehouses.isEmpty) {
+            return AdminLayout(
+              title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 64,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No se puede crear una orden de compra sin almacenes activos ni proveedores configurados.\nPor favor regístralos primero en las secciones correspondientes.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/purchase-orders');
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Volver al listado'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+
+              if (viewModel.isEditing) {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder:
+                      (ctx) => AlertDialog(
+                        title: const Text('Salir de la edición'),
+                        content: const Text(
+                          '¿Deseas salir sin guardar los cambios de la orden de compra?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Continuar editando'),
                           ),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Reintentar'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.danger,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Salir sin guardar'),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
+                );
+                if (confirm == true && context.mounted) {
+                  if (context.canPop()) {
+                    context.pop(result);
+                  } else {
+                    context.go('/purchase-orders');
+                  }
+                }
+                return;
+              }
 
-        if (viewModel.suppliers.isEmpty || viewModel.warehouses.isEmpty) {
-          return AdminLayout(
-            title: viewModel.isEditing ? 'Editar Orden' : 'Nueva Orden',
-            showBackButton: true,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.warning_amber_rounded,
-                      size: 64,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No se puede crear una orden de compra sin almacenes activos ni proveedores configurados.\nPor favor regístralos primero en las secciones correspondientes.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/purchase-orders');
-                        }
-                      },
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('Volver al listado'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
+              if (viewModel.items.isEmpty) {
+                viewModel.clearDraft();
+                if (context.canPop()) {
+                  context.pop(result);
+                } else {
+                  context.go('/purchase-orders');
+                }
+                return;
+              }
 
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-
-            if (viewModel.isEditing) {
-              final confirm = await showDialog<bool>(
+              final action = await showDialog<String>(
                 context: context,
                 builder:
                     (ctx) => AlertDialog(
-                      title: const Text('Salir de la edición'),
+                      title: const Text('Órden en progreso'),
                       content: const Text(
-                        '¿Deseas salir sin guardar los cambios de la orden de compra?',
+                        'Tienes productos en la órden actual. ¿Qué deseas hacer al salir?',
                       ),
+                      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Continuar editando'),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.danger,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Salir sin guardar'),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, 'cancel'),
+                              child: const Text('Cancelar'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, 'discard'),
+                              child: const Text(
+                                'Descartar',
+                                style: TextStyle(color: AppColors.danger),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, 'draft'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                              ),
+                              child: const Text('Borrador'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
               );
-              if (confirm == true && context.mounted) {
+
+              if (!context.mounted) return;
+
+              if (action == 'discard') {
+                viewModel.clearDraft();
+                if (context.canPop()) {
+                  context.pop(result);
+                } else {
+                  context.go('/purchase-orders');
+                }
+              } else if (action == 'draft') {
                 if (context.canPop()) {
                   context.pop(result);
                 } else {
                   context.go('/purchase-orders');
                 }
               }
-              return;
-            }
+            },
+            child: AdminLayout(
+              title:
+                  viewModel.isEditing
+                      ? 'Editar Orden de Compra'
+                      : 'Nueva Orden de Compra',
+              showBackButton: true,
+              showProfileButton: false,
+              showDrawerButton: false,
+              body:
+                  viewModel.isSaving
+                      ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
+                      )
+                      : Form(
+                        key: _formKey,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 900;
 
-            if (viewModel.items.isEmpty) {
-              viewModel.clearDraft();
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/purchase-orders');
-              }
-              return;
-            }
-
-            final action = await showDialog<String>(
-              context: context,
-              builder:
-                  (ctx) => AlertDialog(
-                    title: const Text('Órden en progreso'),
-                    content: const Text(
-                      'Tienes productos en la órden actual. ¿Qué deseas hacer al salir?',
-                    ),
-                    actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    actions: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, 'cancel'),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, 'discard'),
-                            child: const Text(
-                              'Descartar',
-                              style: TextStyle(color: AppColors.danger),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(ctx, 'draft'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                            ),
-                            child: const Text('Borrador'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-            );
-
-            if (!context.mounted) return;
-
-            if (action == 'discard') {
-              viewModel.clearDraft();
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/purchase-orders');
-              }
-            } else if (action == 'draft') {
-              if (context.canPop()) {
-                context.pop(result);
-              } else {
-                context.go('/purchase-orders');
-              }
-            }
-          },
-          child: AdminLayout(
-            title:
-                viewModel.isEditing
-                    ? 'Editar Orden de Compra'
-                    : 'Nueva Orden de Compra',
-            showBackButton: true,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body:
-                viewModel.isSaving
-                    ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    )
-                    : Form(
-                      key: _formKey,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 900;
-
-                          if (isWide) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Izquierda: Datos, Pago, Documento (40%)
-                                Expanded(
-                                  flex: 4,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
-                                    ),
-                                    child: SingleChildScrollView(
-                                      padding: const EdgeInsets.all(24.0),
-                                      child: Column(
-                                        children: [
-                                          _buildHeaderData(viewModel),
-                                          const SizedBox(height: 24),
-                                          _buildPaymentData(viewModel),
-                                          const SizedBox(height: 24),
-                                          _buildDocumentData(viewModel),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Derecha: Tabla de Productos y Botón Guardar (60%)
-                                Expanded(
-                                  flex: 6,
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: SingleChildScrollView(
-                                          padding: const EdgeInsets.all(24.0),
-                                          child: _buildProductsData(
-                                            viewModel,
-                                            isDesktop: true,
+                            if (isWide) {
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Izquierda: Datos, Pago, Documento (40%)
+                                  Expanded(
+                                    flex: 4,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          right: BorderSide(
+                                            color: Colors.grey.shade200,
                                           ),
                                         ),
                                       ),
-                                      _buildStickySaveButton(viewModel),
-                                    ],
+                                      child: SingleChildScrollView(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: Column(
+                                          children: [
+                                            _buildHeaderData(viewModel),
+                                            const SizedBox(height: 24),
+                                            _buildPaymentData(viewModel),
+                                            const SizedBox(height: 24),
+                                            _buildDocumentData(viewModel),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Derecha: Tabla de Productos y Botón Guardar (60%)
+                                  Expanded(
+                                    flex: 6,
+                                    child: Column(
+                                      children: [
+                                        Expanded(
+                                          child: SingleChildScrollView(
+                                            padding: const EdgeInsets.all(24.0),
+                                            child: _buildProductsData(
+                                              viewModel,
+                                              isDesktop: true,
+                                            ),
+                                          ),
+                                        ),
+                                        _buildStickySaveButton(viewModel),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+
+                            // Móvil
+                            return Column(
+                              children: [
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildHeaderData(viewModel),
+                                        const SizedBox(height: 16),
+                                        _buildProductsData(viewModel),
+                                        const SizedBox(height: 16),
+                                        _buildPaymentData(viewModel),
+                                        const SizedBox(height: 16),
+                                        _buildDocumentData(viewModel),
+                                        const SizedBox(height: 24),
+                                      ],
+                                    ),
                                   ),
                                 ),
+                                _buildStickySaveButton(viewModel),
                               ],
                             );
-                          }
-
-                          // Móvil
-                          return Column(
-                            children: [
-                              Expanded(
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildHeaderData(viewModel),
-                                      const SizedBox(height: 16),
-                                      _buildProductsData(viewModel),
-                                      const SizedBox(height: 16),
-                                      _buildPaymentData(viewModel),
-                                      const SizedBox(height: 16),
-                                      _buildDocumentData(viewModel),
-                                      const SizedBox(height: 24),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              _buildStickySaveButton(viewModel),
-                            ],
-                          );
-                        },
+                          },
+                        ),
                       ),
-                    ),
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 

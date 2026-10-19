@@ -14,6 +14,8 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/utils/hardware_barcode_gun_detector.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryExitFormScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class InventoryExitFormScreen extends StatefulWidget {
 
 class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   final _notesCtrl = TextEditingController();
+  final _gunDetector = HardwareBarcodeGunDetector();
 
   static const Map<String, IconData> _reasons = {
     'AJUSTE': Icons.tune_rounded,
@@ -130,6 +133,61 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         }
       },
     );
+  }
+
+  Future<void> _handleGunBarcode(String rawBarcode) async {
+    final cubit = context.read<InventoryExitFormCubit>();
+    final warehouseId = cubit.state.selectedWarehouseId;
+    if (warehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Seleccione el almacén de origen primero para escanear',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosBarcodeScannerService.resolveCode(
+      rawBarcode,
+      warehouseId: warehouseId,
+    );
+    if (!mounted) return;
+    if (res == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Código "$rawBarcode" no encontrado en catálogo',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    final product = res.product;
+    final variant = res.variant;
+
+    final productModel = ProductModel.fromEntity(product);
+    final variantModel =
+        variant != null
+            ? ProductVariantModel.fromEntity(variant)
+            : (product.defaultVariant != null
+                ? ProductVariantModel.fromEntity(product.defaultVariant!)
+                : null);
+
+    if (variantModel != null) {
+      final exitItem = ExitItemUI(
+        product: productModel,
+        variant: variantModel,
+        selectedBatch: null,
+        quantity: 1.0,
+        unitCost: variantModel.unitCost ?? 0.0,
+      );
+      cubit.addItem(exitItem);
+      HapticFeedback.mediumImpact();
+      AppSnackbar.show(
+        context,
+        message: 'Agregado a salida: "${product.name}"',
+        type: SnackbarType.success,
+      );
+    }
   }
 
   /// Quita la línea al instante y ofrece "Deshacer" (sin diálogo de
@@ -350,141 +408,152 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _handleBackButton();
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        final barcode = _gunDetector.onKeyEvent(event);
+        if (barcode != null) {
+          _handleGunBarcode(barcode);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
-        buildWhen:
-            (prev, curr) =>
-                prev.isLoading != curr.isLoading ||
-                prev.isSaving != curr.isSaving ||
-                prev.selectedWarehouseId != curr.selectedWarehouseId ||
-                prev.selectedReason != curr.selectedReason ||
-                prev.items != curr.items ||
-                prev.warehouses != curr.warehouses,
-        builder: (context, state) {
-          if (state.isLoading) {
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          await _handleBackButton();
+        },
+        child: BlocBuilder<InventoryExitFormCubit, InventoryExitFormState>(
+          buildWhen:
+              (prev, curr) =>
+                  prev.isLoading != curr.isLoading ||
+                  prev.isSaving != curr.isSaving ||
+                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                  prev.selectedReason != curr.selectedReason ||
+                  prev.items != curr.items ||
+                  prev.warehouses != curr.warehouses,
+          builder: (context, state) {
+            if (state.isLoading) {
+              return AdminLayout(
+                title: 'Registrar Salida',
+                showBackButton: true,
+                onBack: _handleBackButton,
+                showProfileButton: false,
+                showDrawerButton: false,
+                body: const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              );
+            }
+
             return AdminLayout(
               title: 'Registrar Salida',
               showBackButton: true,
               onBack: _handleBackButton,
               showProfileButton: false,
               showDrawerButton: false,
-              body: const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              ),
-            );
-          }
+              body: Stack(
+                children: [
+                  AbsorbPointer(
+                    absorbing: state.isSaving,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 900;
 
-          return AdminLayout(
-            title: 'Registrar Salida',
-            showBackButton: true,
-            onBack: _handleBackButton,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: Stack(
-              children: [
-                AbsorbPointer(
-                  absorbing: state.isSaving,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 900;
-
-                      if (isWide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Izquierda: Datos y notas (40%)
-                            Expanded(
-                              flex: 4,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    right: BorderSide(
-                                      color: Colors.grey.shade200,
-                                    ),
-                                  ),
-                                ),
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.all(24.0),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildMainDataSection(context, state),
-                                      const SizedBox(height: 16),
-                                      _buildNotesSection(),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Derecha: Productos y barra de confirmación (60%)
-                            Expanded(
-                              flex: 6,
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child: SingleChildScrollView(
-                                      padding: const EdgeInsets.all(24.0),
-                                      child: _buildProductsSection(
-                                        context,
-                                        state,
-                                        isDesktop: true,
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Izquierda: Datos y notas (40%)
+                              Expanded(
+                                flex: 4,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Colors.grey.shade200,
                                       ),
                                     ),
                                   ),
-                                  _buildStickySaveButton(),
-                                ],
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.all(24.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildMainDataSection(context, state),
+                                        const SizedBox(height: 16),
+                                        _buildNotesSection(),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Derecha: Productos y barra de confirmación (60%)
+                              Expanded(
+                                flex: 6,
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: SingleChildScrollView(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: _buildProductsSection(
+                                          context,
+                                          state,
+                                          isDesktop: true,
+                                        ),
+                                      ),
+                                    ),
+                                    _buildStickySaveButton(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        // Móvil
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildMainDataSection(context, state),
+                                    const SizedBox(height: 16),
+                                    _buildProductsSection(context, state),
+                                    const SizedBox(height: 16),
+                                    _buildNotesSection(),
+                                    const SizedBox(height: 24),
+                                  ],
+                                ),
                               ),
                             ),
+                            _buildStickySaveButton(),
                           ],
                         );
-                      }
-
-                      // Móvil
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildMainDataSection(context, state),
-                                  const SizedBox(height: 16),
-                                  _buildProductsSection(context, state),
-                                  const SizedBox(height: 16),
-                                  _buildNotesSection(),
-                                  const SizedBox(height: 24),
-                                ],
-                              ),
-                            ),
-                          ),
-                          _buildStickySaveButton(),
-                        ],
-                      );
-                    },
+                      },
+                    ),
                   ),
-                ),
-                if (state.isSaving)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: AppColors.surface.withValues(alpha: 0.7),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
+                  if (state.isSaving)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: AppColors.surface.withValues(alpha: 0.7),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

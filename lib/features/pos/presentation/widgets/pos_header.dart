@@ -860,12 +860,12 @@ class PosHeader extends StatelessWidget {
           ),
         ],
 
-        // ── Indicador de Pistola / Lector Físico Activo ─────────────
+        // ── Indicador de Pistola / Lector Físico Listo ─────────────
         if (isDesktop) ...[
           const SizedBox(width: 8),
           Tooltip(
             message:
-                'Lector láser / Pistola de códigos USB o Bluetooth siempre activo. ¡Apunta y dispara en cualquier momento sin hacer clic!',
+                'Escucha de códigos activa. Puedes conectar cualquier pistola o lector USB/Bluetooth y disparar en cualquier momento sin configurar nada.',
             child: Container(
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -887,7 +887,7 @@ class PosHeader extends StatelessWidget {
                   ),
                   SizedBox(width: 6),
                   Text(
-                    'Pistola Activa',
+                    'Lector USB/BT Listo',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

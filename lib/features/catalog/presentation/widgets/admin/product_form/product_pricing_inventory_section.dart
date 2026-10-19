@@ -5,6 +5,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class ProductPricingInventorySection extends StatefulWidget {
   const ProductPricingInventorySection({super.key});
@@ -412,12 +413,38 @@ class _ProductPricingInventorySectionState
                           ),
                           const SizedBox(height: 16),
 
-                          // Fila 2: Código de barras opcional
+                          // Fila 2: Código de barras opcional (con escáner de cámara integrado)
                           AppTextField(
                             controller: _barcodeCtrl,
                             label: 'Código de Barras (Opcional)',
                             icon: Icons.barcode_reader,
-                            hintText: 'Ej. 7751234567890',
+                            hintText: 'Ej. 7751234567890 (o escanear caja)',
+                            suffixIcon: Tooltip(
+                              message: 'Escanear código con cámara o pistola',
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.qr_code_scanner_rounded,
+                                  color: AppColors.teal,
+                                  size: 20,
+                                ),
+                                onPressed: () async {
+                                  final res = await PosCameraScannerDialog.show(
+                                    context,
+                                    title: 'Escanear Código del Producto',
+                                  );
+                                  if (res != null) {
+                                    _barcodeCtrl.text = res.rawCode;
+                                    cubit.updateVariantDraft(
+                                      0,
+                                      cubit.state.variantDrafts.first.copyWith(
+                                        barcode: res.rawCode,
+                                      ),
+                                    );
+                                    HapticFeedback.lightImpact();
+                                  }
+                                },
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 16),
 
@@ -674,12 +701,8 @@ class _ProductPricingInventorySectionState
                   ),
                   value: hasVariants,
                   onChanged:
-                      (val) => _handleToggleVariants(
-                        context,
-                        cubit,
-                        state,
-                        val,
-                      ),
+                      (val) =>
+                          _handleToggleVariants(context, cubit, state, val),
                 ),
               ),
             ],

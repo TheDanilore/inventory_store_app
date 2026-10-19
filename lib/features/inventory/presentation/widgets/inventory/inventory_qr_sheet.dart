@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
@@ -12,7 +15,7 @@ const String kInventoryQrBaseUrl = 'https://inventory-store-app-six.vercel.app';
 
 enum _CodeType { barcode, qr }
 
-enum _CodePayloadMode { sku, barcode, link }
+enum _CodePayloadMode { sku, barcode, productId, link }
 
 /// Generador de Etiquetas: Códigos de Barra (1D Code 128) y Códigos QR (2D).
 ///
@@ -68,7 +71,19 @@ class _InventoryQrContent extends StatefulWidget {
 
 class _InventoryQrContentState extends State<_InventoryQrContent> {
   _CodeType _type = _CodeType.barcode;
-  _CodePayloadMode _payloadMode = _CodePayloadMode.sku;
+  late _CodePayloadMode _payloadMode;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasBarcode) {
+      _payloadMode = _CodePayloadMode.barcode;
+    } else if (_hasSku) {
+      _payloadMode = _CodePayloadMode.sku;
+    } else {
+      _payloadMode = _CodePayloadMode.productId;
+    }
+  }
 
   String? get _cleanSku {
     final s = widget.sku?.trim();
@@ -112,12 +127,10 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
   String get _effectiveData {
     switch (_payloadMode) {
       case _CodePayloadMode.barcode:
-        if (_hasBarcode) return _cleanBarcode!;
-        if (_hasSku) return _cleanSku!;
-        return widget.productId;
+        return _cleanBarcode ?? _cleanSku ?? widget.productId;
       case _CodePayloadMode.sku:
-        if (_hasSku) return _cleanSku!;
-        if (_hasBarcode) return _cleanBarcode!;
+        return _cleanSku ?? _cleanBarcode ?? widget.productId;
+      case _CodePayloadMode.productId:
         return widget.productId;
       case _CodePayloadMode.link:
         return _linkPayload;
@@ -131,6 +144,90 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
       message: '$label copiado al portapapeles',
       type: SnackbarType.success,
     );
+  }
+
+  Future<void> _printLabel() async {
+    try {
+      final isBarcode = _type == _CodeType.barcode;
+      final data = _effectiveData;
+      final doc = pw.Document();
+
+      // Formato estándar de etiqueta adhesiva térmica (50mm x 30mm)
+      const pageFormat = PdfPageFormat(
+        50 * PdfPageFormat.mm,
+        30 * PdfPageFormat.mm,
+        marginAll: 2 * PdfPageFormat.mm,
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageFormat: pageFormat,
+          build: (pw.Context context) {
+            return pw.Center(
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    widget.productName,
+                    maxLines: 1,
+                    textAlign: pw.TextAlign.center,
+                    style: pw.TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  if (_variantLabel.isNotEmpty)
+                    pw.Text(
+                      _variantLabel,
+                      maxLines: 1,
+                      style: const pw.TextStyle(fontSize: 7),
+                    ),
+                  pw.SizedBox(height: 2),
+                  if (isBarcode)
+                    pw.BarcodeWidget(
+                      barcode: pw.Barcode.code128(),
+                      data: data,
+                      height: 14 * PdfPageFormat.mm,
+                      width: 44 * PdfPageFormat.mm,
+                      drawText: true,
+                      textStyle: const pw.TextStyle(fontSize: 6.5),
+                    )
+                  else
+                    pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
+                      data: data,
+                      height: 16 * PdfPageFormat.mm,
+                      width: 16 * PdfPageFormat.mm,
+                      drawText: false,
+                    ),
+                  if (!isBarcode) ...[
+                    pw.SizedBox(height: 1),
+                    pw.Text(
+                      data.length > 25 ? '${data.substring(0, 22)}...' : data,
+                      style: const pw.TextStyle(fontSize: 5.5),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      );
+
+      await Printing.layoutPdf(
+        name: 'Etiqueta_${widget.productName.replaceAll(' ', '_')}',
+        onLayout: (format) async => doc.save(),
+      );
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al abrir diálogo de impresión: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
   }
 
   @override
@@ -302,31 +399,74 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (_hasSku)
-                ChoiceChip(
-                  label: const Text('SKU'),
-                  avatar: const Icon(Icons.tag_rounded, size: 15),
-                  selected: _payloadMode == _CodePayloadMode.sku,
-                  onSelected:
-                      (_) =>
-                          setState(() => _payloadMode = _CodePayloadMode.sku),
-                ),
               if (_hasBarcode)
                 ChoiceChip(
-                  label: const Text('Código de Barras'),
+                  label: Text('Barras: $_cleanBarcode'),
                   avatar: const Icon(Icons.linear_scale_rounded, size: 15),
                   selected: _payloadMode == _CodePayloadMode.barcode,
-                  onSelected:
-                      (_) => setState(
-                        () => _payloadMode = _CodePayloadMode.barcode,
-                      ),
+                  onSelected: (selected) {
+                    setState(() {
+                      _payloadMode =
+                          selected
+                              ? _CodePayloadMode.barcode
+                              : (_hasSku
+                                  ? _CodePayloadMode.sku
+                                  : _CodePayloadMode.productId);
+                    });
+                  },
                 ),
+              if (_hasSku)
+                ChoiceChip(
+                  label: Text('SKU: $_cleanSku'),
+                  avatar: const Icon(Icons.tag_rounded, size: 15),
+                  selected: _payloadMode == _CodePayloadMode.sku,
+                  onSelected: (selected) {
+                    setState(() {
+                      _payloadMode =
+                          selected
+                              ? _CodePayloadMode.sku
+                              : (_hasBarcode
+                                  ? _CodePayloadMode.barcode
+                                  : _CodePayloadMode.productId);
+                    });
+                  },
+                ),
+              ChoiceChip(
+                label: const Text('ID de Producto'),
+                avatar: const Icon(Icons.fingerprint_rounded, size: 15),
+                selected: _payloadMode == _CodePayloadMode.productId,
+                onSelected: (selected) {
+                  setState(() {
+                    _payloadMode =
+                        selected
+                            ? _CodePayloadMode.productId
+                            : (_hasBarcode
+                                ? _CodePayloadMode.barcode
+                                : (_hasSku
+                                    ? _CodePayloadMode.sku
+                                    : _CodePayloadMode.productId));
+                  });
+                },
+              ),
               ChoiceChip(
                 label: const Text('Enlace a Ficha'),
                 avatar: const Icon(Icons.link_rounded, size: 15),
                 selected: _payloadMode == _CodePayloadMode.link,
-                onSelected:
-                    (_) => setState(() => _payloadMode = _CodePayloadMode.link),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _payloadMode = _CodePayloadMode.link;
+                      _type = _CodeType.qr;
+                    } else {
+                      _payloadMode =
+                          _hasBarcode
+                              ? _CodePayloadMode.barcode
+                              : (_hasSku
+                                  ? _CodePayloadMode.sku
+                                  : _CodePayloadMode.productId);
+                    }
+                  });
+                },
               ),
             ],
           ),
@@ -458,16 +598,9 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
           const SizedBox(width: 8),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {
-                _copy(_effectiveData, 'Etiqueta');
-                AppSnackbar.show(
-                  context,
-                  message: 'Etiqueta lista para escaneo o impresión rápida.',
-                  type: SnackbarType.success,
-                );
-              },
+              onPressed: _printLabel,
               icon: const Icon(Icons.print_rounded, size: 16),
-              label: const Text('Listo para Imprimir'),
+              label: const Text('Imprimir'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

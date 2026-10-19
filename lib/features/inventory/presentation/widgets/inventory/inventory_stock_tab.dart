@@ -20,6 +20,8 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'dart:async';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_palette.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
 class InventoryStockTab extends StatefulWidget {
   final String? initialSearch;
@@ -45,6 +47,49 @@ class _InventoryStockTabState extends State<InventoryStockTab>
 
   /// Vista de escritorio: tabla (AdminProTable) o cuadrícula de tarjetas.
   bool _isTableView = true;
+
+  // Buffer para captura de pistola lectora de código de barras USB / Bluetooth
+  final StringBuffer _barcodeBuffer = StringBuffer();
+  DateTime _lastBarcodeKeystrokeTime = DateTime.fromMillisecondsSinceEpoch(0);
+
+  Future<void> _openCameraScanner() async {
+    final res = await PosCameraScannerDialog.show(
+      context,
+      title: 'Inventario: Escaneo de Producto',
+    );
+    if (!mounted || res == null) return;
+    _applyScanResult(res);
+  }
+
+  Future<void> _processScannedBarcode(String rawCode) async {
+    final res = await PosBarcodeScannerService.resolveCode(rawCode);
+    if (!mounted) return;
+    if (res != null) {
+      _applyScanResult(res);
+    } else {
+      _searchCtrl.text = rawCode;
+      context.read<InventoryCubit>().setStockSearch(rawCode);
+      AppSnackbar.show(
+        context,
+        message: 'Buscando código escaneado: "$rawCode"',
+        type: SnackbarType.info,
+      );
+    }
+  }
+
+  void _applyScanResult(PosScanResult res) {
+    final targetCode =
+        res.variant?.sku ?? res.product.defaultVariant?.sku ?? res.product.name;
+    _searchCtrl.text = targetCode;
+    context.read<InventoryCubit>().setStockSearch(targetCode);
+    HapticFeedback.lightImpact();
+    AppSnackbar.show(
+      context,
+      message:
+          'Producto detectado: ${res.product.name} ${res.variant?.shortLabel ?? ''}',
+      type: SnackbarType.success,
+    );
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -242,6 +287,41 @@ class _InventoryStockTabState extends State<InventoryStockTab>
           autofocus: true,
           onKeyEvent: (node, event) {
             if (event is KeyDownEvent) {
+              final isAlt = HardwareKeyboard.instance.isAltPressed;
+              final isControl = HardwareKeyboard.instance.isControlPressed;
+              final isMeta = HardwareKeyboard.instance.isMetaPressed;
+              final isModifier = isAlt || isControl || isMeta;
+
+              // ── Detección de Pistola / Lector de Código de Barras Hardware (HID) ──
+              final char = event.character;
+              final now = DateTime.now();
+              final diffMs =
+                  now.difference(_lastBarcodeKeystrokeTime).inMilliseconds;
+              _lastBarcodeKeystrokeTime = now;
+
+              if (!isModifier) {
+                if (event.logicalKey == LogicalKeyboardKey.enter) {
+                  if (_barcodeBuffer.length >= 3 && diffMs < 150) {
+                    final scannedCode = _barcodeBuffer.toString().trim();
+                    _barcodeBuffer.clear();
+                    if (scannedCode.isNotEmpty) {
+                      _processScannedBarcode(scannedCode);
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  _barcodeBuffer.clear();
+                } else if (char != null &&
+                    char.isNotEmpty &&
+                    char.codeUnitAt(0) >= 32) {
+                  if (diffMs > 250) {
+                    _barcodeBuffer.clear();
+                  }
+                  _barcodeBuffer.write(char);
+                }
+              } else {
+                _barcodeBuffer.clear();
+              }
+
               if (_isInputFieldFocused) {
                 if (event.logicalKey == LogicalKeyboardKey.escape) {
                   _searchFocusNode.unfocus();
@@ -250,11 +330,6 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 }
                 return KeyEventResult.ignored;
               }
-
-              final isAlt = HardwareKeyboard.instance.isAltPressed;
-              final isControl = HardwareKeyboard.instance.isControlPressed;
-              final isMeta = HardwareKeyboard.instance.isMetaPressed;
-              final isModifier = isAlt || isControl || isMeta;
 
               // ⌘K / Ctrl+K / Alt+K o '/' enfoca el buscador y selecciona el texto
               if ((isModifier && event.logicalKey == LogicalKeyboardKey.keyK) ||
@@ -681,6 +756,21 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 onToggleTableView: (val) => setState(() => _isTableView = val),
               )
               : null,
+      trailingActions: [
+        OutlinedButton.icon(
+          onPressed: _openCameraScanner,
+          icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+          label: const Text('Escanear'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.tealDark,
+            side: BorderSide(color: AppColors.teal.withValues(alpha: 0.5)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ],
       // Los atajos (/, R, Esc, B, Enter...) ya los maneja esta pestaña y la
       // pantalla; se desactivan aquí para no ejecutar la acción dos veces.
       enableKeyboardShortcuts: false,

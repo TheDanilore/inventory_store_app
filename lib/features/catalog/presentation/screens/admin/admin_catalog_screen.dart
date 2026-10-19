@@ -52,6 +52,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
   /// Producto actualmente inspeccionado en el panel Master-Detail lateral.
   ProductEntity? _selectedProduct;
 
+  // Buffer para captura automática de pistola de código de barras USB / Bluetooth
+  final StringBuffer _barcodeBuffer = StringBuffer();
+  DateTime _lastBarcodeKeystrokeTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void initState() {
     super.initState();
@@ -680,6 +684,37 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 final isMeta = HardwareKeyboard.instance.isMetaPressed;
                 final isModifier = isAlt || isControl || isMeta;
                 final isTyping = _isEditableFocused();
+
+                // ── Detección de Pistola / Lector de Código de Barras Hardware (HID) ──
+                final char = event.character;
+                final now = DateTime.now();
+                final diffMs =
+                    now.difference(_lastBarcodeKeystrokeTime).inMilliseconds;
+                _lastBarcodeKeystrokeTime = now;
+
+                if (!isModifier) {
+                  if (event.logicalKey == LogicalKeyboardKey.enter) {
+                    if (_barcodeBuffer.length >= 3 && diffMs < 150) {
+                      final scannedCode = _barcodeBuffer.toString().trim();
+                      _barcodeBuffer.clear();
+                      if (scannedCode.isNotEmpty) {
+                        _searchCtrl.text = scannedCode;
+                        cubit.submitSearch(scannedCode, force: true);
+                        return KeyEventResult.handled;
+                      }
+                    }
+                    _barcodeBuffer.clear();
+                  } else if (char != null &&
+                      char.isNotEmpty &&
+                      char.codeUnitAt(0) >= 32) {
+                    if (diffMs > 250) {
+                      _barcodeBuffer.clear();
+                    }
+                    _barcodeBuffer.write(char);
+                  }
+                } else {
+                  _barcodeBuffer.clear();
+                }
 
                 // Escape: Descartar inspector lateral o desenfocar buscador (siempre activo)
                 if (event.logicalKey == LogicalKeyboardKey.escape) {

@@ -13,6 +13,8 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
+import 'package:inventory_store_app/core/utils/hardware_barcode_gun_detector.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
@@ -47,6 +49,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _documentNumberCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
+  final _gunDetector = HardwareBarcodeGunDetector();
 
   // valor interno -> etiqueta visible
   static const Map<String, String> _docTypes = {
@@ -173,6 +176,71 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
         }
       },
     );
+  }
+
+  Future<void> _handleGunBarcode(String rawBarcode) async {
+    final cubit = context.read<InventoryEntryFormCubit>();
+    if (cubit.state.selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Seleccione un almacén destino primero para escanear',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosBarcodeScannerService.resolveCode(
+      rawBarcode,
+      warehouseId: cubit.state.selectedWarehouseId,
+    );
+    if (!mounted) return;
+    if (res == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Código "$rawBarcode" no encontrado en catálogo',
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    final product = res.product;
+    final targetVariant = res.variant ?? product.defaultVariant;
+
+    final existingIndex = cubit.state.items.indexWhere(
+      (item) =>
+          item.productId == product.id &&
+          (targetVariant == null || item.variantId == targetVariant.id),
+    );
+
+    HapticFeedback.mediumImpact();
+    if (existingIndex != -1) {
+      final currentItem = cubit.state.items[existingIndex];
+      cubit.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+      AppSnackbar.show(
+        context,
+        message: '+1 a "${product.name}"',
+        type: SnackbarType.info,
+      );
+    } else {
+      final entryItem = InventoryEntryItemEntity(
+        productId: product.id,
+        productName: product.name,
+        variantId: targetVariant?.id ?? product.id,
+        variantLabel: targetVariant?.label ?? targetVariant?.sku ?? 'Estándar',
+        usesBatches: product.usesBatches,
+        quantity: 1.0,
+        unitCost: targetVariant?.unitCost ?? 0.0,
+        batchNumber: '',
+        expiryDate: null,
+        imageUrl: product.primaryImageUrl,
+      );
+      cubit.addItem(entryItem);
+      AppSnackbar.show(
+        context,
+        message: 'Agregado: "${product.name}"',
+        type: SnackbarType.success,
+      );
+    }
   }
 
   /// Quita el producto al instante y ofrece "Deshacer" (en vez de un diálogo
@@ -376,55 +444,127 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _handleBackButton();
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        final barcode = _gunDetector.onKeyEvent(event);
+        if (barcode != null) {
+          _handleGunBarcode(barcode);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: BlocConsumer<InventoryEntryFormCubit, InventoryEntryFormState>(
-        listenWhen: (prev, curr) => prev.documentNumber != curr.documentNumber,
-        listener: (context, state) {
-          if (state.documentNumber != null &&
-              _documentNumberCtrl.text != state.documentNumber) {
-            _documentNumberCtrl.text = state.documentNumber!;
-          }
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          await _handleBackButton();
         },
-        buildWhen:
-            (prev, curr) =>
-                prev.isLoading != curr.isLoading ||
-                prev.isSaving != curr.isSaving ||
-                prev.errorMessage != curr.errorMessage ||
-                prev.warehouses != curr.warehouses ||
-                prev.suppliers != curr.suppliers ||
-                prev.accounts != curr.accounts ||
-                prev.activeShiftsByAccount != curr.activeShiftsByAccount ||
-                prev.activeShiftId != curr.activeShiftId ||
-                prev.selectedWarehouseId != curr.selectedWarehouseId ||
-                prev.selectedSupplierId != curr.selectedSupplierId ||
-                prev.paymentMode != curr.paymentMode ||
-                prev.documentType != curr.documentType ||
-                prev.documentDate != curr.documentDate ||
-                prev.selectedAccountId != curr.selectedAccountId ||
-                prev.items != curr.items,
-        builder: (context, state) {
-          final cubit = context.read<InventoryEntryFormCubit>();
-          if (cubit.state.isLoading) {
-            return AdminLayout(
-              title: 'Entrada de Inventario',
-              showBackButton: true,
-              onBack: _handleBackButton,
-              showProfileButton: false,
-              showDrawerButton: false,
-              body: const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              ),
-            );
-          }
+        child: BlocConsumer<InventoryEntryFormCubit, InventoryEntryFormState>(
+          listenWhen:
+              (prev, curr) => prev.documentNumber != curr.documentNumber,
+          listener: (context, state) {
+            if (state.documentNumber != null &&
+                _documentNumberCtrl.text != state.documentNumber) {
+              _documentNumberCtrl.text = state.documentNumber!;
+            }
+          },
+          buildWhen:
+              (prev, curr) =>
+                  prev.isLoading != curr.isLoading ||
+                  prev.isSaving != curr.isSaving ||
+                  prev.errorMessage != curr.errorMessage ||
+                  prev.warehouses != curr.warehouses ||
+                  prev.suppliers != curr.suppliers ||
+                  prev.accounts != curr.accounts ||
+                  prev.activeShiftsByAccount != curr.activeShiftsByAccount ||
+                  prev.activeShiftId != curr.activeShiftId ||
+                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
+                  prev.selectedSupplierId != curr.selectedSupplierId ||
+                  prev.paymentMode != curr.paymentMode ||
+                  prev.documentType != curr.documentType ||
+                  prev.documentDate != curr.documentDate ||
+                  prev.selectedAccountId != curr.selectedAccountId ||
+                  prev.items != curr.items,
+          builder: (context, state) {
+            final cubit = context.read<InventoryEntryFormCubit>();
+            if (cubit.state.isLoading) {
+              return AdminLayout(
+                title: 'Entrada de Inventario',
+                showBackButton: true,
+                onBack: _handleBackButton,
+                showProfileButton: false,
+                showDrawerButton: false,
+                body: const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              );
+            }
 
-          if (!cubit.state.isLoading &&
-              cubit.state.errorMessage.isNotEmpty &&
-              cubit.state.warehouses.isEmpty) {
+            if (!cubit.state.isLoading &&
+                cubit.state.errorMessage.isNotEmpty &&
+                cubit.state.warehouses.isEmpty) {
+              return AdminLayout(
+                title:
+                    widget.purchaseOrderId != null
+                        ? 'Recepción de Orden'
+                        : 'Nueva Entrada Manual',
+                showBackButton: true,
+                onBack: _handleBackButton,
+                showProfileButton: false,
+                showDrawerButton: false,
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.danger,
+                          size: 56,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Error al cargar catálogos',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          cubit.state.errorMessage,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _loadInitialData,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Reintentar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
             return AdminLayout(
               title:
                   widget.purchaseOrderId != null
@@ -434,209 +574,153 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               onBack: _handleBackButton,
               showProfileButton: false,
               showDrawerButton: false,
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: AppColors.danger,
-                        size: 56,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Error al cargar catálogos',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        cubit.state.errorMessage,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: _loadInitialData,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Reintentar'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
+              body: Stack(
+                children: [
+                  AbsorbPointer(
+                    absorbing: cubit.state.isSaving,
+                    child: Form(
+                      key: _formKey,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 900;
 
-          return AdminLayout(
-            title:
-                widget.purchaseOrderId != null
-                    ? 'Recepción de Orden'
-                    : 'Nueva Entrada Manual',
-            showBackButton: true,
-            onBack: _handleBackButton,
-            showProfileButton: false,
-            showDrawerButton: false,
-            body: Stack(
-              children: [
-                AbsorbPointer(
-                  absorbing: cubit.state.isSaving,
-                  child: Form(
-                    key: _formKey,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 900;
-
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Izquierda: Datos, Finanzas, Documento (40%)
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(
-                                        color: Colors.grey.shade200,
+                          if (isWide) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Izquierda: Datos, Finanzas, Documento (40%)
+                                Expanded(
+                                  flex: 4,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: Colors.grey.shade200,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(24.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildMainDataSection(
-                                          context,
-                                          state,
-                                          cubit,
-                                        ),
-                                        const SizedBox(height: 16),
-                                        if (widget.purchaseOrderId == null) ...[
-                                          _buildFinanceSection(
+                                    child: SingleChildScrollView(
+                                      padding: const EdgeInsets.all(24.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildMainDataSection(
                                             context,
                                             state,
                                             cubit,
                                           ),
                                           const SizedBox(height: 16),
+                                          if (widget.purchaseOrderId ==
+                                              null) ...[
+                                            _buildFinanceSection(
+                                              context,
+                                              state,
+                                              cubit,
+                                            ),
+                                            const SizedBox(height: 16),
+                                          ],
+                                          _buildDocumentSection(
+                                            context,
+                                            state,
+                                            cubit,
+                                          ),
                                         ],
-                                        _buildDocumentSection(
-                                          context,
-                                          state,
-                                          cubit,
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              // Derecha: Productos y Botón Guardar (60%)
-                              Expanded(
-                                flex: 6,
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: SingleChildScrollView(
-                                        padding: const EdgeInsets.all(24.0),
-                                        child: _buildProductsSection(
-                                          context,
-                                          state,
-                                          cubit,
-                                          isDesktop: true,
+                                // Derecha: Productos y Botón Guardar (60%)
+                                Expanded(
+                                  flex: 6,
+                                  child: Column(
+                                    children: [
+                                      Expanded(
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsets.all(24.0),
+                                          child: _buildProductsSection(
+                                            context,
+                                            state,
+                                            cubit,
+                                            isDesktop: true,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    _buildStickySaveButton(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                  ],
+                                      _buildStickySaveButton(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          );
-                        }
+                              ],
+                            );
+                          }
 
-                        // Móvil
-                        return Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildMainDataSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (widget.purchaseOrderId == null) ...[
-                                      _buildFinanceSection(
+                          // Móvil
+                          return Column(
+                            children: [
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildMainDataSection(
                                         context,
                                         state,
                                         cubit,
                                       ),
                                       const SizedBox(height: 16),
+                                      if (widget.purchaseOrderId == null) ...[
+                                        _buildFinanceSection(
+                                          context,
+                                          state,
+                                          cubit,
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                      _buildDocumentSection(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildProductsSection(
+                                        context,
+                                        state,
+                                        cubit,
+                                      ),
+                                      const SizedBox(height: 24),
                                     ],
-                                    _buildDocumentSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildProductsSection(
-                                      context,
-                                      state,
-                                      cubit,
-                                    ),
-                                    const SizedBox(height: 24),
-                                  ],
+                                  ),
                                 ),
                               ),
-                            ),
-                            _buildStickySaveButton(context, state, cubit),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                if (cubit.state.isSaving)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: AppColors.surface.withValues(alpha: 0.7),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
+                              _buildStickySaveButton(context, state, cubit),
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
-              ],
-            ),
-          );
-        },
+                  if (cubit.state.isSaving)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: AppColors.surface.withValues(alpha: 0.7),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

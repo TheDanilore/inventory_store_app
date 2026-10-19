@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_cat
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/utils/hardware_barcode_gun_detector.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
@@ -42,6 +43,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   late final FocusNode _screenFocusNode;
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
+  final _gunDetector = HardwareBarcodeGunDetector();
   bool _isTableView = true;
 
   // Selección múltiple aislada mediante ValueNotifier (previene re-renders globales)
@@ -88,6 +90,18 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       FocusUtils.isInputFieldFocused(_searchFocusNode);
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    final barcode = _gunDetector.onKeyEvent(event);
+    if (barcode != null) {
+      _searchCtrl.text = barcode;
+      context.read<AdminCatalogCubit>().submitSearch(barcode, force: true);
+      AppSnackbar.show(
+        context,
+        message: 'Lector detectó código: $barcode',
+        type: SnackbarType.info,
+      );
+      return KeyEventResult.handled;
+    }
+
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     // Si el usuario escribe en un campo editable, aislar atajos globales
