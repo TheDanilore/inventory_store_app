@@ -261,9 +261,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   void _showProductQr(ProductEntity product) {
-    final firstVariant = product.productVariants.isNotEmpty
-        ? product.productVariants.first
-        : null;
+    final firstVariant =
+        product.productVariants.isNotEmpty
+            ? product.productVariants.first
+            : null;
     InventoryQrSheet.show(
       context,
       productId: product.id,
@@ -884,11 +885,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                           context,
                                         );
                                     if (!context.mounted || res == null) return;
-                                    final query =
-                                        res.product.defaultVariant?.sku ??
-                                        res.rawCode;
+                                    final query = res.product.name;
                                     _searchCtrl.text = query;
-                                    cubit.submitSearch(query);
+                                    cubit.submitSearch(query, force: true);
                                     AppSnackbar.show(
                                       context,
                                       message:

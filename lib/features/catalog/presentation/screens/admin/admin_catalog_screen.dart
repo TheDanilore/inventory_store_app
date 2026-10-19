@@ -355,11 +355,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                   context,
                                 );
                                 if (!context.mounted || res == null) return;
-                                final query =
-                                    res.product.defaultVariant?.sku ??
-                                    res.rawCode;
+                                final query = res.product.name;
                                 _searchCtrl.text = query;
-                                cubit.submitSearch(query);
+                                cubit.submitSearch(query, force: true);
                                 AppSnackbar.show(
                                   context,
                                   message:

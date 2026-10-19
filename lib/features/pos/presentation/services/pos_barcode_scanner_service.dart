@@ -66,10 +66,9 @@ class PosBarcodeScannerService {
             if (product != null) {
               ProductVariantEntity? targetVariant;
               if (variantId != null && variantId.isNotEmpty) {
-                targetVariant = product.productVariants.cast<ProductVariantEntity?>().firstWhere(
-                  (v) => v?.id == variantId,
-                  orElse: () => null,
-                );
+                targetVariant = product.productVariants
+                    .cast<ProductVariantEntity?>()
+                    .firstWhere((v) => v?.id == variantId, orElse: () => null);
               }
               return PosScanResult(
                 product: product,
@@ -82,11 +81,12 @@ class PosBarcodeScannerService {
       }
 
       // 2. Buscar en Supabase por barcode exacto en product_variants
-      final variantByBarcodeRes = await supabase
-          .from('product_variants')
-          .select('id, product_id, sku, barcode, is_active')
-          .eq('barcode', trimmed)
-          .maybeSingle();
+      final variantByBarcodeRes =
+          await supabase
+              .from('product_variants')
+              .select('id, product_id, sku, barcode, is_active')
+              .eq('barcode', trimmed)
+              .maybeSingle();
 
       if (variantByBarcodeRes != null) {
         final prodId = variantByBarcodeRes['product_id'] as String;
@@ -94,10 +94,9 @@ class PosBarcodeScannerService {
         final prodRes = await repo.getProductById(prodId);
         final product = prodRes.fold((l) => null, (r) => r);
         if (product != null) {
-          final variant = product.productVariants.cast<ProductVariantEntity?>().firstWhere(
-            (v) => v?.id == vId,
-            orElse: () => null,
-          );
+          final variant = product.productVariants
+              .cast<ProductVariantEntity?>()
+              .firstWhere((v) => v?.id == vId, orElse: () => null);
           return PosScanResult(
             product: product,
             variant: variant ?? product.defaultVariant,
@@ -107,11 +106,12 @@ class PosBarcodeScannerService {
       }
 
       // 3. Buscar en Supabase por SKU exacto en product_variants
-      final variantBySkuRes = await supabase
-          .from('product_variants')
-          .select('id, product_id, sku, barcode, is_active')
-          .eq('sku', trimmed)
-          .maybeSingle();
+      final variantBySkuRes =
+          await supabase
+              .from('product_variants')
+              .select('id, product_id, sku, barcode, is_active')
+              .eq('sku', trimmed)
+              .maybeSingle();
 
       if (variantBySkuRes != null) {
         final prodId = variantBySkuRes['product_id'] as String;
@@ -119,10 +119,9 @@ class PosBarcodeScannerService {
         final prodRes = await repo.getProductById(prodId);
         final product = prodRes.fold((l) => null, (r) => r);
         if (product != null) {
-          final variant = product.productVariants.cast<ProductVariantEntity?>().firstWhere(
-            (v) => v?.id == vId,
-            orElse: () => null,
-          );
+          final variant = product.productVariants
+              .cast<ProductVariantEntity?>()
+              .firstWhere((v) => v?.id == vId, orElse: () => null);
           return PosScanResult(
             product: product,
             variant: variant ?? product.defaultVariant,
@@ -148,20 +147,20 @@ class PosBarcodeScannerService {
         }
 
         // Intentar variante
-        final variantRow = await supabase
-            .from('product_variants')
-            .select('product_id')
-            .eq('id', trimmed)
-            .maybeSingle();
+        final variantRow =
+            await supabase
+                .from('product_variants')
+                .select('product_id')
+                .eq('id', trimmed)
+                .maybeSingle();
         if (variantRow != null) {
           final parentId = variantRow['product_id'] as String;
           final pRes = await repo.getProductById(parentId);
           final p = pRes.fold((l) => null, (r) => r);
           if (p != null) {
-            final v = p.productVariants.cast<ProductVariantEntity?>().firstWhere(
-              (item) => item?.id == trimmed,
-              orElse: () => null,
-            );
+            final v = p.productVariants
+                .cast<ProductVariantEntity?>()
+                .firstWhere((item) => item?.id == trimmed, orElse: () => null);
             return PosScanResult(
               product: p,
               variant: v ?? p.defaultVariant,
@@ -208,7 +207,8 @@ class PosBarcodeScannerService {
         return;
       }
 
-      final unitPrice = targetVariant?.salePrice ?? product.displaySalePrice ?? 0.0;
+      final unitPrice =
+          targetVariant?.salePrice ?? product.displaySalePrice ?? 0.0;
       if (unitPrice <= 0) {
         AppSnackbar.show(
           context,
@@ -227,16 +227,19 @@ class PosBarcodeScannerService {
         variantLabel: targetVariant?.label,
         quantity: 1,
         unitPrice: unitPrice,
-        unitCost: targetVariant?.unitCost ?? product.defaultVariant?.unitCost ?? 0.0,
-        availableStock: product.stockControl
-            ? product.totalStock
-            : CartItemEntity.unlimitedStock,
+        unitCost:
+            targetVariant?.unitCost ?? product.defaultVariant?.unitCost ?? 0.0,
+        availableStock:
+            product.stockControl
+                ? product.totalStock
+                : CartItemEntity.unlimitedStock,
         usesBatches: product.usesBatches,
         wholesalePrice: targetVariant?.wholesalePrice,
         sku: targetVariant?.sku ?? product.defaultVariant?.sku,
-        imageUrl: targetVariant?.images.isNotEmpty == true
-            ? targetVariant!.images.first.imageUrl
-            : product.primaryImageUrl,
+        imageUrl:
+            targetVariant?.images.isNotEmpty == true
+                ? targetVariant!.images.first.imageUrl
+                : product.primaryImageUrl,
         isSelected: true,
       );
 
@@ -259,24 +262,26 @@ class PosBarcodeScannerService {
     );
   }
 
-  /// Despliega la cámara de escaneo y procesa automáticamente el resultado en el carrito.
+  /// Despliega la cámara de escaneo y procesa automáticamente el resultado en el carrito en modo continuo.
   static Future<void> openCameraScanner({
     required BuildContext context,
     required CartCubit cartCubit,
     String? warehouseId,
   }) async {
-    final scanResult = await PosCameraScannerDialog.show(
+    await PosCameraScannerDialog.show(
       context,
       warehouseId: warehouseId,
+      title: 'POS: Escaneo Rápido de Productos',
+      continuousMode: true,
+      onContinuousScan: (scanResult) async {
+        if (!context.mounted) return;
+        await addScanResultToCart(
+          context: context,
+          scanResult: scanResult,
+          cartCubit: cartCubit,
+          warehouseId: warehouseId,
+        );
+      },
     );
-
-    if (scanResult != null && context.mounted) {
-      await addScanResultToCart(
-        context: context,
-        scanResult: scanResult,
-        cartCubit: cartCubit,
-        warehouseId: warehouseId,
-      );
-    }
   }
 }

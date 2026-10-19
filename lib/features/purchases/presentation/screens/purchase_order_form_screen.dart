@@ -12,8 +12,6 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/purc
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
@@ -116,15 +114,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
       return;
     }
 
-    final newItem = await showModalBottomSheet<InventoryEntryItemEntity>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (_) => AddEntryProductSheet(
-            warehouseId: viewModel.selectedWarehouseId,
-            isBatchRequired: false,
-          ),
+    final newItem = await AddEntryProductSheet.show(
+      context,
+      warehouseId: viewModel.selectedWarehouseId,
+      isBatchRequired: false,
+      onAddAndContinue: (item) => viewModel.addItem(item),
     );
 
     if (newItem != null && context.mounted) {
@@ -140,57 +134,49 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
     if (viewModel.selectedWarehouseId == null) {
       AppSnackbar.show(
         context,
-        message: 'Selecciona un almacén de destino antes de escanear productos.',
+        message:
+            'Selecciona un almacén de destino antes de escanear productos.',
         type: SnackbarType.warning,
       );
       return;
     }
 
-    final res = await PosCameraScannerDialog.show(
+    await PosCameraScannerDialog.show(
       context,
       warehouseId: viewModel.selectedWarehouseId,
+      title: 'Escanear Ítems para Orden de Compra',
+      continuousMode: true,
+      onContinuousScan: (res) async {
+        final product = res.product;
+        final targetVariant = res.variant ?? product.defaultVariant;
+
+        final existingIndex = viewModel.items.indexWhere(
+          (item) =>
+              item.productId == product.id &&
+              (targetVariant == null || item.variantId == targetVariant.id),
+        );
+
+        if (existingIndex != -1) {
+          final currentItem = viewModel.items[existingIndex];
+          viewModel.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+        } else {
+          final entryItem = InventoryEntryItemEntity(
+            productId: product.id,
+            productName: product.name,
+            variantId: targetVariant?.id ?? product.id,
+            variantLabel:
+                targetVariant?.label ?? targetVariant?.sku ?? 'Estándar',
+            usesBatches: product.usesBatches,
+            quantity: 1.0,
+            unitCost: targetVariant?.unitCost ?? 0.0,
+            batchNumber: '',
+            expiryDate: null,
+            imageUrl: product.primaryImageUrl,
+          );
+          viewModel.addItem(entryItem);
+        }
+      },
     );
-    if (!context.mounted || res == null) return;
-
-    final product = res.product;
-    final variant = res.variant;
-
-    final existingIndex = viewModel.items.indexWhere(
-      (item) =>
-          item.productId == product.id &&
-          (variant == null || item.variantId == variant.id),
-    );
-
-    if (existingIndex != -1) {
-      final currentItem = viewModel.items[existingIndex];
-      viewModel.updateItemQuantity(existingIndex, currentItem.quantity + 1);
-      AppSnackbar.show(
-        context,
-        message:
-            'Se incrementó cantidad de "${product.name}" a ${(currentItem.quantity + 1).toInt()}',
-        type: SnackbarType.success,
-      );
-    } else {
-      final productModel = ProductModel.fromEntity(product);
-      final variantModel =
-          variant != null ? ProductVariantModel.fromEntity(variant) : null;
-      final newItem = await showModalBottomSheet<InventoryEntryItemEntity>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (_) => AddEntryProductSheet(
-              warehouseId: viewModel.selectedWarehouseId,
-              isBatchRequired: false,
-              initialProduct: productModel,
-              initialVariant: variantModel,
-            ),
-      );
-
-      if (newItem != null && context.mounted) {
-        viewModel.addItem(newItem);
-      }
-    }
   }
 
   Future<void> _handleSave() async {
@@ -882,7 +868,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     children: [
                       OutlinedButton.icon(
                         onPressed: () => _scanAndAddProduct(context),
-                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          size: 18,
+                        ),
                         label: const Text('Escanear código'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primary,

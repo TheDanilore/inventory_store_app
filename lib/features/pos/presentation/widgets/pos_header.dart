@@ -34,11 +34,12 @@ class PosHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, current) =>
-          prev.activeShift != current.activeShift ||
-          prev.warehouses != current.warehouses ||
-          prev.selectedWarehouseId != current.selectedWarehouseId ||
-          prev.isLoading != current.isLoading,
+      buildWhen:
+          (prev, current) =>
+              prev.activeShift != current.activeShift ||
+              prev.warehouses != current.warehouses ||
+              prev.selectedWarehouseId != current.selectedWarehouseId ||
+              prev.isLoading != current.isLoading,
       builder: (context, posState) {
         final isDesktop = MediaQuery.of(context).size.width >= 800;
         if (isDesktop) {
@@ -109,9 +110,15 @@ class PosHeader extends StatelessWidget {
               if (onBack != null) ...[
                 IconButton(
                   onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.textPrimary,
+                  ),
                   tooltip: 'Volver al ERP',
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
@@ -178,11 +185,12 @@ class PosHeader extends StatelessWidget {
             BlocProvider.value(value: cartCubit),
           ],
           child: BlocBuilder<PosCubit, PosState>(
-            buildWhen: (prev, current) =>
-                prev.activeShift != current.activeShift ||
-                prev.warehouses != current.warehouses ||
-                prev.selectedWarehouseId != current.selectedWarehouseId ||
-                prev.isLoading != current.isLoading,
+            buildWhen:
+                (prev, current) =>
+                    prev.activeShift != current.activeShift ||
+                    prev.warehouses != current.warehouses ||
+                    prev.selectedWarehouseId != current.selectedWarehouseId ||
+                    prev.isLoading != current.isLoading,
             builder: (ctx, state) {
               final activeShift = state.activeShift;
               final isShiftOpen = activeShift != null && activeShift.isOpen;
@@ -292,117 +300,119 @@ class PosHeader extends StatelessWidget {
 
     final activeShift = posState.activeShift;
     final rawName = activeShift?.openedByName?.trim() ?? '';
-    final tooltipMsg = isShiftOpen
-        ? 'Cajero: ${rawName.isNotEmpty ? rawName : "Cajero en turno"} • Apertura: S/ ${activeShift?.openingAmount.toStringAsFixed(2) ?? "0.00"}\n(Clic para cerrar turno)'
-        : 'La caja física está cerrada. Clic para abrir turno.';
+    final tooltipMsg =
+        isShiftOpen
+            ? 'Cajero: ${rawName.isNotEmpty ? rawName : "Cajero en turno"} • Apertura: S/ ${activeShift?.openingAmount.toStringAsFixed(2) ?? "0.00"}\n(Clic para cerrar turno)'
+            : 'La caja física está cerrada. Clic para abrir turno.';
 
     return Tooltip(
       message: tooltipMsg,
       child: InkWell(
         mouseCursor: SystemMouseCursors.click,
-      onTap: () async {
-        if (isShiftOpen) {
-          final shiftsCubit = context.read<CashShiftsCubit>();
-          final expected = await shiftsCubit.calcExpected(
-            activeShift!.id,
-            activeShift.accountId ?? '',
-            activeShift.openingAmount,
-          );
-          if (!context.mounted) return;
-          final closed = await CloseShiftSheet.show(
-            context,
-            shift: activeShift,
-            expectedAmount: expected,
-          );
-          if (closed == true && context.mounted) {
-            context.read<PosCubit>().clearActiveShift();
-            await context.read<PosCubit>().refreshAccountsAndShift();
-            if (context.mounted) {
-              context.read<CashShiftsCubit>().fetchShifts();
+        onTap: () async {
+          if (isShiftOpen) {
+            final shiftsCubit = context.read<CashShiftsCubit>();
+            final expected = await shiftsCubit.calcExpected(
+              activeShift!.id,
+              activeShift.accountId ?? '',
+              activeShift.openingAmount,
+            );
+            if (!context.mounted) return;
+            final closed = await CloseShiftSheet.show(
+              context,
+              shift: activeShift,
+              expectedAmount: expected,
+            );
+            if (closed == true && context.mounted) {
+              context.read<PosCubit>().clearActiveShift();
+              await context.read<PosCubit>().refreshAccountsAndShift();
+              if (context.mounted) {
+                context.read<CashShiftsCubit>().fetchShifts();
+              }
+            }
+          } else {
+            final cashAccounts =
+                posState.accounts
+                    .where((a) => PosCalculatorUtils.accountRequiresShift(a))
+                    .toList();
+            final opened = await OpenShiftSheet.show(
+              context,
+              accounts: cashAccounts,
+            );
+            if (opened == true && context.mounted) {
+              await context.read<PosCubit>().refreshAccountsAndShift();
+              if (context.mounted) {
+                context.read<CashShiftsCubit>().fetchShifts();
+              }
             }
           }
-        } else {
-          final cashAccounts =
-              posState.accounts
-                  .where((a) => PosCalculatorUtils.accountRequiresShift(a))
-                  .toList();
-          final opened = await OpenShiftSheet.show(
-            context,
-            accounts: cashAccounts,
-          );
-          if (opened == true && context.mounted) {
-            await context.read<PosCubit>().refreshAccountsAndShift();
-            if (context.mounted) {
-              context.read<CashShiftsCubit>().fetchShifts();
-            }
-          }
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color:
-              isShiftOpen
-                  ? AppColors.success.withValues(alpha: 0.1)
-                  : const Color(0xFFFEF3C7),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
             color:
                 isShiftOpen
-                    ? AppColors.success.withValues(alpha: 0.4)
-                    : const Color(0xFFF59E0B).withValues(alpha: 0.5),
-            width: 1,
+                    ? AppColors.success.withValues(alpha: 0.1)
+                    : const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color:
+                  isShiftOpen
+                      ? AppColors.success.withValues(alpha: 0.4)
+                      : const Color(0xFFF59E0B).withValues(alpha: 0.5),
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (isShiftOpen) ...[
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.success,
-                  shape: BoxShape.circle,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isShiftOpen) ...[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-            ] else ...[
-              const Icon(
-                Icons.lock_clock_rounded,
-                size: 16,
-                color: Color(0xFFB45309),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Text(
-              isShiftOpen
-                  ? (() {
+                const SizedBox(width: 8),
+              ] else ...[
+                const Icon(
+                  Icons.lock_clock_rounded,
+                  size: 16,
+                  color: Color(0xFFB45309),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                isShiftOpen
+                    ? (() {
                       final rawName = activeShift?.openedByName?.trim() ?? '';
-                      final firstName = rawName.isNotEmpty ? rawName.split(' ').first : '';
+                      final firstName =
+                          rawName.isNotEmpty ? rawName.split(' ').first : '';
                       return firstName.isNotEmpty
                           ? 'Turno Abierto ($firstName)'
                           : 'Turno Abierto • S/ ${activeShift!.openingAmount.toStringAsFixed(2)}';
                     })()
-                  : 'Caja Física Cerrada • Abrir Turno',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color:
-                    isShiftOpen
-                        ? const Color(0xFF065F46)
-                        : const Color(0xFF92400E),
+                    : 'Caja Física Cerrada • Abrir Turno',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      isShiftOpen
+                          ? const Color(0xFF065F46)
+                          : const Color(0xFF92400E),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
     if (posState.isLoading) {
@@ -478,7 +488,9 @@ class PosHeader extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 6),
               ),
-              onPressed: () => context.read<PosCubit>().initPosData(forceRefresh: true),
+              onPressed:
+                  () =>
+                      context.read<PosCubit>().initPosData(forceRefresh: true),
               child: const Text('Reintentar', style: TextStyle(fontSize: 12)),
             ),
           ],
@@ -588,27 +600,41 @@ class PosHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(7),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: !searchByIngredient ? Colors.white : Colors.transparent,
+                      color:
+                          !searchByIngredient
+                              ? Colors.white
+                              : Colors.transparent,
                       borderRadius: BorderRadius.circular(7),
-                      border: !searchByIngredient
-                          ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
-                          : null,
-                      boxShadow: !searchByIngredient
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                          : null,
+                      border:
+                          !searchByIngredient
+                              ? Border.all(
+                                color: AppColors.border.withValues(alpha: 0.6),
+                                width: 1,
+                              )
+                              : null,
+                      boxShadow:
+                          !searchByIngredient
+                              ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                              : null,
                     ),
                     child: Icon(
                       Icons.inventory_2_outlined,
                       size: 18,
-                      color: !searchByIngredient ? activeBlue : AppColors.textMuted,
+                      color:
+                          !searchByIngredient
+                              ? activeBlue
+                              : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -617,7 +643,8 @@ class PosHeader extends StatelessWidget {
 
               // 2. Modo Ingrediente Activo (Matraz químico / Tubo)
               Tooltip(
-                message: 'Buscar por Ingrediente Activo (${AppShortcutLabels.modPlus}I)',
+                message:
+                    'Buscar por Ingrediente Activo (${AppShortcutLabels.modPlus}I)',
                 child: InkWell(
                   onTap: () {
                     if (!searchByIngredient) onToggleIngredientSearch(true);
@@ -626,27 +653,39 @@ class PosHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(7),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: searchByIngredient ? Colors.white : Colors.transparent,
+                      color:
+                          searchByIngredient
+                              ? Colors.white
+                              : Colors.transparent,
                       borderRadius: BorderRadius.circular(7),
-                      border: searchByIngredient
-                          ? Border.all(color: AppColors.border.withValues(alpha: 0.6), width: 1)
-                          : null,
-                      boxShadow: searchByIngredient
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                          : null,
+                      border:
+                          searchByIngredient
+                              ? Border.all(
+                                color: AppColors.border.withValues(alpha: 0.6),
+                                width: 1,
+                              )
+                              : null,
+                      boxShadow:
+                          searchByIngredient
+                              ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                              : null,
                     ),
                     child: Icon(
                       Icons.science_outlined,
                       size: 18,
-                      color: searchByIngredient ? activeBlue : AppColors.textMuted,
+                      color:
+                          searchByIngredient ? activeBlue : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -663,10 +702,7 @@ class PosHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: activeBorderBlue,
-                width: 1.5,
-              ),
+              border: Border.all(color: activeBorderBlue, width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: activeBorderBlue.withValues(alpha: 0.08),
@@ -690,9 +726,10 @@ class PosHeader extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                     decoration: InputDecoration(
-                      hintText: searchByIngredient
-                          ? 'Buscar por ingrediente activo...'
-                          : 'Buscar producto por nombre o SKU...',
+                      hintText:
+                          searchByIngredient
+                              ? 'Buscar por ingrediente activo...'
+                              : 'Buscar producto por nombre o SKU...',
                       hintStyle: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 13,
@@ -710,7 +747,9 @@ class PosHeader extends StatelessWidget {
                           ValueListenableBuilder<TextEditingValue>(
                             valueListenable: searchController,
                             builder: (context, value, child) {
-                              if (value.text.isEmpty) return const SizedBox.shrink();
+                              if (value.text.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
                               return IconButton(
                                 icon: const Icon(
                                   Icons.cancel_rounded,
@@ -769,7 +808,10 @@ class PosHeader extends StatelessWidget {
                     icon: const Icon(Icons.search_rounded, size: 15),
                     label: Text(
                       isDesktop ? 'Buscar' : '',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: FilledButton.styleFrom(
                       backgroundColor: activeBlue,
@@ -838,6 +880,46 @@ class PosHeader extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+        ],
+
+        // ── Indicador de Pistola / Lector Físico Activo ─────────────
+        if (isDesktop) ...[
+          const SizedBox(width: 8),
+          Tooltip(
+            message:
+                'Lector láser / Pistola de códigos USB o Bluetooth siempre activo. ¡Apunta y dispara en cualquier momento sin hacer clic!',
+            child: Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.barcode_reader,
+                    color: Color(0xFF059669),
+                    size: 18,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Pistola Activa',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

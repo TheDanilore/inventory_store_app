@@ -13,8 +13,6 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
@@ -139,45 +137,42 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
       return;
     }
 
-    final res = await PosCameraScannerDialog.show(
+    await PosCameraScannerDialog.show(
       context,
       warehouseId: cubit.state.selectedWarehouseId,
+      title: 'Escanear Entradas a Almacén',
+      continuousMode: true,
+      onContinuousScan: (res) async {
+        final product = res.product;
+        final targetVariant = res.variant ?? product.defaultVariant;
+
+        final existingIndex = cubit.state.items.indexWhere(
+          (item) =>
+              item.productId == product.id &&
+              (targetVariant == null || item.variantId == targetVariant.id),
+        );
+
+        if (existingIndex != -1) {
+          final currentItem = cubit.state.items[existingIndex];
+          cubit.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+        } else {
+          final entryItem = InventoryEntryItemEntity(
+            productId: product.id,
+            productName: product.name,
+            variantId: targetVariant?.id ?? product.id,
+            variantLabel:
+                targetVariant?.label ?? targetVariant?.sku ?? 'Estándar',
+            usesBatches: product.usesBatches,
+            quantity: 1.0,
+            unitCost: targetVariant?.unitCost ?? 0.0,
+            batchNumber: '',
+            expiryDate: null,
+            imageUrl: product.primaryImageUrl,
+          );
+          cubit.addItem(entryItem);
+        }
+      },
     );
-    if (!context.mounted || res == null) return;
-
-    final product = res.product;
-    final variant = res.variant;
-
-    final existingIndex = cubit.state.items.indexWhere(
-      (item) =>
-          item.productId == product.id &&
-          (variant == null || item.variantId == variant.id),
-    );
-
-    if (existingIndex != -1) {
-      final currentItem = cubit.state.items[existingIndex];
-      cubit.updateItemQuantity(existingIndex, currentItem.quantity + 1);
-      AppSnackbar.show(
-        context,
-        message:
-            'Se incrementó cantidad de "${product.name}" a ${(currentItem.quantity + 1).toInt()}',
-        type: SnackbarType.success,
-      );
-    } else {
-      final productModel = ProductModel.fromEntity(product);
-      final variantModel =
-          variant != null ? ProductVariantModel.fromEntity(variant) : null;
-      final newItem = await AddEntryProductSheet.show(
-        context,
-        warehouseId: cubit.state.selectedWarehouseId,
-        initialProduct: productModel,
-        initialVariant: variantModel,
-        onAddAndContinue: (item) => cubit.addItem(item),
-      );
-      if (newItem != null && context.mounted) {
-        cubit.addItem(newItem);
-      }
-    }
   }
 
   /// Quita el producto al instante y ofrece "Deshacer" (en vez de un diálogo

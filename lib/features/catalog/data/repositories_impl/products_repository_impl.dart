@@ -24,7 +24,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
   ProductsRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
-    LoggerService.e('Error en ProductsRepositoryImpl', tag: 'PRODUCTS_REPO', error: e, stackTrace: st);
+    LoggerService.e(
+      'Error en ProductsRepositoryImpl',
+      tag: 'PRODUCTS_REPO',
+      error: e,
+      stackTrace: st,
+    );
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(
@@ -104,9 +109,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
               ? 'product_variants(id, product_id, sku, sale_price, is_active)'
               : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active)';
       final bool isInStockFilter = stockFilter == CatalogStockFilter.inStock;
-      final String batchesJoin = isInStockFilter
-          ? 'warehouse_stock_batches!inner(available_quantity)'
-          : 'warehouse_stock_batches(available_quantity)';
+      final String batchesJoin =
+          isInStockFilter
+              ? 'warehouse_stock_batches!inner(available_quantity)'
+              : 'warehouse_stock_batches(available_quantity)';
 
       String selectString =
           'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), $batchesJoin, $variantSelect';
@@ -133,13 +139,38 @@ class ProductsRepositoryImpl implements ProductsRepository {
         query = query.eq('brand_id', brandId);
       }
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+        final clean = searchQuery.trim();
         if (searchByIngredient) {
           query = query.ilike(
             'product_active_ingredients.active_ingredients.name',
-            '%${searchQuery.trim()}%',
+            '%$clean%',
           );
         } else {
-          query = query.ilike('name', '%${searchQuery.trim()}%');
+          try {
+            // Coincidencia multicanal: Nombre de producto O variantes (SKU / Código de barras)
+            final variantMatches = await _supabase
+                .from('product_variants')
+                .select('product_id')
+                .or('sku.ilike.%$clean%,barcode.ilike.%$clean%')
+                .limit(50);
+
+            final matchingProductIds =
+                (variantMatches as List)
+                    .map((row) => row['product_id'] as String?)
+                    .where((id) => id != null && id.isNotEmpty)
+                    .toSet()
+                    .toList();
+
+            if (matchingProductIds.isNotEmpty) {
+              query = query.or(
+                'name.ilike.%$clean%,id.in.(${matchingProductIds.join(',')})',
+              );
+            } else {
+              query = query.ilike('name', '%$clean%');
+            }
+          } catch (_) {
+            query = query.ilike('name', '%$clean%');
+          }
         }
       }
 
@@ -161,10 +192,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
           }
         }
 
-        final outOfStockIds = stockByProduct.entries
-            .where((e) => e.value <= 0)
-            .map((e) => e.key)
-            .toList();
+        final outOfStockIds =
+            stockByProduct.entries
+                .where((e) => e.value <= 0)
+                .map((e) => e.key)
+                .toList();
 
         if (outOfStockIds.isEmpty) {
           return right((products: <ProductEntity>[], totalCount: 0));
@@ -172,7 +204,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
         query = query.inFilter('id', outOfStockIds);
       }
 
-      var transformQuery = query.order('is_active', ascending: false); // Productos activos primero
+      var transformQuery = query.order(
+        'is_active',
+        ascending: false,
+      ); // Productos activos primero
 
       if (sortOption == CatalogSortOption.recent) {
         transformQuery = transformQuery.order('created_at', ascending: false);
@@ -694,14 +729,16 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       final path = '$folder/$fileName';
-      await _supabase.storage.from('products').uploadBinary(
-        path,
-        bytes,
-        fileOptions: const FileOptions(
-          contentType: 'image/jpeg',
-          upsert: false,
-        ),
-      );
+      await _supabase.storage
+          .from('products')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: false,
+            ),
+          );
       final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
       return right(publicUrl);
     } catch (e, st) {
@@ -1352,11 +1389,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
         final authUserId = _supabase.auth.currentUser?.id;
         if (authUserId != null) {
           try {
-            final pRes = await _supabase
-                .from('profiles')
-                .select('id')
-                .eq('auth_user_id', authUserId)
-                .maybeSingle();
+            final pRes =
+                await _supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('auth_user_id', authUserId)
+                    .maybeSingle();
             effectiveProfileId = pRes?['id'] as String?;
           } catch (e) {
             LoggerService.w(
@@ -1448,12 +1486,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
   // ───────────────────────── Importación masiva ─────────────────────────
 
   @override
-  Future<Either<Failure, ImportCatalogContext>> getImportCatalogContext() async {
+  Future<Either<Failure, ImportCatalogContext>>
+  getImportCatalogContext() async {
     try {
       Future<List<String>> allNames(String table) async {
         final out = <String>[];
         const page = 1000;
-        for (var from = 0;; from += page) {
+        for (var from = 0; ; from += page) {
           final res = await _supabase
               .from(table)
               .select('name')
@@ -1476,14 +1515,15 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       return right(
         ImportCatalogContext(
-          warehouses: List<Map<String, dynamic>>.from(warehousesRes)
-              .map(
-                (w) => ImportWarehouse(
-                  id: w['id'].toString(),
-                  name: (w['name'] ?? '').toString(),
-                ),
-              )
-              .toList(),
+          warehouses:
+              List<Map<String, dynamic>>.from(warehousesRes)
+                  .map(
+                    (w) => ImportWarehouse(
+                      id: w['id'].toString(),
+                      name: (w['name'] ?? '').toString(),
+                    ),
+                  )
+                  .toList(),
           brandNames: brands,
           categoryNames: categories,
         ),
@@ -1503,7 +1543,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
       const chunk = 150;
       final names = productNames.map(normalizeKey).toSet().toList();
       final skuList =
-          skus.map((s) => s.trim().toLowerCase()).where((s) => s.isNotEmpty).toSet().toList();
+          skus
+              .map((s) => s.trim().toLowerCase())
+              .where((s) => s.isNotEmpty)
+              .toSet()
+              .toList();
 
       final found = <String, ExistingVariant>{};
 
@@ -1528,10 +1572,19 @@ class ProductsRepositoryImpl implements ProductsRepository {
       }
 
       for (var i = 0; i < names.length; i += chunk) {
-        await run(names.sublist(i, i + chunk > names.length ? names.length : i + chunk), const []);
+        await run(
+          names.sublist(i, i + chunk > names.length ? names.length : i + chunk),
+          const [],
+        );
       }
       for (var i = 0; i < skuList.length; i += chunk) {
-        await run(const [], skuList.sublist(i, i + chunk > skuList.length ? skuList.length : i + chunk));
+        await run(
+          const [],
+          skuList.sublist(
+            i,
+            i + chunk > skuList.length ? skuList.length : i + chunk,
+          ),
+        );
       }
       return right(found.values.toList());
     } catch (e, st) {
@@ -1581,26 +1634,33 @@ class ProductsRepositoryImpl implements ProductsRepository {
         params: {'p_product_id': id},
       );
 
-      final imageUrls = (response as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-      
+      final imageUrls =
+          (response as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+
       if (imageUrls.isNotEmpty) {
         // Extraer los paths relativos asumiendo que están en el bucket 'products'
-        // El image_url podría ser un path relativo o una URL completa, pero usualmente 
+        // El image_url podría ser un path relativo o una URL completa, pero usualmente
         // Supabase storage espera el path (ej. 'folder/file.jpg').
         // Intentaremos borrarlos pero si falla no abortaremos la eliminación en BD.
         try {
           // Extraemos los paths después del nombre del bucket si es URL completa,
           // o lo usamos tal cual si es relativo.
-          final paths = imageUrls.map((url) {
-            if (url.contains('/storage/v1/object/public/products/')) {
-              return url.split('/storage/v1/object/public/products/').last;
-            }
-            return url;
-          }).toList();
-          
+          final paths =
+              imageUrls.map((url) {
+                if (url.contains('/storage/v1/object/public/products/')) {
+                  return url.split('/storage/v1/object/public/products/').last;
+                }
+                return url;
+              }).toList();
+
           await _supabase.storage.from('products').remove(paths);
         } catch (e, st) {
-          LoggerService.e('Error al borrar imágenes del bucket', tag: 'PRODUCTS_REPO', error: e, stackTrace: st);
+          LoggerService.e(
+            'Error al borrar imágenes del bucket',
+            tag: 'PRODUCTS_REPO',
+            error: e,
+            stackTrace: st,
+          );
         }
       }
 

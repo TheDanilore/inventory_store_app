@@ -101,35 +101,35 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       return;
     }
 
-    final res = await PosCameraScannerDialog.show(
+    await PosCameraScannerDialog.show(
       context,
       warehouseId: warehouseId,
+      title: 'Escanear Salidas de Almacén',
+      continuousMode: true,
+      onContinuousScan: (res) async {
+        final product = res.product;
+        final variant = res.variant;
+
+        final productModel = ProductModel.fromEntity(product);
+        final variantModel =
+            variant != null
+                ? ProductVariantModel.fromEntity(variant)
+                : (product.defaultVariant != null
+                    ? ProductVariantModel.fromEntity(product.defaultVariant!)
+                    : null);
+
+        if (variantModel != null) {
+          final exitItem = ExitItemUI(
+            product: productModel,
+            variant: variantModel,
+            selectedBatch: null,
+            quantity: 1.0,
+            unitCost: variantModel.unitCost ?? 0.0,
+          );
+          cubit.addItem(exitItem);
+        }
+      },
     );
-    if (res == null || !mounted) return;
-
-    final reserved = <String, double>{};
-    for (final i in cubit.state.items) {
-      final key = exitBatchKey(i.selectedBatch);
-      if (key.isEmpty) continue;
-      reserved[key] = (reserved[key] ?? 0.0) + i.quantity;
-    }
-
-    final productModel = ProductModel.fromEntity(res.product);
-    final variantModel =
-        res.variant != null ? ProductVariantModel.fromEntity(res.variant!) : null;
-
-    final newItem = await AddExitProductSheet.show(
-      context,
-      warehouseId: warehouseId,
-      reservedByBatchId: reserved,
-      initialProduct: productModel,
-      initialVariant: variantModel,
-      onAddAndContinue: (item) => cubit.addItem(item),
-    );
-
-    if (newItem != null && mounted) {
-      cubit.addItem(newItem);
-    }
   }
 
   /// Quita la línea al instante y ofrece "Deshacer" (sin diálogo de
