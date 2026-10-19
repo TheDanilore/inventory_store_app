@@ -10,6 +10,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 import 'package:inventory_store_app/features/pos/presentation/widgets/open_shift_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/close_shift_sheet.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_settings_dialog.dart';
 
 class PosHeader extends StatelessWidget {
   final TextEditingController searchController;
@@ -865,36 +866,50 @@ class PosHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Tooltip(
             message:
-                'Escucha de códigos activa. Puedes conectar cualquier pistola o lector USB/Bluetooth y disparar en cualquier momento sin configurar nada.',
-            child: Container(
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                'Receptor de códigos listo. Haz clic para configurar lectores, ver equipos vinculados o calibrar disparos.',
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: () => AdminSettingsDialog.show(context, initialTabIndex: 5),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                  width: 1.2,
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.barcode_reader,
-                    color: Color(0xFF059669),
-                    size: 18,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Lector USB/BT Listo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF059669),
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                      width: 1.2,
                     ),
                   ),
-                ],
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.barcode_reader,
+                        color: Color(0xFF059669),
+                        size: 18,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Lector USB/BT Listo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF059669),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.tune_rounded,
+                        color: Color(0xFF059669),
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

@@ -6,15 +6,22 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/scanner_settings_hub_tab.dart';
+
 /// Modal centralizado de Configuración del ERP (Shopeers / Apple HIG Style)
 class AdminSettingsDialog extends StatefulWidget {
-  const AdminSettingsDialog({super.key});
+  final int initialTabIndex;
 
-  static Future<void> show(BuildContext context) {
+  const AdminSettingsDialog({
+    super.key,
+    this.initialTabIndex = 0,
+  });
+
+  static Future<void> show(BuildContext context, {int initialTabIndex = 0}) {
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (_) => const AdminSettingsDialog(),
+      builder: (_) => AdminSettingsDialog(initialTabIndex: initialTabIndex),
     );
   }
 
@@ -29,7 +36,11 @@ class _AdminSettingsDialogState extends State<AdminSettingsDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(
+      length: 6,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 5),
+    );
   }
 
   @override
@@ -180,6 +191,10 @@ class _AdminSettingsDialogState extends State<AdminSettingsDialog>
                     icon: Icon(Icons.print_rounded, size: 16),
                     text: 'Impresora POS',
                   ),
+                  Tab(
+                    icon: Icon(Icons.qr_code_scanner_rounded, size: 16),
+                    text: 'Lectores y Escáneres',
+                  ),
                 ],
               ),
             ),
@@ -198,6 +213,7 @@ class _AdminSettingsDialogState extends State<AdminSettingsDialog>
                   _buildFinancialAccountsTab(context),
                   _buildLoyaltyPointsTab(context),
                   _buildPrinterTab(context),
+                  const ScannerSettingsHubTab(),
                 ],
               ),
             ),
