@@ -235,186 +235,200 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           autofocus: true,
           child: AdminLayout(
             title: 'Gestión de Usuarios',
-        body: NotificationListener<UserScrollNotification>(
-          onNotification: _onScrollNotification,
-          child: Column(
-            children: [
-              // ─── COMMAND BAR & FILTROS ──────────────────────────────────────
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isDesktop ? 20 : 16,
-                  vertical: isDesktop ? 12 : 14,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+            body: NotificationListener<UserScrollNotification>(
+              onNotification: _onScrollNotification,
+              child: Column(
+                children: [
+                  // ─── COMMAND BAR & FILTROS ──────────────────────────────────────
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 20 : 16,
+                      vertical: isDesktop ? 12 : 14,
                     ),
-                  ],
-                ),
-                child:
-                    isDesktop
-                        ? _buildDesktopCommandBar()
-                        : _buildMobileCommandBar(),
-              ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child:
+                        isDesktop
+                            ? _buildDesktopCommandBar()
+                            : _buildMobileCommandBar(),
+                  ),
 
-              // ─── TABS SEGMENTADOS STRIPE / LINEAR ────────────────────────────
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: BlocSelector<UsersCubit, UsersState, (int, int, int)>(
-                    selector:
-                        (s) => (s.customerTotal, s.adminTotal, s.employeeTotal),
-                    builder: (context, counts) {
-                      final (cTotal, aTotal, eTotal) = counts;
-                      return AnimatedBuilder(
-                        animation: _tabController,
-                        builder: (context, _) {
-                          return TabBar(
-                            controller: _tabController,
-                            labelColor: AppColors.primary,
-                            unselectedLabelColor: Colors.grey.shade600,
-                            indicatorColor: AppColors.primary,
-                            indicatorWeight: 3,
-                            indicatorSize: TabBarIndicatorSize.tab,
-                            labelStyle: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                  // ─── TABS SEGMENTADOS STRIPE / LINEAR ────────────────────────────
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: BlocSelector<
+                        UsersCubit,
+                        UsersState,
+                        (int, int, int)
+                      >(
+                        selector:
+                            (s) => (
+                              s.customerTotal,
+                              s.adminTotal,
+                              s.employeeTotal,
                             ),
-                            unselectedLabelStyle: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                            ),
-                            tabs: [
-                              Tab(
-                                height: 48,
-                                child: _buildTabItem(
-                                  icon: Icons.people_outline_rounded,
-                                  label: 'Clientes',
-                                  count: cTotal,
-                                  isSelected: _tabController.index == 0,
+                        builder: (context, counts) {
+                          final (cTotal, aTotal, eTotal) = counts;
+                          return AnimatedBuilder(
+                            animation: _tabController,
+                            builder: (context, _) {
+                              return TabBar(
+                                controller: _tabController,
+                                labelColor: AppColors.primary,
+                                unselectedLabelColor: Colors.grey.shade600,
+                                indicatorColor: AppColors.primary,
+                                indicatorWeight: 3,
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                labelStyle: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
                                 ),
-                              ),
-                              Tab(
-                                height: 48,
-                                child: _buildTabItem(
-                                  icon: Icons.admin_panel_settings_outlined,
-                                  label: 'Admins',
-                                  count: aTotal,
-                                  isSelected: _tabController.index == 1,
+                                unselectedLabelStyle: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
                                 ),
-                              ),
-                              Tab(
-                                height: 48,
-                                child: _buildTabItem(
-                                  icon: Icons.badge_outlined,
-                                  label: 'Empleados',
-                                  count: eTotal,
-                                  isSelected: _tabController.index == 2,
-                                ),
-                              ),
-                            ],
+                                tabs: [
+                                  Tab(
+                                    height: 48,
+                                    child: _buildTabItem(
+                                      icon: Icons.people_outline_rounded,
+                                      label: 'Clientes',
+                                      count: cTotal,
+                                      isSelected: _tabController.index == 0,
+                                    ),
+                                  ),
+                                  Tab(
+                                    height: 48,
+                                    child: _buildTabItem(
+                                      icon: Icons.admin_panel_settings_outlined,
+                                      label: 'Admins',
+                                      count: aTotal,
+                                      isSelected: _tabController.index == 1,
+                                    ),
+                                  ),
+                                  Tab(
+                                    height: 48,
+                                    child: _buildTabItem(
+                                      icon: Icons.badge_outlined,
+                                      label: 'Empleados',
+                                      count: eTotal,
+                                      isSelected: _tabController.index == 2,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         },
-                      );
-                    },
+                      ),
+                    ),
                   ),
-                ),
-              ),
 
-              // ─── CONTENIDO DE LOS TABS ───────────────────────────────────────
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    BlocProvider(
-                      key: const ValueKey(AppRoles.customer),
-                      create: (_) => sl<UsersCubit>()..init(AppRoles.customer),
-                      child: UsersTab(
-                        role: AppRoles.customer,
-                        searchQuery: _debouncedQuery,
-                        onlyActive: _onlyActive,
-                        tabController: _tabController,
-                        tabIndex: 0,
-                      ),
+                  // ─── CONTENIDO DE LOS TABS ───────────────────────────────────────
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        BlocProvider(
+                          key: const ValueKey(AppRoles.customer),
+                          create:
+                              (_) => sl<UsersCubit>()..init(AppRoles.customer),
+                          child: UsersTab(
+                            role: AppRoles.customer,
+                            searchQuery: _debouncedQuery,
+                            onlyActive: _onlyActive,
+                            tabController: _tabController,
+                            tabIndex: 0,
+                          ),
+                        ),
+                        BlocProvider(
+                          key: const ValueKey(AppRoles.admin),
+                          create: (_) => sl<UsersCubit>()..init(AppRoles.admin),
+                          child: UsersTab(
+                            role: AppRoles.admin,
+                            searchQuery: _debouncedQuery,
+                            onlyActive: _onlyActive,
+                            tabController: _tabController,
+                            tabIndex: 1,
+                          ),
+                        ),
+                        BlocProvider(
+                          key: const ValueKey(AppRoles.employee),
+                          create:
+                              (_) => sl<UsersCubit>()..init(AppRoles.employee),
+                          child: UsersTab(
+                            role: AppRoles.employee,
+                            searchQuery: _debouncedQuery,
+                            onlyActive: _onlyActive,
+                            tabController: _tabController,
+                            tabIndex: 2,
+                          ),
+                        ),
+                      ],
                     ),
-                    BlocProvider(
-                      key: const ValueKey(AppRoles.admin),
-                      create: (_) => sl<UsersCubit>()..init(AppRoles.admin),
-                      child: UsersTab(
-                        role: AppRoles.admin,
-                        searchQuery: _debouncedQuery,
-                        onlyActive: _onlyActive,
-                        tabController: _tabController,
-                        tabIndex: 1,
-                      ),
-                    ),
-                    BlocProvider(
-                      key: const ValueKey(AppRoles.employee),
-                      create: (_) => sl<UsersCubit>()..init(AppRoles.employee),
-                      child: UsersTab(
-                        role: AppRoles.employee,
-                        searchQuery: _debouncedQuery,
-                        onlyActive: _onlyActive,
-                        tabController: _tabController,
-                        tabIndex: 2,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
 
-        // FAB disponible principalmente en móvil o como atajo rápido
-        floatingActionButton:
-            isDesktop
-                ? null
-                : FloatingActionButton.extended(
-                  backgroundColor: AppColors.primary,
-                  onPressed: _navigateToCreateUser,
-                  tooltip: 'Nuevo ($_currentRoleLabel) (${AppShortcutLabels.newRecord})',
-                  icon: const Icon(
-                    Icons.person_add_rounded,
-                    color: Colors.white,
-                  ),
-                  label: ValueListenableBuilder<bool>(
-                    valueListenable: _isFabExtended,
-                    builder: (context, isExtended, _) {
-                      return AnimatedSize(
-                        duration: const Duration(milliseconds: 200),
-                        child:
-                            isExtended
-                                ? AnimatedBuilder(
-                                  animation: _tabController,
-                                  builder: (context, _) {
-                                    return Text(
-                                      'Nuevo $_currentRoleLabel',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    );
-                                  },
-                                )
-                                : const SizedBox.shrink(),
-                      );
-                    },
-                  ),
-                ),
+            // FAB disponible principalmente en móvil o como atajo rápido
+            floatingActionButton:
+                isDesktop
+                    ? null
+                    : FloatingActionButton.extended(
+                      backgroundColor: AppColors.primary,
+                      onPressed: _navigateToCreateUser,
+                      tooltip:
+                          'Nuevo ($_currentRoleLabel) (${AppShortcutLabels.newRecord})',
+                      icon: const Icon(
+                        Icons.person_add_rounded,
+                        color: Colors.white,
+                      ),
+                      label: ValueListenableBuilder<bool>(
+                        valueListenable: _isFabExtended,
+                        builder: (context, isExtended, _) {
+                          return AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            child:
+                                isExtended
+                                    ? AnimatedBuilder(
+                                      animation: _tabController,
+                                      builder: (context, _) {
+                                        return Text(
+                                          'Nuevo $_currentRoleLabel',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        );
+                                      },
+                                    )
+                                    : const SizedBox.shrink(),
+                          );
+                        },
+                      ),
+                    ),
           ),
         ),
       ),
@@ -436,8 +450,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
               onChanged: _onSearchChanged,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText:
-                    'Buscar por nombre, correo, teléfono o documento (${AppShortcutLabels.modPlus}K)...',
+                hintText: 'Buscar por nombre, correo, teléfono o documento...',
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 prefixIcon: Icon(
                   Icons.search_rounded,
@@ -456,30 +469,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     }
                     return Tooltip(
                       message: 'Atajo: ${AppShortcutLabels.search}',
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 9,
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            AppShortcutLabels.search,
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
                     );
                   },
                 ),

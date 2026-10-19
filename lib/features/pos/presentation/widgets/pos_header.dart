@@ -764,31 +764,6 @@ class PosHeader extends StatelessWidget {
                               );
                             },
                           ),
-                          if (isDesktop)
-                            Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5,
-                                vertical: 1.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                AppShortcutLabels.search,
-                                style: const TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textSecondary,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                       border: InputBorder.none,

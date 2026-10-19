@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
@@ -223,7 +222,8 @@ class _WarehousesManagementScreenState
 
           return Focus(
             autofocus: true,
-            onKeyEvent: (node, event) => _handleKeyShortcuts(node, event, cubit),
+            onKeyEvent:
+                (node, event) => _handleKeyShortcuts(node, event, cubit),
             child: BlocConsumer<WarehousesCubit, WarehousesState>(
               listener: (context, state) {
                 if (state.errorMessage != null &&
@@ -252,9 +252,7 @@ class _WarehousesManagementScreenState
                 return AdminLayout(
                   title: 'Almacenes',
                   floatingActionButton:
-                      !isDesktop
-                          ? _buildMobileFab(context, cubit)
-                          : null,
+                      !isDesktop ? _buildMobileFab(context, cubit) : null,
                   bottomNavigationBar:
                       warehouses.isNotEmpty && state.totalPages > 1
                           ? Container(
@@ -296,11 +294,7 @@ class _WarehousesManagementScreenState
                       ),
 
                       // ── 2. Toolbar Unificado de Búsqueda y Acciones ──
-                      _buildToolbar(
-                        context,
-                        cubit,
-                        isDesktop,
-                      ),
+                      _buildToolbar(context, cubit, isDesktop),
 
                       // ── 3. Contenido Principal (Tabla o Grilla) ───────
                       Expanded(
@@ -315,7 +309,9 @@ class _WarehousesManagementScreenState
                                           rowCount: 5,
                                           minWidth: 840,
                                         )
-                                        : const WarehousesSkeleton(itemCount: 4),
+                                        : const WarehousesSkeleton(
+                                          itemCount: 4,
+                                        ),
                               );
                             }
 
@@ -341,27 +337,37 @@ class _WarehousesManagementScreenState
                                             icon: const Icon(
                                               Icons.clear_all_rounded,
                                             ),
-                                            label: const Text('Limpiar búsqueda'),
+                                            label: const Text(
+                                              'Limpiar búsqueda',
+                                            ),
                                           )
                                           : ElevatedButton.icon(
                                             onPressed:
-                                                () => _openWarehouseModal(context, cubit),
+                                                () => _openWarehouseModal(
+                                                  context,
+                                                  cubit,
+                                                ),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primary,
+                                              backgroundColor:
+                                                  AppColors.primary,
                                               foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 20,
-                                                vertical: 12,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                    vertical: 12,
+                                                  ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(10),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                             ),
                                             icon: const Icon(
                                               Icons.add_business_rounded,
                                               size: 18,
                                             ),
-                                            label: const Text('Registrar Almacén'),
+                                            label: const Text(
+                                              'Registrar Almacén',
+                                            ),
                                           ),
                                 ),
                               );
@@ -395,11 +401,12 @@ class _WarehousesManagementScreenState
                                                       wh,
                                                     ),
                                                 onDelete:
-                                                    (wh) => _confirmDeleteWarehouse(
-                                                      context,
-                                                      cubit,
-                                                      wh,
-                                                    ),
+                                                    (wh) =>
+                                                        _confirmDeleteWarehouse(
+                                                          context,
+                                                          cubit,
+                                                          wh,
+                                                        ),
                                                 onToggleStatus: (wh, val) {
                                                   cubit.toggleWarehouseStatus(
                                                     wh,
@@ -430,11 +437,12 @@ class _WarehousesManagementScreenState
                                                         wh,
                                                       ),
                                                   onDelete:
-                                                      () => _confirmDeleteWarehouse(
-                                                        context,
-                                                        cubit,
-                                                        wh,
-                                                      ),
+                                                      () =>
+                                                          _confirmDeleteWarehouse(
+                                                            context,
+                                                            cubit,
+                                                            wh,
+                                                          ),
                                                   onToggleStatus: (val) {
                                                     cubit.toggleWarehouseStatus(
                                                       wh,
@@ -473,10 +481,7 @@ class _WarehousesManagementScreenState
   ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -501,10 +506,7 @@ class _WarehousesManagementScreenState
                   const SizedBox(width: 8),
 
                   IconButton(
-                    icon: const Icon(
-                      Icons.refresh_rounded,
-                      size: 20,
-                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
                     color: AppColors.textSecondary,
                     tooltip: 'Refrescar almacenes [R]',
                     onPressed: () => cubit.loadWarehouses(isRefresh: true),
@@ -518,18 +520,13 @@ class _WarehousesManagementScreenState
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      icon: const Icon(
-                        Icons.add_business_rounded,
-                        size: 18,
-                      ),
+                      icon: const Icon(Icons.add_business_rounded, size: 18),
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -596,9 +593,7 @@ class _WarehousesManagementScreenState
                 padding: const EdgeInsets.only(right: 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildKeyHint('/'),
-                  ],
+                  children: [_buildKeyHint('/')],
                 ),
               );
             },
@@ -617,7 +612,10 @@ class _WarehousesManagementScreenState
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 0,
+          ),
         ),
       ),
     );
@@ -724,7 +722,7 @@ class _WarehousesManagementScreenState
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       elevation: 3,
-      tooltip: 'Crear nuevo almacén (${AppShortcutLabels.newRecord})',
+      tooltip: 'Crear nuevo almacén',
       icon: const Icon(Icons.add_rounded, color: Colors.white),
       label: ValueListenableBuilder<bool>(
         valueListenable: _isFabExtended,
@@ -795,11 +793,8 @@ class _WarehousesKpiBar extends StatelessWidget {
                 : 'Sin almacenes suspendidos',
         icon: Icons.pause_circle_outline_rounded,
         iconBgColor:
-            inactiveCount > 0
-                ? AppColors.errorLight
-                : const Color(0xFFF1F5F9),
-        iconColor:
-            inactiveCount > 0 ? AppColors.error : AppColors.textMuted,
+            inactiveCount > 0 ? AppColors.errorLight : const Color(0xFFF1F5F9),
+        iconColor: inactiveCount > 0 ? AppColors.error : AppColors.textMuted,
       ),
     ];
 

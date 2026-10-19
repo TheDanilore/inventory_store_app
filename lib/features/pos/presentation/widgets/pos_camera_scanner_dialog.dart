@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/camera_stream_stopper.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
@@ -29,7 +30,8 @@ class PosCameraScannerDialog extends StatefulWidget {
     this.onContinuousScan,
   });
 
-  /// Abre el modal de escaneo adaptado a la plataforma.
+  /// Abre el modal de escaneo adaptado a la plataforma y garantiza
+  /// el apagado total del hardware de la cámara web al salir.
   static Future<PosScanResult?> show(
     BuildContext context, {
     String? warehouseId,
@@ -38,8 +40,9 @@ class PosCameraScannerDialog extends StatefulWidget {
     Future<void> Function(PosScanResult result)? onContinuousScan,
   }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
+    PosScanResult? result;
     if (isDesktop) {
-      return showDialog<PosScanResult>(
+      result = await showDialog<PosScanResult>(
         context: context,
         barrierDismissible: true,
         builder:
@@ -67,7 +70,7 @@ class PosCameraScannerDialog extends StatefulWidget {
             ),
       );
     } else {
-      return showModalBottomSheet<PosScanResult>(
+      result = await showModalBottomSheet<PosScanResult>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -93,6 +96,9 @@ class PosCameraScannerDialog extends StatefulWidget {
             ),
       );
     }
+    // Garantiza el apagado físico del hardware de la cámara (web/móvil)
+    stopAllWebCameraStreams();
+    return result;
   }
 
   @override
@@ -146,6 +152,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
       _scannerController.stop();
       _scannerController.dispose();
     } catch (_) {}
+    stopAllWebCameraStreams();
     _manualInputCtrl.dispose();
     _manualFocusNode.dispose();
     super.dispose();
@@ -159,6 +166,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     try {
       await _scannerController.stop();
     } catch (_) {}
+    stopAllWebCameraStreams();
 
     if (mounted) {
       Navigator.of(context).pop(result);
@@ -258,6 +266,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
         try {
           _scannerController.stop();
         } catch (_) {}
+        stopAllWebCameraStreams();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -740,7 +749,9 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A), // Texto oscuro de alto contraste
+                      color: Color(
+                        0xFF0F172A,
+                      ), // Texto oscuro de alto contraste
                     ),
                     decoration: InputDecoration(
                       filled: true,

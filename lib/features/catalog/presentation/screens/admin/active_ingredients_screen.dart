@@ -12,7 +12,6 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredien
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredient_form_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/active_ingredients/active_ingredients_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 /// Formatea nombres de ingredientes químicos a Title Case inteligente,
 /// preservando siglas técnicas cortas (ej: "PREFONOFOS" -> "Prefonofos", "NPK" -> "NPK").
@@ -20,16 +19,18 @@ String _formatIngredientName(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return '';
   final words = trimmed.split(RegExp(r'\s+'));
-  return words.map((w) {
-    if (w.isEmpty) return '';
-    if (w.length == 1) return w.toUpperCase();
-    if (w.length <= 3 &&
-        w == w.toUpperCase() &&
-        !RegExp(r'[0-9]').hasMatch(w)) {
-      return w;
-    }
-    return w[0].toUpperCase() + w.substring(1).toLowerCase();
-  }).join(' ');
+  return words
+      .map((w) {
+        if (w.isEmpty) return '';
+        if (w.length == 1) return w.toUpperCase();
+        if (w.length <= 3 &&
+            w == w.toUpperCase() &&
+            !RegExp(r'[0-9]').hasMatch(w)) {
+          return w;
+        }
+        return w[0].toUpperCase() + w.substring(1).toLowerCase();
+      })
+      .join(' ');
 }
 
 /// Pantalla Pro Tool & Apple HIG para la gestión de Componentes Químicos (Ingredientes Activos).
@@ -185,13 +186,13 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Actualizar',
-                onPressed: () =>
-                    context.read<IngredientsCubit>().loadIngredients(),
+                onPressed:
+                    () => context.read<IngredientsCubit>().loadIngredients(),
               )
             else ...[
               OutlinedButton.icon(
-                onPressed: () =>
-                    context.read<IngredientsCubit>().loadIngredients(),
+                onPressed:
+                    () => context.read<IngredientsCubit>().loadIngredients(),
                 icon: const Icon(
                   Icons.refresh_rounded,
                   size: 16,
@@ -219,10 +220,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text(
                   'Nuevo Componente',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -545,14 +543,18 @@ class _SearchBarState extends State<_SearchBar> {
       duration: const Duration(milliseconds: 180),
       height: 44,
       decoration: BoxDecoration(
-        color: _isFocused
-            ? (isDark ? AppColors.darkSurface : AppColors.surface)
-            : (isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC)),
+        color:
+            _isFocused
+                ? (isDark ? AppColors.darkSurface : AppColors.surface)
+                : (isDark
+                    ? AppColors.darkSurfaceElevated
+                    : const Color(0xFFF8FAFC)),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _isFocused
-              ? AppColors.teal
-              : (isDark ? AppColors.darkBorder : AppColors.border),
+          color:
+              _isFocused
+                  ? AppColors.teal
+                  : (isDark ? AppColors.darkBorder : AppColors.border),
           width: _isFocused ? 1.5 : 1,
         ),
         boxShadow:
@@ -585,9 +587,10 @@ class _SearchBarState extends State<_SearchBar> {
           prefixIcon: Icon(
             Icons.search_rounded,
             size: 20,
-            color: _isFocused
-                ? AppColors.tealDark
-                : (isDark ? const Color(0xFF64748B) : AppColors.textMuted),
+            color:
+                _isFocused
+                    ? AppColors.tealDark
+                    : (isDark ? const Color(0xFF64748B) : AppColors.textMuted),
           ),
           suffixIcon:
               widget.hasQuery
@@ -595,48 +598,15 @@ class _SearchBarState extends State<_SearchBar> {
                     icon: Icon(
                       Icons.close_rounded,
                       size: 18,
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                     ),
                     splashRadius: 16,
                     onPressed: widget.onClear,
                   )
-                  : (widget.showShortcut
-                      ? Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1E293B)
-                                    : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppColors.darkBorder
-                                      : const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: Text(
-                                AppShortcutLabels.search,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      : null),
+                  : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
@@ -770,7 +740,9 @@ class _IngredientCardState extends State<_IngredientCard> {
                                   ? AppColors.tealDark.withValues(alpha: 0.3)
                                   : AppColors.tealLight)
                               : (isDark
-                                  ? const Color(0xFF134E4A).withValues(alpha: 0.25)
+                                  ? const Color(
+                                    0xFF134E4A,
+                                  ).withValues(alpha: 0.25)
                                   : const Color(0xFFF0FDFA)),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -784,7 +756,8 @@ class _IngredientCardState extends State<_IngredientCard> {
                     ),
                     child: Icon(
                       Icons.science_rounded,
-                      color: isDark ? const Color(0xFF2DD4BF) : AppColors.tealDark,
+                      color:
+                          isDark ? const Color(0xFF2DD4BF) : AppColors.tealDark,
                       size: 22,
                     ),
                   ),
@@ -806,9 +779,10 @@ class _IngredientCardState extends State<_IngredientCard> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
-                                  color: isDark
-                                      ? const Color(0xFFF8FAFC)
-                                      : AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFF8FAFC)
+                                          : AppColors.textPrimary,
                                   letterSpacing: -0.2,
                                 ),
                               ),
@@ -820,14 +794,16 @@ class _IngredientCardState extends State<_IngredientCard> {
                                 vertical: 1.5,
                               ),
                               decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1E293B)
-                                    : const Color(0xFFF1F5F9),
+                                color:
+                                    isDark
+                                        ? const Color(0xFF1E293B)
+                                        : const Color(0xFFF1F5F9),
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                  color: isDark
-                                      ? AppColors.darkBorder
-                                      : const Color(0xFFE2E8F0),
+                                  color:
+                                      isDark
+                                          ? AppColors.darkBorder
+                                          : const Color(0xFFE2E8F0),
                                 ),
                               ),
                               child: Text(
@@ -835,9 +811,10 @@ class _IngredientCardState extends State<_IngredientCard> {
                                 style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : AppColors.textSecondary,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : AppColors.textSecondary,
                                 ),
                               ),
                             ),
@@ -1110,14 +1087,18 @@ class _SlideOverIngredientDrawerState
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.tealDark.withValues(alpha: 0.3)
-                            : AppColors.tealLight,
+                        color:
+                            isDark
+                                ? AppColors.tealDark.withValues(alpha: 0.3)
+                                : AppColors.tealLight,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         Icons.science_rounded,
-                        color: isDark ? const Color(0xFF2DD4BF) : AppColors.tealDark,
+                        color:
+                            isDark
+                                ? const Color(0xFF2DD4BF)
+                                : AppColors.tealDark,
                         size: 22,
                       ),
                     ),
@@ -1133,9 +1114,10 @@ class _SlideOverIngredientDrawerState
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? const Color(0xFFF8FAFC)
-                                  : AppColors.textPrimary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : AppColors.textPrimary,
                               letterSpacing: -0.2,
                             ),
                           ),
@@ -1146,9 +1128,10 @@ class _SlideOverIngredientDrawerState
                                 : 'Registra un nuevo principio activo para el catálogo.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -1156,9 +1139,10 @@ class _SlideOverIngredientDrawerState
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 20),
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.textSecondary,
                       tooltip: 'Cerrar (Esc)',
                       onPressed: () => Navigator.of(context).pop(false),
                     ),
@@ -1199,14 +1183,18 @@ class _SlideOverIngredientDrawerState
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF134E4A).withValues(alpha: 0.25)
-                                : const Color(0xFFF0FDFA),
+                            color:
+                                isDark
+                                    ? const Color(
+                                      0xFF134E4A,
+                                    ).withValues(alpha: 0.25)
+                                    : const Color(0xFFF0FDFA),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF134E4A)
-                                  : const Color(0xFFCCFBF1),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF134E4A)
+                                      : const Color(0xFFCCFBF1),
                             ),
                           ),
                           child: Row(
@@ -1215,9 +1203,10 @@ class _SlideOverIngredientDrawerState
                               Icon(
                                 Icons.lightbulb_outline_rounded,
                                 size: 18,
-                                color: isDark
-                                    ? const Color(0xFF2DD4BF)
-                                    : AppColors.tealDark,
+                                color:
+                                    isDark
+                                        ? const Color(0xFF2DD4BF)
+                                        : AppColors.tealDark,
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -1225,9 +1214,10 @@ class _SlideOverIngredientDrawerState
                                   'Los componentes químicos activos se asignan a las fichas técnicas de productos y permiten filtrados agronómicos o farmacológicos avanzados en el punto de venta.',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: isDark
-                                        ? const Color(0xFF5EEAD4)
-                                        : AppColors.tealDark,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF5EEAD4)
+                                            : AppColors.tealDark,
                                     height: 1.4,
                                   ),
                                 ),
@@ -1261,11 +1251,15 @@ class _SlideOverIngredientDrawerState
                                 ? null
                                 : () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: isDark
-                              ? const Color(0xFF94A3B8)
-                              : AppColors.textSecondary,
+                          foregroundColor:
+                              isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : AppColors.textSecondary,
                           side: BorderSide(
-                            color: isDark ? AppColors.darkBorder : AppColors.border,
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border,
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -258,370 +257,375 @@ class _PosSalesViewState extends State<PosSalesView> {
         },
       },
       child: BlocBuilder<PosCubit, PosState>(
-      buildWhen:
-          (prev, current) =>
-              prev.recentOrders != current.recentOrders ||
-              prev.isLoadingRecentOrders != current.isLoadingRecentOrders ||
-              prev.isLoadingMoreOrders != current.isLoadingMoreOrders ||
-              prev.hasMoreOrders != current.hasMoreOrders ||
-              prev.recentOrdersError != current.recentOrdersError ||
-              prev.dailyTotalAmount != current.dailyTotalAmount ||
-              prev.dailyTotalCount != current.dailyTotalCount ||
-              prev.salesSearchQuery != current.salesSearchQuery,
-      builder: (context, state) {
-        final orders = state.recentOrders;
+        buildWhen:
+            (prev, current) =>
+                prev.recentOrders != current.recentOrders ||
+                prev.isLoadingRecentOrders != current.isLoadingRecentOrders ||
+                prev.isLoadingMoreOrders != current.isLoadingMoreOrders ||
+                prev.hasMoreOrders != current.hasMoreOrders ||
+                prev.recentOrdersError != current.recentOrdersError ||
+                prev.dailyTotalAmount != current.dailyTotalAmount ||
+                prev.dailyTotalCount != current.dailyTotalCount ||
+                prev.salesSearchQuery != current.salesSearchQuery,
+        builder: (context, state) {
+          final orders = state.recentOrders;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth >= 1024;
-            final isTablet =
-                constraints.maxWidth >= 700 && constraints.maxWidth < 1024;
-            final isMobile = constraints.maxWidth < 700;
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 1024;
+              final isTablet =
+                  constraints.maxWidth >= 700 && constraints.maxWidth < 1024;
+              final isMobile = constraints.maxWidth < 700;
 
-            final fullWidthListView = CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(child: _buildHeader(context, isMobile)),
-                SliverToBoxAdapter(
-                  child: _buildMetricsAndSearch(
-                    context,
-                    state.dailyTotalAmount,
-                    state.dailyTotalCount,
-                    isMobile,
-                  ),
-                ),
-                if (state.isLoadingRecentOrders)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  )
-                else if (state.recentOrdersError.isNotEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline_rounded,
-                            color: AppColors.error,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Error al cargar las ventas:\n${state.recentOrdersError}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed:
-                                () => context
-                                    .read<PosCubit>()
-                                    .fetchRecentOrders(forceRefresh: true),
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('Reintentar'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF142B1A),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (orders.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 52,
-                            color: AppColors.textMuted.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            state.salesSearchQuery.isNotEmpty
-                                ? 'No se encontraron ventas para "${state.salesSearchQuery}".'
-                                : 'No se encontraron ventas registradas.',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      isMobile ? 16 : 20,
-                      6,
-                      isMobile ? 16 : 20,
-                      24,
-                    ),
-                    sliver: SliverList.separated(
-                      itemCount:
-                          orders.length + (state.isLoadingMoreOrders ? 1 : 0),
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        if (index >= orders.length) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                        final order = orders[index];
-                        // RepaintBoundary aísla cada card: al seleccionar
-                        // o reimprimir una orden, solo esa card se repinta.
-                        return RepaintBoundary(
-                          child: _buildOrderCard(
-                            context,
-                            order,
-                            isDesktop,
-                            isTablet,
-                            isMobile,
-                          ),
-                        );
-                      },
+              final fullWidthListView = CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildHeader(context, isMobile)),
+                  SliverToBoxAdapter(
+                    child: _buildMetricsAndSearch(
+                      context,
+                      state.dailyTotalAmount,
+                      state.dailyTotalCount,
+                      isMobile,
                     ),
                   ),
-              ],
-            );
-
-            return Focus(
-              autofocus: true,
-              onKeyEvent: (node, event) {
-                if (event is KeyDownEvent) {
-                  final isAlt = HardwareKeyboard.instance.isAltPressed;
-                  final isControl = HardwareKeyboard.instance.isControlPressed;
-                  final isMeta = HardwareKeyboard.instance.isMetaPressed;
-                  final isModifier = isAlt || isControl || isMeta;
-
-                  // ⌘K / Ctrl+K / Alt+K: Enfoca y selecciona el texto del buscador de ventas
-                  if (isModifier && event.logicalKey == LogicalKeyboardKey.keyK) {
-                    _searchFocusNode.requestFocus();
-                    _searchCtrl.selection = TextSelection(
-                      baseOffset: 0,
-                      extentOffset: _searchCtrl.text.length,
-                    );
-                    return KeyEventResult.handled;
-                  }
-
-                  // Escape: Cierra el detalle de venta o desenfoca el buscador (nunca sale del ERP)
-                  if (event.logicalKey == LogicalKeyboardKey.escape) {
-                    if (_selectedOrder != null) {
-                      setState(() => _selectedOrder = null);
-                      return KeyEventResult.handled;
-                    }
-                    if (_searchFocusNode.hasFocus) {
-                      _searchFocusNode.unfocus();
-                      return KeyEventResult.handled;
-                    }
-                  }
-
-                  // Flechas de navegación en Desktop (cuando el buscador no tiene foco)
-                  if (isDesktop && !_searchFocusNode.hasFocus) {
-                    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                      _navigateOrder(1, orders);
-                      return KeyEventResult.handled;
-                    }
-                    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                      _navigateOrder(-1, orders);
-                      return KeyEventResult.handled;
-                    }
-                  }
-
-                  // ⌘P / Ctrl+P / Alt+P: Reimprimir ticket de la venta seleccionada
-                  if (isModifier &&
-                      event.logicalKey == LogicalKeyboardKey.keyP &&
-                      _selectedOrder != null) {
-                    _reimprimirTicket(_selectedOrder!.id);
-                    return KeyEventResult.handled;
-                  }
-                }
-                return KeyEventResult.ignored;
-              },
-              child: Container(
-                color: AppColors.background,
-                child: Stack(
-                  children: [
-                    // 1. Lista a pantalla completa aislada de repintados
-                    RepaintBoundary(child: fullWidthListView),
-
-                    // 2. Slide-Over Side Sheet Inspector en Desktop con RepaintBoundary
-                    if (isDesktop && _selectedOrder != null) ...[
-                      // Backdrop con dismiss
-                      Positioned.fill(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedOrder = null),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            color: Colors.black.withValues(alpha: 0.28),
-                          ),
+                  if (state.isLoadingRecentOrders)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
                         ),
                       ),
-                      // Panel lateral deslizante tipo Stripe / Linear
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: RepaintBoundary(
-                          child: Container(
-                            width: constraints.maxWidth >= 1400 ? 640 : 560,
-                            height: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 28,
-                                  spreadRadius: 4,
-                                  offset: const Offset(-8, 0),
-                                ),
-                              ],
+                    )
+                  else if (state.recentOrdersError.isNotEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              color: AppColors.error,
+                              size: 48,
                             ),
-                            child: Column(
-                              children: [
-                                // Cabecera del Slide-Over
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 12,
+                            const SizedBox(height: 12),
+                            Text(
+                              'Error al cargar las ventas:\n${state.recentOrdersError}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed:
+                                  () => context
+                                      .read<PosCubit>()
+                                      .fetchRecentOrders(forceRefresh: true),
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('Reintentar'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF142B1A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (orders.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.receipt_long_outlined,
+                              size: 52,
+                              color: AppColors.textMuted.withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.salesSearchQuery.isNotEmpty
+                                  ? 'No se encontraron ventas para "${state.salesSearchQuery}".'
+                                  : 'No se encontraron ventas registradas.',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        isMobile ? 16 : 20,
+                        6,
+                        isMobile ? 16 : 20,
+                        24,
+                      ),
+                      sliver: SliverList.separated(
+                        itemCount:
+                            orders.length + (state.isLoadingMoreOrders ? 1 : 0),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          if (index >= orders.length) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.primary,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: AppColors.border.withValues(
-                                          alpha: 0.8,
+                                ),
+                              ),
+                            );
+                          }
+                          final order = orders[index];
+                          // RepaintBoundary aísla cada card: al seleccionar
+                          // o reimprimir una orden, solo esa card se repinta.
+                          return RepaintBoundary(
+                            child: _buildOrderCard(
+                              context,
+                              order,
+                              isDesktop,
+                              isTablet,
+                              isMobile,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+
+              return Focus(
+                autofocus: true,
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent) {
+                    final isAlt = HardwareKeyboard.instance.isAltPressed;
+                    final isControl =
+                        HardwareKeyboard.instance.isControlPressed;
+                    final isMeta = HardwareKeyboard.instance.isMetaPressed;
+                    final isModifier = isAlt || isControl || isMeta;
+
+                    // ⌘K / Ctrl+K / Alt+K: Enfoca y selecciona el texto del buscador de ventas
+                    if (isModifier &&
+                        event.logicalKey == LogicalKeyboardKey.keyK) {
+                      _searchFocusNode.requestFocus();
+                      _searchCtrl.selection = TextSelection(
+                        baseOffset: 0,
+                        extentOffset: _searchCtrl.text.length,
+                      );
+                      return KeyEventResult.handled;
+                    }
+
+                    // Escape: Cierra el detalle de venta o desenfoca el buscador (nunca sale del ERP)
+                    if (event.logicalKey == LogicalKeyboardKey.escape) {
+                      if (_selectedOrder != null) {
+                        setState(() => _selectedOrder = null);
+                        return KeyEventResult.handled;
+                      }
+                      if (_searchFocusNode.hasFocus) {
+                        _searchFocusNode.unfocus();
+                        return KeyEventResult.handled;
+                      }
+                    }
+
+                    // Flechas de navegación en Desktop (cuando el buscador no tiene foco)
+                    if (isDesktop && !_searchFocusNode.hasFocus) {
+                      if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                        _navigateOrder(1, orders);
+                        return KeyEventResult.handled;
+                      }
+                      if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                        _navigateOrder(-1, orders);
+                        return KeyEventResult.handled;
+                      }
+                    }
+
+                    // ⌘P / Ctrl+P / Alt+P: Reimprimir ticket de la venta seleccionada
+                    if (isModifier &&
+                        event.logicalKey == LogicalKeyboardKey.keyP &&
+                        _selectedOrder != null) {
+                      _reimprimirTicket(_selectedOrder!.id);
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Container(
+                  color: AppColors.background,
+                  child: Stack(
+                    children: [
+                      // 1. Lista a pantalla completa aislada de repintados
+                      RepaintBoundary(child: fullWidthListView),
+
+                      // 2. Slide-Over Side Sheet Inspector en Desktop con RepaintBoundary
+                      if (isDesktop && _selectedOrder != null) ...[
+                        // Backdrop con dismiss
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedOrder = null),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              color: Colors.black.withValues(alpha: 0.28),
+                            ),
+                          ),
+                        ),
+                        // Panel lateral deslizante tipo Stripe / Linear
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: RepaintBoundary(
+                            child: Container(
+                              width: constraints.maxWidth >= 1400 ? 640 : 560,
+                              height: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.18),
+                                    blurRadius: 28,
+                                    spreadRadius: 4,
+                                    offset: const Offset(-8, 0),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                children: [
+                                  // Cabecera del Slide-Over
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: AppColors.border.withValues(
+                                            alpha: 0.8,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(7),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(
-                                            alpha: 0.08,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.receipt_long_rounded,
-                                          color: AppColors.primary,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Text(
-                                        'Detalle del Comprobante',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.textPrimary,
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.background,
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                          border: Border.all(
-                                            color: AppColors.border,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'ESC',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.close_rounded,
-                                          size: 20,
-                                        ),
-                                        tooltip: 'Cerrar detalle (Esc)',
-                                        onPressed:
-                                            () => setState(
-                                              () => _selectedOrder = null,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.08,
                                             ),
-                                        style: IconButton.styleFrom(
-                                          visualDensity: VisualDensity.compact,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.receipt_long_rounded,
+                                            color: AppColors.primary,
+                                            size: 18,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 10),
+                                        const Text(
+                                          'Detalle del Comprobante',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.background,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.border,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'ESC',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 20,
+                                          ),
+                                          tooltip: 'Cerrar detalle (Esc)',
+                                          onPressed:
+                                              () => setState(
+                                                () => _selectedOrder = null,
+                                              ),
+                                          style: IconButton.styleFrom(
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                // Detalle embebido completo
-                                Expanded(
-                                  child: OrderDetailSheet(
-                                    key: ValueKey(_selectedOrder!.id),
-                                    order: _selectedOrder!,
-                                    isEmbedded: true,
-                                    onPop: (_) {
-                                      setState(() => _selectedOrder = null);
-                                    },
-                                    onOrderUpdated: (updated) {
-                                      setState(() => _selectedOrder = updated);
-                                      context
-                                          .read<PosCubit>()
-                                          .fetchRecentOrders(
-                                            forceRefresh: true,
-                                          );
-                                    },
+                                  // Detalle embebido completo
+                                  Expanded(
+                                    child: OrderDetailSheet(
+                                      key: ValueKey(_selectedOrder!.id),
+                                      order: _selectedOrder!,
+                                      isEmbedded: true,
+                                      onPop: (_) {
+                                        setState(() => _selectedOrder = null);
+                                      },
+                                      onOrderUpdated: (updated) {
+                                        setState(
+                                          () => _selectedOrder = updated,
+                                        );
+                                        context
+                                            .read<PosCubit>()
+                                            .fetchRecentOrders(
+                                              forceRefresh: true,
+                                            );
+                                      },
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    ),
-  );
-}
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildHeader(BuildContext context, bool isMobile) {
     return Container(
@@ -860,7 +864,7 @@ class _PosSalesViewState extends State<PosSalesView> {
           );
         },
         decoration: InputDecoration(
-          hintText: 'Buscar por cliente o código de comprobante... (${AppShortcutLabels.modPlus}K)',
+          hintText: 'Buscar por cliente o código de comprobante...',
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           prefixIcon: const Icon(
             Icons.search_rounded,

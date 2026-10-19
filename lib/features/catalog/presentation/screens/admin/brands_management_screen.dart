@@ -82,10 +82,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
     cubit.toggleStatus(brand, val);
   }
 
-  Future<void> _confirmDeleteBrand(
-    BrandEntity brand,
-    BrandsCubit cubit,
-  ) async {
+  Future<void> _confirmDeleteBrand(BrandEntity brand, BrandsCubit cubit) async {
     final hasProducts = (brand.productsCount ?? 0) > 0;
     if (hasProducts) {
       AppSnackbar.show(
@@ -162,7 +159,8 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
           floatingActionButton: isMobile ? _buildMobileFab() : null,
           body: BlocConsumer<BrandsCubit, BrandsState>(
             listener: (context, state) {
-              if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
+              if (state.errorMessage != null &&
+                  state.errorMessage!.isNotEmpty) {
                 AppSnackbar.show(
                   context,
                   message: state.errorMessage!,
@@ -174,9 +172,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
               return Column(
                 children: [
                   _buildHeaderBar(context, state, isMobile),
-                  Expanded(
-                    child: _buildBody(context, state, isMobile),
-                  ),
+                  Expanded(child: _buildBody(context, state, isMobile)),
                 ],
               );
             },
@@ -219,9 +215,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                     onChanged: cubit.onSearchChanged,
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: isMobile
-                          ? 'Buscar marcas...'
-                          : 'Buscar marcas por nombre o descripción (Ctrl + K)...',
+                      hintText:
+                          isMobile
+                              ? 'Buscar marcas...'
+                              : 'Buscar marcas por nombre o descripción (Ctrl + K)...',
                       hintStyle: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -231,26 +228,20 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                         size: 20,
                         color: AppColors.textSecondary,
                       ),
-                      suffixIcon: _searchCtrl.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 16),
-                              onPressed: () {
-                                _searchCtrl.clear();
-                                cubit.clearSearch();
-                              },
-                            )
-                          : (!isMobile
-                              ? Padding(
-                                  padding: const EdgeInsets.only(right: 10),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      _buildKbdBadge(AppShortcutLabels.search),
-                                    ],
-                                  ),
-                                )
-                              : null),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                      suffixIcon:
+                          _searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 16),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  cubit.clearSearch();
+                                },
+                              )
+                              : null,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 12,
+                      ),
                       filled: true,
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
@@ -263,7 +254,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -293,7 +287,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -304,7 +301,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                     children: [
                       const Text(
                         'Nueva Marca',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       _buildKbdBadge(AppShortcutLabels.newRecord, isDark: true),
@@ -375,11 +375,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
   }
 
   // ── Body / Content ───────────────────────────────────────────────────────
-  Widget _buildBody(
-    BuildContext context,
-    BrandsState state,
-    bool isMobile,
-  ) {
+  Widget _buildBody(BuildContext context, BrandsState state, bool isMobile) {
     if (state.viewState == ViewState.loading && state.brands.isEmpty) {
       return const BrandsSkeleton();
     }
@@ -398,7 +394,11 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                   color: AppColors.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.error,
+                  size: 32,
+                ),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -407,13 +407,20 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                state.errorMessage ?? 'Ocurrió un error inesperado al conectar.',
+                state.errorMessage ??
+                    'Ocurrió un error inesperado al conectar.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () => context.read<BrandsCubit>().loadBrands(forceRefresh: true),
+                onPressed:
+                    () => context.read<BrandsCubit>().loadBrands(
+                      forceRefresh: true,
+                    ),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: const Text('Reintentar'),
               ),
@@ -431,7 +438,8 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
     final crossAxisCount = width >= 1100 ? 3 : (width >= 650 ? 2 : 1);
 
     return RefreshIndicator(
-      onRefresh: () => context.read<BrandsCubit>().loadBrands(forceRefresh: true),
+      onRefresh:
+          () => context.read<BrandsCubit>().loadBrands(forceRefresh: true),
       child: GridView.builder(
         controller: _scrollController,
         padding: EdgeInsets.fromLTRB(
@@ -466,7 +474,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: brand.isActive ? AppColors.border : AppColors.border.withValues(alpha: 0.5),
+          color:
+              brand.isActive
+                  ? AppColors.border
+                  : AppColors.border.withValues(alpha: 0.5),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -487,20 +498,26 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                   border: Border.all(color: AppColors.border),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: hasLogo
-                    ? CachedNetworkImage(
-                        imageUrl: brand.logoUrl!,
-                        fit: BoxFit.contain,
-                        placeholder: (ctx, url) => const Center(
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 1.8),
-                          ),
-                        ),
-                        errorWidget: (ctx, url, err) => _buildInitialAvatar(brand.name),
-                      )
-                    : _buildInitialAvatar(brand.name),
+                child:
+                    hasLogo
+                        ? CachedNetworkImage(
+                          imageUrl: brand.logoUrl!,
+                          fit: BoxFit.contain,
+                          placeholder:
+                              (ctx, url) => const Center(
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.8,
+                                  ),
+                                ),
+                              ),
+                          errorWidget:
+                              (ctx, url, err) =>
+                                  _buildInitialAvatar(brand.name),
+                        )
+                        : _buildInitialAvatar(brand.name),
               ),
 
               const SizedBox(width: 14),
@@ -519,7 +536,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
-                              color: brand.isActive ? AppColors.textPrimary : AppColors.textMuted,
+                              color:
+                                  brand.isActive
+                                      ? AppColors.textPrimary
+                                      : AppColors.textMuted,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -527,9 +547,15 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: brand.isActive ? AppColors.successLight : AppColors.slateLight,
+                            color:
+                                brand.isActive
+                                    ? AppColors.successLight
+                                    : AppColors.slateLight,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -537,7 +563,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: brand.isActive ? AppColors.success : AppColors.slate,
+                              color:
+                                  brand.isActive
+                                      ? AppColors.success
+                                      : AppColors.slate,
                             ),
                           ),
                         ),
@@ -596,7 +625,11 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 17, color: AppColors.textSecondary),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          size: 17,
+                          color: AppColors.textSecondary,
+                        ),
                         tooltip: 'Editar marca',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -604,7 +637,11 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 17, color: AppColors.danger),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 17,
+                          color: AppColors.danger,
+                        ),
                         tooltip: 'Eliminar marca',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -669,7 +706,10 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
                   ? 'Intenta con otro término de búsqueda o limpia el filtro.'
                   : 'Agrega marcas para asociarlas a tus productos y mejorar la búsqueda en el catálogo.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
@@ -684,11 +724,21 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              icon: Icon(isSearching ? Icons.clear_rounded : Icons.add_rounded, size: 18),
-              label: Text(isSearching ? 'Limpiar búsqueda' : 'Registrar Primera Marca'),
+              icon: Icon(
+                isSearching ? Icons.clear_rounded : Icons.add_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isSearching ? 'Limpiar búsqueda' : 'Registrar Primera Marca',
+              ),
             ),
           ],
         ),
@@ -711,7 +761,8 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             secondChild: const SizedBox.shrink(),
-            crossFadeState: extended ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            crossFadeState:
+                extended ? CrossFadeState.showFirst : CrossFadeState.showSecond,
             duration: const Duration(milliseconds: 200),
           ),
         );
@@ -723,10 +774,12 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.2) : AppColors.background,
+        color:
+            isDark ? Colors.white.withValues(alpha: 0.2) : AppColors.background,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.3) : AppColors.border,
+          color:
+              isDark ? Colors.white.withValues(alpha: 0.3) : AppColors.border,
         ),
       ),
       child: Text(

@@ -1048,7 +1048,6 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 720;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -1086,31 +1085,7 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
                       color: AppColors.textMuted, size: 18),
                   onPressed: widget.onClear,
                 )
-              : (isDesktop
-                  ? Tooltip(
-                      message: 'Atajo: ${AppShortcutLabels.search}',
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            AppShortcutLabels.search,
-                            style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : null),
+              : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,

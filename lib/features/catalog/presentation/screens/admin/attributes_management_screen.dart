@@ -13,7 +13,6 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attribute_value_dialog.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/attributes/attributes_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 enum _AttributeFilter { all, withValues, withoutValues }
 
@@ -118,7 +117,8 @@ class _AttributesManagementScreenState
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Actualizar',
-                onPressed: () => context.read<AttributesCubit>().loadAttributes(),
+                onPressed:
+                    () => context.read<AttributesCubit>().loadAttributes(),
               )
             else ...[
               OutlinedButton.icon(
@@ -151,10 +151,7 @@ class _AttributesManagementScreenState
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text(
                   'Nueva Propiedad',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -210,7 +207,9 @@ class _AttributesManagementScreenState
             child: BlocBuilder<AttributesCubit, AttributesState>(
               builder: (context, state) {
                 final cubit = context.read<AttributesCubit>();
-                final filteredAttributes = _getFilteredAttributes(state.attributes);
+                final filteredAttributes = _getFilteredAttributes(
+                  state.attributes,
+                );
                 final totalValues = state.attributes.fold<int>(
                   0,
                   (sum, a) => sum + a.values.length,
@@ -294,9 +293,10 @@ class _AttributesManagementScreenState
                     color: AppColors.textPrimary,
                   ),
                   decoration: InputDecoration(
-                    hintText: isMobile
-                        ? 'Buscar propiedad o valor...'
-                        : 'Buscar propiedad o valor (Ej: Talla, Spiderman, Litro)...',
+                    hintText:
+                        isMobile
+                            ? 'Buscar propiedad o valor...'
+                            : 'Buscar propiedad o valor (Ej: Talla, Spiderman, Litro)...',
                     hintStyle: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,
@@ -306,41 +306,17 @@ class _AttributesManagementScreenState
                       size: 18,
                       color: AppColors.textSecondary,
                     ),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 16),
-                            tooltip: 'Limpiar búsqueda',
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : (!isMobile
-                            ? Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: AppColors.border),
-                                    ),
-                                    child: Text(
-                                      AppShortcutLabels.search,
-                                      style: const TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                            : null),
+                    suffixIcon:
+                        _searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              tooltip: 'Limpiar búsqueda',
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                            : null,
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
@@ -351,7 +327,8 @@ class _AttributesManagementScreenState
 
             // Stat Badges
             _buildStatBadge(
-              label: '$totalAttributes ${totalAttributes == 1 ? 'propiedad' : 'propiedades'}',
+              label:
+                  '$totalAttributes ${totalAttributes == 1 ? 'propiedad' : 'propiedades'}',
               icon: Icons.category_outlined,
               color: AppColors.primary,
             ),
@@ -372,10 +349,7 @@ class _AttributesManagementScreenState
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildFilterChip(
-                label: 'Todas',
-                filter: _AttributeFilter.all,
-              ),
+              _buildFilterChip(label: 'Todas', filter: _AttributeFilter.all),
               const SizedBox(width: 6),
               _buildFilterChip(
                 label: 'Con valores',
@@ -405,9 +379,10 @@ class _AttributesManagementScreenState
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : AppColors.surface,
+          color:
+              isSelected
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -568,7 +543,8 @@ class _AttributesManagementScreenState
       );
     }
 
-    if (filteredAttributes.isEmpty && (_searchQuery.isNotEmpty || _activeFilter != _AttributeFilter.all)) {
+    if (filteredAttributes.isEmpty &&
+        (_searchQuery.isNotEmpty || _activeFilter != _AttributeFilter.all)) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -694,7 +670,9 @@ class _AttributeCardState extends State<_AttributeCard> {
 
   IconData _getAttributeIcon(String name) {
     final lower = name.toLowerCase().trim();
-    if (lower.contains('talla') || lower.contains('tamaño') || lower.contains('size')) {
+    if (lower.contains('talla') ||
+        lower.contains('tamaño') ||
+        lower.contains('size')) {
       return Icons.straighten_rounded;
     }
     if (lower.contains('color')) {
@@ -768,9 +746,8 @@ class _AttributeCardState extends State<_AttributeCard> {
 
     // Sistema Smart Tag Cloud: colapso inteligente si hay más de 8 valores
     final hasManyValues = values.length > 8;
-    final visibleValues = (hasManyValues && !_isExpanded)
-        ? values.take(8).toList()
-        : values;
+    final visibleValues =
+        (hasManyValues && !_isExpanded) ? values.take(8).toList() : values;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -782,9 +759,10 @@ class _AttributeCardState extends State<_AttributeCard> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isHovered
-                ? AppColors.primary.withValues(alpha: 0.35)
-                : AppColors.border,
+            color:
+                _isHovered
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : AppColors.border,
             width: 1,
           ),
           boxShadow: [
@@ -819,11 +797,7 @@ class _AttributeCardState extends State<_AttributeCard> {
                           color: themeColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(
-                          themeIcon,
-                          color: themeColor,
-                          size: 20,
-                        ),
+                        child: Icon(themeIcon, color: themeColor, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Flexible(
@@ -910,17 +884,18 @@ class _AttributeCardState extends State<_AttributeCard> {
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  ...visibleValues.map(
-                    (v) {
-                      final isMatch = widget.searchQuery.isNotEmpty &&
-                          v.value.toLowerCase().contains(widget.searchQuery.toLowerCase());
-                      return _ValueChip(
-                        value: v,
-                        attributeName: formattedTitle,
-                        isSearchMatch: isMatch,
-                      );
-                    },
-                  ),
+                  ...visibleValues.map((v) {
+                    final isMatch =
+                        widget.searchQuery.isNotEmpty &&
+                        v.value.toLowerCase().contains(
+                          widget.searchQuery.toLowerCase(),
+                        );
+                    return _ValueChip(
+                      value: v,
+                      attributeName: formattedTitle,
+                      isSearchMatch: isMatch,
+                    );
+                  }),
 
                   // Botón para expandir/colapsar si tiene muchos valores
                   if (hasManyValues)
@@ -928,7 +903,10 @@ class _AttributeCardState extends State<_AttributeCard> {
                       onTap: () => setState(() => _isExpanded = !_isExpanded),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.background,
                           borderRadius: BorderRadius.circular(8),
@@ -968,7 +946,10 @@ class _AttributeCardState extends State<_AttributeCard> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.primary, width: 1.5),
+                        border: Border.all(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.primary.withValues(alpha: 0.12),
@@ -980,7 +961,10 @@ class _AttributeCardState extends State<_AttributeCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ConstrainedBox(
-                            constraints: const BoxConstraints(minWidth: 90, maxWidth: 160),
+                            constraints: const BoxConstraints(
+                              minWidth: 90,
+                              maxWidth: 160,
+                            ),
                             child: TextField(
                               controller: _inlineCtrl,
                               focusNode: _inlineFocusNode,
@@ -998,7 +982,9 @@ class _AttributeCardState extends State<_AttributeCard> {
                                 ),
                                 border: InputBorder.none,
                                 isDense: true,
-                                contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                               ),
                               onSubmitted: (_) => _submitInlineValue(),
                             ),
@@ -1103,9 +1089,10 @@ class _CardActionIconState extends State<_CardActionIcon> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? widget.hoverColor.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color:
+                  _isHovered
+                      ? widget.hoverColor.withValues(alpha: 0.1)
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -1174,18 +1161,20 @@ class _ValueChipState extends State<_ValueChip> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: widget.isSearchMatch
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : (_isHovered
-                  ? AppColors.primary.withValues(alpha: 0.05)
-                  : AppColors.background),
+          color:
+              widget.isSearchMatch
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : (_isHovered
+                      ? AppColors.primary.withValues(alpha: 0.05)
+                      : AppColors.background),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: widget.isSearchMatch
-                ? AppColors.primary
-                : (_isHovered
-                    ? AppColors.primary.withValues(alpha: 0.4)
-                    : AppColors.border),
+            color:
+                widget.isSearchMatch
+                    ? AppColors.primary
+                    : (_isHovered
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : AppColors.border),
             width: widget.isSearchMatch ? 1.4 : 1,
           ),
         ),
@@ -1196,8 +1185,12 @@ class _ValueChipState extends State<_ValueChip> {
               widget.value.value,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: widget.isSearchMatch ? FontWeight.bold : FontWeight.w500,
-                color: widget.isSearchMatch ? AppColors.primary : AppColors.textPrimary,
+                fontWeight:
+                    widget.isSearchMatch ? FontWeight.bold : FontWeight.w500,
+                color:
+                    widget.isSearchMatch
+                        ? AppColors.primary
+                        : AppColors.textPrimary,
               ),
             ),
             const SizedBox(width: 6),
@@ -1206,20 +1199,21 @@ class _ValueChipState extends State<_ValueChip> {
               borderRadius: BorderRadius.circular(4),
               child: Padding(
                 padding: const EdgeInsets.all(2),
-                child: _isDeleting
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                child:
+                    _isDeleting
+                        ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.textSecondary,
+                          ),
+                        )
+                        : const Icon(
+                          Icons.close_rounded,
+                          size: 14,
                           color: AppColors.textSecondary,
                         ),
-                      )
-                    : const Icon(
-                        Icons.close_rounded,
-                        size: 14,
-                        color: AppColors.textSecondary,
-                      ),
               ),
             ),
           ],
@@ -1233,10 +1227,7 @@ class _AddValueChipButton extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
-  const _AddValueChipButton({
-    required this.onTap,
-    this.onLongPress,
-  });
+  const _AddValueChipButton({required this.onTap, this.onLongPress});
 
   @override
   State<_AddValueChipButton> createState() => _AddValueChipButtonState();
@@ -1261,22 +1252,21 @@ class _AddValueChipButtonState extends State<_AddValueChipButton> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : AppColors.primary.withValues(alpha: 0.08),
+              color:
+                  _isHovered
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: AppColors.primary.withValues(alpha: _isHovered ? 0.4 : 0.2),
+                color: AppColors.primary.withValues(
+                  alpha: _isHovered ? 0.4 : 0.2,
+                ),
               ),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.add_rounded,
-                  size: 15,
-                  color: AppColors.primary,
-                ),
+                Icon(Icons.add_rounded, size: 15, color: AppColors.primary),
                 SizedBox(width: 4),
                 Text(
                   'Añadir valor',
