@@ -17,6 +17,7 @@ class PurchaseOrderItemsTable extends StatelessWidget {
   final Function(int index, double qty) onUpdateQuantity;
   final Function(int index, double cost) onUpdateCost;
   final VoidCallback onAddNewRow;
+  final VoidCallback? onScanBarcode;
 
   /// Si se pasa, los productos con lote muestran un chip para editarlo.
   final ValueChanged<int>? onEditBatch;
@@ -35,6 +36,7 @@ class PurchaseOrderItemsTable extends StatelessWidget {
     required this.onUpdateQuantity,
     required this.onUpdateCost,
     required this.onAddNewRow,
+    this.onScanBarcode,
     this.onEditBatch,
     this.title = 'Ítems de la orden',
     this.emptyTitle = 'Aún no hay productos',
@@ -141,26 +143,57 @@ class PurchaseOrderItemsTable extends StatelessWidget {
           ),
           // Con la lista vacía, la acción vive en el estado vacío.
           if (items.isNotEmpty)
-            FilledButton.icon(
-              onPressed: onAddNewRow,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Agregar producto'),
-              style: FilledButton.styleFrom(
-                backgroundColor: p.accentSoft,
-                foregroundColor: p.accent,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onScanBarcode != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      onScanBarcode!();
+                    },
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    label: const Text('Escanear'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: p.accent,
+                      side: BorderSide(color: p.accent.withValues(alpha: 0.35)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                FilledButton.icon(
+                  onPressed: onAddNewRow,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Agregar producto'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: p.accentSoft,
+                    foregroundColor: p.accent,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              ],
             ),
         ],
       ),
@@ -239,26 +272,57 @@ class PurchaseOrderItemsTable extends StatelessWidget {
                 style: TextStyle(fontSize: 13.5, color: p.textMuted),
               ),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onAddNewRow,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Agregar producto'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: p.accentFilled,
-                  foregroundColor: p.onAccentFilled,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 14,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  if (onScanBarcode != null)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        onScanBarcode!();
+                      },
+                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                      label: const Text('Escanear código'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: p.accent,
+                        side: BorderSide(color: p.accent.withValues(alpha: 0.4)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  FilledButton.icon(
+                    onPressed: onAddNewRow,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Agregar producto'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: p.accentFilled,
+                      foregroundColor: p.onAccentFilled,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                ],
               ),
             ],
           ),

@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exi
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_exit_product/add_exit_product_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/exit_quantity_stepper.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 /// Identificador estable de un lote (para saber cuánto ya está en la lista).
 String exitBatchKey(Map<String, dynamic>? batch) {
@@ -43,12 +44,20 @@ class AddExitProductSheet extends StatefulWidget {
   /// Lo define [show]. `true` = diálogo (pantalla ancha).
   final bool asDialog;
 
+  /// Producto inicial opcional (ej. cuando se escaneó un código previamente).
+  final ProductModel? initialProduct;
+
+  /// Variante inicial opcional.
+  final ProductVariantModel? initialVariant;
+
   const AddExitProductSheet({
     super.key,
     required this.warehouseId,
     this.reservedByBatchId = const {},
     this.onAddAndContinue,
     this.asDialog = false,
+    this.initialProduct,
+    this.initialVariant,
   });
 
   static Future<ExitItemUI?> show(
@@ -56,6 +65,8 @@ class AddExitProductSheet extends StatefulWidget {
     required String warehouseId,
     Map<String, double> reservedByBatchId = const {},
     ValueChanged<ExitItemUI>? onAddAndContinue,
+    ProductModel? initialProduct,
+    ProductVariantModel? initialVariant,
   }) {
     final isWide = MediaQuery.sizeOf(context).width >= 700;
     if (isWide) {
@@ -68,6 +79,8 @@ class AddExitProductSheet extends StatefulWidget {
               reservedByBatchId: reservedByBatchId,
               onAddAndContinue: onAddAndContinue,
               asDialog: true,
+              initialProduct: initialProduct,
+              initialVariant: initialVariant,
             ),
       );
     }
@@ -80,6 +93,8 @@ class AddExitProductSheet extends StatefulWidget {
             warehouseId: warehouseId,
             reservedByBatchId: reservedByBatchId,
             onAddAndContinue: onAddAndContinue,
+            initialProduct: initialProduct,
+            initialVariant: initialVariant,
           ),
     );
   }
@@ -116,6 +131,15 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
     _repository = GetIt.I<ProductsRepository>();
     _cubit = AddExitProductCubit(_repository);
     _reserved = Map<String, double>.of(widget.reservedByBatchId);
+    if (widget.initialProduct != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _onProductChanged(widget.initialProduct);
+        if (widget.initialVariant != null) {
+          _onVariantChanged(widget.initialVariant!);
+        }
+      });
+    }
   }
 
   @override
@@ -615,7 +639,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             return TextField(
               controller: textEditingController,
               focusNode: focusNode,
-              autofocus: true,
+              autofocus: widget.initialProduct == null,
               textInputAction: TextInputAction.search,
               style: textTheme.bodyLarge,
               decoration: _inputDecoration(
@@ -623,6 +647,29 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.textMuted,
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  tooltip: 'Escanear código (QR / Barras)',
+                  splashRadius: 18,
+                  onPressed: () async {
+                    final res = await PosCameraScannerDialog.show(
+                      context,
+                      warehouseId: widget.warehouseId,
+                    );
+                    if (res != null && mounted) {
+                      _onProductChanged(ProductModel.fromEntity(res.product));
+                      if (res.variant != null) {
+                        _onVariantChanged(
+                          ProductVariantModel.fromEntity(res.variant!),
+                        );
+                      }
+                    }
+                  },
                 ),
               ),
             );

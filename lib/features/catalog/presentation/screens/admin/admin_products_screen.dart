@@ -24,6 +24,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/mobile/products_mobile_card_list.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 /// Pantalla Principal de Catálogo e Inventario de Productos para Administradores.
 /// Diseño camaleónico de alta densidad para Desktop, eficiencia híbrida para Tablet
@@ -877,6 +878,24 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   },
                                   onSearchSubmitted:
                                       (val) => cubit.submitSearch(val),
+                                  onScanBarcode: () async {
+                                    final res =
+                                        await PosCameraScannerDialog.show(
+                                          context,
+                                        );
+                                    if (!context.mounted || res == null) return;
+                                    final query =
+                                        res.product.defaultVariant?.sku ??
+                                        res.rawCode;
+                                    _searchCtrl.text = query;
+                                    cubit.submitSearch(query);
+                                    AppSnackbar.show(
+                                      context,
+                                      message:
+                                          'Código detectado: ${res.product.name}',
+                                      type: SnackbarType.info,
+                                    );
+                                  },
                                   searchKeyHint: '/',
                                   filterWidgets: [
                                     _buildCategoryDropdown(

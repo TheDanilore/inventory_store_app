@@ -11,7 +11,10 @@ import 'package:inventory_store_app/features/inventory/presentation/bloc/invento
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/add_exit_product_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/exit_quantity_stepper.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_items_table.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryExitFormScreen extends StatefulWidget {
   const InventoryExitFormScreen({super.key});
@@ -78,6 +81,49 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
       warehouseId: warehouseId,
       reservedByBatchId: reserved,
       // Permite cargar varios productos sin cerrar y reabrir el panel.
+      onAddAndContinue: (item) => cubit.addItem(item),
+    );
+
+    if (newItem != null && mounted) {
+      cubit.addItem(newItem);
+    }
+  }
+
+  Future<void> _scanAndAddProduct() async {
+    final cubit = context.read<InventoryExitFormCubit>();
+    final warehouseId = cubit.state.selectedWarehouseId;
+    if (warehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Seleccione el almacén de origen primero',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosCameraScannerDialog.show(
+      context,
+      warehouseId: warehouseId,
+    );
+    if (res == null || !mounted) return;
+
+    final reserved = <String, double>{};
+    for (final i in cubit.state.items) {
+      final key = exitBatchKey(i.selectedBatch);
+      if (key.isEmpty) continue;
+      reserved[key] = (reserved[key] ?? 0.0) + i.quantity;
+    }
+
+    final productModel = ProductModel.fromEntity(res.product);
+    final variantModel =
+        res.variant != null ? ProductVariantModel.fromEntity(res.variant!) : null;
+
+    final newItem = await AddExitProductSheet.show(
+      context,
+      warehouseId: warehouseId,
+      reservedByBatchId: reserved,
+      initialProduct: productModel,
+      initialVariant: variantModel,
       onAddAndContinue: (item) => cubit.addItem(item),
     );
 
@@ -583,6 +629,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         onRemoveItem: (index) => _removeItemWithUndo(cubit, index),
         onUpdateQuantity: (index, qty) => cubit.updateQuantity(index, qty),
         onAddNewRow: _showAddProductSheet,
+        onScanBarcode: _scanAndAddProduct,
       );
     }
 
@@ -604,6 +651,16 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
               ),
               if (items.isNotEmpty) ...[
                 const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Escanear código',
+                  icon: const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                  onPressed: _scanAndAddProduct,
+                ),
+                const SizedBox(width: 4),
                 FilledButton.tonalIcon(
                   onPressed: _showAddProductSheet,
                   icon: const Icon(Icons.add_rounded, size: 18),
@@ -720,19 +777,42 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: _showAddProductSheet,
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Agregar producto'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(0, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _scanAndAddProduct,
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label: const Text('Escanear código'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.4),
+                  ),
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+              FilledButton.icon(
+                onPressed: _showAddProductSheet,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Agregar producto'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

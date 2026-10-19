@@ -18,6 +18,7 @@ class CatalogHeader extends StatefulWidget {
   final FocusNode? searchFocusNode;
   final bool isTableView;
   final ValueChanged<bool>? onToggleTableView;
+  final VoidCallback? onScanBarcode;
 
   const CatalogHeader({
     super.key,
@@ -34,6 +35,7 @@ class CatalogHeader extends StatefulWidget {
     this.searchFocusNode,
     this.isTableView = false,
     this.onToggleTableView,
+    this.onScanBarcode,
   });
 
   @override
@@ -513,6 +515,23 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                       ),
                     ),
                   ),
+                  if (widget.onScanBarcode != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.qr_code_scanner_rounded,
+                          size: 20,
+                          color: activeBlue,
+                        ),
+                        tooltip: 'Escanear código (QR / Barras)',
+                        splashRadius: 18,
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          widget.onScanBarcode!();
+                        },
+                      ),
+                    ),
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: FilledButton.icon(

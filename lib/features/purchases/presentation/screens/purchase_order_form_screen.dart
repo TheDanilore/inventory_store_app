@@ -12,8 +12,11 @@ import 'package:inventory_store_app/features/purchases/presentation/widgets/purc
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_items_table.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class PurchaseOrderFormScreen extends StatefulWidget {
   final String? editOrderId;
@@ -126,6 +129,67 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 
     if (newItem != null && context.mounted) {
       viewModel.addItem(newItem);
+    }
+  }
+
+  Future<void> _scanAndAddProduct(BuildContext context) async {
+    final cubit = context.read<PurchaseOrderFormCubit>();
+    final state = cubit.state;
+    final viewModel = _PurchaseOrderFormViewModel(cubit, state);
+
+    if (viewModel.selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Selecciona un almacén de destino antes de escanear productos.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosCameraScannerDialog.show(
+      context,
+      warehouseId: viewModel.selectedWarehouseId,
+    );
+    if (!context.mounted || res == null) return;
+
+    final product = res.product;
+    final variant = res.variant;
+
+    final existingIndex = viewModel.items.indexWhere(
+      (item) =>
+          item.productId == product.id &&
+          (variant == null || item.variantId == variant.id),
+    );
+
+    if (existingIndex != -1) {
+      final currentItem = viewModel.items[existingIndex];
+      viewModel.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+      AppSnackbar.show(
+        context,
+        message:
+            'Se incrementó cantidad de "${product.name}" a ${(currentItem.quantity + 1).toInt()}',
+        type: SnackbarType.success,
+      );
+    } else {
+      final productModel = ProductModel.fromEntity(product);
+      final variantModel =
+          variant != null ? ProductVariantModel.fromEntity(variant) : null;
+      final newItem = await showModalBottomSheet<InventoryEntryItemEntity>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder:
+            (_) => AddEntryProductSheet(
+              warehouseId: viewModel.selectedWarehouseId,
+              isBatchRequired: false,
+              initialProduct: productModel,
+              initialVariant: variantModel,
+            ),
+      );
+
+      if (newItem != null && context.mounted) {
+        viewModel.addItem(newItem);
+      }
     }
   }
 
@@ -703,6 +767,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             (index, qty) => viewModel.updateItemQuantity(index, qty),
         onUpdateCost: (index, cost) => viewModel.updateItemCost(index, cost),
         onAddNewRow: () => _showAddProductSheet(context),
+        onScanBarcode: () => _scanAndAddProduct(context),
       );
     }
 
@@ -722,6 +787,15 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
               const SizedBox(width: 8),
               Row(
                 children: [
+                  IconButton(
+                    tooltip: 'Escanear código',
+                    icon: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    onPressed: () => _scanAndAddProduct(context),
+                  ),
                   TextButton.icon(
                     onPressed: () => _showAddProductSheet(context),
                     icon: const Icon(
@@ -801,21 +875,46 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 18),
-                  OutlinedButton.icon(
-                    onPressed: () => _showAddProductSheet(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Agregar primer producto'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _scanAndAddProduct(context),
+                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                        label: const Text('Escanear código'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                      FilledButton.icon(
+                        onPressed: () => _showAddProductSheet(context),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Agregar producto'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

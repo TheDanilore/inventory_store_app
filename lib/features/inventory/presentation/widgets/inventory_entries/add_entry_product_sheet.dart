@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/inventory/data/models/warehouse_sto
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/add_entry_product/add_entry_product_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 /// Panel para añadir un producto a la entrada de inventario.
 ///
@@ -34,12 +35,20 @@ class AddEntryProductSheet extends StatefulWidget {
   /// Lo define [show]. `true` = diálogo (pantalla ancha).
   final bool asDialog;
 
+  /// Producto inicial opcional (ej. cuando se escaneó un código previamente).
+  final ProductModel? initialProduct;
+
+  /// Variante inicial opcional.
+  final ProductVariantModel? initialVariant;
+
   const AddEntryProductSheet({
     super.key,
     this.warehouseId,
     this.isBatchRequired = true,
     this.onAddAndContinue,
     this.asDialog = false,
+    this.initialProduct,
+    this.initialVariant,
   });
 
   static Future<InventoryEntryItemEntity?> show(
@@ -47,6 +56,8 @@ class AddEntryProductSheet extends StatefulWidget {
     String? warehouseId,
     bool isBatchRequired = true,
     ValueChanged<InventoryEntryItemEntity>? onAddAndContinue,
+    ProductModel? initialProduct,
+    ProductVariantModel? initialVariant,
   }) {
     final isWide = MediaQuery.sizeOf(context).width >= 700;
     if (isWide) {
@@ -59,6 +70,8 @@ class AddEntryProductSheet extends StatefulWidget {
               isBatchRequired: isBatchRequired,
               onAddAndContinue: onAddAndContinue,
               asDialog: true,
+              initialProduct: initialProduct,
+              initialVariant: initialVariant,
             ),
       );
     }
@@ -71,6 +84,8 @@ class AddEntryProductSheet extends StatefulWidget {
             warehouseId: warehouseId,
             isBatchRequired: isBatchRequired,
             onAddAndContinue: onAddAndContinue,
+            initialProduct: initialProduct,
+            initialVariant: initialVariant,
           ),
     );
   }
@@ -109,6 +124,15 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     super.initState();
     _repository = GetIt.I<ProductsRepository>();
     _cubit = AddEntryProductCubit(_repository);
+    if (widget.initialProduct != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _onProductChanged(widget.initialProduct);
+        if (widget.initialVariant != null) {
+          _onVariantChanged(widget.initialVariant);
+        }
+      });
+    }
   }
 
   @override
@@ -616,7 +640,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             return TextField(
               controller: textEditingController,
               focusNode: focusNode,
-              autofocus: true,
+              autofocus: widget.initialProduct == null,
               textInputAction: TextInputAction.search,
               style: textTheme.bodyLarge,
               decoration: _inputDecoration(
@@ -624,6 +648,29 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.textMuted,
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  tooltip: 'Escanear código (QR / Barras)',
+                  splashRadius: 18,
+                  onPressed: () async {
+                    final res = await PosCameraScannerDialog.show(
+                      context,
+                      warehouseId: widget.warehouseId,
+                    );
+                    if (res != null && mounted) {
+                      _onProductChanged(ProductModel.fromEntity(res.product));
+                      if (res.variant != null) {
+                        _onVariantChanged(
+                          ProductVariantModel.fromEntity(res.variant!),
+                        );
+                      }
+                    }
+                  },
                 ),
               ),
             );

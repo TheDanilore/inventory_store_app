@@ -178,6 +178,12 @@ class AdminProToolbar extends StatefulWidget {
   /// pulsar el botón "Buscar" o limpiar el texto, evitando búsquedas prematuras por tecla.
   final bool searchOnSubmitOnly;
 
+  /// Callback opcional para escanear código de barras o QR desde el buscador.
+  final VoidCallback? onScanBarcode;
+
+  /// Tooltip del botón de escaneo de código.
+  final String scanBarcodeTooltip;
+
   const AdminProToolbar({
     super.key,
     required this.searchController,
@@ -211,6 +217,8 @@ class AdminProToolbar extends StatefulWidget {
     this.mobileActionsTitle = 'Opciones y Herramientas',
     this.enableKeyboardShortcuts = true,
     this.searchOnSubmitOnly = true,
+    this.onScanBarcode,
+    this.scanBarcodeTooltip = 'Escanear código (QR / Barras)',
   });
 
   @override
@@ -441,6 +449,21 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                         splashRadius: 16,
                         onPressed: _handleClearSearch,
                       ),
+                    if (widget.onScanBarcode != null)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          size: 19,
+                        ),
+                        color:
+                            isDark ? const Color(0xFF60A5FA) : AppColors.tealDark,
+                        tooltip: widget.scanBarcodeTooltip,
+                        splashRadius: 18,
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          widget.onScanBarcode!();
+                        },
+                      ),
                     Tooltip(
                       message: 'Buscar (Atajo: Enter)',
                       waitDuration: const Duration(milliseconds: 400),
@@ -607,6 +630,21 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                       ),
                       splashRadius: 18,
                       onPressed: _handleClearSearch,
+                    ),
+                  if (widget.onScanBarcode != null)
+                    IconButton(
+                      icon: Icon(
+                        Icons.qr_code_scanner_rounded,
+                        size: 20,
+                        color:
+                            isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                      ),
+                      tooltip: widget.scanBarcodeTooltip,
+                      splashRadius: 20,
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        widget.onScanBarcode!();
+                      },
                     ),
                   IconButton(
                     icon: Icon(

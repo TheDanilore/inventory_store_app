@@ -19,6 +19,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_status_states.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_add_to_cart_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 /// Modos de visualización del catálogo de productos.
 enum CatalogViewMode { grid, table }
@@ -349,6 +350,23 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                               onExport:
                                   () => _exportCatalog(context, cubit, state),
                               onSearchSubmitted: cubit.submitSearch,
+                              onScanBarcode: () async {
+                                final res = await PosCameraScannerDialog.show(
+                                  context,
+                                );
+                                if (!context.mounted || res == null) return;
+                                final query =
+                                    res.product.defaultVariant?.sku ??
+                                    res.rawCode;
+                                _searchCtrl.text = query;
+                                cubit.submitSearch(query);
+                                AppSnackbar.show(
+                                  context,
+                                  message:
+                                      'Código detectado: ${res.product.name}',
+                                  type: SnackbarType.info,
+                                );
+                              },
                               searchByIngredient: state.searchByIngredient,
                               onToggleIngredientSearch:
                                   cubit.toggleSearchByIngredient,

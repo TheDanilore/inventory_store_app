@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/exit_quantity_stepper.dart';
@@ -45,6 +46,7 @@ class InventoryExitItemsTable extends StatelessWidget {
   final ValueChanged<int> onRemoveItem;
   final Function(int index, double qty) onUpdateQuantity;
   final VoidCallback onAddNewRow;
+  final VoidCallback? onScanBarcode;
 
   const InventoryExitItemsTable({
     super.key,
@@ -52,6 +54,7 @@ class InventoryExitItemsTable extends StatelessWidget {
     required this.onRemoveItem,
     required this.onUpdateQuantity,
     required this.onAddNewRow,
+    this.onScanBarcode,
   });
 
   @override
@@ -72,7 +75,7 @@ class InventoryExitItemsTable extends StatelessWidget {
             _buildHeader(totalUnits),
             const Divider(height: 1, thickness: 1, color: AppColors.border),
             if (items.isEmpty)
-              _EmptyState(onAdd: onAddNewRow)
+              _EmptyState(onAdd: onAddNewRow, onScan: onScanBarcode)
             else ...[
               Container(
                 color: AppColors.background,
@@ -190,23 +193,54 @@ class InventoryExitItemsTable extends StatelessWidget {
             ),
           ),
           if (items.isNotEmpty)
-            FilledButton.tonalIcon(
-              onPressed: onAddNewRow,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Agregar producto'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                foregroundColor: AppColors.primary,
-                minimumSize: const Size(44, 44),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onScanBarcode != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      onScanBarcode!();
+                    },
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    label: const Text('Escanear'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                      ),
+                      minimumSize: const Size(44, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      textStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                FilledButton.tonalIcon(
+                  onPressed: onAddNewRow,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Agregar producto'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    foregroundColor: AppColors.primary,
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+              ],
             ),
         ],
       ),
@@ -527,7 +561,8 @@ class InventoryExitItemCard extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final VoidCallback onAdd;
-  const _EmptyState({required this.onAdd});
+  final VoidCallback? onScan;
+  const _EmptyState({required this.onAdd, this.onScan});
 
   @override
   Widget build(BuildContext context) {
@@ -565,19 +600,54 @@ class _EmptyState extends StatelessWidget {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Agregar producto'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 10,
+              children: [
+                if (onScan != null)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      onScan!();
+                    },
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    label: const Text('Escanear código'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.4),
+                      ),
+                      minimumSize: const Size(0, 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                FilledButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Agregar producto'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

@@ -13,6 +13,9 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
+import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryEntryFormScreen extends StatefulWidget {
   final String? purchaseOrderId;
@@ -122,6 +125,58 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
 
     if (newItem != null && mounted) {
       cubit.addItem(newItem);
+    }
+  }
+
+  Future<void> _scanAndAddProduct(BuildContext context) async {
+    final cubit = context.read<InventoryEntryFormCubit>();
+    if (cubit.state.selectedWarehouseId == null) {
+      AppSnackbar.show(
+        context,
+        message: 'Seleccione un almacén destino primero',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final res = await PosCameraScannerDialog.show(
+      context,
+      warehouseId: cubit.state.selectedWarehouseId,
+    );
+    if (!context.mounted || res == null) return;
+
+    final product = res.product;
+    final variant = res.variant;
+
+    final existingIndex = cubit.state.items.indexWhere(
+      (item) =>
+          item.productId == product.id &&
+          (variant == null || item.variantId == variant.id),
+    );
+
+    if (existingIndex != -1) {
+      final currentItem = cubit.state.items[existingIndex];
+      cubit.updateItemQuantity(existingIndex, currentItem.quantity + 1);
+      AppSnackbar.show(
+        context,
+        message:
+            'Se incrementó cantidad de "${product.name}" a ${(currentItem.quantity + 1).toInt()}',
+        type: SnackbarType.success,
+      );
+    } else {
+      final productModel = ProductModel.fromEntity(product);
+      final variantModel =
+          variant != null ? ProductVariantModel.fromEntity(variant) : null;
+      final newItem = await AddEntryProductSheet.show(
+        context,
+        warehouseId: cubit.state.selectedWarehouseId,
+        initialProduct: productModel,
+        initialVariant: variantModel,
+        onAddAndContinue: (item) => cubit.addItem(item),
+      );
+      if (newItem != null && context.mounted) {
+        cubit.addItem(newItem);
+      }
     }
   }
 
@@ -1118,6 +1173,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                 (index, qty) => cubit.updateItemQuantity(index, qty),
             onUpdateCost: (index, cost) => cubit.updateItemCost(index, cost),
             onAddNewRow: () => _showAddProductSheet(context),
+            onScanBarcode: () => _scanAndAddProduct(context),
             onEditBatch: (index) {
               if (index < items.length) {
                 _showEditBatchDialog(context, index, items[index], cubit);
@@ -1152,6 +1208,16 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   ),
                   if (items.isNotEmpty) ...[
                     const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Escanear código',
+                      icon: const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      onPressed: () => _scanAndAddProduct(context),
+                    ),
+                    const SizedBox(width: 4),
                     FilledButton.tonalIcon(
                       onPressed: () => _showAddProductSheet(context),
                       icon: const Icon(Icons.add_rounded, size: 18),
@@ -1284,19 +1350,42 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 18),
-          FilledButton.icon(
-            onPressed: () => _showAddProductSheet(context),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Agregar producto'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(0, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _scanAndAddProduct(context),
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label: const Text('Escanear código'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.4),
+                  ),
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+              FilledButton.icon(
+                onPressed: () => _showAddProductSheet(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Agregar producto'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
