@@ -714,45 +714,55 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
             const SizedBox(height: 10),
           ],
 
-          // Campo de entrada manual de código
+          // Campo de entrada manual de código con fondo blanco y texto oscuro nítido
           Row(
             children: [
               Expanded(
                 child: Container(
-                  height: 42,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.white12),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _manualInputCtrl,
                     focusNode: _manualFocusNode,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _onManualSubmit(),
+                    cursorColor: AppColors.primary,
                     style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A), // Texto oscuro de alto contraste
                     ),
                     decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
                       hintText: 'Ingresar SKU o código manual...',
                       hintStyle: const TextStyle(
-                        fontSize: 12.5,
-                        color: Colors.white38,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF94A3B8),
                       ),
                       prefixIcon: const Icon(
                         Icons.keyboard_alt_outlined,
-                        size: 17,
-                        color: AppColors.teal,
+                        size: 19,
+                        color: AppColors.primary,
                       ),
                       suffixIcon:
                           _manualInputCtrl.text.isNotEmpty
                               ? IconButton(
                                 icon: const Icon(
-                                  Icons.clear,
-                                  size: 16,
-                                  color: Colors.white70,
+                                  Icons.cancel_rounded,
+                                  size: 18,
+                                  color: Color(0xFF64748B),
                                 ),
                                 onPressed: () {
                                   _manualInputCtrl.clear();
@@ -760,10 +770,24 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                                 },
                               )
                               : null,
-                      border: InputBorder.none,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.teal,
+                          width: 2,
+                        ),
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 12,
+                        vertical: 11,
+                        horizontal: 14,
                       ),
                     ),
                     onChanged: (_) => setState(() {}),
@@ -777,18 +801,21 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                         ? null
                         : _onManualSubmit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  backgroundColor: AppColors.teal,
+                  foregroundColor: const Color(0xFF0F172A),
+                  disabledBackgroundColor: Colors.white12,
+                  disabledForegroundColor: Colors.white38,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  minimumSize: const Size(0, 42),
+                  minimumSize: const Size(0, 44),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                  ),
                 ),
-                child: const Text(
-                  'Buscar',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
+                child: const Text('Buscar'),
               ),
             ],
           ),
