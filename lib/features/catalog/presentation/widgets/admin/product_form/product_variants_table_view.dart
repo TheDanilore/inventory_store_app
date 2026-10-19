@@ -1,10 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class ProductVariantsTableView extends StatefulWidget {
   const ProductVariantsTableView({super.key});
@@ -339,7 +342,7 @@ class _ProductVariantsTableViewState extends State<ProductVariantsTableView> {
                             const Expanded(
                               flex: 3,
                               child: Text(
-                                'SKU',
+                                'SKU / CÓDIGO',
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
@@ -361,9 +364,9 @@ class _ProductVariantsTableViewState extends State<ProductVariantsTableView> {
                               ),
                             ),
                             const SizedBox(
-                              width: 80,
+                              width: 110,
                               child: Text(
-                                'ACCIÓN',
+                                'ACCIONES',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 11,
@@ -913,28 +916,84 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                     ),
                     if (widget.draft.barcode.isNotEmpty) ...[
                       const SizedBox(height: 1),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.barcode_reader,
-                            size: 10,
-                            color: Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(width: 3),
-                          Flexible(
-                            child: Text(
-                              widget.draft.barcode,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontFamily: 'monospace',
-                                color: Color(0xFF94A3B8),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                      InkWell(
+                        onTap: () async {
+                          final code =
+                              await PosCameraScannerDialog.showForRawCode(
+                                context,
+                                title:
+                                    'Escanear Código (Variante #${widget.index + 1})',
+                              );
+                          if (code != null && code.isNotEmpty) {
+                            widget.onUpdate(
+                              widget.draft.copyWith(barcode: code),
+                            );
+                            HapticFeedback.lightImpact();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.barcode_reader,
+                              size: 11,
+                              color: AppColors.teal,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                widget.draft.barcode,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.teal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 1),
+                      InkWell(
+                        onTap: () async {
+                          final code =
+                              await PosCameraScannerDialog.showForRawCode(
+                                context,
+                                title:
+                                    'Escanear Código (Variante #${widget.index + 1})',
+                              );
+                          if (code != null && code.isNotEmpty) {
+                            widget.onUpdate(
+                              widget.draft.copyWith(barcode: code),
+                            );
+                            HapticFeedback.lightImpact();
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.qr_code_scanner_rounded,
+                              size: 11,
+                              color: Colors.blueGrey.shade400,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '+ Escanear código',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: Colors.blueGrey.shade500,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],
@@ -983,12 +1042,32 @@ class _VariantTableRowState extends State<_VariantTableRow> {
               ),
             ),
 
-            // ACCIÓN (Papelera + Modal ajustes)
+            // ACCIÓN (Escanear + Modal ajustes + Papelera)
             SizedBox(
-              width: 80,
+              width: 110,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  IconButton(
+                    onPressed: () async {
+                      final code =
+                          await PosCameraScannerDialog.showForRawCode(
+                            context,
+                            title:
+                                'Escanear Código (Variante #${widget.index + 1})',
+                          );
+                      if (code != null && code.isNotEmpty) {
+                        widget.onUpdate(
+                          widget.draft.copyWith(barcode: code),
+                        );
+                        HapticFeedback.lightImpact();
+                      }
+                    },
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    color: AppColors.teal,
+                    tooltip: 'Escanear código con cámara o pistola',
+                    splashRadius: 18,
+                  ),
                   IconButton(
                     onPressed: widget.onOpenModal,
                     icon: const Icon(Icons.tune_rounded, size: 18),

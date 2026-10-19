@@ -428,16 +428,19 @@ class _ProductPricingInventorySectionState
                                   size: 20,
                                 ),
                                 onPressed: () async {
-                                  final res = await PosCameraScannerDialog.show(
-                                    context,
-                                    title: 'Escanear Código del Producto',
-                                  );
-                                  if (res != null) {
-                                    _barcodeCtrl.text = res.rawCode;
+                                  final code =
+                                      await PosCameraScannerDialog
+                                          .showForRawCode(
+                                            context,
+                                            title:
+                                                'Escanear Código del Producto',
+                                          );
+                                  if (code != null && code.isNotEmpty) {
+                                    _barcodeCtrl.text = code;
                                     cubit.updateVariantDraft(
                                       0,
                                       cubit.state.variantDrafts.first.copyWith(
-                                        barcode: res.rawCode,
+                                        barcode: code,
                                       ),
                                     );
                                     HapticFeedback.lightImpact();
@@ -576,6 +579,35 @@ class _ProductPricingInventorySectionState
                           label: 'Código de Barras (Opcional)',
                           icon: Icons.barcode_reader,
                           hintText: 'Ej. 7751234567890',
+                          suffixIcon: Tooltip(
+                            message: 'Escanear código con cámara o pistola',
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: AppColors.teal,
+                                size: 20,
+                              ),
+                              onPressed: () async {
+                                final code =
+                                    await PosCameraScannerDialog
+                                        .showForRawCode(
+                                          context,
+                                          title:
+                                              'Escanear Código del Producto',
+                                        );
+                                if (code != null && code.isNotEmpty) {
+                                  _barcodeCtrl.text = code;
+                                  cubit.updateVariantDraft(
+                                    0,
+                                    cubit.state.variantDrafts.first.copyWith(
+                                      barcode: code,
+                                    ),
+                                  );
+                                  HapticFeedback.lightImpact();
+                                }
+                              },
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 14),
                         AppTextField(

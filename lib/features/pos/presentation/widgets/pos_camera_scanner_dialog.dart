@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/camera_stream_stopper.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
 /// Modal interactivo de escaneo por cámara de Códigos de Barra y QR.
@@ -21,6 +22,7 @@ class PosCameraScannerDialog extends StatefulWidget {
   final String? title;
   final bool continuousMode;
   final FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan;
+  final bool returnRawCode;
 
   const PosCameraScannerDialog({
     super.key,
@@ -28,6 +30,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     this.title,
     this.continuousMode = false,
     this.onContinuousScan,
+    this.returnRawCode = false,
   });
 
   /// Abre el modal de escaneo adaptado a la plataforma y garantiza
@@ -38,6 +41,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     String? title,
     bool continuousMode = false,
     FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan,
+    bool returnRawCode = false,
   }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     PosScanResult? result;
@@ -66,6 +70,7 @@ class PosCameraScannerDialog extends StatefulWidget {
                   title: title,
                   continuousMode: continuousMode,
                   onContinuousScan: onContinuousScan,
+                  returnRawCode: returnRawCode,
                 ),
               ),
             ),
@@ -92,6 +97,7 @@ class PosCameraScannerDialog extends StatefulWidget {
                   title: title,
                   continuousMode: continuousMode,
                   onContinuousScan: onContinuousScan,
+                  returnRawCode: returnRawCode,
                 ),
               ),
             ),
@@ -100,6 +106,20 @@ class PosCameraScannerDialog extends StatefulWidget {
     // Garantiza el apagado físico del hardware de la cámara (web/móvil)
     stopAllWebCameraStreams();
     return result;
+  }
+
+  /// Escanea un código de barras o QR físico directamente y retorna su texto plano (raw code).
+  /// Ideal para formularios de alta/edición de productos donde el código aún no existe en BD.
+  static Future<String?> showForRawCode(
+    BuildContext context, {
+    String? title,
+  }) async {
+    final result = await show(
+      context,
+      title: title ?? 'Escanear Código de Barras / QR',
+      returnRawCode: true,
+    );
+    return result?.rawCode;
   }
 
   @override
@@ -190,6 +210,16 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
 
     setState(() => _isResolving = true);
     HapticFeedback.mediumImpact();
+
+    if (widget.returnRawCode) {
+      HapticFeedback.lightImpact();
+      final rawResult = PosScanResult(
+        product: ProductEntity(id: '', name: trimmed),
+        rawCode: trimmed,
+      );
+      await _safeClose(rawResult);
+      return;
+    }
 
     try {
       final result = await PosBarcodeScannerService.resolveCode(

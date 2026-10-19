@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 typedef VariantDraftUpdateCallback =
     void Function(VariantDraftFormModel newDraft, {bool syncState});
@@ -691,6 +692,30 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   controller: barcodeCtrl,
                                   icon: Icons.barcode_reader,
                                   hintText: 'Ej: 7751234567890',
+                                  suffixIcon: Tooltip(
+                                    message: 'Escanear código con cámara o pistola',
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.qr_code_scanner_rounded,
+                                        color: AppColors.teal,
+                                        size: 20,
+                                      ),
+                                      onPressed: () async {
+                                        final code =
+                                            await PosCameraScannerDialog
+                                                .showForRawCode(
+                                                  context,
+                                                  title:
+                                                      'Escanear Código de Variante',
+                                                );
+                                        if (code != null && code.isNotEmpty) {
+                                          barcodeCtrl.text = code;
+                                          _onFieldChanged();
+                                          HapticFeedback.lightImpact();
+                                        }
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
