@@ -28,7 +28,7 @@ class PosRepositoryImpl implements PosRepository {
 
     final profile =
         await _supabase
-            .from('profiles')
+            .from('profiles_with_email')
             .select('id, role')
             .eq('auth_user_id', user.id)
             .maybeSingle();

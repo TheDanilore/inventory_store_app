@@ -26,7 +26,7 @@ class AuthRepositoryImpl implements AuthRepository {
           await _supabase
               .from('profiles')
               .select(
-                'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+                'id, auth_user_id, is_active, full_name, phone, document_type, document_number, avatar_url',
               )
               .eq('auth_user_id', session.user.id)
               .maybeSingle();
@@ -38,15 +38,16 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final profileId = data['id']?.toString() ?? '';
-      final fallbackRole = data['role']?.toString() ?? 'customer';
 
       final (userRoles, userPermissions) = await _fetchRolesAndPermissions(
         profileId: profileId,
-        fallbackRole: fallbackRole,
+        fallbackRole: 'customer',
       );
 
+      final primaryRole = userRoles.isNotEmpty ? userRoles.first : 'customer';
+
       final model = AuthUserModel.fromMap(
-        data,
+        {...data, 'role': primaryRole},
         session.user.email ?? '',
         userRoles: userRoles,
         userPermissions: userPermissions,
@@ -182,15 +183,47 @@ class AuthRepositoryImpl implements AuthRepository {
               .upsert({
                 'auth_user_id': authUserId,
                 'full_name': fullName,
-                'role': role,
                 'is_active': isActive,
               }, onConflict: 'auth_user_id')
               .select(
-                'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+                'id, auth_user_id, is_active, full_name, phone, document_type, document_number, avatar_url',
               )
               .single();
 
-      final model = AuthUserModel.fromMap(data, email);
+      final profileId = data['id']?.toString() ?? '';
+      final assignedRole = role.isNotEmpty ? role : 'customer';
+
+      if (profileId.isNotEmpty) {
+        try {
+          final roleRes =
+              await _supabase
+                  .from('roles')
+                  .select('id')
+                  .eq('name', assignedRole)
+                  .maybeSingle();
+          final roleId = roleRes?['id']?.toString();
+          if (roleId != null) {
+            await _supabase.from('user_roles').upsert({
+              'profile_id': profileId,
+              'role_id': roleId,
+            });
+          }
+        } catch (e) {
+          LoggerService.w('Aviso al asociar user_roles en createProfile: $e');
+        }
+      }
+
+      final (userRoles, userPermissions) = await _fetchRolesAndPermissions(
+        profileId: profileId,
+        fallbackRole: assignedRole,
+      );
+
+      final model = AuthUserModel.fromMap(
+        {...data, 'role': assignedRole},
+        email,
+        userRoles: userRoles,
+        userPermissions: userPermissions,
+      );
       return right(model.toEntity());
     } on sb.PostgrestException catch (e, st) {
       LoggerService.e(
@@ -429,53 +462,51 @@ class AuthRepositoryImpl implements AuthRepository {
     final roles = <String>{};
     final permissions = <String>{};
 
-    if (fallbackRole.isNotEmpty) {
-      roles.add(fallbackRole);
-    }
-
-    if (profileId.isEmpty) {
-      return (roles.toList(), permissions);
-    }
-
-    try {
-      final userRolesData = await _supabase
-          .from('user_roles')
-          .select('''
-            roles (
-              name,
-              role_permissions (
-                permissions (
-                  code
+    if (profileId.isNotEmpty) {
+      try {
+        final userRolesData = await _supabase
+            .from('user_roles')
+            .select('''
+              roles (
+                name,
+                role_permissions (
+                  permissions (
+                    code
+                  )
                 )
               )
-            )
-          ''')
-          .eq('profile_id', profileId);
+            ''')
+            .eq('profile_id', profileId);
 
-      for (final ur in userRolesData as List) {
-        final roleObj = ur['roles'] as Map<String, dynamic>?;
-        if (roleObj != null) {
-          final rName = roleObj['name']?.toString();
-          if (rName != null && rName.isNotEmpty) {
-            roles.add(rName);
-          }
-          final rolePerms = roleObj['role_permissions'] as List?;
-          if (rolePerms != null) {
-            for (final rp in rolePerms) {
-              final permObj = rp['permissions'] as Map<String, dynamic>?;
-              final pCode = permObj?['code']?.toString();
-              if (pCode != null && pCode.isNotEmpty) {
-                permissions.add(pCode);
+        for (final ur in userRolesData as List) {
+          final roleObj = ur['roles'] as Map<String, dynamic>?;
+          if (roleObj != null) {
+            final rName = roleObj['name']?.toString();
+            if (rName != null && rName.isNotEmpty) {
+              roles.add(rName);
+            }
+            final rolePerms = roleObj['role_permissions'] as List?;
+            if (rolePerms != null) {
+              for (final rp in rolePerms) {
+                final permObj = rp['permissions'] as Map<String, dynamic>?;
+                final pCode = permObj?['code']?.toString();
+                if (pCode != null && pCode.isNotEmpty) {
+                  permissions.add(pCode);
+                }
               }
             }
           }
         }
+      } catch (e) {
+        LoggerService.w(
+          'Aviso: no se pudieron cargar user_roles/permissions desde Supabase ($e). Usando fallback de rol.',
+          tag: 'AuthRepositoryImpl',
+        );
       }
-    } catch (e) {
-      LoggerService.w(
-        'Aviso: no se pudieron cargar user_roles/permissions desde Supabase ($e). Usando fallback de rol.',
-        tag: 'AuthRepositoryImpl',
-      );
+    }
+
+    if (roles.isEmpty && fallbackRole.isNotEmpty) {
+      roles.add(fallbackRole);
     }
 
     return (roles.toList(), permissions);
