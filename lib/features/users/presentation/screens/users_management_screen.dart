@@ -1,25 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as import_developer;
-import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart'
-    as import_export;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
-import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
-import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
-import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/roles/presentation/bloc/roles_cubit.dart';
-import 'package:inventory_store_app/features/roles/presentation/widgets/roles_management_view.dart';
+import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart'
+    as import_export;
+import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
 
 class UsersManagementScreen extends StatefulWidget {
   const UsersManagementScreen({super.key});
@@ -28,11 +27,9 @@ class UsersManagementScreen extends StatefulWidget {
   State<UsersManagementScreen> createState() => _UsersManagementScreenState();
 }
 
-class _UsersManagementScreenState extends State<UsersManagementScreen>
-    with SingleTickerProviderStateMixin {
+class _UsersManagementScreenState extends State<UsersManagementScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
-  late TabController _tabController;
   bool _onlyActive = false;
   String _debouncedQuery = '';
   Timer? _debounce;
@@ -40,15 +37,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
 
   final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-  late final UsersCubit _countsCubit;
-
   @override
   void initState() {
     super.initState();
-    _countsCubit = sl<UsersCubit>()..fetchCounts();
-    _tabController = TabController(length: 2, vsync: this)..addListener(() {
-      if (mounted) setState(() {});
-    });
   }
 
   bool _onScrollNotification(UserScrollNotification notification) {
@@ -65,9 +56,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   @override
   void dispose() {
     _debounce?.cancel();
-    _countsCubit.close();
     _isFabExtended.dispose();
-    _tabController.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -102,20 +91,16 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   }
 
   String get _currentRoleLabel => 'Colaborador';
-
   String get _currentRoleConstant => 'staff';
 
   Future<void> _navigateToCreateUser() async {
-    final res = await context.push<bool>(
+    await context.push<bool>(
       '/users/form',
       extra: {'initialRole': AppRoles.employee},
     );
-    if (res == true && mounted) {
-      _countsCubit.fetchCounts();
-    }
   }
 
-  /// Exporta los usuarios del tab activo a un archivo CSV y lo descarga.
+  /// Exporta los usuarios a un archivo CSV y lo descarga.
   Future<void> _exportToCsv() async {
     if (_isExporting) return;
     setState(() => _isExporting = true);
@@ -151,14 +136,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
           }
 
           final bytes = utf8.encode(csvString);
-          final tabLabel =
-              _tabController.index == 0
-                  ? 'clientes'
-                  : _tabController.index == 1
-                  ? 'admins'
-                  : 'empleados';
           final fileName =
-              'usuarios_${tabLabel}_${DateTime.now().millisecondsSinceEpoch}';
+              'usuarios_colaboradores_${DateTime.now().millisecondsSinceEpoch}';
 
           await FileSaver.instance.saveFile(
             name: fileName,
@@ -199,8 +178,14 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
-    return BlocProvider.value(
-      value: _countsCubit,
+    return PermissionGuard(
+      permission: AppPermissions.usersView,
+      fallback: const AdminLayout(
+        title: 'Gestión de Usuarios',
+        body: Center(
+          child: Text('No tienes permisos para ver la gestión de usuarios.'),
+        ),
+      ),
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.keyK, control: true):
@@ -225,140 +210,41 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
               onNotification: _onScrollNotification,
               child: Column(
                 children: [
-                  // ─── COMMAND BAR & FILTROS (Solo para lista de personal) ─────────
-                  if (_tabController.index == 0)
-                    Container(
-                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 20 : 16,
-                        vertical: isDesktop ? 12 : 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child:
-                          isDesktop
-                              ? _buildDesktopCommandBar()
-                              : _buildMobileCommandBar(),
-                    ),
-
-                  // ─── TABS SEGMENTADOS STRIPE / LINEAR ────────────────────────────
+                  // ─── COMMAND BAR & FILTROS ──────────────────────────────────────────
                   Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 20 : 16,
+                      vertical: isDesktop ? 12 : 14,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BlocSelector<UsersCubit, UsersState, (int, int)>(
-                        selector: (s) => (s.adminTotal, s.employeeTotal),
-                        builder: (context, counts) {
-                          final (aTotal, eTotal) = counts;
-                          final staffTotal = aTotal + eTotal;
-                          return AnimatedBuilder(
-                            animation: _tabController,
-                            builder: (context, _) {
-                              return TabBar(
-                                controller: _tabController,
-                                labelColor: AppColors.primary,
-                                unselectedLabelColor: Colors.grey.shade600,
-                                indicatorColor: AppColors.primary,
-                                indicatorWeight: 3,
-                                indicatorSize: TabBarIndicatorSize.tab,
-                                labelStyle: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                                unselectedLabelStyle: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 13,
-                                ),
-                                tabs: [
-                                  Tab(
-                                    height: 48,
-                                    child: _buildTabItem(
-                                      icon: Icons.badge_outlined,
-                                      label: 'Personal y Colaboradores',
-                                      count: staffTotal,
-                                      isSelected: _tabController.index == 0,
-                                    ),
-                                  ),
-                                  Tab(
-                                    height: 48,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.shield_outlined,
-                                          size: 18,
-                                          color:
-                                              _tabController.index == 1
-                                                  ? AppColors.primary
-                                                  : Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Roles y Permisos',
-                                          style: TextStyle(
-                                            color:
-                                                _tabController.index == 1
-                                                    ? AppColors.primary
-                                                    : Colors.grey.shade700,
-                                            fontWeight:
-                                                _tabController.index == 1
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // ─── CONTENIDO DE LOS TABS ───────────────────────────────────────
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        BlocProvider(
-                          key: const ValueKey('staff_users'),
-                          create: (_) => sl<UsersCubit>()..init('staff'),
-                          child: UsersTab(
-                            role: 'staff',
-                            searchQuery: _debouncedQuery,
-                            onlyActive: _onlyActive,
-                            tabController: _tabController,
-                            tabIndex: 0,
-                          ),
-                        ),
-                        BlocProvider(
-                          key: const ValueKey('roles_and_permissions'),
-                          create: (_) => sl<RolesCubit>(),
-                          child: const RolesManagementView(),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
+                    ),
+                    child:
+                        isDesktop
+                            ? _buildDesktopCommandBar()
+                            : _buildMobileCommandBar(),
+                  ),
+
+                  // ─── LISTADO DE USUARIOS (STAFF) ──────────────────────────────────
+                  Expanded(
+                    child: BlocProvider(
+                      key: const ValueKey('staff_users'),
+                      create: (_) => sl<UsersCubit>()..init('staff'),
+                      child: UsersTab(
+                        role: 'staff',
+                        searchQuery: _debouncedQuery,
+                        onlyActive: _onlyActive,
+                      ),
                     ),
                   ),
                 ],
@@ -367,7 +253,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
 
             // FAB disponible principalmente en móvil o como atajo rápido
             floatingActionButton:
-                isDesktop || _tabController.index != 0
+                isDesktop || !context.hasPermission(AppPermissions.usersCreate)
                     ? null
                     : FloatingActionButton.extended(
                       backgroundColor: AppColors.primary,
@@ -385,17 +271,12 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                             duration: const Duration(milliseconds: 200),
                             child:
                                 isExtended
-                                    ? AnimatedBuilder(
-                                      animation: _tabController,
-                                      builder: (context, _) {
-                                        return Text(
-                                          'Nuevo $_currentRoleLabel',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        );
-                                      },
+                                    ? Text(
+                                      'Nuevo $_currentRoleLabel',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     )
                                     : const SizedBox.shrink(),
                           );
@@ -519,27 +400,32 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
             ),
           ),
         ),
-        const SizedBox(width: 12),
 
-        // Botón Crear Usuario Contextual
-        Tooltip(
-          message:
-              'Crear nuevo $_currentRoleLabel (${AppShortcutLabels.newRecord})',
-          child: ElevatedButton.icon(
-            onPressed: _navigateToCreateUser,
-            icon: const Icon(Icons.add_rounded, size: 19),
-            label: Text('Nuevo $_currentRoleLabel'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        // Botón Crear Usuario Contextual (protegido por permisos)
+        if (context.hasPermission(AppPermissions.usersCreate)) ...[
+          const SizedBox(width: 12),
+          Tooltip(
+            message:
+                'Crear nuevo $_currentRoleLabel (${AppShortcutLabels.newRecord})',
+            child: ElevatedButton.icon(
+              onPressed: _navigateToCreateUser,
+              icon: const Icon(Icons.add_rounded, size: 19),
+              label: Text('Nuevo $_currentRoleLabel'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -616,7 +502,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                 borderRadius: BorderRadius.circular(12),
                 onTap: _isExporting ? null : _exportToCsv,
                 child: Tooltip(
-                  message: 'Exportar tab actual a CSV',
+                  message: 'Exportar lista a CSV',
                   child:
                       _isExporting
                           ? const Padding(
@@ -659,42 +545,6 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
               ),
             ),
           ],
-        ),
-      ],
-    );
-  }
-
-  /// Pestaña con pill badge estilizada
-  Widget _buildTabItem({
-    required IconData icon,
-    required String label,
-    required int count,
-    required bool isSelected,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 6),
-        Text(label),
-        const SizedBox(width: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: isSelected ? AppColors.primary : Colors.grey.shade600,
-            ),
-          ),
         ),
       ],
     );

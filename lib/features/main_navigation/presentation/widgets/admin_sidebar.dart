@@ -800,7 +800,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
       child: Text(
         title,
         style: TextStyle(

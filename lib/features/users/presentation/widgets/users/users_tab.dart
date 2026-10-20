@@ -21,7 +21,7 @@ class UsersTab extends StatefulWidget {
   final String searchQuery;
   final bool onlyActive;
   final ScrollController? scrollController;
-  final TabController tabController;
+  final TabController? tabController;
   final int tabIndex;
 
   const UsersTab({
@@ -30,8 +30,8 @@ class UsersTab extends StatefulWidget {
     required this.searchQuery,
     required this.onlyActive,
     this.scrollController,
-    required this.tabController,
-    required this.tabIndex,
+    this.tabController,
+    this.tabIndex = 0,
   });
 
   @override
@@ -56,9 +56,9 @@ class _UsersTabState extends State<UsersTab>
       _scrollController = ScrollController();
       _createdLocalController = true;
     }
-    widget.tabController.addListener(_onTabChanged);
-    // Fetch initial data if this is the active tab
-    if (widget.tabController.index == widget.tabIndex) {
+    widget.tabController?.addListener(_onTabChanged);
+    // Fetch initial data if this is the active tab or standalone
+    if (widget.tabController == null || widget.tabController!.index == widget.tabIndex) {
       _fetchData();
     }
   }
@@ -68,8 +68,8 @@ class _UsersTabState extends State<UsersTab>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.searchQuery != widget.searchQuery ||
         oldWidget.onlyActive != widget.onlyActive) {
-      // Solo actualiza si es el tab activo para evitar múltiples peticiones
-      if (widget.tabController.index == widget.tabIndex) {
+      // Solo actualiza si es el tab activo (o si no hay tabs) para evitar múltiples peticiones
+      if (widget.tabController == null || widget.tabController!.index == widget.tabIndex) {
         _fetchData();
       } else {
         _hasFetched = false;
@@ -78,7 +78,7 @@ class _UsersTabState extends State<UsersTab>
   }
 
   void _onTabChanged() {
-    if (widget.tabController.index == widget.tabIndex && !_hasFetched) {
+    if (widget.tabController?.index == widget.tabIndex && !_hasFetched) {
       _fetchData();
     }
   }
@@ -94,7 +94,7 @@ class _UsersTabState extends State<UsersTab>
 
   @override
   void dispose() {
-    widget.tabController.removeListener(_onTabChanged);
+    widget.tabController?.removeListener(_onTabChanged);
     if (_createdLocalController) {
       _scrollController.dispose();
     }
