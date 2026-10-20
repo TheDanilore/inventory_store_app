@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:developer' as import_developer;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -12,22 +11,43 @@ import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
+import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/export_users_csv_usecase.dart'
     as import_export;
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
 
-class UsersManagementScreen extends StatefulWidget {
+class UsersManagementScreen extends StatelessWidget {
   const UsersManagementScreen({super.key});
 
   @override
-  State<UsersManagementScreen> createState() => _UsersManagementScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create:
+          (_) =>
+              sl<UsersCubit>()
+                ..init('staff')
+                ..fetchCounts()
+                ..fetchUsers(),
+      child: const _UsersManagementContent(),
+    );
+  }
 }
 
-class _UsersManagementScreenState extends State<UsersManagementScreen> {
+class _UsersManagementContent extends StatefulWidget {
+  const _UsersManagementContent();
+
+  @override
+  State<_UsersManagementContent> createState() =>
+      _UsersManagementContentState();
+}
+
+class _UsersManagementContentState extends State<_UsersManagementContent> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   bool _onlyActive = false;
@@ -35,28 +55,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
   Timer? _debounce;
   bool _isExporting = false;
 
-  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  bool _onScrollNotification(UserScrollNotification notification) {
-    if (notification.direction == ScrollDirection.reverse &&
-        _isFabExtended.value) {
-      _isFabExtended.value = false;
-    } else if (notification.direction == ScrollDirection.forward &&
-        !_isFabExtended.value) {
-      _isFabExtended.value = true;
-    }
-    return false;
-  }
-
   @override
   void dispose() {
     _debounce?.cancel();
-    _isFabExtended.dispose();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -74,11 +75,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
   void _onSearchChanged(String value) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
+      final trimmed = value.trim();
       setState(() {
-        _debouncedQuery = value.trim();
+        _debouncedQuery = trimmed;
       });
+      context.read<UsersCubit>().fetchUsers(
+        searchQuery: trimmed,
+        onlyActive: _onlyActive,
+        page: 0,
+      );
     });
   }
 
@@ -88,6 +95,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
     setState(() {
       _debouncedQuery = '';
     });
+    context.read<UsersCubit>().fetchUsers(
+      searchQuery: '',
+      onlyActive: _onlyActive,
+      page: 0,
+    );
   }
 
   String get _currentRoleLabel => 'Colaborador';
@@ -176,7 +188,8 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 900;
 
     return PermissionGuard(
       permission: AppPermissions.usersView,
@@ -206,52 +219,228 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
           autofocus: true,
           child: AdminLayout(
             title: 'Gestión de Usuarios',
-            body: NotificationListener<UserScrollNotification>(
-              onNotification: _onScrollNotification,
-              child: Column(
-                children: [
-                  // ─── COMMAND BAR & FILTROS ──────────────────────────────────────────
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isDesktop ? 20 : 16,
-                      vertical: isDesktop ? 12 : 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+            body: BlocBuilder<UsersCubit, UsersState>(
+              builder: (context, state) {
+                // Cálculo de KPIs en tiempo real
+                final totalStaff =
+                    state.totalCount > 0
+                        ? state.totalCount
+                        : (state.adminTotal + state.employeeTotal > 0
+                            ? (state.adminTotal + state.employeeTotal)
+                            : state.currentUsers.length);
+                final activeCount =
+                    state.currentUsers.where((u) => u.isActive).length;
+                final activePct =
+                    state.currentUsers.isNotEmpty
+                        ? ((activeCount / state.currentUsers.length) * 100)
+                            .toStringAsFixed(0)
+                        : '100';
+                final adminCount =
+                    state.adminTotal > 0
+                        ? state.adminTotal
+                        : state.currentUsers
+                            .where(
+                              (u) =>
+                                  u.allRoles.contains(AppRoles.admin) ||
+                                  u.role == AppRoles.admin,
+                            )
+                            .length;
+                final staffCount =
+                    state.employeeTotal > 0
+                        ? state.employeeTotal
+                        : state.currentUsers
+                            .where(
+                              (u) =>
+                                  u.allRoles.any(
+                                    (r) =>
+                                        r == AppRoles.employee ||
+                                        r == AppRoles.cashier ||
+                                        r == 'cajero' ||
+                                        r == 'empleado',
+                                  ) ||
+                                  u.role == AppRoles.employee ||
+                                  u.role == AppRoles.cashier,
+                            )
+                            .length;
+
+                return Column(
+                  children: [
+                    // ─── 1. BENTO KPI METRICS BAR ─────────────────────────────────
+                    AdminKpiMetricsBar(
+                      isDesktop: isDesktop,
+                      isLoading:
+                          state is UsersLoading && state.currentUsers.isEmpty,
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        isDesktop ? 12 : 10,
+                        16,
+                        4,
+                      ),
+                      items: [
+                        AdminKpiItem.primary(
+                          title: 'Total Personal',
+                          value: '$totalStaff',
+                          subtitle: 'Colaboradores registrados',
+                          icon: Icons.badge_outlined,
+                        ),
+                        AdminKpiItem.green(
+                          title: 'Personal Activo',
+                          value: '$activeCount',
+                          subtitle: '$activePct% habilitados',
+                          icon: Icons.check_circle_outline_rounded,
+                        ),
+                        AdminKpiItem.purple(
+                          title: 'Administradores',
+                          value: '$adminCount',
+                          subtitle: 'Control total de sistema',
+                          icon: Icons.admin_panel_settings_outlined,
+                        ),
+                        AdminKpiItem.teal(
+                          title: 'Cajeros y Operación',
+                          value: '$staffCount',
+                          subtitle: 'Punto de venta y almacén',
+                          icon: Icons.point_of_sale_rounded,
                         ),
                       ],
                     ),
-                    child:
-                        isDesktop
-                            ? _buildDesktopCommandBar()
-                            : _buildMobileCommandBar(),
-                  ),
 
-                  // ─── LISTADO DE USUARIOS (STAFF) ──────────────────────────────────
-                  Expanded(
-                    child: BlocProvider(
-                      key: const ValueKey('staff_users'),
-                      create: (_) => sl<UsersCubit>()..init('staff'),
+                    // ─── 2. TOOLBAR PRO UNIFICADO ─────────────────────────────────
+                    AdminProToolbar(
+                      searchController: _searchCtrl,
+                      searchFocusNode: _searchFocusNode,
+                      searchHint:
+                          'Buscar por nombre, correo, teléfono o documento...',
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: _clearSearch,
+                      searchOnSubmitOnly: false,
+                      isDesktop: isDesktop,
+                      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                      filterWidgets: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Solo activos',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Transform.scale(
+                              scale: 0.8,
+                              child: Switch(
+                                value: _onlyActive,
+                                activeThumbColor: AppColors.primary,
+                                onChanged: (val) {
+                                  setState(() => _onlyActive = val);
+                                  context.read<UsersCubit>().fetchUsers(
+                                    searchQuery: _debouncedQuery,
+                                    onlyActive: val,
+                                    page: 0,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      filterGroups: [
+                        AdminFilterGroup<bool?>(
+                          title: 'Estado',
+                          icon: Icons.toggle_on_outlined,
+                          selected: _onlyActive ? true : null,
+                          defaultValue: null,
+                          onSelected: (v) {
+                            final onlyAct = v == true;
+                            setState(() => _onlyActive = onlyAct);
+                            context.read<UsersCubit>().fetchUsers(
+                              searchQuery: _debouncedQuery,
+                              onlyActive: onlyAct,
+                              page: 0,
+                            );
+                          },
+                          options: const [
+                            AdminFilterOption<bool?>(
+                              value: null,
+                              label: 'Todos',
+                            ),
+                            AdminFilterOption<bool?>(
+                              value: true,
+                              label: 'Solo Activos',
+                              icon: Icons.check_circle_rounded,
+                              color: AppColors.successDark,
+                            ),
+                            AdminFilterOption<bool?>(
+                              value: false,
+                              label: 'Inactivos',
+                              icon: Icons.pause_circle_rounded,
+                              color: AppColors.textSecondary,
+                            ),
+                          ],
+                        ),
+                      ],
+                      trailingActions: [
+                        OutlinedButton.icon(
+                          onPressed: _isExporting ? null : _exportToCsv,
+                          icon:
+                              _isExporting
+                                  ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(
+                                    Icons.file_download_outlined,
+                                    size: 16,
+                                  ),
+                          label: const Text('Exportar CSV'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey.shade700,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 11,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                      primaryAction:
+                          context.hasPermission(AppPermissions.usersCreate)
+                              ? AdminProToolbarAction(
+                                label: 'Nuevo Colaborador',
+                                icon: Icons.person_add_rounded,
+                                onPressed: _navigateToCreateUser,
+                                keyHint: 'N',
+                              )
+                              : null,
+                      onRefresh: () {
+                        context.read<UsersCubit>().fetchCounts();
+                        context.read<UsersCubit>().fetchUsers();
+                      },
+                      refreshTooltip: 'Actualizar lista [R]',
+                    ),
+
+                    // ─── 3. TABLA EJECUTIVA PRO (STAFF) ───────────────────────────
+                    Expanded(
                       child: UsersTab(
                         role: 'staff',
                         searchQuery: _debouncedQuery,
                         onlyActive: _onlyActive,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
             ),
 
-            // FAB disponible principalmente en móvil o como atajo rápido
+            // FAB disponible en móvil para crear nuevo usuario
             floatingActionButton:
                 isDesktop || !context.hasPermission(AppPermissions.usersCreate)
                     ? null
@@ -264,289 +453,17 @@ class _UsersManagementScreenState extends State<UsersManagementScreen> {
                         Icons.person_add_rounded,
                         color: Colors.white,
                       ),
-                      label: ValueListenableBuilder<bool>(
-                        valueListenable: _isFabExtended,
-                        builder: (context, isExtended, _) {
-                          return AnimatedSize(
-                            duration: const Duration(milliseconds: 200),
-                            child:
-                                isExtended
-                                    ? Text(
-                                      'Nuevo $_currentRoleLabel',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    )
-                                    : const SizedBox.shrink(),
-                          );
-                        },
+                      label: Text(
+                        'Nuevo $_currentRoleLabel',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
           ),
         ),
       ),
-    );
-  }
-
-  /// Command Bar para Desktop: Buscador estilizado + Switch + Exportar + Nuevo botón
-  Widget _buildDesktopCommandBar() {
-    return Row(
-      children: [
-        // Buscador estilo Pro Tool
-        Expanded(
-          flex: 4,
-          child: SizedBox(
-            height: 42,
-            child: TextField(
-              controller: _searchCtrl,
-              focusNode: _searchFocusNode,
-              onChanged: _onSearchChanged,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre, correo, teléfono o documento...',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: Colors.grey.shade400,
-                  size: 20,
-                ),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchCtrl,
-                  builder: (context, value, child) {
-                    if (value.text.isNotEmpty) {
-                      return IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18),
-                        color: Colors.grey,
-                        onPressed: _clearSearch,
-                      );
-                    }
-                    return Tooltip(
-                      message: 'Atajo: ${AppShortcutLabels.search}',
-                    );
-                  },
-                ),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 20),
-
-        // Filtro Solo Activos
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Solo activos',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(
-                value: _onlyActive,
-                activeThumbColor: AppColors.primary,
-                onChanged: (val) {
-                  setState(() {
-                    _onlyActive = val;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 16),
-
-        // Botón Exportar CSV
-        OutlinedButton.icon(
-          onPressed: _isExporting ? null : _exportToCsv,
-          icon:
-              _isExporting
-                  ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : const Icon(Icons.file_download_outlined, size: 18),
-          label: const Text('Exportar CSV'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.grey.shade700,
-            side: BorderSide(color: Colors.grey.shade300),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-
-        // Botón Crear Usuario Contextual (protegido por permisos)
-        if (context.hasPermission(AppPermissions.usersCreate)) ...[
-          const SizedBox(width: 12),
-          Tooltip(
-            message:
-                'Crear nuevo $_currentRoleLabel (${AppShortcutLabels.newRecord})',
-            child: ElevatedButton.icon(
-              onPressed: _navigateToCreateUser,
-              icon: const Icon(Icons.add_rounded, size: 19),
-              label: Text('Nuevo $_currentRoleLabel'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 13,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Command Bar para Móvil
-  Widget _buildMobileCommandBar() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: TextField(
-                  controller: _searchCtrl,
-                  focusNode: _searchFocusNode,
-                  onChanged: _onSearchChanged,
-                  textInputAction: TextInputAction.search,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar usuario...',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: Colors.grey.shade400,
-                      size: 20,
-                    ),
-                    suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: _searchCtrl,
-                      builder: (context, value, child) {
-                        return value.text.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18),
-                              color: Colors.grey,
-                              onPressed: _clearSearch,
-                            )
-                            : const SizedBox.shrink();
-                      },
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              height: 44,
-              width: 44,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _isExporting ? null : _exportToCsv,
-                child: Tooltip(
-                  message: 'Exportar lista a CSV',
-                  child:
-                      _isExporting
-                          ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : Icon(
-                            Icons.file_download_outlined,
-                            color: Colors.grey.shade700,
-                            size: 20,
-                          ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Mostrar solo usuarios activos',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            Transform.scale(
-              scale: 0.8,
-              child: Switch(
-                value: _onlyActive,
-                activeThumbColor: AppColors.primary,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onChanged: (val) {
-                  setState(() {
-                    _onlyActive = val;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

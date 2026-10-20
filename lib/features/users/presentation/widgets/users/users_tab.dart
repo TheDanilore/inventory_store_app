@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_cubit.dart';
@@ -40,72 +43,15 @@ class UsersTab extends StatefulWidget {
 
 class _UsersTabState extends State<UsersTab>
     with AutomaticKeepAliveClientMixin {
-  bool _hasFetched = false;
-  late final ScrollController _scrollController;
-  bool _createdLocalController = false;
+  final Set<Object> _selectedIds = {};
+  String? _sortColumnId = 'name';
+  bool _isSortAscending = true;
 
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.scrollController != null) {
-      _scrollController = widget.scrollController!;
-    } else {
-      _scrollController = ScrollController();
-      _createdLocalController = true;
-    }
-    widget.tabController?.addListener(_onTabChanged);
-    // Fetch initial data if this is the active tab or standalone
-    if (widget.tabController == null ||
-        widget.tabController!.index == widget.tabIndex) {
-      _fetchData();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant UsersTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.searchQuery != widget.searchQuery ||
-        oldWidget.onlyActive != widget.onlyActive) {
-      // Solo actualiza si es el tab activo (o si no hay tabs) para evitar múltiples peticiones
-      if (widget.tabController == null ||
-          widget.tabController!.index == widget.tabIndex) {
-        _fetchData();
-      } else {
-        _hasFetched = false;
-      }
-    }
-  }
-
-  void _onTabChanged() {
-    if (widget.tabController?.index == widget.tabIndex && !_hasFetched) {
-      _fetchData();
-    }
-  }
-
-  void _fetchData() {
-    _hasFetched = true;
-    context.read<UsersCubit>().fetchUsers(
-      searchQuery: widget.searchQuery,
-      onlyActive: widget.onlyActive,
-      page: 0,
-    );
-  }
-
-  @override
-  void dispose() {
-    widget.tabController?.removeListener(_onTabChanged);
-    if (_createdLocalController) {
-      _scrollController.dispose();
-    }
-    super.dispose();
-  }
-
   void _showUserDetail(BuildContext context, String userId) {
     final isDesktop = MediaQuery.of(context).size.width >= 900;
-
     final cubit = context.read<UsersCubit>();
 
     if (isDesktop) {
@@ -206,10 +152,53 @@ class _UsersTabState extends State<UsersTab>
     }
   }
 
+  void _copyToClipboard(BuildContext context, String text, String label) {
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    AppSnackbar.show(
+      context,
+      message: 'Se copió $label al portapapeles',
+      type: SnackbarType.success,
+    );
+  }
+
+  List<UserEntity> _getSortedList(List<UserEntity> users) {
+    if (_sortColumnId == null) return users;
+    final list = List<UserEntity>.from(users);
+    list.sort((a, b) {
+      int comparison = 0;
+      switch (_sortColumnId) {
+        case 'name':
+          comparison = a.fullName.toLowerCase().compareTo(
+            b.fullName.toLowerCase(),
+          );
+          break;
+        case 'contact':
+          comparison = (a.email ?? '').toLowerCase().compareTo(
+            (b.email ?? '').toLowerCase(),
+          );
+          break;
+        case 'document':
+          comparison = (a.documentNumber ?? '').compareTo(
+            b.documentNumber ?? '',
+          );
+          break;
+        case 'status':
+          comparison = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
+          break;
+        default:
+          comparison = 0;
+      }
+      return _isSortAscending ? comparison : -comparison;
+    });
+    return list;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isLoyaltyEnabled =
+        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
 
     return BlocBuilder<UsersCubit, UsersState>(
       builder: (context, state) {
@@ -231,538 +220,396 @@ class _UsersTabState extends State<UsersTab>
           );
         }
 
-        if (state.currentUsers.isEmpty) {
-          return const AppEmptyState(
+        final sortedUsers = _getSortedList(state.currentUsers);
+
+        return AdminProTable<UserEntity>(
+          items: sortedUsers,
+          itemId: (u) => u.id,
+          selectedIds: _selectedIds,
+          enableMultiSelect: true,
+          onSelectionChanged: (ids) {
+            setState(() {
+              _selectedIds
+                ..clear()
+                ..addAll(ids);
+            });
+          },
+          sortColumnId: _sortColumnId,
+          isSortAscending: _isSortAscending,
+          onSort: (colId, asc) {
+            setState(() {
+              _sortColumnId = colId;
+              _isSortAscending = asc;
+            });
+          },
+          minTableWidth: 960,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          onRowTap: (user) => _showUserDetail(context, user.id),
+          isLoading: state is UsersLoading,
+          emptyState: const AppEmptyState(
             icon: Icons.people_outline_rounded,
-            title: 'Sin Usuarios',
-            message: 'No se encontraron registros para este filtro.',
-          );
-        }
-
-        int totalPages = (state.totalCount / UsersCubit.pageSize).ceil();
-        if (totalPages == 0) totalPages = 1;
-
-        return Column(
-          children: [
-            // Barra de conteo
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              child: Row(
-                children: [
-                  Text(
-                    'Mostrando ${state.currentUsers.length} de ${state.totalCount} registros',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (state is UsersLoading)
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
-              ),
-            ),
-
-            // Contenido principal: Grid Desktop vs Lista Móvil
-            Expanded(
-              child:
-                  isDesktop
-                      ? _buildDesktopTable(context, state)
-                      : _buildMobileList(context, state),
-            ),
-
-            // Paginación
-            if (totalPages > 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: AdminPageBlocks(
-                  currentPage: state.currentPage,
-                  totalPages: totalPages,
-                  onPageChanged: (page) {
-                    context.read<UsersCubit>().fetchUsers(page: page);
-                  },
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Vista Desktop: Tabla Data Grid de Alta Densidad (Stripe / Linear)
-  Widget _buildDesktopTable(BuildContext context, UsersState state) {
-    final isLoyaltyEnabled =
-        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            title: 'Sin Colaboradores',
+            message: 'No se encontraron colaboradores para este filtro.',
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Column(
-          children: [
-            // Cabecera de la tabla
-            Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              color: Colors.grey.shade50,
-              child: Row(
-                children: [
-                  const Expanded(
-                    flex: 3,
-                    child: Text(
-                      'USUARIO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
+          bulkActions: [
+            AdminBulkAction<UserEntity>(
+              label: 'Copiar Correos',
+              icon: Icons.email_outlined,
+              onPressed: (selected) {
+                final emails = selected
+                    .map((u) => u.email)
+                    .where((e) => e != null && e.isNotEmpty)
+                    .join(', ');
+                _copyToClipboard(context, emails, '${selected.length} correos');
+              },
+            ),
+            AdminBulkAction<UserEntity>(
+              label: 'Copiar Nombres',
+              icon: Icons.copy_rounded,
+              onPressed: (selected) {
+                final names = selected.map((u) => u.fullName).join('\n');
+                _copyToClipboard(context, names, '${selected.length} nombres');
+              },
+            ),
+            AdminBulkAction<UserEntity>(
+              label: 'Limpiar Selección',
+              icon: Icons.close_rounded,
+              onPressed: (_) => setState(() => _selectedIds.clear()),
+            ),
+          ],
+          paginationConfig: AdminTablePaginationConfig(
+            currentPage: state.currentPage + 1,
+            pageSize: UsersCubit.pageSize,
+            totalItems: state.totalCount,
+            onPageChanged: (page) {
+              context.read<UsersCubit>().fetchUsers(page: page - 1);
+            },
+            onPageSizeChanged: (_) {},
+          ),
+          mobileCardBuilder: (context, user, isSelected, onSelect) {
+            return UserCard(
+              user: user,
+              role: widget.role,
+              onTap: () => _showUserDetail(context, user.id),
+              onDelete: () => _confirmDeleteUser(context, user),
+            );
+          },
+          columns: [
+            // 1. USUARIO (Avatar + Nombre)
+            AdminTableColumn<UserEntity>(
+              id: 'name',
+              label: 'USUARIO',
+              flex: 3,
+              isSortable: true,
+              cellBuilder: (context, user) {
+                final initial =
+                    user.fullName.isNotEmpty
+                        ? user.fullName[0].toUpperCase()
+                        : '?';
+                final isAdmin =
+                    user.allRoles.contains(AppRoles.admin) ||
+                    user.role == AppRoles.admin;
+                final isEmployee =
+                    user.allRoles.contains(AppRoles.employee) ||
+                    user.role == AppRoles.employee;
+                final isCashier =
+                    user.allRoles.contains(AppRoles.cashier) ||
+                    user.role == AppRoles.cashier;
+
+                final avatarBg =
+                    isAdmin
+                        ? Colors.indigo.withValues(alpha: 0.12)
+                        : isCashier
+                        ? Colors.teal.withValues(alpha: 0.12)
+                        : isEmployee
+                        ? Colors.orange.withValues(alpha: 0.12)
+                        : AppColors.primary.withValues(alpha: 0.1);
+
+                final avatarFg =
+                    isAdmin
+                        ? Colors.indigo.shade700
+                        : isCashier
+                        ? Colors.teal.shade700
+                        : isEmployee
+                        ? Colors.orange.shade700
+                        : AppColors.primary;
+
+                return Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: avatarBg,
+                        shape: BoxShape.circle,
                       ),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 3,
-                    child: Text(
-                      'CONTACTO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 2,
-                    child: Text(
-                      'DOCUMENTO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  const Expanded(
-                    flex: 3,
-                    child: Text(
-                      'ROLES',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  if (isLoyaltyEnabled)
-                    const Expanded(
-                      flex: 2,
-                      child: Text(
-                        'PUNTOS',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 0.5,
+                      child: Center(
+                        child: Text(
+                          initial,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: avatarFg,
+                          ),
                         ),
                       ),
                     ),
-                  const Expanded(
-                    flex: 2,
-                    child: Text(
-                      'ESTADO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        user.fullName,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                  const SizedBox(
-                    width: 124,
-                    child: Text(
-                      'ACCIONES',
-                      textAlign: TextAlign.end,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
             ),
-            const Divider(height: 1),
 
-            // Filas
-            Expanded(
-              child: ListView.separated(
-                controller: _scrollController,
-                itemCount: state.currentUsers.length,
-                separatorBuilder:
-                    (context, index) => const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: Color(0xFFF1F5F9),
-                    ),
-                itemBuilder: (context, index) {
-                  final user = state.currentUsers[index];
-                  return _DesktopTableRow(
-                    user: user,
-                    isLoyaltyEnabled: isLoyaltyEnabled,
-                    onTap: () => _showUserDetail(context, user.id),
-                    onEdit: () => _onEditUser(context, user),
-                    onDelete: () => _confirmDeleteUser(context, user),
-                    onToggleActive: (val) {
-                      context.read<UsersCubit>().toggleUserStatus(
-                        user.id,
-                        user.isActive,
-                      );
-                    },
+            // 2. CONTACTO (Email + Teléfono)
+            AdminTableColumn<UserEntity>(
+              id: 'contact',
+              label: 'CONTACTO',
+              flex: 3,
+              isSortable: true,
+              cellBuilder: (context, user) {
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (user.email != null && user.email!.isNotEmpty)
+                      Text(
+                        user.email!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else
+                      Text(
+                        'Sin correo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade400,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    if (user.phone != null && user.phone!.isNotEmpty)
+                      Text(
+                        user.phone!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+
+            // 3. DOCUMENTO
+            AdminTableColumn<UserEntity>(
+              id: 'document',
+              label: 'DOCUMENTO',
+              flex: 2,
+              isSortable: true,
+              cellBuilder: (context, user) {
+                final hasDoc =
+                    user.documentNumber != null &&
+                    user.documentNumber!.isNotEmpty;
+                return Text(
+                  hasDoc ? '${user.documentType}: ${user.documentNumber}' : '—',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
+            ),
+
+            // 4. ROLES
+            AdminTableColumn<UserEntity>(
+              id: 'roles',
+              label: 'ROLES',
+              flex: 3,
+              cellBuilder: (context, user) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children:
+                        user.allRoles
+                            .where((r) => r.isNotEmpty)
+                            .map(_buildRoleBadge)
+                            .toList(),
+                  ),
+                );
+              },
+            ),
+
+            // 5. PUNTOS (Fidelidad si está activado globalmente)
+            if (isLoyaltyEnabled)
+              AdminTableColumn<UserEntity>(
+                id: 'points',
+                label: 'PUNTOS',
+                flex: 2,
+                cellBuilder: (context, user) {
+                  return Row(
+                    children: [
+                      Icon(
+                        Icons.stars_rounded,
+                        size: 15,
+                        color: Colors.amber.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${user.walletBalance}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  /// Vista Móvil: Lista de Tarjetas Apple HIG
-  Widget _buildMobileList(BuildContext context, UsersState state) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      itemCount: state.currentUsers.length,
-      itemBuilder: (context, index) {
-        final user = state.currentUsers[index];
-        return UserCard(
-          user: user,
-          role: widget.role,
-          onTap: () => _showUserDetail(context, user.id),
-          onDelete: () => _confirmDeleteUser(context, user),
-        );
-      },
-    );
-  }
-}
-
-/// Fila individual para la tabla Desktop
-class _DesktopTableRow extends StatefulWidget {
-  final UserEntity user;
-  final bool isLoyaltyEnabled;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final ValueChanged<bool> onToggleActive;
-
-  const _DesktopTableRow({
-    required this.user,
-    required this.isLoyaltyEnabled,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onToggleActive,
-  });
-
-  @override
-  State<_DesktopTableRow> createState() => _DesktopTableRowState();
-}
-
-class _DesktopTableRowState extends State<_DesktopTableRow> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final user = widget.user;
-    final initial =
-        user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?';
-
-    return RepaintBoundary(
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: InkWell(
-          onTap: widget.onTap,
-          hoverColor: AppColors.primary.withValues(alpha: 0.02),
-          child: Container(
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            color:
-                _isHovered
-                    ? AppColors.primary.withValues(alpha: 0.03)
-                    : Colors.transparent,
-            child: Row(
-              children: [
-                // 1. Usuario (Avatar + Nombre)
-                Expanded(
-                  flex: 3,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color:
-                              user.role == AppRoles.admin
-                                  ? Colors.indigo.withValues(alpha: 0.12)
-                                  : user.role == AppRoles.employee
-                                  ? Colors.orange.withValues(alpha: 0.12)
-                                  : AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            initial,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  user.role == AppRoles.admin
-                                      ? Colors.indigo.shade700
-                                      : user.role == AppRoles.employee
-                                      ? Colors.orange.shade700
-                                      : AppColors.primary,
-                            ),
-                          ),
-                        ),
+            // 6. ESTADO (Micro-badge + switch)
+            AdminTableColumn<UserEntity>(
+              id: 'status',
+              label: 'ESTADO',
+              flex: 2,
+              isSortable: true,
+              cellBuilder: (context, user) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          user.fullName,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 2. Contacto (Email + Phone)
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (user.email != null && user.email!.isNotEmpty)
-                        Text(
-                          user.email!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      else
-                        Text(
-                          'Sin correo',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade400,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      if (user.phone != null && user.phone!.isNotEmpty)
-                        Text(
-                          user.phone!,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // 3. Documento
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    user.documentNumber != null &&
-                            user.documentNumber!.isNotEmpty
-                        ? '${user.documentType}: ${user.documentNumber}'
-                        : '—',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-
-                // 4. Roles
-                Expanded(
-                  flex: 3,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children:
-                          user.allRoles
-                              .where((r) => r.isNotEmpty)
-                              .map(_buildRoleBadge)
-                              .toList(),
-                    ),
-                  ),
-                ),
-
-                // 5. Puntos (Fidelidad)
-                if (widget.isLoyaltyEnabled)
-                  Expanded(
-                    flex: 2,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.stars_rounded,
-                          size: 15,
-                          color: Colors.amber.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${user.walletBalance}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.amber.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // 6. Estado (Micro-badge + switch)
-                Expanded(
-                  flex: 2,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
+                      decoration: BoxDecoration(
+                        color:
+                            user.isActive
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(
                           color:
                               user.isActive
-                                  ? Colors.green.shade50
-                                  : Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(5),
-                          border: Border.all(
-                            color:
-                                user.isActive
-                                    ? Colors.green.shade200
-                                    : Colors.red.shade200,
-                          ),
-                        ),
-                        child: Text(
-                          user.isActive ? 'ACTIVO' : 'INACTIVO',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color:
-                                user.isActive
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
-                          ),
+                                  ? Colors.green.shade200
+                                  : Colors.red.shade200,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Transform.scale(
-                        scale: 0.6,
-                        child: CupertinoSwitch(
-                          value: user.isActive,
-                          activeTrackColor: Colors.green,
-                          onChanged: widget.onToggleActive,
+                      child: Text(
+                        user.isActive ? 'ACTIVO' : 'INACTIVO',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              user.isActive
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                    const SizedBox(width: 8),
+                    Transform.scale(
+                      scale: 0.65,
+                      child: CupertinoSwitch(
+                        value: user.isActive,
+                        activeTrackColor: Colors.green,
+                        onChanged: (val) {
+                          context.read<UsersCubit>().toggleUserStatus(
+                            user.id,
+                            user.isActive,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
 
-                // 7. Acciones
-                SizedBox(
-                  width: 124,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.visibility_outlined, size: 18),
-                        tooltip: 'Ver detalle lateral',
-                        splashRadius: 18,
-                        color: Colors.grey.shade600,
-                        onPressed: widget.onTap,
-                      ),
+            // 7. ACCIONES
+            AdminTableColumn<UserEntity>(
+              id: 'actions',
+              label: 'ACCIONES',
+              fixedWidth: 124,
+              alignment: Alignment.centerRight,
+              cellBuilder: (context, user) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.visibility_outlined, size: 18),
+                      tooltip: 'Ver detalle lateral',
+                      splashRadius: 18,
+                      color: Colors.grey.shade600,
+                      onPressed: () => _showUserDetail(context, user.id),
+                    ),
+                    if (context.hasPermission(AppPermissions.usersEdit))
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 18),
-                        tooltip: 'Editar usuario',
+                        tooltip: 'Editar colaborador',
                         splashRadius: 18,
                         color: AppColors.primary,
-                        onPressed: widget.onEdit,
+                        onPressed: () => _onEditUser(context, user),
                       ),
-                      PopupMenuButton<String>(
-                        tooltip: 'Más acciones',
-                        icon: Icon(
-                          Icons.more_vert_rounded,
-                          size: 18,
-                          color: Colors.grey.shade700,
-                        ),
-                        splashRadius: 18,
-                        onSelected: (v) {
-                          if (v == 'toggle') {
-                            widget.onToggleActive(!widget.user.isActive);
-                          }
-                          if (v == 'delete') widget.onDelete();
-                        },
-                        itemBuilder:
-                            (_) => [
-                              PopupMenuItem(
-                                value: 'toggle',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      widget.user.isActive
-                                          ? Icons.block_rounded
-                                          : Icons.check_circle_outline_rounded,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      widget.user.isActive
-                                          ? 'Desactivar cuenta'
-                                          : 'Reactivar cuenta',
-                                    ),
-                                  ],
-                                ),
+                    PopupMenuButton<String>(
+                      tooltip: 'Más opciones',
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        size: 18,
+                        color: Colors.grey.shade700,
+                      ),
+                      splashRadius: 18,
+                      onSelected: (v) {
+                        if (v == 'toggle') {
+                          context.read<UsersCubit>().toggleUserStatus(
+                            user.id,
+                            user.isActive,
+                          );
+                        } else if (v == 'delete') {
+                          _confirmDeleteUser(context, user);
+                        }
+                      },
+                      itemBuilder:
+                          (_) => [
+                            PopupMenuItem(
+                              value: 'toggle',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    user.isActive
+                                        ? Icons.block_rounded
+                                        : Icons.check_circle_outline_rounded,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    user.isActive
+                                        ? 'Desactivar cuenta'
+                                        : 'Reactivar cuenta',
+                                  ),
+                                ],
                               ),
+                            ),
+                            if (context.hasPermission(
+                              AppPermissions.usersDelete,
+                            )) ...[
                               const PopupMenuDivider(),
                               PopupMenuItem(
                                 value: 'delete',
@@ -782,15 +629,15 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                                 ),
                               ),
                             ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                          ],
+                    ),
+                  ],
+                );
+              },
             ),
-          ),
-        ),
-      ),
+          ],
+        );
+      },
     );
   }
 
