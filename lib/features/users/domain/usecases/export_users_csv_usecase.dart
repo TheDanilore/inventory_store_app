@@ -22,20 +22,17 @@ class ExportUsersCsvUseCase {
       onlyActive: onlyActive,
     );
 
-    return await result.match(
-      (failure) async => Left(failure),
-      (users) async {
-        try {
-          // Offload the heavy parsing and CSV generation to an Isolate
-          final csvString = await compute(_generateCsvString, users);
-          return Right(csvString);
-        } catch (e) {
-          return Left(
-            ServerFailure(message: 'Error al procesar el archivo CSV: $e'),
-          );
-        }
-      },
-    );
+    return await result.match((failure) async => Left(failure), (users) async {
+      try {
+        // Offload the heavy parsing and CSV generation to an Isolate
+        final csvString = await compute(_generateCsvString, users);
+        return Right(csvString);
+      } catch (e) {
+        return Left(
+          ServerFailure(message: 'Error al procesar el archivo CSV: $e'),
+        );
+      }
+    });
   }
 }
 

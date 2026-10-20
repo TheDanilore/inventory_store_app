@@ -433,7 +433,10 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                     backgroundColor: const Color(0xFFDC2626),
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -487,8 +490,12 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                       Builder(
                         builder: (context) {
                           final disabled = isSaving || isDisabled;
-                          if (_selectedIndex == 0) return _buildSystemTab(disabled);
-                          if (_selectedIndex == 1) return _buildLimitsTab(disabled);
+                          if (_selectedIndex == 0) {
+                            return _buildSystemTab(disabled);
+                          }
+                          if (_selectedIndex == 1) {
+                            return _buildLimitsTab(disabled);
+                          }
                           return _buildPrizesTab(disabled);
                         },
                       ),
@@ -541,7 +548,11 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
   }
 
   /// Cada tab en mobile es un SingleChildScrollView independiente con su Form
-  Widget _buildTabScrollView(int index, bool isSaving, {bool isDisabled = false}) {
+  Widget _buildTabScrollView(
+    int index,
+    bool isSaving, {
+    bool isDisabled = false,
+  }) {
     final disabled = isSaving || isDisabled;
     return Form(
       key: _formsKeys[index],

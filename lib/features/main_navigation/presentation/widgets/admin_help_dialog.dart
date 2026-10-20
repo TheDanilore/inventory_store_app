@@ -121,9 +121,18 @@ class _AdminHelpDialogState extends State<AdminHelpDialog>
                 indicatorSize: TabBarIndicatorSize.tab,
                 dividerColor: Colors.transparent,
                 tabs: const [
-                  Tab(icon: Icon(Icons.keyboard_outlined, size: 16), text: 'Atajos de Teclado'),
-                  Tab(icon: Icon(Icons.menu_book_rounded, size: 16), text: 'Guía Rápida'),
-                  Tab(icon: Icon(Icons.cloud_done_rounded, size: 16), text: 'Diagnóstico & Cloud'),
+                  Tab(
+                    icon: Icon(Icons.keyboard_outlined, size: 16),
+                    text: 'Atajos de Teclado',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.menu_book_rounded, size: 16),
+                    text: 'Guía Rápida',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.cloud_done_rounded, size: 16),
+                    text: 'Diagnóstico & Cloud',
+                  ),
                 ],
               ),
             ),
@@ -187,12 +196,24 @@ class _AdminHelpDialogState extends State<AdminHelpDialog>
 
   Widget _buildShortcutsTab() {
     final shortcuts = [
-      ('⌘ K / Ctrl + K', 'Abrir Paleta de Comandos Universal para ir a cualquier módulo o acción'),
-      ('/', 'Enfocar de inmediato la barra de búsqueda / filtro de la pantalla activa'),
+      (
+        '⌘ K / Ctrl + K',
+        'Abrir Paleta de Comandos Universal para ir a cualquier módulo o acción',
+      ),
+      (
+        '/',
+        'Enfocar de inmediato la barra de búsqueda / filtro de la pantalla activa',
+      ),
       ('R', 'Recargar métricas y listados en tiempo real desde la nube'),
-      ('1 .. 4', 'Cambiar filtro de tiempo en Dashboard (1: Hoy, 2: Sem, 3: Mes, 4: Histórico)'),
+      (
+        '1 .. 4',
+        'Cambiar filtro de tiempo en Dashboard (1: Hoy, 2: Sem, 3: Mes, 4: Histórico)',
+      ),
       ('G', 'Abrir configuración de Meta Mensual de Ventas'),
-      ('Esc', 'Cerrar cualquier modal abierto, limpiar búsqueda o deseleccionar'),
+      (
+        'Esc',
+        'Cerrar cualquier modal abierto, limpiar búsqueda o deseleccionar',
+      ),
     ];
 
     return ListView(
@@ -292,59 +313,64 @@ class _AdminHelpDialogState extends State<AdminHelpDialog>
 
     return ListView(
       padding: const EdgeInsets.all(20),
-      children: guides
-          .map(
-            (g) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(g.$1, size: 18, color: const Color(0xFF2563EB)),
+      children:
+          guides
+              .map(
+                (g) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            g.$2,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                            ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            g.$3,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFF64748B),
-                              height: 1.35,
-                            ),
+                          child: Icon(
+                            g.$1,
+                            size: 18,
+                            color: const Color(0xFF2563EB),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                g.$2,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                g.$3,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: Color(0xFF64748B),
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          )
-          .toList(),
+              )
+              .toList(),
     );
   }
 
@@ -385,7 +411,10 @@ class _AdminHelpDialogState extends State<AdminHelpDialog>
                     SizedBox(height: 2),
                     Text(
                       'Conexión activa con Supabase Cloud. Todos los registros están respaldados.',
-                      style: TextStyle(fontSize: 11.5, color: Color(0xFF15803D)),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF15803D),
+                      ),
                     ),
                   ],
                 ),
@@ -394,17 +423,24 @@ class _AdminHelpDialogState extends State<AdminHelpDialog>
           ),
         ),
         const SizedBox(height: 16),
-        _buildDiagRow('Versión de la Aplicación', 'DANILORE ONE ERP v1.4.2 (Build 2026.10)'),
+        _buildDiagRow(
+          'Versión de la Aplicación',
+          'DANILORE ONE ERP v1.4.2 (Build 2026.10)',
+        ),
         _buildDiagRow('Latencia Estimada', '24 ms (Conexión Estable)'),
         _buildDiagRow('Motor de Base de Datos', 'PostgreSQL 15 via Supabase'),
-        _buildDiagRow('Plataforma Activa', 'Flutter Multiplatform Desktop/Web/Mobile'),
+        _buildDiagRow(
+          'Plataforma Activa',
+          'Flutter Multiplatform Desktop/Web/Mobile',
+        ),
         const SizedBox(height: 20),
         Center(
           child: ElevatedButton.icon(
             onPressed: () {
               Clipboard.setData(
                 const ClipboardData(
-                  text: 'DANILORE ONE ERP v1.4.2 | Latency: 24ms | Status: Online',
+                  text:
+                      'DANILORE ONE ERP v1.4.2 | Latency: 24ms | Status: Online',
                 ),
               );
               ScaffoldMessenger.of(context).showSnackBar(

@@ -158,8 +158,7 @@ class _CategoriesManagementScreenState
             _focusSearch,
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
             _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyK, alt: true):
-            _focusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
         const SingleActivator(LogicalKeyboardKey.escape): _unfocusSearch,
       },
       child: Focus(
@@ -171,15 +170,17 @@ class _CategoriesManagementScreenState
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Actualizar',
-                onPressed: () => context
-                    .read<CategoriesCubit>()
-                    .loadCategories(forceRefresh: true),
+                onPressed:
+                    () => context.read<CategoriesCubit>().loadCategories(
+                      forceRefresh: true,
+                    ),
               )
             else ...[
               OutlinedButton.icon(
-                onPressed: () => context
-                    .read<CategoriesCubit>()
-                    .loadCategories(forceRefresh: true),
+                onPressed:
+                    () => context.read<CategoriesCubit>().loadCategories(
+                      forceRefresh: true,
+                    ),
                 icon: const Icon(
                   Icons.refresh_rounded,
                   size: 16,
@@ -207,10 +208,7 @@ class _CategoriesManagementScreenState
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text(
                   'Nueva Categoría',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -223,31 +221,38 @@ class _CategoriesManagementScreenState
               ),
             ],
           ],
-          floatingActionButton: isMobile
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showCategoryForm(),
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  tooltip: 'Crear nueva categoría (${AppShortcutLabels.newRecord})',
-                  icon: const Icon(Icons.add_rounded),
-                  label: ValueListenableBuilder<bool>(
-                    valueListenable: _isFabExtended,
-                    builder: (context, extended, _) => AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      child: extended
-                          ? const Text(
-                              'Nueva',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            )
-                          : const SizedBox.shrink(),
+          floatingActionButton:
+              isMobile
+                  ? FloatingActionButton.extended(
+                    onPressed: () => _showCategoryForm(),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    tooltip:
+                        'Crear nueva categoría (${AppShortcutLabels.newRecord})',
+                    icon: const Icon(Icons.add_rounded),
+                    label: ValueListenableBuilder<bool>(
+                      valueListenable: _isFabExtended,
+                      builder:
+                          (context, extended, _) => AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            child:
+                                extended
+                                    ? const Text(
+                                      'Nueva',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                    : const SizedBox.shrink(),
+                          ),
                     ),
-                  ),
-                )
-              : null,
+                  )
+                  : null,
           body: BlocConsumer<CategoriesCubit, CategoriesState>(
-            listenWhen: (prev, curr) =>
-                curr.errorMessage != null &&
-                curr.errorMessage != prev.errorMessage,
+            listenWhen:
+                (prev, curr) =>
+                    curr.errorMessage != null &&
+                    curr.errorMessage != prev.errorMessage,
             listener: (context, state) {
               if (state.errorMessage != null) {
                 AppSnackbar.show(
@@ -305,12 +310,12 @@ class _CategoriesManagementScreenState
               const SizedBox(height: 12),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: () =>
-                      cubit.loadCategories(forceRefresh: true),
+                  onRefresh: () => cubit.loadCategories(forceRefresh: true),
                   color: AppColors.primary,
-                  child: state.viewState == ViewState.loading
-                      ? const CategoriesSkeleton(itemCount: 6)
-                      : cubit.state.categories.isEmpty
+                  child:
+                      state.viewState == ViewState.loading
+                          ? const CategoriesSkeleton(itemCount: 6)
+                          : cubit.state.categories.isEmpty
                           ? _buildEmptyState(cubit, state)
                           : _buildDesktopList(cubit),
                 ),
@@ -386,9 +391,10 @@ class _CategoriesManagementScreenState
           child: RefreshIndicator(
             onRefresh: () => cubit.loadCategories(forceRefresh: true),
             color: AppColors.primary,
-            child: state.viewState == ViewState.loading
-                ? const CategoriesSkeleton(itemCount: 6)
-                : cubit.state.categories.isEmpty
+            child:
+                state.viewState == ViewState.loading
+                    ? const CategoriesSkeleton(itemCount: 6)
+                    : cubit.state.categories.isEmpty
                     ? _buildEmptyState(cubit, state)
                     : _buildMobileList(cubit, state),
           ),
@@ -414,14 +420,14 @@ class _CategoriesManagementScreenState
 
         return TweenAnimationBuilder<double>(
           key: ValueKey(cat.id),
-          duration:
-              Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
+          duration: Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
           curve: Curves.easeOutCubic,
           tween: Tween(begin: 0.0, end: 1.0),
-          builder: (_, value, child) => Transform.translate(
-            offset: Offset(0, 14 * (1 - value)),
-            child: Opacity(opacity: value, child: child),
-          ),
+          builder:
+              (_, value, child) => Transform.translate(
+                offset: Offset(0, 14 * (1 - value)),
+                child: Opacity(opacity: value, child: child),
+              ),
           child: _CategoryDesktopRow(
             category: cat,
             catColor: catColor,
@@ -451,14 +457,14 @@ class _CategoriesManagementScreenState
 
         return TweenAnimationBuilder<double>(
           key: ValueKey(cat.id),
-          duration:
-              Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
+          duration: Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
           curve: Curves.easeOutCubic,
           tween: Tween(begin: 0.0, end: 1.0),
-          builder: (_, value, child) => Transform.translate(
-            offset: Offset(0, 14 * (1 - value)),
-            child: Opacity(opacity: value, child: child),
-          ),
+          builder:
+              (_, value, child) => Transform.translate(
+                offset: Offset(0, 14 * (1 - value)),
+                child: Opacity(opacity: value, child: child),
+              ),
           child: Dismissible(
             key: Key(cat.id ?? cat.name),
             direction: DismissDirection.endToStart,
@@ -487,8 +493,11 @@ class _CategoriesManagementScreenState
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.delete_outline_rounded,
-                      color: AppColors.error, size: 22),
+                  Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.error,
+                    size: 22,
+                  ),
                   SizedBox(height: 4),
                   Text(
                     'Eliminar',
@@ -535,9 +544,7 @@ class _CategoriesManagementScreenState
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isSearch
-                      ? Icons.search_off_rounded
-                      : Icons.category_outlined,
+                  isSearch ? Icons.search_off_rounded : Icons.category_outlined,
                   size: 56,
                   color: AppColors.primary.withValues(alpha: 0.4),
                 ),
@@ -576,7 +583,9 @@ class _CategoriesManagementScreenState
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -637,21 +646,22 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
           curve: Curves.easeOut,
           height: 64,
           decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.06)
-                : hovered
+            color:
+                selected
+                    ? color.withValues(alpha: 0.06)
+                    : hovered
                     ? AppColors.background
                     : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.35)
-                  : AppColors.border,
+              color:
+                  selected ? color.withValues(alpha: 0.35) : AppColors.border,
               width: selected ? 1.5 : 1.0,
             ),
-            boxShadow: hovered || selected
-                ? AppColors.cardShadow(opacity: 0.04)
-                : null,
+            boxShadow:
+                hovered || selected
+                    ? AppColors.cardShadow(opacity: 0.04)
+                    : null,
           ),
           child: Row(
             children: [
@@ -671,8 +681,7 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
 
               // ── Color icon ──────────────────────────────────────────────
               Padding(
-                padding: EdgeInsets.only(
-                    left: selected ? 12 : 14, right: 12),
+                padding: EdgeInsets.only(left: selected ? 12 : 14, right: 12),
                 child: Container(
                   width: 38,
                   height: 38,
@@ -695,8 +704,7 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13.5,
-                        color:
-                            selected ? color : AppColors.textPrimary,
+                        color: selected ? color : AppColors.textPrimary,
                         letterSpacing: -0.1,
                       ),
                       maxLines: 1,
@@ -709,9 +717,10 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                           : 'Sin descripción',
                       style: TextStyle(
                         fontSize: 12,
-                        color: cat.description?.isNotEmpty == true
-                            ? AppColors.textSecondary
-                            : AppColors.textMuted,
+                        color:
+                            cat.description?.isNotEmpty == true
+                                ? AppColors.textSecondary
+                                : AppColors.textMuted,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -726,7 +735,9 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                   padding: const EdgeInsets.only(right: 12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.07),
                       borderRadius: BorderRadius.circular(6),
@@ -748,11 +759,14 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: cat.isActive
-                        ? AppColors.teal.withValues(alpha: 0.1)
-                        : AppColors.textMuted.withValues(alpha: 0.1),
+                    color:
+                        cat.isActive
+                            ? AppColors.teal.withValues(alpha: 0.1)
+                            : AppColors.textMuted.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -760,9 +774,8 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: cat.isActive
-                          ? AppColors.teal
-                          : AppColors.textMuted,
+                      color:
+                          cat.isActive ? AppColors.teal : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -799,8 +812,9 @@ class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
                           value: cat.isActive,
                           onChanged: widget.onToggle,
                           activeThumbColor: AppColors.teal,
-                          activeTrackColor:
-                              AppColors.teal.withValues(alpha: 0.35),
+                          activeTrackColor: AppColors.teal.withValues(
+                            alpha: 0.35,
+                          ),
                           inactiveThumbColor: AppColors.textMuted,
                           inactiveTrackColor: AppColors.border,
                           materialTapTargetSize:
@@ -898,9 +912,10 @@ class _CategoryMobileCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14.5,
-                          color: cat.isActive
-                              ? AppColors.textPrimary
-                              : AppColors.textMuted,
+                          color:
+                              cat.isActive
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1070,22 +1085,23 @@ class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
         ),
         decoration: InputDecoration(
           hintText: 'Buscar categoría…',
-          hintStyle: const TextStyle(
-            color: AppColors.textMuted,
-            fontSize: 14,
-          ),
+          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
           prefixIcon: Icon(
             Icons.search_rounded,
             color: _isFocused ? AppColors.primary : AppColors.textMuted,
             size: 20,
           ),
-          suffixIcon: widget.hasQuery
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded,
-                      color: AppColors.textMuted, size: 18),
-                  onPressed: widget.onClear,
-                )
-              : null,
+          suffixIcon:
+              widget.hasQuery
+                  ? IconButton(
+                    icon: const Icon(
+                      Icons.clear_rounded,
+                      color: AppColors.textMuted,
+                      size: 18,
+                    ),
+                    onPressed: widget.onClear,
+                  )
+                  : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -1126,5 +1142,3 @@ class _StatPill extends StatelessWidget {
     );
   }
 }
-
-

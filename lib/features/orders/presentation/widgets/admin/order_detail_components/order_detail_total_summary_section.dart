@@ -57,7 +57,10 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                     fontSize: 13,
                     fontWeight:
                         isEmphasized ? FontWeight.w700 : FontWeight.w500,
-                    color: isEmphasized ? AppColors.textPrimary : AppColors.textSecondary,
+                    color:
+                        isEmphasized
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
                   ),
                 ),
                 if (hint != null)

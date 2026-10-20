@@ -121,8 +121,7 @@ class PosState extends Equatable {
       warehouses: warehouses ?? this.warehouses,
       accounts: accounts ?? this.accounts,
       status: status ?? this.status,
-      activeShift:
-          clearActiveShift ? null : (activeShift ?? this.activeShift),
+      activeShift: clearActiveShift ? null : (activeShift ?? this.activeShift),
       clientMatches: clientMatches ?? this.clientMatches,
       lastOrderId: lastOrderId ?? this.lastOrderId,
       creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),

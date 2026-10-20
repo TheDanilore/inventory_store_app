@@ -78,7 +78,8 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
       ),
       (loadedProduct) {
         product = loadedProduct;
-        final effectiveVariantId = initialVariantId ??
+        final effectiveVariantId =
+            initialVariantId ??
             (loadedProduct != null && loadedProduct.productVariants.isNotEmpty
                 ? loadedProduct.productVariants.first.id
                 : null);
@@ -100,17 +101,15 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     String? initialVariantId,
   }) {
     this.product = product;
-    final effectiveVariantId = initialVariantId ??
+    final effectiveVariantId =
+        initialVariantId ??
         (product.productVariants.isNotEmpty
             ? product.productVariants.first.id
             : null);
     this.initialVariantId = effectiveVariantId;
 
     emit(
-      state.copyWith(
-        product: product,
-        selectedVariantId: effectiveVariantId,
-      ),
+      state.copyWith(product: product, selectedVariantId: effectiveVariantId),
     );
 
     _initData();
@@ -204,11 +203,10 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         }
       }
 
-      variantSummaries.sort(
-        (a, b) => b.soldQuantity.compareTo(a.soldQuantity),
-      );
+      variantSummaries.sort((a, b) => b.soldQuantity.compareTo(a.soldQuantity));
 
-      final resolvedVariantId = state.selectedVariantId ??
+      final resolvedVariantId =
+          state.selectedVariantId ??
           (variants.isNotEmpty ? variants.first.id : null);
 
       if (isClosed) return;
@@ -374,7 +372,8 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
 
     emit(state.copyWith(viewState: ViewState.loading));
     try {
-      final pid = _profileId ??
+      final pid =
+          _profileId ??
           (_getProfileId != null
               ? (await _unwrap(_getProfileId.call()))
               : null) ??
@@ -387,8 +386,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           profileId: pid,
           userName: userName.trim(),
           rating: rating,
-          comment:
-              comment?.trim().isNotEmpty == true ? comment!.trim() : null,
+          comment: comment?.trim().isNotEmpty == true ? comment!.trim() : null,
         ),
       );
 

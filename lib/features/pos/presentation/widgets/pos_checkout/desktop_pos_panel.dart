@@ -20,6 +20,8 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 
 class DesktopPosPanel extends StatefulWidget {
@@ -743,13 +745,18 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                 ],
 
                 if (!isCredito) ...[
-                  _buildCustomDiscountCard(
-                    posState,
-                    cartState,
-                    ratio,
-                    puntosSeguros,
+                  PermissionGuard(
+                    permission: AppPermissions.posDiscount,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: _buildCustomDiscountCard(
+                        posState,
+                        cartState,
+                        ratio,
+                        puntosSeguros,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 24),
                 ],
 
                 PosTotalSummarySection(
@@ -836,7 +843,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
               const Spacer(),
               if (discountAmount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
@@ -865,9 +875,13 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   height: 44,
                   child: TextFormField(
                     controller: _descuentoCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
                     ],
                     style: const TextStyle(
                       fontSize: 15,
@@ -878,11 +892,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                         (v) => PosCalculatorUtils.validateDiscountInput(
                           text: v,
                           isPercentage: isPercentage,
-                          maxDiscountAmount: PosCalculatorUtils.getMaxCustomDiscount(
-                            cartState,
-                            ratio,
-                            puntosSeguros,
-                          ),
+                          maxDiscountAmount:
+                              PosCalculatorUtils.getMaxCustomDiscount(
+                                cartState,
+                                ratio,
+                                puntosSeguros,
+                              ),
                           cartTotal: cartState.totalAmount,
                         ),
                     decoration: InputDecoration(
@@ -898,7 +913,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                           ),
                         ),
                       ),
-                      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 10,
@@ -915,7 +933,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppColors.teal,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                     onChanged: (v) {
@@ -924,29 +945,35 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                         return;
                       }
                       final val = double.tryParse(v) ?? 0.0;
-                      final maxDiscount = PosCalculatorUtils.getMaxCustomDiscount(
-                        cartState,
-                        ratio,
-                        puntosSeguros,
-                      );
+                      final maxDiscount =
+                          PosCalculatorUtils.getMaxCustomDiscount(
+                            cartState,
+                            ratio,
+                            puntosSeguros,
+                          );
                       final amt =
                           isPercentage
                               ? (cartState.totalAmount * (val / 100))
                               : val;
                       if (amt > maxDiscount) {
                         if (isPercentage) {
-                          final maxPerc = (maxDiscount / cartState.totalAmount) * 100;
+                          final maxPerc =
+                              (maxDiscount / cartState.totalAmount) * 100;
                           final text = maxPerc.toStringAsFixed(2);
                           _descuentoCtrl.value = TextEditingValue(
                             text: text,
-                            selection: TextSelection.collapsed(offset: text.length),
+                            selection: TextSelection.collapsed(
+                              offset: text.length,
+                            ),
                           );
                           context.read<PosCubit>().setDiscountText(text);
                         } else {
                           final text = maxDiscount.toStringAsFixed(2);
                           _descuentoCtrl.value = TextEditingValue(
                             text: text,
-                            selection: TextSelection.collapsed(offset: text.length),
+                            selection: TextSelection.collapsed(
+                              offset: text.length,
+                            ),
                           );
                           context.read<PosCubit>().setDiscountText(text);
                         }
@@ -976,7 +1003,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                       isSelected: !isPercentage,
                       onTap: () {
                         if (isPercentage) {
-                          context.read<PosCubit>().setIsDiscountPercentage(false);
+                          context.read<PosCubit>().setIsDiscountPercentage(
+                            false,
+                          );
                           _descuentoCtrl.text = '';
                           context.read<PosCubit>().setDiscountText('');
                         }
@@ -987,7 +1016,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                       isSelected: isPercentage,
                       onTap: () {
                         if (!isPercentage) {
-                          context.read<PosCubit>().setIsDiscountPercentage(true);
+                          context.read<PosCubit>().setIsDiscountPercentage(
+                            true,
+                          );
                           _descuentoCtrl.text = '';
                           context.read<PosCubit>().setDiscountText('');
                         }
@@ -1020,15 +1051,16 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           decoration: BoxDecoration(
             color: isSelected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                : null,
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ]
+                    : null,
           ),
           child: Text(
             label,
@@ -1088,8 +1120,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   (a) => a['id'] == posState.selectedAccountId,
                   orElse: () => <String, dynamic>{},
                 );
-                final requiresShift =
-                    PosCalculatorUtils.accountRequiresShift(accountData);
+                final requiresShift = PosCalculatorUtils.accountRequiresShift(
+                  accountData,
+                );
                 final noCajaAbierta =
                     !isCredito &&
                     posState.selectedAccountId != null &&
@@ -1234,11 +1267,15 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                               foregroundColor: Colors.white,
                               disabledForegroundColor: Colors.grey.shade500,
                               elevation: canProceed ? 2 : 0,
-                              shadowColor: AppColors.teal.withValues(alpha: 0.35),
+                              shadowColor: AppColors.teal.withValues(
+                                alpha: 0.35,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                             ),
                             child:
                                 isBusy
@@ -1253,7 +1290,8 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                                       ),
                                     )
                                     : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         const Icon(
                                           Icons.shopping_cart_checkout_rounded,

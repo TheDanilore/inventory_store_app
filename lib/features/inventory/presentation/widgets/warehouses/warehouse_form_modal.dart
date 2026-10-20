@@ -39,8 +39,9 @@ class _WarehouseFormModalState extends State<WarehouseFormModal> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.warehouseToEdit?.name ?? '');
-    _addressCtrl =
-        TextEditingController(text: widget.warehouseToEdit?.address ?? '');
+    _addressCtrl = TextEditingController(
+      text: widget.warehouseToEdit?.address ?? '',
+    );
     _nameFocusNode = FocusNode();
     _addressFocusNode = FocusNode();
     _isActive = widget.warehouseToEdit?.isActive ?? true;
@@ -231,7 +232,8 @@ class _WarehouseFormModalState extends State<WarehouseFormModal> {
                         color: AppColors.textPrimary,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Ej. Av. Los Pinos 123, Distrito / Referencia',
+                        hintText:
+                            'Ej. Av. Los Pinos 123, Distrito / Referencia',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary.withValues(alpha: 0.6),

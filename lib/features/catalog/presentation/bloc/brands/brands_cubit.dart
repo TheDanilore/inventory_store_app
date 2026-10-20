@@ -29,10 +29,7 @@ class BrandsCubit extends Cubit<BrandsState> {
     return super.close();
   }
 
-  Future<void> loadBrands({
-    bool forceRefresh = false,
-    String? query,
-  }) async {
+  Future<void> loadBrands({bool forceRefresh = false, String? query}) async {
     if (query != null) {
       emit(state.copyWith(searchQuery: query, viewState: ViewState.loading));
     } else {

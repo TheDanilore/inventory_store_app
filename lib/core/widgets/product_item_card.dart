@@ -124,8 +124,10 @@ class _ProductItemCardState extends State<ProductItemCard>
                     if (widget.variantLabel != null &&
                         widget.variantLabel!.trim().isNotEmpty &&
                         widget.variantLabel!.trim() != 'Única' &&
-                        widget.variantLabel!.trim().toLowerCase() != 'variante estándar' &&
-                        widget.variantLabel!.trim().toLowerCase() != 'variante única') ...[
+                        widget.variantLabel!.trim().toLowerCase() !=
+                            'variante estándar' &&
+                        widget.variantLabel!.trim().toLowerCase() !=
+                            'variante única') ...[
                       const SizedBox(height: 2),
                       Text(
                         widget.variantLabel!,

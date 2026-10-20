@@ -19,10 +19,16 @@ class LocaleCubit extends Cubit<LocaleState> {
       final code = prefs.getString(_prefKey);
       if (code != null && ['es', 'en', 'pt', 'qu'].contains(code)) {
         emit(LocaleState(Locale(code)));
-        LoggerService.i('Idioma recuperado de preferencias: $code', tag: 'LocaleCubit');
+        LoggerService.i(
+          'Idioma recuperado de preferencias: $code',
+          tag: 'LocaleCubit',
+        );
       }
     } catch (e) {
-      LoggerService.w('Error cargando idioma de preferencias: $e', tag: 'LocaleCubit');
+      LoggerService.w(
+        'Error cargando idioma de preferencias: $e',
+        tag: 'LocaleCubit',
+      );
     }
   }
 
@@ -33,9 +39,15 @@ class LocaleCubit extends Cubit<LocaleState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefKey, newLocale.languageCode);
-      LoggerService.i('Idioma cambiado a: ${newLocale.languageCode}', tag: 'LocaleCubit');
+      LoggerService.i(
+        'Idioma cambiado a: ${newLocale.languageCode}',
+        tag: 'LocaleCubit',
+      );
     } catch (e) {
-      LoggerService.e('Error guardando idioma en preferencias: $e', tag: 'LocaleCubit');
+      LoggerService.e(
+        'Error guardando idioma en preferencias: $e',
+        tag: 'LocaleCubit',
+      );
     }
   }
 }

@@ -55,4 +55,3 @@ class OrderDetailSectionCard extends StatelessWidget {
     );
   }
 }
-

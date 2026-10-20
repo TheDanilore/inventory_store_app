@@ -61,7 +61,9 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
           cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
           break;
         case 'category':
-          cmp = (a.categoryName ?? '').toLowerCase().compareTo((b.categoryName ?? '').toLowerCase());
+          cmp = (a.categoryName ?? '').toLowerCase().compareTo(
+            (b.categoryName ?? '').toLowerCase(),
+          );
           break;
         case 'price':
           final priceA = a.displaySalePrice ?? a.minSalePrice ?? 0.0;
@@ -98,15 +100,20 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
               items: sortedProducts,
               itemId: (p) => p.id,
               selectedIds: _selectedIds,
-              onSelectionChanged: (ids) => setState(() => _selectedIds
-                ..clear()
-                ..addAll(ids)),
+              onSelectionChanged:
+                  (ids) => setState(
+                    () =>
+                        _selectedIds
+                          ..clear()
+                          ..addAll(ids),
+                  ),
               sortColumnId: _sortColumnId,
               isSortAscending: _isSortAscending,
-              onSort: (colId, asc) => setState(() {
-                _sortColumnId = colId;
-                _isSortAscending = asc;
-              }),
+              onSort:
+                  (colId, asc) => setState(() {
+                    _sortColumnId = colId;
+                    _isSortAscending = asc;
+                  }),
               minTableWidth: 920.0,
               margin: EdgeInsets.zero,
               onRowTap: widget.onProductSelected,
@@ -115,7 +122,8 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                 pageSize: widget.pageSize,
                 totalItems: effectiveTotal,
                 onPageChanged: (p) => widget.onPageChanged(p - 1),
-                onPageSizeChanged: (newSize) => widget.onPageSizeChanged?.call(newSize),
+                onPageSizeChanged:
+                    (newSize) => widget.onPageSizeChanged?.call(newSize),
               ),
               bulkActions: [
                 AdminBulkAction<ProductEntity>(
@@ -145,7 +153,8 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   flex: 4,
                   isSortable: true,
                   cellBuilder: (context, product) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
                     final variantCount = product.productVariants.length;
 
                     return Row(
@@ -164,9 +173,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                 ),
                               ),
                               Row(
@@ -178,11 +188,14 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                         vertical: 1.5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: isDark
-                                            ? const Color(0xFF3B82F6)
-                                                .withValues(alpha: 0.18)
-                                            : AppColors.primary
-                                                .withValues(alpha: 0.08),
+                                        color:
+                                            isDark
+                                                ? const Color(
+                                                  0xFF3B82F6,
+                                                ).withValues(alpha: 0.18)
+                                                : AppColors.primary.withValues(
+                                                  alpha: 0.08,
+                                                ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -190,9 +203,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          color: isDark
-                                              ? const Color(0xFF60A5FA)
-                                              : AppColors.primary,
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF60A5FA)
+                                                  : AppColors.primary,
                                         ),
                                       ),
                                     ),
@@ -204,9 +218,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                       product.brandName!,
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: isDark
-                                            ? AppColors.darkTextSecondary
-                                            : AppColors.textMuted,
+                                        color:
+                                            isDark
+                                                ? AppColors.darkTextSecondary
+                                                : AppColors.textMuted,
                                       ),
                                     ),
                                 ],
@@ -226,14 +241,16 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   flex: 2,
                   isSortable: true,
                   cellBuilder: (context, product) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
                     return Text(
                       product.categoryName ?? 'Sin categoría',
                       style: TextStyle(
                         fontSize: 12.5,
-                        color: isDark
-                            ? AppColors.darkTextSecondary
-                            : AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
                       ),
                     );
                   },
@@ -245,8 +262,9 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   label: 'STOCK DISPONIBLE',
                   fixedWidth: 140,
                   isSortable: true,
-                  cellBuilder: (context, product) =>
-                      ProductStockBadge(stock: product.totalStock),
+                  cellBuilder:
+                      (context, product) =>
+                          ProductStockBadge(stock: product.totalStock),
                 ),
 
                 // 4. Precio Venta
@@ -256,16 +274,18 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   fixedWidth: 135,
                   isSortable: true,
                   cellBuilder: (context, product) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
                     if (product.displaySalePrice != null) {
                       return Text(
                         'S/ ${product.displaySalePrice!.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: isDark
-                              ? const Color(0xFF34D399)
-                              : AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? const Color(0xFF34D399)
+                                  : AppColors.textPrimary,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       );
@@ -273,9 +293,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                     return Text(
                       '—',
                       style: TextStyle(
-                        color: isDark
-                            ? AppColors.darkTextMuted
-                            : AppColors.textMuted,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                       ),
                     );
                   },
@@ -287,10 +308,11 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   label: 'ESTADO',
                   fixedWidth: 110,
                   isSortable: true,
-                  cellBuilder: (context, product) => ProductStatusPill(
-                    isActive: product.isActive,
-                    onTap: () => widget.onToggleActive(product),
-                  ),
+                  cellBuilder:
+                      (context, product) => ProductStatusPill(
+                        isActive: product.isActive,
+                        onTap: () => widget.onToggleActive(product),
+                      ),
                 ),
 
                 // 6. Acciones
@@ -299,12 +321,16 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                   label: 'ACCIONES',
                   fixedWidth: 110,
                   cellBuilder: (context, product) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
                     return Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                          icon: const Icon(
+                            Icons.point_of_sale_rounded,
+                            size: 16,
+                          ),
                           tooltip: 'Vender',
                           splashRadius: 14,
                           color: AppColors.teal,
@@ -314,9 +340,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                           icon: const Icon(Icons.edit_outlined, size: 16),
                           tooltip: 'Editar',
                           splashRadius: 14,
-                          color: isDark
-                              ? AppColors.darkTextSecondary
-                              : AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
                           onPressed: () => widget.onEdit(product),
                         ),
                       ],
@@ -344,9 +371,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
-                                  color: isDark
-                                      ? AppColors.darkTextPrimary
-                                      : AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -356,9 +384,10 @@ class _CatalogProTableViewState extends State<CatalogProTableView> {
                                 product.categoryName ?? 'Sin categoría',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isDark
-                                      ? AppColors.darkTextSecondary
-                                      : AppColors.textMuted,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textMuted,
                                 ),
                               ),
                             ],
@@ -387,4 +416,3 @@ class CatalogTableSkeleton extends StatelessWidget {
     return const AppTableShimmer(rowCount: 8, minWidth: 920.0);
   }
 }
-

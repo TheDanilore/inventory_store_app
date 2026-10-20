@@ -76,232 +76,180 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
             isProcessing ? SystemMouseCursors.basic : SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFAFCFF) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.teal
-                : _isHovered
-                    ? AppColors.teal.withValues(alpha: 0.35)
-                    : AppColors.border,
-            width: (isSelected || _isHovered) ? 1.5 : 1.0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFAFCFF) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color:
+                  isSelected
+                      ? AppColors.teal
+                      : _isHovered
+                      ? AppColors.teal.withValues(alpha: 0.35)
+                      : AppColors.border,
+              width: (isSelected || _isHovered) ? 1.5 : 1.0,
+            ),
+            boxShadow:
+                isSelected
+                    ? [
+                      BoxShadow(
+                        color: AppColors.teal.withValues(alpha: 0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: _isHovered ? 0.06 : 0.03,
+                        ),
+                        blurRadius: _isHovered ? 14 : 8,
+                        offset: Offset(0, _isHovered ? 4 : 2),
+                      ),
+                    ],
           ),
-          boxShadow: isSelected
-              ? [
-                BoxShadow(
-                  color: AppColors.teal.withValues(alpha: 0.12),
-                  blurRadius: 18,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-              : [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: _isHovered ? 0.06 : 0.03,
-                  ),
-                  blurRadius: _isHovered ? 14 : 8,
-                  offset: Offset(0, _isHovered ? 4 : 2),
-                ),
-              ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(15),
-              onTap: isProcessing ? null : onTap,
-              child: Stack(
-                children: [
-                  if (isSelected)
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: 4,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: AppColors.teal,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(15),
-                            bottomLeft: Radius.circular(15),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(15),
+                onTap: isProcessing ? null : onTap,
+                child: Stack(
+                  children: [
+                    if (isSelected)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: AppColors.teal,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(15),
+                              bottomLeft: Radius.circular(15),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isSelected ? 18 : 16,
-                      14,
-                      16,
-                      14,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Indicador de procesamiento ────────────────────────────
-                        if (isProcessing)
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 10),
-                            child: LinearProgressIndicator(
-                              color: AppColors.teal,
-                              minHeight: 2,
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        isSelected ? 18 : 16,
+                        14,
+                        16,
+                        14,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Indicador de procesamiento ────────────────────────────
+                          if (isProcessing)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 10),
+                              child: LinearProgressIndicator(
+                                color: AppColors.teal,
+                                minHeight: 2,
+                              ),
                             ),
-                          ),
 
-                        // ── Fila 1: Info Cliente e ID ─────────────────────────────
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // ID del pedido
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: AppColors.border,
+                          // ── Fila 1: Info Cliente e ID ─────────────────────────────
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // ID del pedido
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: AppColors.border,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.tag_rounded,
+                                            size: 11,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            shortId,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.textSecondary,
+                                              fontFamily: 'monospace',
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                    const SizedBox(height: 7),
+
+                                    // Cliente
+                                    Row(
                                       children: [
-                                        const Icon(
-                                          Icons.tag_rounded,
-                                          size: 11,
-                                          color: AppColors.textMuted,
+                                        Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.teal.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              7,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.person_rounded,
+                                            size: 14,
+                                            color: AppColors.teal,
+                                          ),
                                         ),
-                                        const SizedBox(width: 3),
-                                        Text(
-                                          shortId,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textSecondary,
-                                            fontFamily: 'monospace',
-                                            letterSpacing: 0.5,
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            customerName,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14.5,
+                                              color: AppColors.textPrimary,
+                                              letterSpacing: -0.2,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  const SizedBox(height: 7),
+                                    const SizedBox(height: 6),
 
-                                  // Cliente
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(5),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.teal.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            7,
-                                          ),
-                                        ),
-                                        child: const Icon(
-                                          Icons.person_rounded,
-                                          size: 14,
-                                          color: AppColors.teal,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          customerName,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14.5,
-                                            color: AppColors.textPrimary,
-                                            letterSpacing: -0.2,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-
-                                  // Fecha
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.access_time_rounded,
-                                        size: 13,
-                                        color: AppColors.textMuted,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        dateString,
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: AppColors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-
-                                  // Método de pago
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        isCredit
-                                            ? Icons.credit_card_rounded
-                                            : Icons.payments_outlined,
-                                        size: 13,
-                                        color:
-                                            isCredit
-                                                ? Colors.deepOrange.shade400
-                                                : AppColors.textMuted,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        order.paymentMethod,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          color:
-                                              isCredit
-                                                  ? Colors.deepOrange.shade600
-                                                  : AppColors.textSecondary,
-                                          fontWeight:
-                                              isCredit
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  if (warehouseName != null &&
-                                      warehouseName.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
+                                    // Fecha
                                     Row(
                                       children: [
                                         const Icon(
-                                          Icons.warehouse_outlined,
+                                          Icons.access_time_rounded,
                                           size: 13,
                                           color: AppColors.textMuted,
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          warehouseName,
+                                          dateString,
                                           style: const TextStyle(
                                             fontSize: 11.5,
                                             color: AppColors.textSecondary,
@@ -310,208 +258,274 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                                         ),
                                       ],
                                     ),
-                                  ],
+                                    const SizedBox(height: 4),
 
-                                  // Chip: puntos pendientes de otorgar
-                                  if (showPendingPointsChip) ...[
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.amber.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: Colors.amber.shade300,
+                                    // Método de pago
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          isCredit
+                                              ? Icons.credit_card_rounded
+                                              : Icons.payments_outlined,
+                                          size: 13,
+                                          color:
+                                              isCredit
+                                                  ? Colors.deepOrange.shade400
+                                                  : AppColors.textMuted,
                                         ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          order.paymentMethod,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color:
+                                                isCredit
+                                                    ? Colors.deepOrange.shade600
+                                                    : AppColors.textSecondary,
+                                            fontWeight:
+                                                isCredit
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    if (warehouseName != null &&
+                                        warehouseName.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Row(
                                         children: [
-                                          const Text(
-                                            '🪙',
-                                            style: TextStyle(fontSize: 12),
+                                          const Icon(
+                                            Icons.warehouse_outlined,
+                                            size: 13,
+                                            color: AppColors.textMuted,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            '${order.pointsEarned} monedas pendientes',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.amber.shade800,
+                                            warehouseName,
+                                            style: const TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
+                                    ],
 
-                            // Monto y Tags de Estado
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                RichText(
-                                  text: TextSpan(
-                                    children: [
-                                      const TextSpan(
-                                        text: 'S/ ',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.teal,
+                                    // Chip: puntos pendientes de otorgar
+                                    if (showPendingPointsChip) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
                                         ),
-                                      ),
-                                      TextSpan(
-                                        text: totalAmount.toStringAsFixed(2),
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppColors.textPrimary,
-                                          letterSpacing: -0.3,
-                                          fontFeatures: [FontFeature.tabularFigures()],
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.amber.shade300,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text(
+                                              '🪙',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${order.pointsEarned} monedas pendientes',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.amber.shade800,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(height: 8),
-                                _StatusTag(status: status),
-                                const SizedBox(height: 6),
-                                _PaymentStatusTag(
-                                  paymentStatus:
-                                      status == 'CANCELLED'
-                                          ? 'CANCELLED'
-                                          : (status == 'RETURNED'
-                                              ? 'RETURNED'
-                                              : paymentStatus),
+                              ),
+
+                              // Monto y Tags de Estado
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        const TextSpan(
+                                          text: 'S/ ',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.teal,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: totalAmount.toStringAsFixed(2),
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.3,
+                                            fontFeatures: [
+                                              FontFeature.tabularFigures(),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _StatusTag(status: status),
+                                  const SizedBox(height: 6),
+                                  _PaymentStatusTag(
+                                    paymentStatus:
+                                        status == 'CANCELLED'
+                                            ? 'CANCELLED'
+                                            : (status == 'RETURNED'
+                                                ? 'RETURNED'
+                                                : paymentStatus),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+
+                          // ── Progreso de pagos (Si es parcial o crédito) ───────────
+                          if (status == 'COMPLETED' && isCredit) ...[
+                            const SizedBox(height: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Pagado: S/ ${amountPaid.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textSecondary,
+                                        fontFeatures: [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      'Resta: S/ ${pendingAmount.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            pendingAmount > 0
+                                                ? AppColors.error
+                                                : AppColors.success,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: LinearProgressIndicator(
+                                    value:
+                                        totalAmount > 0
+                                            ? (amountPaid / totalAmount).clamp(
+                                              0.0,
+                                              1.0,
+                                            )
+                                            : 0,
+                                    minHeight: 5,
+                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      pendingAmount <= 0
+                                          ? AppColors.success
+                                          : AppColors.teal,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                           ],
-                        ),
 
-                        // ── Progreso de pagos (Si es parcial o crédito) ───────────
-                        if (status == 'COMPLETED' && isCredit) ...[
-                          const SizedBox(height: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(
+                            height: 10,
+                          ), // ── Botones de Acción Rápida ──────────────────────────────────
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Pagado: S/ ${amountPaid.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                      fontFeatures: [FontFeature.tabularFigures()],
-                                    ),
-                                  ),
-                                  Text(
-                                    'Resta: S/ ${pendingAmount.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          pendingAmount > 0
-                                              ? AppColors.error
-                                              : AppColors.success,
-                                      fontFeatures: const [FontFeature.tabularFigures()],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 5),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(5),
-                                child: LinearProgressIndicator(
-                                  value:
-                                      totalAmount > 0
-                                          ? (amountPaid / totalAmount).clamp(
-                                            0.0,
-                                            1.0,
-                                          )
-                                          : 0,
-                                  minHeight: 5,
-                                  backgroundColor: const Color(0xFFF1F5F9),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    pendingAmount <= 0
-                                        ? AppColors.success
-                                        : AppColors.teal,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-
-                        const SizedBox(
-                          height: 10,
-                        ), // ── Botones de Acción Rápida ──────────────────────────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            // Imprimir Ticket (con animación si está generando)
-                            _AnimatedSoftButton(
-                              onPressed:
-                                  isProcessing || isGeneratingPDF
-                                      ? null
-                                      : onPrint,
-                              icon: const Icon(Icons.print_rounded),
-                              label: 'Ticket',
-                              color: Colors.blueGrey.shade700,
-                              isLoading: isGeneratingPDF,
-                            ),
-                            const SizedBox(width: 8),
-
-                            if (status == 'PENDING') ...[
-                              // Botón Cancelar Borrador
+                              // Imprimir Ticket (con animación si está generando)
                               _AnimatedSoftButton(
                                 onPressed:
-                                    isProcessing
+                                    isProcessing || isGeneratingPDF
                                         ? null
-                                        : () =>
-                                            onUpdateStatus(order, 'CANCELLED'),
-                                icon: const Icon(Icons.cancel_outlined),
-                                label: 'Cancelar',
-                                color: Colors.red.shade700,
+                                        : onPrint,
+                                icon: const Icon(Icons.print_rounded),
+                                label: 'Ticket',
+                                color: Colors.blueGrey.shade700,
+                                isLoading: isGeneratingPDF,
                               ),
                               const SizedBox(width: 8),
 
-                              // Botón Completar
-                              _AnimatedSoftButton(
-                                onPressed:
-                                    isProcessing
-                                        ? null
-                                        : () =>
-                                            onUpdateStatus(order, 'COMPLETED'),
-                                icon: const Icon(
-                                  Icons.check_circle_outline_rounded,
+                              if (status == 'PENDING') ...[
+                                // Botón Cancelar Borrador
+                                _AnimatedSoftButton(
+                                  onPressed:
+                                      isProcessing
+                                          ? null
+                                          : () => onUpdateStatus(
+                                            order,
+                                            'CANCELLED',
+                                          ),
+                                  icon: const Icon(Icons.cancel_outlined),
+                                  label: 'Cancelar',
+                                  color: Colors.red.shade700,
                                 ),
-                                label: 'Cobrar',
-                                color: Colors.green.shade700,
-                              ),
+                                const SizedBox(width: 8),
+
+                                // Botón Completar
+                                _AnimatedSoftButton(
+                                  onPressed:
+                                      isProcessing
+                                          ? null
+                                          : () => onUpdateStatus(
+                                            order,
+                                            'COMPLETED',
+                                          ),
+                                  icon: const Icon(
+                                    Icons.check_circle_outline_rounded,
+                                  ),
+                                  label: 'Cobrar',
+                                  color: Colors.green.shade700,
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }
 

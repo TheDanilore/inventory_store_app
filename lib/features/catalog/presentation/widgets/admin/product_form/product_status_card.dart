@@ -16,9 +16,10 @@ class ProductStatusCard extends StatelessWidget {
       builder: (context, state) {
         final isActive = state.isActive;
 
-        final helperText = isActive
-            ? 'Este producto está activo y disponible para la venta en el catálogo, POS y canales habilitados.'
-            : 'Este producto está desactivado. No estará disponible para la compra ni venta en ningún canal.';
+        final helperText =
+            isActive
+                ? 'Este producto está activo y disponible para la venta en el catálogo, POS y canales habilitados.'
+                : 'Este producto está desactivado. No estará disponible para la compra ni venta en ningún canal.';
 
         return Container(
           width: double.infinity,
@@ -89,7 +90,9 @@ class ProductStatusCard extends StatelessWidget {
                               width: 12,
                               height: 12,
                               decoration: const BoxDecoration(
-                                color: Color(0xFF10B981), // Verde esmeralda vivo
+                                color: Color(
+                                  0xFF10B981,
+                                ), // Verde esmeralda vivo
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -105,7 +108,10 @@ class ProductStatusCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
                               ),
                             ),
                           ],
@@ -129,7 +135,10 @@ class ProductStatusCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                                color:
+                                    isDark
+                                        ? const Color(0xFFCBD5E1)
+                                        : const Color(0xFF334155),
                               ),
                             ),
                           ],

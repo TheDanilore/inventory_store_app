@@ -51,7 +51,11 @@ class InventoryBatchDetailPane extends StatelessWidget {
                 : BorderRadius.zero,
         border:
             isEmbedded
-                ? Border.all(color: InventoryPalette.of(context).border.withValues(alpha: 0.8))
+                ? Border.all(
+                  color: InventoryPalette.of(
+                    context,
+                  ).border.withValues(alpha: 0.8),
+                )
                 : null,
         boxShadow: isEmbedded ? AppColors.cardShadow(opacity: 0.03) : null,
       ),
@@ -116,7 +120,9 @@ class InventoryBatchDetailPane extends StatelessWidget {
       decoration: BoxDecoration(
         color: InventoryPalette.of(context).surface,
         border: Border(
-          bottom: BorderSide(color: InventoryPalette.of(context).border.withValues(alpha: 0.6)),
+          bottom: BorderSide(
+            color: InventoryPalette.of(context).border.withValues(alpha: 0.6),
+          ),
         ),
       ),
       child: Row(
@@ -643,7 +649,11 @@ class _TagBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: InventoryPalette.of(context).textSecondary),
+          Icon(
+            icon,
+            size: 12,
+            color: InventoryPalette.of(context).textSecondary,
+          ),
           const SizedBox(width: 4),
           Text(
             label,
@@ -679,7 +689,11 @@ class _DataRow extends StatelessWidget {
     return Row(
       children: [
         if (icon != null) ...[
-          Icon(icon, size: 16, color: InventoryPalette.of(context).textSecondary),
+          Icon(
+            icon,
+            size: 16,
+            color: InventoryPalette.of(context).textSecondary,
+          ),
           const SizedBox(width: 8),
         ],
         Text(

@@ -32,10 +32,25 @@ class AuthRepositoryImpl implements AuthRepository {
               .maybeSingle();
 
       if (data == null) {
-        return left(const NotFoundFailure(message: 'Perfil de usuario no encontrado.'));
+        return left(
+          const NotFoundFailure(message: 'Perfil de usuario no encontrado.'),
+        );
       }
 
-      final model = AuthUserModel.fromMap(data, session.user.email ?? '');
+      final profileId = data['id']?.toString() ?? '';
+      final fallbackRole = data['role']?.toString() ?? 'customer';
+
+      final (userRoles, userPermissions) = await _fetchRolesAndPermissions(
+        profileId: profileId,
+        fallbackRole: fallbackRole,
+      );
+
+      final model = AuthUserModel.fromMap(
+        data,
+        session.user.email ?? '',
+        userRoles: userRoles,
+        userPermissions: userPermissions,
+      );
 
       return right(model.toEntity());
     } on sb.PostgrestException catch (e, st) {
@@ -45,10 +60,12 @@ class AuthRepositoryImpl implements AuthRepository {
         error: e,
         stackTrace: st,
       );
-      return left(ServerFailure(
-        message: 'Error de base de datos al obtener el perfil: ${e.message}',
-        code: e.code ?? 'POSTGREST_ERROR',
-      ));
+      return left(
+        ServerFailure(
+          message: 'Error de base de datos al obtener el perfil: ${e.message}',
+          code: e.code ?? 'POSTGREST_ERROR',
+        ),
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error al obtener usuario actual',
@@ -65,7 +82,11 @@ class AuthRepositoryImpl implements AuthRepository {
           errorStr.contains('timeout')) {
         return left(const NetworkFailure());
       }
-      return left(UnexpectedFailure(message: 'Error al obtener usuario actual: ${e.toString()}'));
+      return left(
+        UnexpectedFailure(
+          message: 'Error al obtener usuario actual: ${e.toString()}',
+        ),
+      );
     }
   }
 
@@ -114,9 +135,10 @@ class AuthRepositoryImpl implements AuthRepository {
       final res = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: fullName != null && fullName.trim().isNotEmpty
-            ? {'full_name': fullName.trim()}
-            : null,
+        data:
+            fullName != null && fullName.trim().isNotEmpty
+                ? {'full_name': fullName.trim()}
+                : null,
       );
 
       if (res.user != null) {
@@ -154,18 +176,19 @@ class AuthRepositoryImpl implements AuthRepository {
   }) async {
     try {
       // Inserción atómica con retorno inmediato en una sola consulta
-      final data = await _supabase
-          .from('profiles')
-          .upsert({
-            'auth_user_id': authUserId,
-            'full_name': fullName,
-            'role': role,
-            'is_active': isActive,
-          }, onConflict: 'auth_user_id')
-          .select(
-            'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
-          )
-          .single();
+      final data =
+          await _supabase
+              .from('profiles')
+              .upsert({
+                'auth_user_id': authUserId,
+                'full_name': fullName,
+                'role': role,
+                'is_active': isActive,
+              }, onConflict: 'auth_user_id')
+              .select(
+                'id, auth_user_id, role, is_active, full_name, phone, document_type, document_number, avatar_url',
+              )
+              .single();
 
       final model = AuthUserModel.fromMap(data, email);
       return right(model.toEntity());
@@ -176,7 +199,9 @@ class AuthRepositoryImpl implements AuthRepository {
         error: e,
         stackTrace: st,
       );
-      return left(Failure.from('Error en base de datos al crear perfil: ${e.message}'));
+      return left(
+        Failure.from('Error en base de datos al crear perfil: ${e.message}'),
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado al crear perfil',
@@ -361,7 +386,11 @@ class AuthRepositoryImpl implements AuthRepository {
         error: e,
         stackTrace: st,
       );
-      return left(Failure.from('Error de base de datos al actualizar perfil: ${e.message}'));
+      return left(
+        Failure.from(
+          'Error de base de datos al actualizar perfil: ${e.message}',
+        ),
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado al actualizar el perfil',
@@ -389,5 +418,66 @@ class AuthRepositoryImpl implements AuthRepository {
       return 'Este correo ya está registrado.';
     }
     return 'Error de autenticación.';
+  }
+
+  /// Consulta los roles y permisos asignados al perfil del usuario.
+  /// En caso de que las tablas no existan aún o falle la red, degrada graciosamente al rol base.
+  Future<(List<String>, Set<String>)> _fetchRolesAndPermissions({
+    required String profileId,
+    required String fallbackRole,
+  }) async {
+    final roles = <String>{};
+    final permissions = <String>{};
+
+    if (fallbackRole.isNotEmpty) {
+      roles.add(fallbackRole);
+    }
+
+    if (profileId.isEmpty) {
+      return (roles.toList(), permissions);
+    }
+
+    try {
+      final userRolesData = await _supabase
+          .from('user_roles')
+          .select('''
+            roles (
+              name,
+              role_permissions (
+                permissions (
+                  code
+                )
+              )
+            )
+          ''')
+          .eq('profile_id', profileId);
+
+      for (final ur in userRolesData as List) {
+        final roleObj = ur['roles'] as Map<String, dynamic>?;
+        if (roleObj != null) {
+          final rName = roleObj['name']?.toString();
+          if (rName != null && rName.isNotEmpty) {
+            roles.add(rName);
+          }
+          final rolePerms = roleObj['role_permissions'] as List?;
+          if (rolePerms != null) {
+            for (final rp in rolePerms) {
+              final permObj = rp['permissions'] as Map<String, dynamic>?;
+              final pCode = permObj?['code']?.toString();
+              if (pCode != null && pCode.isNotEmpty) {
+                permissions.add(pCode);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      LoggerService.w(
+        'Aviso: no se pudieron cargar user_roles/permissions desde Supabase ($e). Usando fallback de rol.',
+        tag: 'AuthRepositoryImpl',
+      );
+    }
+
+    return (roles.toList(), permissions);
   }
 }

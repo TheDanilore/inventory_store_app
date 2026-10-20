@@ -63,15 +63,18 @@ class KardexCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final upperType = item.type.toUpperCase();
-    final isEntry = upperType.contains('INGRESO') || upperType.contains('DEVOLUCIÓN');
+    final isEntry =
+        upperType.contains('INGRESO') || upperType.contains('DEVOLUCIÓN');
     final isReturn = upperType.contains('DEVOLUCIÓN');
     final isSale = upperType.contains('VENTA');
 
-    final Color iconColor = isEntry
-        ? (isReturn ? Colors.purple : Colors.green)
-        : (isSale ? Colors.blue : Colors.red);
+    final Color iconColor =
+        isEntry
+            ? (isReturn ? Colors.purple : Colors.green)
+            : (isSale ? Colors.blue : Colors.red);
 
-    final IconData iconData = isEntry ? Icons.arrow_downward : Icons.arrow_upward;
+    final IconData iconData =
+        isEntry ? Icons.arrow_downward : Icons.arrow_upward;
 
     // Construcción de la línea de metadata del producto y variante
     final List<String> metaParts = [];
@@ -96,13 +99,16 @@ class KardexCard extends StatelessWidget {
       metaParts.add(item.warehouseName!);
     }
 
-    final String displayName = (item.productName != null && item.productName!.isNotEmpty)
-        ? item.productName!
-        : item.description;
+    final String displayName =
+        (item.productName != null && item.productName!.isNotEmpty)
+            ? item.productName!
+            : item.description;
 
     // Formatear referencia si es UUID
     String formattedReference = item.reference;
-    if (formattedReference.isNotEmpty && formattedReference.length == 36 && formattedReference.contains('-')) {
+    if (formattedReference.isNotEmpty &&
+        formattedReference.length == 36 &&
+        formattedReference.contains('-')) {
       formattedReference = '#${formattedReference.substring(0, 8)}';
     }
 
@@ -151,9 +157,10 @@ class KardexCard extends StatelessWidget {
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.04)
-                    : AppColors.surface,
+                color:
+                    isSelected
+                        ? AppColors.primary.withValues(alpha: 0.04)
+                        : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected ? AppColors.primary : AppColors.border,
@@ -171,179 +178,194 @@ class KardexCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(14.0),
                     child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header de la card: Fecha + Badge de Tipo
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Header de la card: Fecha + Badge de Tipo
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(
-                              Icons.schedule_rounded,
-                              size: 14,
-                              color: AppColors.textMuted,
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule_rounded,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  _formatDate(item.date),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 5),
-                            Text(
-                              _formatDate(item.date),
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                            _buildBadge(item.type),
+                          ],
+                        ),
+                        const Divider(height: 18, color: AppColors.border),
+
+                        // Cuerpo del producto con thumbnail real de variante
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Thumbnail con fallback
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(9),
+                                child:
+                                    item.imageUrl != null &&
+                                            item.imageUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                          imageUrl: item.imageUrl!,
+                                          fit: BoxFit.cover,
+                                          placeholder:
+                                              (context, url) => Container(
+                                                color: AppColors.background,
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color:
+                                                              AppColors.primary,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                          errorWidget:
+                                              (context, url, error) => Icon(
+                                                iconData,
+                                                color: iconColor,
+                                                size: 24,
+                                              ),
+                                        )
+                                        : Icon(
+                                          iconData,
+                                          color: iconColor,
+                                          size: 24,
+                                        ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
+                            // Información del producto y variante
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14.5,
+                                      color: AppColors.textPrimary,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (metaParts.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      metaParts.join(' · '),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  if (formattedReference.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.tag_rounded,
+                                          size: 13,
+                                          color: AppColors.textMuted,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Flexible(
+                                          child: Text(
+                                            formattedReference,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textMuted,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        _buildBadge(item.type),
-                      ],
-                    ),
-                    const Divider(height: 18, color: AppColors.border),
+                        const SizedBox(height: 12),
 
-                    // Cuerpo del producto con thumbnail real de variante
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Thumbnail con fallback
+                        // Fila de Métricas: Cantidad, Costo Unitario y Saldo Final
                         Container(
-                          width: 52,
-                          height: 52,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: AppColors.border),
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(9),
-                            child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: item.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(
-                                      color: AppColors.background,
-                                      child: const Center(
-                                        child: SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) => Icon(
-                                      iconData,
-                                      color: iconColor,
-                                      size: 24,
-                                    ),
-                                  )
-                                : Icon(iconData, color: iconColor, size: 24),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-
-                        // Información del producto y variante
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14.5,
-                                  color: AppColors.textPrimary,
-                                  height: 1.2,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                              _Metric(
+                                label: 'Cantidad',
+                                value:
+                                    '${isEntry ? "+" : "-"}${item.quantity.toStringAsFixed(item.quantity % 1 == 0 ? 0 : 2)} uds.',
+                                valueColor:
+                                    isEntry
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
                               ),
-                              if (metaParts.isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  metaParts.join(' · '),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                              if (formattedReference.isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.tag_rounded,
-                                      size: 13,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Flexible(
-                                      child: Text(
-                                        formattedReference,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.textMuted,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              _Metric(
+                                label: 'Costo Unit.',
+                                value: 'S/ ${item.unitCost.toStringAsFixed(2)}',
+                              ),
+                              _Metric(
+                                label: 'Saldo Kardex',
+                                value:
+                                    '${item.balance.toStringAsFixed(item.balance % 1 == 0 ? 0 : 2)} uds.',
+                                valueColor: AppColors.primary,
+                              ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-
-                    // Fila de Métricas: Cantidad, Costo Unitario y Saldo Final
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _Metric(
-                            label: 'Cantidad',
-                            value: '${isEntry ? "+" : "-"}${item.quantity.toStringAsFixed(item.quantity % 1 == 0 ? 0 : 2)} uds.',
-                            valueColor: isEntry ? Colors.green.shade700 : Colors.red.shade700,
-                          ),
-                          _Metric(
-                            label: 'Costo Unit.',
-                            value: 'S/ ${item.unitCost.toStringAsFixed(2)}',
-                          ),
-                          _Metric(
-                            label: 'Saldo Kardex',
-                            value: '${item.balance.toStringAsFixed(item.balance % 1 == 0 ? 0 : 2)} uds.',
-                            valueColor: AppColors.primary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -362,11 +384,7 @@ class _Metric extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
-  const _Metric({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _Metric({required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {

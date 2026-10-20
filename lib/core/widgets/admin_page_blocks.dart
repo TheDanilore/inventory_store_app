@@ -266,7 +266,8 @@ class AdminPageBlocks extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                    color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
                   ),
                 ),
                 elevation: 4,
@@ -289,7 +290,10 @@ class AdminPageBlocks extends StatelessWidget {
                             '$opt ${itemName ?? 'items'}',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                               color:
                                   isSelected
                                       ? (isDark
@@ -304,7 +308,10 @@ class AdminPageBlocks extends StatelessWidget {
                             Icon(
                               Icons.check_rounded,
                               size: 16,
-                              color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF60A5FA)
+                                      : AppColors.primary,
                             ),
                         ],
                       ),

@@ -429,12 +429,10 @@ class _ProductPricingInventorySectionState
                                 ),
                                 onPressed: () async {
                                   final code =
-                                      await PosCameraScannerDialog
-                                          .showForRawCode(
-                                            context,
-                                            title:
-                                                'Escanear Código del Producto',
-                                          );
+                                      await PosCameraScannerDialog.showForRawCode(
+                                        context,
+                                        title: 'Escanear Código del Producto',
+                                      );
                                   if (code != null && code.isNotEmpty) {
                                     _barcodeCtrl.text = code;
                                     cubit.updateVariantDraft(
@@ -589,12 +587,10 @@ class _ProductPricingInventorySectionState
                               ),
                               onPressed: () async {
                                 final code =
-                                    await PosCameraScannerDialog
-                                        .showForRawCode(
-                                          context,
-                                          title:
-                                              'Escanear Código del Producto',
-                                        );
+                                    await PosCameraScannerDialog.showForRawCode(
+                                      context,
+                                      title: 'Escanear Código del Producto',
+                                    );
                                 if (code != null && code.isNotEmpty) {
                                   _barcodeCtrl.text = code;
                                   cubit.updateVariantDraft(

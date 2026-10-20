@@ -51,15 +51,25 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           cmp = (a.documentNumber ?? a.id).compareTo(b.documentNumber ?? b.id);
           break;
         case 'date':
-          final dateA = a.createdAt ?? a.documentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final dateB = b.createdAt ?? b.documentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final dateA =
+              a.createdAt ??
+              a.documentDate ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final dateB =
+              b.createdAt ??
+              b.documentDate ??
+              DateTime.fromMillisecondsSinceEpoch(0);
           cmp = dateA.compareTo(dateB);
           break;
         case 'supplier':
-          cmp = (a.supplierName ?? '').toLowerCase().compareTo((b.supplierName ?? '').toLowerCase());
+          cmp = (a.supplierName ?? '').toLowerCase().compareTo(
+            (b.supplierName ?? '').toLowerCase(),
+          );
           break;
         case 'warehouse':
-          cmp = (a.warehouseName ?? '').toLowerCase().compareTo((b.warehouseName ?? '').toLowerCase());
+          cmp = (a.warehouseName ?? '').toLowerCase().compareTo(
+            (b.warehouseName ?? '').toLowerCase(),
+          );
           break;
         case 'total':
           cmp = a.totalAmount.compareTo(b.totalAmount);
@@ -138,9 +148,18 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           icon: Icons.copy_rounded,
           onPressed: (selectedList) {
             final codes = selectedList
-                .map((e) => e.id.length >= 8 ? '#${e.id.substring(0, 8).toUpperCase()}' : '#${e.id.toUpperCase()}')
+                .map(
+                  (e) =>
+                      e.id.length >= 8
+                          ? '#${e.id.substring(0, 8).toUpperCase()}'
+                          : '#${e.id.toUpperCase()}',
+                )
                 .join(', ');
-            _copyToClipboard(context, codes, '${selectedList.length} códigos de entrada');
+            _copyToClipboard(
+              context,
+              codes,
+              '${selectedList.length} códigos de entrada',
+            );
           },
         ),
         AdminBulkAction<InventoryEntryEntity>(
@@ -148,11 +167,18 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           icon: Icons.summarize_rounded,
           customColor: AppColors.teal,
           onPressed: (selectedList) {
-            final total = selectedList.fold(0.0, (sum, e) => sum + e.totalAmount);
+            final total = selectedList.fold(
+              0.0,
+              (sum, e) => sum + e.totalAmount,
+            );
             final summary = selectedList
-                .map((e) => '- #${e.id.substring(0, 8).toUpperCase()} | ${e.supplierName ?? "Sin prov."} | ${e.documentType}: ${e.documentNumber ?? "-"} | S/ ${e.totalAmount.toStringAsFixed(2)}')
+                .map(
+                  (e) =>
+                      '- #${e.id.substring(0, 8).toUpperCase()} | ${e.supplierName ?? "Sin prov."} | ${e.documentType}: ${e.documentNumber ?? "-"} | S/ ${e.totalAmount.toStringAsFixed(2)}',
+                )
                 .join('\n');
-            final fullText = 'RESUMEN ENTRADAS DE INVENTARIO (${selectedList.length})\n$summary\nTotal acumulado: S/ ${total.toStringAsFixed(2)}';
+            final fullText =
+                'RESUMEN ENTRADAS DE INVENTARIO (${selectedList.length})\n$summary\nTotal acumulado: S/ ${total.toStringAsFixed(2)}';
             _copyToClipboard(context, fullText, 'Resumen de entradas');
           },
         ),
@@ -166,22 +192,33 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           isSortable: true,
           tooltip: 'Código interno y número de comprobante',
           cellBuilder: (context, entry) {
-            final shortId = entry.id.length >= 8
-                ? entry.id.substring(0, 8).toUpperCase()
-                : entry.id.toUpperCase();
-            final docInfo = (entry.documentNumber != null && entry.documentNumber!.isNotEmpty)
-                ? '${entry.documentType}: ${entry.documentNumber}'
-                : entry.documentType;
+            final shortId =
+                entry.id.length >= 8
+                    ? entry.id.substring(0, 8).toUpperCase()
+                    : entry.id.toUpperCase();
+            final docInfo =
+                (entry.documentNumber != null &&
+                        entry.documentNumber!.isNotEmpty)
+                    ? '${entry.documentType}: ${entry.documentNumber}'
+                    : entry.documentType;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 InkWell(
-                  onTap: () => _copyToClipboard(context, shortId, 'Código de entrada'),
+                  onTap:
+                      () => _copyToClipboard(
+                        context,
+                        shortId,
+                        'Código de entrada',
+                      ),
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(4),
@@ -198,7 +235,8 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                     ),
                   ),
                 ),
-                if (docInfo.isNotEmpty && docInfo.toUpperCase() != 'NINGUNO') ...[
+                if (docInfo.isNotEmpty &&
+                    docInfo.toUpperCase() != 'NINGUNO') ...[
                   const SizedBox(height: 2),
                   Text(
                     docInfo,
@@ -224,9 +262,12 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           isSortable: true,
           tooltip: 'Fecha de recepción en almacén',
           cellBuilder: (context, entry) {
-            final formattedDate = entry.createdAt != null
-                ? dateFormat.format(entry.createdAt!)
-                : (entry.documentDate != null ? dateFormat.format(entry.documentDate!) : '—');
+            final formattedDate =
+                entry.createdAt != null
+                    ? dateFormat.format(entry.createdAt!)
+                    : (entry.documentDate != null
+                        ? dateFormat.format(entry.documentDate!)
+                        : '—');
             return Text(
               formattedDate,
               style: const TextStyle(
@@ -324,10 +365,12 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
           isSortable: false,
           tooltip: 'Orden de compra vinculada',
           cellBuilder: (context, entry) {
-            if (entry.purchaseOrderId != null && entry.purchaseOrderId!.isNotEmpty) {
-              final poShort = entry.purchaseOrderId!.length >= 8
-                  ? entry.purchaseOrderId!.substring(0, 8).toUpperCase()
-                  : entry.purchaseOrderId!.toUpperCase();
+            if (entry.purchaseOrderId != null &&
+                entry.purchaseOrderId!.isNotEmpty) {
+              final poShort =
+                  entry.purchaseOrderId!.length >= 8
+                      ? entry.purchaseOrderId!.substring(0, 8).toUpperCase()
+                      : entry.purchaseOrderId!.toUpperCase();
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
@@ -338,7 +381,11 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.link_rounded, size: 12, color: Color(0xFF7E22CE)),
+                    const Icon(
+                      Icons.link_rounded,
+                      size: 12,
+                      color: Color(0xFF7E22CE),
+                    ),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
@@ -357,7 +404,10 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                 ),
               );
             }
-            return const Text('—', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12));
+            return const Text(
+              '—',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+            );
           },
         ),
 
@@ -442,13 +492,21 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.visibility_outlined, size: 18, color: Color(0xFF64748B)),
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    size: 18,
+                    color: Color(0xFF64748B),
+                  ),
                   tooltip: 'Ver detalle',
                   hoverColor: const Color(0xFFF1F5F9),
                   onPressed: () => widget.onSelectEntry(entry),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                  icon: const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFF94A3B8),
+                  ),
                   tooltip: 'Abrir entrada',
                   onPressed: () => widget.onSelectEntry(entry),
                 ),
@@ -458,15 +516,20 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
         ),
       ],
       mobileCardBuilder: (context, entry, isSelected, onSelect) {
-        final shortId = entry.id.length >= 8
-            ? entry.id.substring(0, 8).toUpperCase()
-            : entry.id.toUpperCase();
-        final docInfo = (entry.documentNumber != null && entry.documentNumber!.isNotEmpty)
-            ? '${entry.documentType}: ${entry.documentNumber}'
-            : entry.documentType;
-        final formattedDate = entry.createdAt != null
-            ? dateFormat.format(entry.createdAt!)
-            : (entry.documentDate != null ? dateFormat.format(entry.documentDate!) : '—');
+        final shortId =
+            entry.id.length >= 8
+                ? entry.id.substring(0, 8).toUpperCase()
+                : entry.id.toUpperCase();
+        final docInfo =
+            (entry.documentNumber != null && entry.documentNumber!.isNotEmpty)
+                ? '${entry.documentType}: ${entry.documentNumber}'
+                : entry.documentType;
+        final formattedDate =
+            entry.createdAt != null
+                ? dateFormat.format(entry.createdAt!)
+                : (entry.documentDate != null
+                    ? dateFormat.format(entry.documentDate!)
+                    : '—');
 
         return InkWell(
           onTap: () => widget.onSelectEntry(entry),
@@ -491,7 +554,10 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
@@ -510,14 +576,20 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                         const SizedBox(width: 8),
                         Text(
                           formattedDate,
-                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                     Checkbox(
                       value: isSelected,
                       activeColor: AppColors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                       onChanged: (val) => onSelect(val ?? false),
                     ),
                   ],
@@ -525,14 +597,22 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                 const SizedBox(height: 8),
                 Text(
                   entry.supplierName ?? 'Sin proveedor',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${entry.warehouseName ?? "Almacén general"} • $docInfo',
-                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -545,7 +625,11 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
                         children: [
                           const TextSpan(
                             text: 'S/ ',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                           TextSpan(
                             text: entry.totalAmount.toStringAsFixed(2),

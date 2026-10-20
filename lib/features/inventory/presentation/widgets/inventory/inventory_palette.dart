@@ -24,9 +24,7 @@ class InventoryPalette {
   Color get subtle =>
       isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9);
   Color get selectedTint =>
-      isDark
-          ? AppColors.teal.withValues(alpha: 0.14)
-          : const Color(0xFFF0FDFA);
+      isDark ? AppColors.teal.withValues(alpha: 0.14) : const Color(0xFFF0FDFA);
 
   // Texto
   Color get textPrimary =>
@@ -37,20 +35,34 @@ class InventoryPalette {
 
   // Estados: crítico / atención / correcto (fondo, borde, texto)
   Color get dangerBg =>
-      isDark ? AppColors.danger.withValues(alpha: 0.16) : const Color(0xFFFEE2E2);
+      isDark
+          ? AppColors.danger.withValues(alpha: 0.16)
+          : const Color(0xFFFEE2E2);
   Color get dangerBd =>
-      isDark ? AppColors.danger.withValues(alpha: 0.45) : const Color(0xFFFCA5A5);
-  Color get dangerFg => isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
+      isDark
+          ? AppColors.danger.withValues(alpha: 0.45)
+          : const Color(0xFFFCA5A5);
+  Color get dangerFg =>
+      isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B);
 
   Color get warnBg =>
-      isDark ? AppColors.warning.withValues(alpha: 0.16) : const Color(0xFFFEF3C7);
+      isDark
+          ? AppColors.warning.withValues(alpha: 0.16)
+          : const Color(0xFFFEF3C7);
   Color get warnBd =>
-      isDark ? AppColors.warning.withValues(alpha: 0.45) : const Color(0xFFFCD34D);
-  Color get warnFg => isDark ? const Color(0xFFFCD34D) : const Color(0xFF92400E);
+      isDark
+          ? AppColors.warning.withValues(alpha: 0.45)
+          : const Color(0xFFFCD34D);
+  Color get warnFg =>
+      isDark ? const Color(0xFFFCD34D) : const Color(0xFF92400E);
 
   Color get okBg =>
-      isDark ? AppColors.success.withValues(alpha: 0.16) : const Color(0xFFDCFCE7);
+      isDark
+          ? AppColors.success.withValues(alpha: 0.16)
+          : const Color(0xFFDCFCE7);
   Color get okBd =>
-      isDark ? AppColors.success.withValues(alpha: 0.45) : const Color(0xFF86EFAC);
+      isDark
+          ? AppColors.success.withValues(alpha: 0.45)
+          : const Color(0xFF86EFAC);
   Color get okFg => isDark ? const Color(0xFF86EFAC) : const Color(0xFF166534);
 }

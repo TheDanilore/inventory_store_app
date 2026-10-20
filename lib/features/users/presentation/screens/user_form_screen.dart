@@ -52,7 +52,7 @@ class _UserFormContentState extends State<_UserFormContent> {
 
   // Estados locales
   String _docType = 'DNI';
-  late String _role;
+  late Set<String> _selectedRoles;
   bool _isActive = true;
   bool _obscurePassword = true;
 
@@ -71,14 +71,17 @@ class _UserFormContentState extends State<_UserFormContent> {
       text: widget.existingUser?.documentNumber ?? '',
     );
 
+    final initialRoles = <String>{};
     if (_isEditing) {
       _docType = widget.existingUser?.documentType ?? 'DNI';
-      _role =
-          widget.existingUser?.role ?? widget.initialRole ?? AppRoles.customer;
       _isActive = widget.existingUser?.isActive ?? true;
-    } else {
-      _role = widget.initialRole ?? AppRoles.customer;
+      initialRoles.addAll(widget.existingUser?.allRoles ?? []);
     }
+    if (initialRoles.isEmpty) {
+      final defaultRole = widget.initialRole ?? AppRoles.employee;
+      initialRoles.add(defaultRole);
+    }
+    _selectedRoles = initialRoles;
   }
 
   @override
@@ -164,15 +167,44 @@ class _UserFormContentState extends State<_UserFormContent> {
     );
   }
 
+  void _toggleRole(String r) {
+    setState(() {
+      if (_selectedRoles.contains(r)) {
+        if (_selectedRoles.length > 1) {
+          _selectedRoles.remove(r);
+        } else {
+          AppSnackbar.show(
+            context,
+            message: 'El usuario debe tener al menos un rol asignado.',
+            type: SnackbarType.warning,
+          );
+        }
+      } else {
+        _selectedRoles.add(r);
+      }
+    });
+  }
+
   void _onSave() {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedRoles.isEmpty) {
+      AppSnackbar.show(
+        context,
+        message: 'Debes seleccionar al menos un rol.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
+    final primaryRole = _selectedRoles.first;
     context.read<UserFormCubit>().saveUser(
       id: widget.existingUser?.id,
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
       fullName: _nameCtrl.text.trim(),
-      role: _role,
+      role: primaryRole,
+      roles: _selectedRoles.toList(),
       phone: _phoneCtrl.text.trim(),
       documentType: _docType,
       documentNumber: _docCtrl.text.trim(),
@@ -310,47 +342,74 @@ class _UserFormContentState extends State<_UserFormContent> {
 
                       // ─── SELECTOR DE ROL ──────────────
                       _SectionCard(
-                        title: 'Rol y Permisos',
+                        title: 'Roles y Permisos Asignados',
                         icon: Icons.shield_outlined,
                         children: [
+                          Text(
+                            'Selecciona uno o más roles según las responsabilidades del colaborador en el sistema:',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
                           Row(
                             children: [
                               Expanded(
                                 child: _RoleCard(
-                                  title: 'Cliente',
-                                  icon: Icons.person_outline_rounded,
-                                  isSelected: _role == AppRoles.customer,
-                                  color: AppColors.primary,
+                                  title: 'Admin',
+                                  subtitle: 'Acceso total',
+                                  icon: Icons.admin_panel_settings_outlined,
+                                  isSelected: _selectedRoles.contains(
+                                    AppRoles.admin,
+                                  ),
+                                  color: Colors.indigo,
+                                  onTap: () => _toggleRole(AppRoles.admin),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Cajero',
+                                  subtitle: 'POS y Ventas',
+                                  icon: Icons.point_of_sale_rounded,
+                                  isSelected: _selectedRoles.contains(
+                                    AppRoles.cashier,
+                                  ),
+                                  color: AppColors.teal,
+                                  onTap: () => _toggleRole(AppRoles.cashier),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  title: 'Almacén',
+                                  subtitle: 'Inventario y Kardex',
+                                  icon: Icons.inventory_2_outlined,
+                                  isSelected: _selectedRoles.contains(
+                                    AppRoles.warehouseKeeper,
+                                  ),
+                                  color: Colors.purple.shade600,
                                   onTap:
-                                      () => setState(
-                                        () => _role = AppRoles.customer,
-                                      ),
+                                      () =>
+                                          _toggleRole(AppRoles.warehouseKeeper),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _RoleCard(
                                   title: 'Empleado',
+                                  subtitle: 'Operaciones grales.',
                                   icon: Icons.badge_outlined,
-                                  isSelected: _role == AppRoles.employee,
-                                  color: Colors.orange.shade600,
-                                  onTap:
-                                      () => setState(
-                                        () => _role = AppRoles.employee,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _RoleCard(
-                                  title: 'Admin',
-                                  icon: Icons.admin_panel_settings_outlined,
-                                  isSelected: _role == AppRoles.admin,
-                                  color: Colors.indigo,
-                                  onTap:
-                                      () => setState(
-                                        () => _role = AppRoles.admin,
-                                      ),
+                                  isSelected: _selectedRoles.contains(
+                                    AppRoles.employee,
+                                  ),
+                                  color: Colors.orange.shade700,
+                                  onTap: () => _toggleRole(AppRoles.employee),
                                 ),
                               ),
                             ],
@@ -702,12 +761,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                                             Text(
                                               _isEditing
                                                   ? 'Guardar Cambios'
-                                                  : (_role == AppRoles.admin
-                                                      ? 'Crear Administrador'
-                                                      : _role ==
-                                                          AppRoles.employee
-                                                      ? 'Crear Empleado'
-                                                      : 'Crear Cliente'),
+                                                  : 'Crear Colaborador',
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w700,
@@ -734,6 +788,7 @@ class _UserFormContentState extends State<_UserFormContent> {
 
 class _RoleCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final IconData icon;
   final bool isSelected;
   final Color color;
@@ -741,6 +796,7 @@ class _RoleCard extends StatelessWidget {
 
   const _RoleCard({
     required this.title,
+    this.subtitle,
     required this.icon,
     required this.isSelected,
     required this.color,
@@ -754,33 +810,68 @@ class _RoleCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.1) : Colors.white,
+          color: isSelected ? color.withValues(alpha: 0.08) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? color : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Column(
+        child: Row(
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected ? color : Colors.grey.shade400,
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? color : Colors.grey.shade700,
-                ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color:
+                    isSelected
+                        ? color.withValues(alpha: 0.15)
+                        : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: isSelected ? color : Colors.grey.shade500,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? color : Colors.grey.shade800,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              isSelected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 20,
+              color: isSelected ? color : Colors.grey.shade300,
             ),
           ],
         ),

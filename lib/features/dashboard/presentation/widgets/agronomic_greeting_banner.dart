@@ -10,10 +10,7 @@ import 'package:inventory_store_app/core/localization/app_localizations.dart';
 class AgronomicGreetingBanner extends StatelessWidget {
   final VoidCallback? onAvatarTap;
 
-  const AgronomicGreetingBanner({
-    super.key,
-    this.onAvatarTap,
-  });
+  const AgronomicGreetingBanner({super.key, this.onAvatarTap});
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +28,13 @@ class AgronomicGreetingBanner extends StatelessWidget {
         try {
           final localeCode = Localizations.localeOf(context).languageCode;
           final dateLocale = localeCode == 'qu' ? 'es' : localeCode;
-          formattedDate = DateFormat('EEEE, d \'de\' MMMM · yyyy', dateLocale).format(now);
+          formattedDate = DateFormat(
+            'EEEE, d \'de\' MMMM · yyyy',
+            dateLocale,
+          ).format(now);
           if (formattedDate.isNotEmpty) {
-            formattedDate = formattedDate[0].toUpperCase() + formattedDate.substring(1);
+            formattedDate =
+                formattedDate[0].toUpperCase() + formattedDate.substring(1);
           }
         } catch (_) {
           formattedDate = '${now.day}/${now.month}/${now.year}';
@@ -43,12 +44,14 @@ class AgronomicGreetingBanner extends StatelessWidget {
           builder: (context, authState) {
             final user = authState.currentUser;
             final fullName = user?.fullName.trim();
-            final firstName = (fullName != null && fullName.isNotEmpty)
-                ? fullName.split(' ').first
-                : 'Administrador';
-            final role = user?.role.isNotEmpty == true
-                ? user!.role.toUpperCase()
-                : 'GERENTE AGRÍCOLA';
+            final firstName =
+                (fullName != null && fullName.isNotEmpty)
+                    ? fullName.split(' ').first
+                    : 'Administrador';
+            final role =
+                user?.role.isNotEmpty == true
+                    ? user!.role.toUpperCase()
+                    : 'GERENTE AGRÍCOLA';
             final avatarUrl = user?.avatarUrl;
 
             return Container(
@@ -128,10 +131,14 @@ class AgronomicGreetingBanner extends StatelessWidget {
                                       vertical: 4.5,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.16),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.16,
+                                      ),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         width: 1,
                                       ),
                                     ),
@@ -163,10 +170,14 @@ class AgronomicGreetingBanner extends StatelessWidget {
                                         vertical: 4.5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981).withValues(alpha: 0.22),
+                                        color: const Color(
+                                          0xFF10B981,
+                                        ).withValues(alpha: 0.22),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
-                                          color: const Color(0xFF34D399).withValues(alpha: 0.4),
+                                          color: const Color(
+                                            0xFF34D399,
+                                          ).withValues(alpha: 0.4),
                                         ),
                                       ),
                                       child: Row(
@@ -197,7 +208,8 @@ class AgronomicGreetingBanner extends StatelessWidget {
                               Text(
                                 '¡${periodInfo.greeting}, $firstName!',
                                 style: TextStyle(
-                                  fontSize: isMobile ? 20 : (isDesktop ? 26 : 22),
+                                  fontSize:
+                                      isMobile ? 20 : (isDesktop ? 26 : 22),
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: -0.6,
@@ -291,25 +303,29 @@ class AgronomicGreetingBanner extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
-                  image: (avatarUrl != null && avatarUrl.isNotEmpty)
-                      ? DecorationImage(
-                          image: NetworkImage(avatarUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                  image:
+                      (avatarUrl != null && avatarUrl.isNotEmpty)
+                          ? DecorationImage(
+                            image: NetworkImage(avatarUrl),
+                            fit: BoxFit.cover,
+                          )
+                          : null,
                 ),
-                child: (avatarUrl == null || avatarUrl.isEmpty)
-                    ? Center(
-                        child: Text(
-                          firstName.isNotEmpty ? firstName[0].toUpperCase() : 'A',
-                          style: TextStyle(
-                            fontSize: avatarSize * 0.44,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF065F46),
+                child:
+                    (avatarUrl == null || avatarUrl.isEmpty)
+                        ? Center(
+                          child: Text(
+                            firstName.isNotEmpty
+                                ? firstName[0].toUpperCase()
+                                : 'A',
+                            style: TextStyle(
+                              fontSize: avatarSize * 0.44,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF065F46),
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
+                        )
+                        : null,
               ),
 
               // Micro-badge agronómico (hoja / brote)

@@ -12,14 +12,45 @@ class UserModel extends UserEntity {
     required super.isActive,
     super.createdAt,
     super.walletBalance,
+    super.roles,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final primaryRole = json['role'] as String? ?? 'customer';
+    final List<String> parsedRoles = [];
+
+    if (json['roles'] is List) {
+      for (final r in json['roles'] as List) {
+        final rName = r?.toString();
+        if (rName != null && rName.isNotEmpty && !parsedRoles.contains(rName)) {
+          parsedRoles.add(rName);
+        }
+      }
+    } else if (json['user_roles'] is List) {
+      for (final ur in json['user_roles'] as List) {
+        if (ur is Map) {
+          final roleObj = ur['roles'];
+          if (roleObj is Map) {
+            final rName = roleObj['name']?.toString();
+            if (rName != null &&
+                rName.isNotEmpty &&
+                !parsedRoles.contains(rName)) {
+              parsedRoles.add(rName);
+            }
+          }
+        }
+      }
+    }
+
+    if (!parsedRoles.contains(primaryRole) && primaryRole.isNotEmpty) {
+      parsedRoles.add(primaryRole);
+    }
+
     return UserModel(
       id: json['id'] as String,
       email: json['email'] as String?,
       fullName: json['full_name'] as String? ?? 'Desconocido',
-      role: json['role'] as String? ?? 'customer',
+      role: primaryRole,
       phone: json['phone'] as String?,
       documentType: json['document_type'] as String? ?? 'DNI',
       documentNumber: json['document_number'] as String?,
@@ -29,6 +60,7 @@ class UserModel extends UserEntity {
               ? DateTime.tryParse(json['created_at'])
               : null,
       walletBalance: json['wallet_balance'] as int? ?? 0,
+      roles: parsedRoles,
     );
   }
 
@@ -44,6 +76,7 @@ class UserModel extends UserEntity {
       'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       'wallet_balance': walletBalance,
+      'roles': roles,
     };
   }
 
@@ -59,6 +92,7 @@ class UserModel extends UserEntity {
       isActive: entity.isActive,
       createdAt: entity.createdAt,
       walletBalance: entity.walletBalance,
+      roles: entity.roles,
     );
   }
 }

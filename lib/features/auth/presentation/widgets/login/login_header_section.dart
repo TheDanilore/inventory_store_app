@@ -14,10 +14,7 @@ class LoginHeaderSection extends StatelessWidget {
           Container(
             height: 110,
             constraints: const BoxConstraints(maxWidth: 180),
-            child: Image.asset(
-              'assets/logo_full.png',
-              fit: BoxFit.contain,
-            ),
+            child: Image.asset('assets/logo_full.png', fit: BoxFit.contain),
           ),
           const SizedBox(height: 20),
           Text(

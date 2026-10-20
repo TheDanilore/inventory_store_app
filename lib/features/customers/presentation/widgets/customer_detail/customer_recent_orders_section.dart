@@ -154,7 +154,8 @@ class _OrderRow extends StatelessWidget {
                           ? Icons.remove_shopping_cart_rounded
                           : Icons.shopping_bag_outlined,
                       size: 16,
-                      color: _isCancelled ? AppColors.danger : AppColors.primary,
+                      color:
+                          _isCancelled ? AppColors.danger : AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -185,7 +186,9 @@ class _OrderRow extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             decoration:
-                                _isCancelled ? TextDecoration.lineThrough : null,
+                                _isCancelled
+                                    ? TextDecoration.lineThrough
+                                    : null,
                             color:
                                 _isCancelled
                                     ? AppColors.textMuted

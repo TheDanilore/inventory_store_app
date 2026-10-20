@@ -210,7 +210,8 @@ class _ProductDetailScreenContentState
     InventoryQrSheet.show(
       context,
       productId: product.id,
-      variantId: _selectedVariant?.id ??
+      variantId:
+          _selectedVariant?.id ??
           (product.productVariants.isNotEmpty
               ? product.productVariants.first.id
               : ''),

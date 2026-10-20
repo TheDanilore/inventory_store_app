@@ -53,7 +53,9 @@ class CatalogSideInspector extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.16),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.4 : 0.16,
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, -6),
                       ),
@@ -68,7 +70,10 @@ class CatalogSideInspector extends StatelessWidget {
                           width: 44,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : const Color(0xFFCBD5E1),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -112,32 +117,33 @@ class CatalogSideInspector extends StatelessWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
-          child: Material(
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            clipBehavior: Clip.antiAlias,
-            elevation: 16,
-            shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.2),
-            child: CatalogSideInspector(
-              product: product,
-              onClose: () => Navigator.of(ctx).pop(),
-              onEdit: () {
-                Navigator.of(ctx).pop();
-                onEdit();
-              },
-              onAddToCart: () {
-                Navigator.of(ctx).pop();
-                onAddToCart();
-              },
-              onToggleActive: onToggleActive,
-              isMobileSheet: false,
+      builder:
+          (ctx) => Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
+              child: Material(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                elevation: 16,
+                shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.2),
+                child: CatalogSideInspector(
+                  product: product,
+                  onClose: () => Navigator.of(ctx).pop(),
+                  onEdit: () {
+                    Navigator.of(ctx).pop();
+                    onEdit();
+                  },
+                  onAddToCart: () {
+                    Navigator.of(ctx).pop();
+                    onAddToCart();
+                  },
+                  onToggleActive: onToggleActive,
+                  isMobileSheet: false,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 
@@ -194,7 +200,9 @@ class CatalogSideInspector extends StatelessWidget {
                             color:
                                 product.isActive
                                     ? (isDark
-                                        ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                                        ? const Color(
+                                          0xFF064E3B,
+                                        ).withValues(alpha: 0.35)
                                         : AppColors.successLight)
                                     : (isDark
                                         ? AppColors.darkSurfaceElevated
@@ -204,9 +212,13 @@ class CatalogSideInspector extends StatelessWidget {
                               color:
                                   product.isActive
                                       ? (isDark
-                                          ? const Color(0xFF059669).withValues(alpha: 0.5)
+                                          ? const Color(
+                                            0xFF059669,
+                                          ).withValues(alpha: 0.5)
                                           : const Color(0xFFA7F3D0))
-                                      : (isDark ? AppColors.darkBorder : AppColors.border),
+                                      : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.border),
                             ),
                           ),
                           child: Row(
@@ -220,7 +232,9 @@ class CatalogSideInspector extends StatelessWidget {
                                   color:
                                       product.isActive
                                           ? AppColors.success
-                                          : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                                          : (isDark
+                                              ? AppColors.darkTextMuted
+                                              : AppColors.textMuted),
                                 ),
                               ),
                               const SizedBox(width: 5),
@@ -231,8 +245,12 @@ class CatalogSideInspector extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                   color:
                                       product.isActive
-                                          ? (isDark ? const Color(0xFF34D399) : const Color(0xFF065F46))
-                                          : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                                          ? (isDark
+                                              ? const Color(0xFF34D399)
+                                              : const Color(0xFF065F46))
+                                          : (isDark
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.textSecondary),
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -247,7 +265,10 @@ class CatalogSideInspector extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -259,7 +280,10 @@ class CatalogSideInspector extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                         height: 1.25,
                       ),
                       maxLines: 2,
@@ -273,8 +297,14 @@ class CatalogSideInspector extends StatelessWidget {
                 tooltip: 'Cerrar inspector (Esc)',
                 icon: const Icon(Icons.close_rounded, size: 20),
                 style: IconButton.styleFrom(
-                  backgroundColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
-                  foregroundColor: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  backgroundColor:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.background,
+                  foregroundColor:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                 ),
               ),
             ],
@@ -292,7 +322,10 @@ class CatalogSideInspector extends StatelessWidget {
                 height: 190,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? AppColors.darkBorder : AppColors.border,
@@ -326,10 +359,12 @@ class CatalogSideInspector extends StatelessWidget {
                       value:
                           'S/ ${(product.displaySalePrice ?? 0).toStringAsFixed(2)}',
                       icon: Icons.payments_outlined,
-                      color: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
-                      badgeBg: isDark
-                          ? const Color(0xFF064E3B).withValues(alpha: 0.4)
-                          : AppColors.tealLight,
+                      color:
+                          isDark ? const Color(0xFF34D399) : AppColors.tealDark,
+                      badgeBg:
+                          isDark
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.4)
+                              : AppColors.tealLight,
                       isDark: isDark,
                     ),
                   ),
@@ -356,10 +391,12 @@ class CatalogSideInspector extends StatelessWidget {
                       label: 'CATEGORÍA',
                       value: product.categoryName ?? 'Sin categoría',
                       icon: Icons.category_outlined,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.slate,
-                      badgeBg: isDark
-                          ? AppColors.darkSurfaceElevated
-                          : const Color(0xFFF1F5F9),
+                      color:
+                          isDark ? AppColors.darkTextPrimary : AppColors.slate,
+                      badgeBg:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF1F5F9),
                       isDark: isDark,
                     ),
                   ),
@@ -369,10 +406,12 @@ class CatalogSideInspector extends StatelessWidget {
                       label: 'MARCA',
                       value: product.brandName ?? 'Sin marca',
                       icon: Icons.verified_outlined,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.slate,
-                      badgeBg: isDark
-                          ? AppColors.darkSurfaceElevated
-                          : const Color(0xFFF1F5F9),
+                      color:
+                          isDark ? AppColors.darkTextPrimary : AppColors.slate,
+                      badgeBg:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF1F5F9),
                       isDark: isDark,
                     ),
                   ),
@@ -385,21 +424,26 @@ class CatalogSideInspector extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF064E3B).withValues(alpha: 0.35)
-                        : const Color(0xFFF0FDF4),
+                    color:
+                        isDark
+                            ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                            : const Color(0xFFF0FDF4),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF059669).withValues(alpha: 0.5)
-                          : const Color(0xFFA7F3D0),
+                      color:
+                          isDark
+                              ? const Color(0xFF059669).withValues(alpha: 0.5)
+                              : const Color(0xFFA7F3D0),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         Icons.science_rounded,
-                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                        color:
+                            isDark
+                                ? const Color(0xFF34D399)
+                                : const Color(0xFF059669),
                         size: 20,
                       ),
                       const SizedBox(width: 10),
@@ -412,7 +456,10 @@ class CatalogSideInspector extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
+                                color:
+                                    isDark
+                                        ? const Color(0xFF6EE7B7)
+                                        : const Color(0xFF065F46),
                               ),
                             ),
                             Text(
@@ -420,7 +467,10 @@ class CatalogSideInspector extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                                color:
+                                    isDark
+                                        ? const Color(0xFF34D399)
+                                        : const Color(0xFF047857),
                               ),
                             ),
                           ],
@@ -441,7 +491,10 @@ class CatalogSideInspector extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isDark ? AppColors.darkBorder : AppColors.border,
@@ -452,7 +505,10 @@ class CatalogSideInspector extends StatelessWidget {
                       Icon(
                         Icons.qr_code_scanner_rounded,
                         size: 18,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 10),
                       Text(
@@ -460,7 +516,10 @@ class CatalogSideInspector extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -474,7 +533,8 @@ class CatalogSideInspector extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                    color:
+                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isDark ? AppColors.darkBorder : AppColors.border,
@@ -493,14 +553,20 @@ class CatalogSideInspector extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
                         ),
                       ),
                       const Spacer(),
                       Icon(
                         Icons.chevron_right_rounded,
                         size: 18,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                       ),
                     ],
                   ),
@@ -560,15 +626,22 @@ class CatalogSideInspector extends StatelessWidget {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
+                        foregroundColor:
+                            isDark
+                                ? const Color(0xFF34D399)
+                                : AppColors.tealDark,
                         side: BorderSide(
-                          color: isDark
-                              ? const Color(0xFF059669).withValues(alpha: 0.5)
-                              : const Color(0xFF99F6E4),
+                          color:
+                              isDark
+                                  ? const Color(
+                                    0xFF059669,
+                                  ).withValues(alpha: 0.5)
+                                  : const Color(0xFF99F6E4),
                         ),
-                        backgroundColor: isDark
-                            ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                            : AppColors.tealLight.withValues(alpha: 0.4),
+                        backgroundColor:
+                            isDark
+                                ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                                : AppColors.tealLight.withValues(alpha: 0.4),
                         minimumSize: const Size.fromHeight(42),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -596,22 +669,34 @@ class CatalogSideInspector extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor:
                             product.isActive
-                                ? (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary)
+                                ? (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary)
                                 : AppColors.success,
                         side: BorderSide(
                           color:
                               product.isActive
-                                  ? (isDark ? AppColors.darkBorder : AppColors.border)
+                                  ? (isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.border)
                                   : (isDark
-                                      ? const Color(0xFF059669).withValues(alpha: 0.5)
+                                      ? const Color(
+                                        0xFF059669,
+                                      ).withValues(alpha: 0.5)
                                       : const Color(0xFFA7F3D0)),
                         ),
                         backgroundColor:
                             product.isActive
-                                ? (isDark ? AppColors.darkSurfaceElevated : AppColors.background)
+                                ? (isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : AppColors.background)
                                 : (isDark
-                                    ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                                    : AppColors.successLight.withValues(alpha: 0.3)),
+                                    ? const Color(
+                                      0xFF064E3B,
+                                    ).withValues(alpha: 0.3)
+                                    : AppColors.successLight.withValues(
+                                      alpha: 0.3,
+                                    )),
                         minimumSize: const Size.fromHeight(42),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -626,9 +711,10 @@ class CatalogSideInspector extends StatelessWidget {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    final firstVariant = product.productVariants.isNotEmpty
-                        ? product.productVariants.first
-                        : null;
+                    final firstVariant =
+                        product.productVariants.isNotEmpty
+                            ? product.productVariants.first
+                            : null;
                     InventoryQrSheet.show(
                       context,
                       productId: product.id,
@@ -645,14 +731,13 @@ class CatalogSideInspector extends StatelessWidget {
                   ),
                   label: const Text(
                     'Ver Código QR',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor:
-                        isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : AppColors.textPrimary,
                     side: BorderSide(
                       color: isDark ? AppColors.darkBorder : AppColors.border,
                     ),
@@ -727,7 +812,10 @@ class CatalogSideInspector extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+              color:
+                  isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
             ),
           ),
         ],
@@ -773,7 +861,10 @@ class CatalogSideInspector extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                     letterSpacing: 0.3,
                   ),
                   overflow: TextOverflow.ellipsis,

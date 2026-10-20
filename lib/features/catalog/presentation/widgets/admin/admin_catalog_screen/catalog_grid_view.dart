@@ -50,7 +50,8 @@ class CatalogGridScrollView extends StatelessWidget {
   Widget build(BuildContext context) {
     // Si totalCount está disponible (remoto de Supabase), usarlo; de lo contrario fallback a products.length
     final effectiveTotal = totalCount ?? products.length;
-    final totalPages = effectiveTotal == 0 ? 1 : (effectiveTotal / pageSize).ceil();
+    final totalPages =
+        effectiveTotal == 0 ? 1 : (effectiveTotal / pageSize).ceil();
     final start = effectiveTotal == 0 ? 0 : (currentPage * pageSize) + 1;
     final end = math.min((currentPage + 1) * pageSize, effectiveTotal);
     final pageItems = products;
@@ -88,12 +89,18 @@ class CatalogGridScrollView extends StatelessWidget {
         Builder(
           builder: (context) {
             final screenWidth = MediaQuery.of(context).size.width;
-            final double maxExtent = isPosMode
-                ? (screenWidth < 500 ? 170 : (screenWidth < 900 ? 190 : 210))
-                : (screenWidth < 500 ? 210 : (screenWidth < 900 ? 260 : 300));
-            final double mainExtent = isPosMode
-                ? (screenWidth < 500 ? 205 : 215)
-                : (screenWidth < 500 ? 272 : 280);
+            final double maxExtent =
+                isPosMode
+                    ? (screenWidth < 500
+                        ? 170
+                        : (screenWidth < 900 ? 190 : 210))
+                    : (screenWidth < 500
+                        ? 210
+                        : (screenWidth < 900 ? 260 : 300));
+            final double mainExtent =
+                isPosMode
+                    ? (screenWidth < 500 ? 205 : 215)
+                    : (screenWidth < 500 ? 272 : 280);
 
             return SliverPadding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
@@ -111,11 +118,16 @@ class CatalogGridScrollView extends StatelessWidget {
                     onSale: () => onSale(product),
                     onToggleActive: () => onToggleActive(product),
                     onEdit: () => onEdit(product),
-                    onTap: onProductTap != null ? () => onProductTap!(product) : null,
+                    onTap:
+                        onProductTap != null
+                            ? () => onProductTap!(product)
+                            : null,
                     isFullPosMode: isPosMode,
                     isSelected: selectedProductId == product.id,
                     highlightIngredient:
-                        searchByIngredient ? matchedIngredients[product.id] : null,
+                        searchByIngredient
+                            ? matchedIngredients[product.id]
+                            : null,
                   );
                 }, childCount: pageItems.length),
               ),
@@ -127,7 +139,10 @@ class CatalogGridScrollView extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),

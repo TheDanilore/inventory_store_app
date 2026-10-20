@@ -75,10 +75,22 @@ class KardexLoaded extends KardexState {
       typeFilter: typeFilter ?? this.typeFilter,
       searchText: searchText ?? this.searchText,
       productId: clearProductId ? null : (productId ?? this.productId),
-      variantId: (clearProductId || clearVariantId) ? null : (variantId ?? this.variantId),
-      variantName: (clearProductId || clearVariantId) ? null : (variantName ?? this.variantName),
-      batchId: (clearProductId || clearVariantId || clearBatchId) ? null : (batchId ?? this.batchId),
-      batchNumber: (clearProductId || clearVariantId || clearBatchId) ? null : (batchNumber ?? this.batchNumber),
+      variantId:
+          (clearProductId || clearVariantId)
+              ? null
+              : (variantId ?? this.variantId),
+      variantName:
+          (clearProductId || clearVariantId)
+              ? null
+              : (variantName ?? this.variantName),
+      batchId:
+          (clearProductId || clearVariantId || clearBatchId)
+              ? null
+              : (batchId ?? this.batchId),
+      batchNumber:
+          (clearProductId || clearVariantId || clearBatchId)
+              ? null
+              : (batchNumber ?? this.batchNumber),
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       totalPages: totalPages ?? this.totalPages,

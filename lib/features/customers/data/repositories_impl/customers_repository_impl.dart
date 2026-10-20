@@ -72,8 +72,10 @@ class CustomersRepositoryImpl implements CustomersRepository {
             creditObj = creditData.first as Map<String, dynamic>?;
           }
           if (creditObj != null) {
-            currentDebt = (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
-            creditLimit = (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
+            currentDebt =
+                (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
+            creditLimit =
+                (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
           }
         }
 
@@ -116,7 +118,11 @@ class CustomersRepositoryImpl implements CustomersRepository {
   Future<CustomerEntity> getCustomerDetail(String customerId) async {
     try {
       final res =
-          await _supabase.from('profiles').select().eq('id', customerId).single();
+          await _supabase
+              .from('profiles')
+              .select()
+              .eq('id', customerId)
+              .single();
 
       final ordersRes = await _supabase
           .from('orders')
@@ -153,7 +159,9 @@ class CustomersRepositoryImpl implements CustomersRepository {
         walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
         isActive: res['is_active'] as bool? ?? true,
         createdAt:
-            res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
+            res['created_at'] != null
+                ? DateTime.parse(res['created_at'])
+                : null,
         currentDebt: currentDebt,
         creditLimit: creditLimit,
         totalRevenue: totalSpent,
@@ -259,7 +267,9 @@ class CustomersRepositoryImpl implements CustomersRepository {
         walletBalance: (res['wallet_balance'] as num?)?.toDouble() ?? 0.0,
         isActive: res['is_active'] as bool? ?? true,
         createdAt:
-            res['created_at'] != null ? DateTime.parse(res['created_at']) : null,
+            res['created_at'] != null
+                ? DateTime.parse(res['created_at'])
+                : null,
         currentDebt: 0.0,
         creditLimit: 0.0,
       );
@@ -425,7 +435,10 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
       if (customerId != null) {
         // Editar
-        await _supabase.from('profiles').update(profileData).eq('id', customerId);
+        await _supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', customerId);
         finalProfileId = customerId;
 
         if (walletAdjustDelta != 0) {
@@ -562,35 +575,35 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res = await _supabase.rpc('get_customers_global_stats_rpc');
       if (res != null && res is Map) {
-        final totalCustomers = (res['totalCustomersCount'] ??
-                res['total_customers_count'] ??
-                res['total_count'] ??
-                res['totalCount'] as num?)
-            ?.toInt() ??
+        final totalCustomers =
+            (res['totalCustomersCount'] ??
+                    res['total_customers_count'] ??
+                    res['total_count'] ??
+                    res['totalCount'] as num?)
+                ?.toInt() ??
             0;
-        final activeCustomers = (res['activeCustomersCount'] ??
-                res['active_customers_count'] ??
-                res['active_count'] ??
-                res['activeCount'] as num?)
-            ?.toInt() ??
+        final activeCustomers =
+            (res['activeCustomersCount'] ??
+                    res['active_customers_count'] ??
+                    res['active_count'] ??
+                    res['activeCount'] as num?)
+                ?.toInt() ??
             0;
-        final inactiveCustomers = (res['inactiveCustomersCount'] ??
-                res['inactive_customers_count'] ??
-                res['inactive_count'] ??
-                res['inactiveCount'] as num?)
-            ?.toInt() ??
+        final inactiveCustomers =
+            (res['inactiveCustomersCount'] ??
+                    res['inactive_customers_count'] ??
+                    res['inactive_count'] ??
+                    res['inactiveCount'] as num?)
+                ?.toInt() ??
             0;
-        final totalRevenue = (res['totalRevenue'] ??
-                res['total_revenue'] as num?)
-            ?.toDouble() ??
+        final totalRevenue =
+            (res['totalRevenue'] ?? res['total_revenue'] as num?)?.toDouble() ??
             0.0;
-        final totalDebt = (res['totalDebt'] ??
-                res['total_debt'] as num?)
-            ?.toDouble() ??
-            0.0;
-        final debtCustomers = (res['debtCustomersCount'] ??
-                res['debt_customers_count'] as num?)
-            ?.toInt() ??
+        final totalDebt =
+            (res['totalDebt'] ?? res['total_debt'] as num?)?.toDouble() ?? 0.0;
+        final debtCustomers =
+            (res['debtCustomersCount'] ?? res['debt_customers_count'] as num?)
+                ?.toInt() ??
             0;
 
         return {
@@ -677,15 +690,14 @@ class CustomersRepositoryImpl implements CustomersRepository {
       );
       if (res != null && res is List) {
         return res.map<CustomerEntity>((row) {
-          final totalRev = (row['total_revenue'] ??
-                  row['totalRevenue'] ??
-                  row['total_spent'] as num?)
-              ?.toDouble() ??
+          final totalRev =
+              (row['total_revenue'] ??
+                      row['totalRevenue'] ??
+                      row['total_spent'] as num?)
+                  ?.toDouble() ??
               0.0;
-          final orderCount = (row['order_count'] ??
-                  row['orderCount'] as num?)
-              ?.toInt() ??
-              0;
+          final orderCount =
+              (row['order_count'] ?? row['orderCount'] as num?)?.toInt() ?? 0;
           return CustomerEntity(
             id: row['id'] as String,
             fullName: row['full_name'] as String? ?? 'Cliente',
@@ -749,7 +761,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
               documentNumber: json['document_number'] as String?,
               documentType: json['document_type'] as String?,
               avatarUrl: json['avatar_url'] as String?,
-              walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+              walletBalance:
+                  (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
               isActive: json['is_active'] as bool? ?? true,
               createdAt:
                   json['created_at'] != null

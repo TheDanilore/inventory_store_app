@@ -36,8 +36,8 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     required this.restoreDefaultConnectionUseCase,
     required this.getConnectionUrlUseCase,
     required AppConfigRepository appConfigRepository,
-  })  : _appConfigRepository = appConfigRepository,
-        super(const AppConfigState());
+  }) : _appConfigRepository = appConfigRepository,
+       super(const AppConfigState());
 
   // --- Helpers para compatibilidad ---
   BusinessInfoEntity? get businessInfo => state.businessInfo;
@@ -67,10 +67,9 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     dynamic value, {
     String? description,
   }) async {
-    return saveMultipleValues(
-      {key: value},
-      descriptions: description != null ? {key: description} : null,
-    );
+    return saveMultipleValues({
+      key: value,
+    }, descriptions: description != null ? {key: description} : null);
   }
 
   /// Guarda múltiples valores de configuración en Supabase y actualiza el estado local.
@@ -80,31 +79,29 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   }) async {
     if (newValues.isEmpty) return true;
 
-    emit(state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true));
+    emit(
+      state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true),
+    );
 
     try {
-      final settingsList = newValues.entries.map((e) {
-        return AppSettingEntity(
-          key: e.key,
-          value: (e.value as num).toDouble(),
-          description: descriptions?[e.key],
-        );
-      }).toList();
+      final settingsList =
+          newValues.entries.map((e) {
+            return AppSettingEntity(
+              key: e.key,
+              value: (e.value as num).toDouble(),
+              description: descriptions?[e.key],
+            );
+          }).toList();
 
       await _appConfigRepository.upsertAppSettings(settingsList);
 
       // Actualizar el mapa de valores en memoria para reflejar los cambios
       // sin necesidad de hacer una nueva llamada a la red.
       final updatedValues = Map<String, double>.from(state.values)
-        ..addAll(
-          newValues.map((k, v) => MapEntry(k, (v as num).toDouble())),
-        );
+        ..addAll(newValues.map((k, v) => MapEntry(k, (v as num).toDouble())));
 
       emit(
-        state.copyWith(
-          saveStatus: ViewState.success,
-          values: updatedValues,
-        ),
+        state.copyWith(saveStatus: ViewState.success, values: updatedValues),
       );
       return true;
     } catch (e, st) {
@@ -126,37 +123,41 @@ class AppConfigCubit extends Cubit<AppConfigState> {
 
   Future<String?> uploadBusinessLogo(Uint8List bytes) async {
     final result = await uploadLogoUseCase(bytes);
-    return result.fold((failure) {
-      LoggerService.e(
-        'Fallo al subir logo del negocio: ${failure.message}',
-        tag: 'AppConfigCubit',
-      );
-      emit(
-        state.copyWith(
-          saveStatus: ViewState.error,
-          errorMessage: failure.message,
-        ),
-      );
-      return null;
-    }, (url) {
-      if (state.businessInfo != null) {
+    return result.fold(
+      (failure) {
+        LoggerService.e(
+          'Fallo al subir logo del negocio: ${failure.message}',
+          tag: 'AppConfigCubit',
+        );
         emit(
           state.copyWith(
-            businessInfo: BusinessInfoEntity(
-              id: state.businessInfo!.id,
-              businessName: state.businessInfo!.businessName,
-              taxId: state.businessInfo!.taxId,
-              address: state.businessInfo!.address,
-              phone: state.businessInfo!.phone,
-              logoUrl: url,
-              loyaltyGlobalEnabled: state.businessInfo!.loyaltyGlobalEnabled,
-              loyaltyCustomerVisible: state.businessInfo!.loyaltyCustomerVisible,
-            ),
+            saveStatus: ViewState.error,
+            errorMessage: failure.message,
           ),
         );
-      }
-      return url;
-    });
+        return null;
+      },
+      (url) {
+        if (state.businessInfo != null) {
+          emit(
+            state.copyWith(
+              businessInfo: BusinessInfoEntity(
+                id: state.businessInfo!.id,
+                businessName: state.businessInfo!.businessName,
+                taxId: state.businessInfo!.taxId,
+                address: state.businessInfo!.address,
+                phone: state.businessInfo!.phone,
+                logoUrl: url,
+                loyaltyGlobalEnabled: state.businessInfo!.loyaltyGlobalEnabled,
+                loyaltyCustomerVisible:
+                    state.businessInfo!.loyaltyCustomerVisible,
+              ),
+            ),
+          );
+        }
+        return url;
+      },
+    );
   }
 
   Future<void> loadConfig({bool force = false}) async {
@@ -275,9 +276,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       taxId: taxId,
       address: address,
       phone: phone,
-      logoUrl: (logoUrl != null && logoUrl.isNotEmpty)
-          ? logoUrl
-          : currentInfo.logoUrl,
+      logoUrl:
+          (logoUrl != null && logoUrl.isNotEmpty)
+              ? logoUrl
+              : currentInfo.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
     );

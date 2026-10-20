@@ -87,13 +87,15 @@ class _CustomerDetailContent extends StatelessWidget {
   }
 
   void _refreshData(BuildContext context) {
-    final targetId = customerId.isNotEmpty
-        ? customerId
-        : (context.read<CustomerDetailCubit>().state is CustomerDetailLoaded
-            ? (context.read<CustomerDetailCubit>().state as CustomerDetailLoaded)
-                .customer
-                .id
-            : '');
+    final targetId =
+        customerId.isNotEmpty
+            ? customerId
+            : (context.read<CustomerDetailCubit>().state is CustomerDetailLoaded
+                ? (context.read<CustomerDetailCubit>().state
+                        as CustomerDetailLoaded)
+                    .customer
+                    .id
+                : '');
     if (targetId.isNotEmpty) {
       context.read<CustomerDetailCubit>().loadCustomer(targetId);
       context.read<CustomerLocationsCubit>().loadLocations(targetId);
@@ -112,8 +114,8 @@ class _CustomerDetailContent extends StatelessWidget {
 
         return CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyE, alt: true): () =>
-                _openEditCustomer(context),
+            const SingleActivator(LogicalKeyboardKey.keyE, alt: true):
+                () => _openEditCustomer(context),
             const SingleActivator(LogicalKeyboardKey.keyP, alt: true):
                 onViewAllOrders,
             const SingleActivator(LogicalKeyboardKey.escape): () {
@@ -142,8 +144,8 @@ class _CustomerDetailContent extends StatelessWidget {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final isTablet = constraints.maxWidth > 750;
-                    final isLoyaltyEnabled =
-                        context.select<AppConfigCubit, bool>(
+                    final isLoyaltyEnabled = context
+                        .select<AppConfigCubit, bool>(
                           (c) => c.loyaltyGlobalEnabled,
                         );
 
@@ -260,9 +262,9 @@ class _CustomerDetailContent extends StatelessWidget {
                       customer: c,
                       movements: creditState.movements,
                       onPaymentRegistered: () {
-                        context
-                            .read<CustomerCreditsCubit>()
-                            .loadCreditData(c.id);
+                        context.read<CustomerCreditsCubit>().loadCreditData(
+                          c.id,
+                        );
                         context.read<CustomerDetailCubit>().loadCustomer(c.id);
                       },
                     );
@@ -385,9 +387,9 @@ class _CustomerDetailContent extends StatelessWidget {
                               context
                                   .read<CustomerCreditsCubit>()
                                   .loadCreditData(c.id);
-                              context
-                                  .read<CustomerDetailCubit>()
-                                  .loadCustomer(c.id);
+                              context.read<CustomerDetailCubit>().loadCustomer(
+                                c.id,
+                              );
                             },
                           );
                         }

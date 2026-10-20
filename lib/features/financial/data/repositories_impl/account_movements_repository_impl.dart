@@ -34,14 +34,15 @@ class AccountMovementsRepositoryImpl implements AccountMovementsRepository {
         .count(CountOption.exact);
 
     final data = response.data as List;
-    final items = data
-        .map(
-          (e) =>
-              AccountMovementModel.fromJson(
-                Map<String, dynamic>.from(e as Map),
-              ).toEntity(),
-        )
-        .toList();
+    final items =
+        data
+            .map(
+              (e) =>
+                  AccountMovementModel.fromJson(
+                    Map<String, dynamic>.from(e as Map),
+                  ).toEntity(),
+            )
+            .toList();
     final totalCount = response.count;
     return MovementPageResult(items: items, totalCount: totalCount);
   }

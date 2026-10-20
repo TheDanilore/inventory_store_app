@@ -63,7 +63,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         query = query.gte('opened_at', dateFrom.toIso8601String());
       }
       if (dateTo != null) {
-        final endOfDay = DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59, 999);
+        final endOfDay = DateTime(
+          dateTo.year,
+          dateTo.month,
+          dateTo.day,
+          23,
+          59,
+          59,
+          999,
+        );
         query = query.lte('opened_at', endOfDay.toIso8601String());
       }
       if (profileId != null) {
@@ -100,7 +108,12 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       );
       return left(ServerFailure(message: e.message));
     } catch (e, stack) {
-      LoggerService.e('Error general en getShifts', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error general en getShifts',
+        tag: 'CashShiftRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -132,7 +145,15 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
         closedQuery = closedQuery.gte('opened_at', dateFrom.toIso8601String());
       }
       if (dateTo != null) {
-        final endOfDay = DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59, 999);
+        final endOfDay = DateTime(
+          dateTo.year,
+          dateTo.month,
+          dateTo.day,
+          23,
+          59,
+          59,
+          999,
+        );
         openQuery = openQuery.lte('opened_at', endOfDay.toIso8601String());
         closedQuery = closedQuery.lte('opened_at', endOfDay.toIso8601String());
       }
@@ -216,7 +237,12 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
-      LoggerService.e('Error inesperado en openShift', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error inesperado en openShift',
+        tag: 'CashShiftRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(
         const ServerFailure(message: 'Error inesperado al abrir el turno.'),
       );
@@ -260,7 +286,12 @@ class CashShiftRepositoryImpl implements CashShiftRepository {
       final msg = _mapShiftError(e);
       return left(ServerFailure(message: msg));
     } catch (e, st) {
-      LoggerService.e('Error inesperado en closeShift', tag: 'CashShiftRepositoryImpl', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error inesperado en closeShift',
+        tag: 'CashShiftRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return left(
         const ServerFailure(message: 'Error inesperado al cerrar el turno.'),
       );

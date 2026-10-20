@@ -243,7 +243,11 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
                 ),
               ),
             IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.grey,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -267,15 +271,16 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
-            suffixIcon: _searchCtrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear_rounded, size: 18),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      _search('');
-                    },
-                  )
-                : null,
+            suffixIcon:
+                _searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        _search('');
+                      },
+                    )
+                    : null,
             filled: true,
             fillColor: Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -288,7 +293,10 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -353,7 +361,10 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(
                     'Crear "${_searchCtrl.text.trim()}"',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -374,9 +385,10 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         else if (_results.isNotEmpty)
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: isDesktop
-                  ? (screenHeight * 0.45).clamp(240.0, 420.0)
-                  : screenHeight * 0.4,
+              maxHeight:
+                  isDesktop
+                      ? (screenHeight * 0.45).clamp(240.0, 420.0)
+                      : screenHeight * 0.4,
             ),
             child: ListView.separated(
               shrinkWrap: true,
@@ -458,10 +470,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
         elevation: 12,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: content,
-          ),
+          child: Padding(padding: const EdgeInsets.all(20.0), child: content),
         ),
       );
     } else {
@@ -488,10 +497,7 @@ class _AttributeSearchDialogState extends State<AttributeSearchDialog> {
             top: 12,
             bottom: 28,
           ),
-          child: SafeArea(
-            top: false,
-            child: content,
-          ),
+          child: SafeArea(top: false, child: content),
         ),
       );
     }

@@ -156,22 +156,25 @@ class _SortFilterChip extends StatelessWidget {
   final CatalogSortOption currentSort;
   final ValueChanged<CatalogSortOption> onSelected;
 
-  const _SortFilterChip({
-    required this.currentSort,
-    required this.onSelected,
-  });
+  const _SortFilterChip({required this.currentSort, required this.onSelected});
 
   bool get _isCustom => currentSort != CatalogSortOption.recent;
 
-  Widget _buildSortItem(String label, IconData icon, bool isSelected, bool isDark) {
+  Widget _buildSortItem(
+    String label,
+    IconData icon,
+    bool isSelected,
+    bool isDark,
+  ) {
     return Row(
       children: [
         Icon(
           isSelected ? Icons.check_circle_rounded : icon,
           size: 16,
-          color: isSelected
-              ? AppColors.primary
-              : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+          color:
+              isSelected
+                  ? AppColors.primary
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
         ),
         const SizedBox(width: 8),
         Text(
@@ -179,9 +182,14 @@ class _SortFilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected
-                ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
-                : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+            color:
+                isSelected
+                    ? (isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary)
+                    : (isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary),
           ),
         ),
       ],
@@ -198,66 +206,75 @@ class _SortFilterChip extends StatelessWidget {
       onSelected: onSelected,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: CatalogSortOption.recent,
-          child: _buildSortItem(
-            'Recientes',
-            Icons.access_time_rounded,
-            currentSort == CatalogSortOption.recent,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.nameAsc,
-          child: _buildSortItem(
-            'Nombre (A-Z)',
-            Icons.sort_by_alpha_rounded,
-            currentSort == CatalogSortOption.nameAsc,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.priceAsc,
-          child: _buildSortItem(
-            'Precio: Menor a Mayor',
-            Icons.arrow_upward_rounded,
-            currentSort == CatalogSortOption.priceAsc,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.priceDesc,
-          child: _buildSortItem(
-            'Precio: Mayor a Menor',
-            Icons.arrow_downward_rounded,
-            currentSort == CatalogSortOption.priceDesc,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogSortOption.highStock,
-          child: _buildSortItem(
-            'Mayor Stock',
-            Icons.inventory_2_rounded,
-            currentSort == CatalogSortOption.highStock,
-            isDark,
-          ),
-        ),
-      ],
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem(
+              value: CatalogSortOption.recent,
+              child: _buildSortItem(
+                'Recientes',
+                Icons.access_time_rounded,
+                currentSort == CatalogSortOption.recent,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.nameAsc,
+              child: _buildSortItem(
+                'Nombre (A-Z)',
+                Icons.sort_by_alpha_rounded,
+                currentSort == CatalogSortOption.nameAsc,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.priceAsc,
+              child: _buildSortItem(
+                'Precio: Menor a Mayor',
+                Icons.arrow_upward_rounded,
+                currentSort == CatalogSortOption.priceAsc,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.priceDesc,
+              child: _buildSortItem(
+                'Precio: Mayor a Menor',
+                Icons.arrow_downward_rounded,
+                currentSort == CatalogSortOption.priceDesc,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogSortOption.highStock,
+              child: _buildSortItem(
+                'Mayor Stock',
+                Icons.inventory_2_rounded,
+                currentSort == CatalogSortOption.highStock,
+                isDark,
+              ),
+            ),
+          ],
       child: Container(
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: _isCustom
-              ? (isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight)
-              : (isDark ? AppColors.darkSurfaceElevated : AppColors.surface),
+          color:
+              _isCustom
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.2)
+                      : AppColors.primaryLight)
+                  : (isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.surface),
           border: Border.all(
-            color: _isCustom
-                ? AppColors.primary
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color:
+                _isCustom
+                    ? AppColors.primary
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
             width: _isCustom ? 1.2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -268,9 +285,12 @@ class _SortFilterChip extends StatelessWidget {
             Icon(
               Icons.swap_vert_rounded,
               size: 16,
-              color: _isCustom
-                  ? AppColors.primary
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+              color:
+                  _isCustom
+                      ? AppColors.primary
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
             const SizedBox(width: 6),
             Text(
@@ -278,18 +298,24 @@ class _SortFilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: _isCustom ? FontWeight.w600 : FontWeight.w500,
-                color: _isCustom
-                    ? AppColors.primary
-                    : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                color:
+                    _isCustom
+                        ? AppColors.primary
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 4),
             Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 16,
-              color: _isCustom
-                  ? AppColors.primary
-                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+              color:
+                  _isCustom
+                      ? AppColors.primary
+                      : (isDark
+                          ? AppColors.darkTextMuted
+                          : AppColors.textMuted),
             ),
           ],
         ),
@@ -341,13 +367,19 @@ class _CategoryFilterChip extends StatelessWidget {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight)
-                : (isDark ? AppColors.darkSurfaceElevated : AppColors.surface),
+            color:
+                isSelected
+                    ? (isDark
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : AppColors.primaryLight)
+                    : (isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.surface),
             border: Border.all(
-              color: isSelected
-                  ? AppColors.primary
-                  : (isDark ? AppColors.darkBorder : AppColors.border),
+              color:
+                  isSelected
+                      ? AppColors.primary
+                      : (isDark ? AppColors.darkBorder : AppColors.border),
               width: isSelected ? 1.2 : 1,
             ),
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -358,19 +390,27 @@ class _CategoryFilterChip extends StatelessWidget {
               Icon(
                 isSelected ? Icons.category_rounded : Icons.category_outlined,
                 size: 15,
-                color: isSelected
-                    ? AppColors.primary
-                    : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                color:
+                    isSelected
+                        ? AppColors.primary
+                        : (isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary),
               ),
               const SizedBox(width: 6),
               Text(
-                isSelected ? 'Categoría: ${selectedCategory.name}' : 'Categoría: Todas',
+                isSelected
+                    ? 'Categoría: ${selectedCategory.name}'
+                    : 'Categoría: Todas',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? AppColors.primary
-                      : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                  color:
+                      isSelected
+                          ? AppColors.primary
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary),
                 ),
               ),
               const SizedBox(width: 6),
@@ -383,7 +423,9 @@ class _CategoryFilterChip extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: isDark ? 0.3 : 0.15),
+                      color: AppColors.primary.withValues(
+                        alpha: isDark ? 0.3 : 0.15,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -450,13 +492,19 @@ class _BrandFilterChip extends StatelessWidget {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? AppColors.info.withValues(alpha: 0.2) : AppColors.infoLight)
-                : (isDark ? AppColors.darkSurfaceElevated : AppColors.surface),
+            color:
+                isSelected
+                    ? (isDark
+                        ? AppColors.info.withValues(alpha: 0.2)
+                        : AppColors.infoLight)
+                    : (isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.surface),
             border: Border.all(
-              color: isSelected
-                  ? AppColors.info
-                  : (isDark ? AppColors.darkBorder : AppColors.border),
+              color:
+                  isSelected
+                      ? AppColors.info
+                      : (isDark ? AppColors.darkBorder : AppColors.border),
               width: isSelected ? 1.2 : 1,
             ),
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -467,9 +515,12 @@ class _BrandFilterChip extends StatelessWidget {
               Icon(
                 isSelected ? Icons.verified_rounded : Icons.verified_outlined,
                 size: 15,
-                color: isSelected
-                    ? AppColors.info
-                    : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+                color:
+                    isSelected
+                        ? AppColors.info
+                        : (isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary),
               ),
               const SizedBox(width: 6),
               Text(
@@ -477,9 +528,14 @@ class _BrandFilterChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0369A1))
-                      : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                  color:
+                      isSelected
+                          ? (isDark
+                              ? const Color(0xFF38BDF8)
+                              : const Color(0xFF0369A1))
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary),
                 ),
               ),
               const SizedBox(width: 6),
@@ -492,13 +548,18 @@ class _BrandFilterChip extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: isDark ? 0.3 : 0.18),
+                      color: AppColors.info.withValues(
+                        alpha: isDark ? 0.3 : 0.18,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.close_rounded,
                       size: 13,
-                      color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0369A1),
+                      color:
+                          isDark
+                              ? const Color(0xFF38BDF8)
+                              : const Color(0xFF0369A1),
                     ),
                   ),
                 )
@@ -530,15 +591,22 @@ class _StockFilterChip extends StatelessWidget {
 
   bool get _hasFilter => stockFilterState != CatalogStockFilter.all;
 
-  Widget _buildItem(String label, IconData icon, bool isSelected, bool isDark, {Color? color}) {
+  Widget _buildItem(
+    String label,
+    IconData icon,
+    bool isSelected,
+    bool isDark, {
+    Color? color,
+  }) {
     return Row(
       children: [
         Icon(
           isSelected ? Icons.check_circle_rounded : icon,
           size: 16,
-          color: isSelected
-              ? (color ?? AppColors.primary)
-              : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+          color:
+              isSelected
+                  ? (color ?? AppColors.primary)
+                  : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
         ),
         const SizedBox(width: 8),
         Text(
@@ -546,9 +614,14 @@ class _StockFilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected
-                ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
-                : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+            color:
+                isSelected
+                    ? (isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary)
+                    : (isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary),
           ),
         ),
       ],
@@ -565,12 +638,18 @@ class _StockFilterChip extends StatelessWidget {
     Color? activeIcon;
 
     if (stockFilterState == CatalogStockFilter.inStock) {
-      activeBg = isDark ? const Color(0xFF064E3B).withValues(alpha: 0.4) : AppColors.tealLight;
+      activeBg =
+          isDark
+              ? const Color(0xFF064E3B).withValues(alpha: 0.4)
+              : AppColors.tealLight;
       activeBorder = isDark ? const Color(0xFF059669) : AppColors.teal;
       activeText = isDark ? const Color(0xFF34D399) : AppColors.tealDark;
       activeIcon = isDark ? const Color(0xFF34D399) : AppColors.teal;
     } else if (stockFilterState == CatalogStockFilter.outOfStock) {
-      activeBg = isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.4) : AppColors.dangerLight;
+      activeBg =
+          isDark
+              ? const Color(0xFF7F1D1D).withValues(alpha: 0.4)
+              : AppColors.dangerLight;
       activeBorder = isDark ? const Color(0xFFDC2626) : AppColors.danger;
       activeText = isDark ? const Color(0xFFF87171) : const Color(0xFF991B1B);
       activeIcon = isDark ? const Color(0xFFF87171) : AppColors.danger;
@@ -582,50 +661,58 @@ class _StockFilterChip extends StatelessWidget {
       onSelected: onChanged,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: CatalogStockFilter.all,
-          child: _buildItem(
-            'Todos los productos',
-            Icons.all_inclusive_rounded,
-            stockFilterState == CatalogStockFilter.all,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogStockFilter.inStock,
-          child: _buildItem(
-            'En Stock',
-            Icons.check_circle_outline_rounded,
-            stockFilterState == CatalogStockFilter.inStock,
-            isDark,
-            color: isDark ? const Color(0xFF34D399) : AppColors.teal,
-          ),
-        ),
-        PopupMenuItem(
-          value: CatalogStockFilter.outOfStock,
-          child: _buildItem(
-            'Agotados',
-            Icons.error_outline_rounded,
-            stockFilterState == CatalogStockFilter.outOfStock,
-            isDark,
-            color: isDark ? const Color(0xFFF87171) : AppColors.danger,
-          ),
-        ),
-      ],
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem(
+              value: CatalogStockFilter.all,
+              child: _buildItem(
+                'Todos los productos',
+                Icons.all_inclusive_rounded,
+                stockFilterState == CatalogStockFilter.all,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.inStock,
+              child: _buildItem(
+                'En Stock',
+                Icons.check_circle_outline_rounded,
+                stockFilterState == CatalogStockFilter.inStock,
+                isDark,
+                color: isDark ? const Color(0xFF34D399) : AppColors.teal,
+              ),
+            ),
+            PopupMenuItem(
+              value: CatalogStockFilter.outOfStock,
+              child: _buildItem(
+                'Agotados',
+                Icons.error_outline_rounded,
+                stockFilterState == CatalogStockFilter.outOfStock,
+                isDark,
+                color: isDark ? const Color(0xFFF87171) : AppColors.danger,
+              ),
+            ),
+          ],
       child: Container(
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: _hasFilter
-              ? activeBg
-              : (isDark ? AppColors.darkSurfaceElevated : AppColors.surface),
+          color:
+              _hasFilter
+                  ? activeBg
+                  : (isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.surface),
           border: Border.all(
-            color: _hasFilter
-                ? (activeBorder ?? (isDark ? AppColors.darkBorder : AppColors.border))
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color:
+                _hasFilter
+                    ? (activeBorder ??
+                        (isDark ? AppColors.darkBorder : AppColors.border))
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
             width: _hasFilter ? 1.2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -634,11 +721,16 @@ class _StockFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _hasFilter ? Icons.inventory_2_rounded : Icons.inventory_2_outlined,
+              _hasFilter
+                  ? Icons.inventory_2_rounded
+                  : Icons.inventory_2_outlined,
               size: 15,
-              color: _hasFilter
-                  ? activeIcon
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+              color:
+                  _hasFilter
+                      ? activeIcon
+                      : (isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary),
             ),
             const SizedBox(width: 6),
             Text(
@@ -646,9 +738,12 @@ class _StockFilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: _hasFilter ? FontWeight.w600 : FontWeight.w500,
-                color: _hasFilter
-                    ? activeText
-                    : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                color:
+                    _hasFilter
+                        ? activeText
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 6),
@@ -664,11 +759,7 @@ class _StockFilterChip extends StatelessWidget {
                     color: activeBorder?.withValues(alpha: isDark ? 0.3 : 0.18),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 13,
-                    color: activeText,
-                  ),
+                  child: Icon(Icons.close_rounded, size: 13, color: activeText),
                 ),
               )
             else
@@ -698,7 +789,13 @@ class _StatusFilterChip extends StatelessWidget {
 
   bool get _hasFilter => filterIsActive != null;
 
-  Widget _buildItem(String label, IconData icon, bool isSelected, bool isDark, {Color? dotColor}) {
+  Widget _buildItem(
+    String label,
+    IconData icon,
+    bool isSelected,
+    bool isDark, {
+    Color? dotColor,
+  }) {
     return Row(
       children: [
         if (dotColor != null)
@@ -706,18 +803,16 @@ class _StatusFilterChip extends StatelessWidget {
             width: 8,
             height: 8,
             margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           )
         else
           Icon(
             icon,
             size: 16,
-            color: isSelected
-                ? AppColors.primary
-                : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+            color:
+                isSelected
+                    ? AppColors.primary
+                    : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
           ),
         const SizedBox(width: 8),
         Text(
@@ -725,18 +820,19 @@ class _StatusFilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected
-                ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
-                : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
+            color:
+                isSelected
+                    ? (isDark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary)
+                    : (isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary),
           ),
         ),
         const Spacer(),
         if (isSelected)
-          const Icon(
-            Icons.check_rounded,
-            size: 16,
-            color: AppColors.primary,
-          ),
+          const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
       ],
     );
   }
@@ -754,50 +850,60 @@ class _StatusFilterChip extends StatelessWidget {
       onSelected: onChanged,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
-        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: null,
-          child: _buildItem(
-            'Todos los estados',
-            Icons.visibility_rounded,
-            filterIsActive == null,
-            isDark,
-          ),
-        ),
-        PopupMenuItem(
-          value: true,
-          child: _buildItem(
-            'Solo Activos (Visibles)',
-            Icons.check_circle_rounded,
-            filterIsActive == true,
-            isDark,
-            dotColor: AppColors.success,
-          ),
-        ),
-        PopupMenuItem(
-          value: false,
-          child: _buildItem(
-            'Solo Inactivos (Ocultos)',
-            Icons.visibility_off_rounded,
-            filterIsActive == false,
-            isDark,
-            dotColor: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-          ),
-        ),
-      ],
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem(
+              value: null,
+              child: _buildItem(
+                'Todos los estados',
+                Icons.visibility_rounded,
+                filterIsActive == null,
+                isDark,
+              ),
+            ),
+            PopupMenuItem(
+              value: true,
+              child: _buildItem(
+                'Solo Activos (Visibles)',
+                Icons.check_circle_rounded,
+                filterIsActive == true,
+                isDark,
+                dotColor: AppColors.success,
+              ),
+            ),
+            PopupMenuItem(
+              value: false,
+              child: _buildItem(
+                'Solo Inactivos (Ocultos)',
+                Icons.visibility_off_rounded,
+                filterIsActive == false,
+                isDark,
+                dotColor:
+                    isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+              ),
+            ),
+          ],
       child: Container(
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: _hasFilter
-              ? (isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.primaryLight)
-              : (isDark ? AppColors.darkSurfaceElevated : AppColors.surface),
+          color:
+              _hasFilter
+                  ? (isDark
+                      ? AppColors.primary.withValues(alpha: 0.2)
+                      : AppColors.primaryLight)
+                  : (isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.surface),
           border: Border.all(
-            color: _hasFilter
-                ? AppColors.primary
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color:
+                _hasFilter
+                    ? AppColors.primary
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
             width: _hasFilter ? 1.2 : 1,
           ),
           borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -811,9 +917,12 @@ class _StatusFilterChip extends StatelessWidget {
                 height: 7,
                 margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: filterIsActive == true
-                      ? AppColors.success
-                      : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                  color:
+                      filterIsActive == true
+                          ? AppColors.success
+                          : (isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted),
                   shape: BoxShape.circle,
                 ),
               )
@@ -821,7 +930,10 @@ class _StatusFilterChip extends StatelessWidget {
               Icon(
                 Icons.visibility_outlined,
                 size: 15,
-                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                color:
+                    isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
               ),
             if (!_hasFilter) const SizedBox(width: 6),
             Text(
@@ -829,9 +941,12 @@ class _StatusFilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: _hasFilter ? FontWeight.w600 : FontWeight.w500,
-                color: _hasFilter
-                    ? AppColors.primary
-                    : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                color:
+                    _hasFilter
+                        ? AppColors.primary
+                        : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
               ),
             ),
             const SizedBox(width: 6),
@@ -844,7 +959,9 @@ class _StatusFilterChip extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: isDark ? 0.3 : 0.15),
+                    color: AppColors.primary.withValues(
+                      alpha: isDark ? 0.3 : 0.15,
+                    ),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -895,13 +1012,15 @@ class _ClearAllFiltersChip extends StatelessWidget {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF7F1D1D).withValues(alpha: 0.3)
-                : AppColors.errorLight,
+            color:
+                isDark
+                    ? const Color(0xFF7F1D1D).withValues(alpha: 0.3)
+                    : AppColors.errorLight,
             border: Border.all(
-              color: isDark
-                  ? const Color(0xFFDC2626).withValues(alpha: 0.4)
-                  : AppColors.error.withValues(alpha: 0.3),
+              color:
+                  isDark
+                      ? const Color(0xFFDC2626).withValues(alpha: 0.4)
+                      : AppColors.error.withValues(alpha: 0.3),
             ),
             borderRadius: BorderRadius.circular(AppColors.radiusSm),
           ),
@@ -966,29 +1085,8 @@ class _SearchableItemPicker extends StatefulWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (ctx) => _SearchableItemPicker(
-          title: title,
-          allLabel: allLabel,
-          defaultIcon: defaultIcon,
-          items: items,
-          selectedId: selectedId,
-          onSelected: onSelected,
-        ),
-      );
-    } else {
-      await showDialog(
-        context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-          elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppColors.radius),
-            side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.border),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 380, maxHeight: 480),
-            child: _SearchableItemPicker(
+        builder:
+            (ctx) => _SearchableItemPicker(
               title: title,
               allLabel: allLabel,
               defaultIcon: defaultIcon,
@@ -996,8 +1094,37 @@ class _SearchableItemPicker extends StatefulWidget {
               selectedId: selectedId,
               onSelected: onSelected,
             ),
-          ),
-        ),
+      );
+    } else {
+      await showDialog(
+        context: context,
+        builder:
+            (ctx) => Dialog(
+              backgroundColor:
+                  isDark ? AppColors.darkSurface : AppColors.surface,
+              elevation: 8,
+              shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radius),
+                side: BorderSide(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                ),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 380,
+                  maxHeight: 480,
+                ),
+                child: _SearchableItemPicker(
+                  title: title,
+                  allLabel: allLabel,
+                  defaultIcon: defaultIcon,
+                  items: items,
+                  selectedId: selectedId,
+                  onSelected: onSelected,
+                ),
+              ),
+            ),
       );
     }
   }
@@ -1022,11 +1149,14 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
     final isMobile = MediaQuery.of(context).size.width < 650;
     final showSearch = widget.items.length > 5;
 
-    final filteredItems = _query.isEmpty
-        ? widget.items
-        : widget.items
-            .where((i) => i.name.toLowerCase().contains(_query.toLowerCase()))
-            .toList();
+    final filteredItems =
+        _query.isEmpty
+            ? widget.items
+            : widget.items
+                .where(
+                  (i) => i.name.toLowerCase().contains(_query.toLowerCase()),
+                )
+                .toList();
 
     Widget content = Column(
       mainAxisSize: MainAxisSize.min,
@@ -1059,7 +1189,10 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -1073,14 +1206,12 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                   },
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    foregroundColor: isDark ? const Color(0xFFF87171) : AppColors.error,
+                    foregroundColor:
+                        isDark ? const Color(0xFFF87171) : AppColors.error,
                   ),
                   child: const Text(
                     'Limpiar',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
               if (!isMobile)
@@ -1104,7 +1235,8 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
               onChanged: (val) => setState(() => _query = val.trim()),
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                color:
+                    isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar en ${widget.title.toLowerCase()}...',
@@ -1117,21 +1249,28 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                   size: 18,
                   color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
-                suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.clear_rounded,
-                          size: 16,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                        ),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                      )
-                    : null,
+                suffixIcon:
+                    _query.isNotEmpty
+                        ? IconButton(
+                          icon: Icon(
+                            Icons.clear_rounded,
+                            size: 16,
+                            color:
+                                isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.textMuted,
+                          ),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                        : null,
                 filled: true,
-                fillColor: isDark ? AppColors.darkSurfaceElevated : AppColors.background,
+                fillColor:
+                    isDark
+                        ? AppColors.darkSurfaceElevated
+                        : AppColors.background,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -1147,7 +1286,10 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1165,11 +1307,14 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
             shrinkWrap: true,
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: filteredItems.length + (_query.isEmpty ? 1 : 0),
-            separatorBuilder: (_, _) =>
-                Divider(
+            separatorBuilder:
+                (_, _) => Divider(
                   height: 1,
                   indent: 48,
-                  color: isDark ? AppColors.darkBorder.withValues(alpha: 0.5) : AppColors.divider,
+                  color:
+                      isDark
+                          ? AppColors.darkBorder.withValues(alpha: 0.5)
+                          : AppColors.divider,
                 ),
             itemBuilder: (context, index) {
               // Primera opción: "Todas las ..." (solo si no hay búsqueda activa)
@@ -1207,7 +1352,8 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
           ),
         ),
 
-        if (isMobile) SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+        if (isMobile)
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
       ],
     );
 
@@ -1235,9 +1381,10 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: isSelected
-          ? AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.05)
-          : Colors.transparent,
+      color:
+          isSelected
+              ? AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.05)
+              : Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: ConstrainedBox(
@@ -1249,9 +1396,12 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                 Icon(
                   icon,
                   size: 18,
-                  color: isSelected
-                      ? AppColors.primary
-                      : (isDark ? AppColors.darkTextMuted : AppColors.textMuted),
+                  color:
+                      isSelected
+                          ? AppColors.primary
+                          : (isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1259,10 +1409,14 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                     title,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected
-                          ? AppColors.primary
-                          : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color:
+                          isSelected
+                              ? AppColors.primary
+                              : (isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary),
                     ),
                   ),
                 ),

@@ -52,7 +52,10 @@ class ProductDetailsSection extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Especifica propiedades fijas como Marca, Material, Garantía, etc.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -60,11 +63,17 @@ class ProductDetailsSection extends StatelessWidget {
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text(
                       'Añadir detalle',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                     ),
                   ),
                 ],
@@ -99,7 +108,8 @@ class ProductDetailsSection extends StatelessWidget {
                       key: ValueKey(row.id),
                       row: row,
                       index: idx,
-                      onChanged: (updated) => cubit.updateDetailRow(idx, updated),
+                      onChanged:
+                          (updated) => cubit.updateDetailRow(idx, updated),
                       onRemove: () => cubit.removeDetailRow(idx),
                     );
                   },
@@ -171,10 +181,7 @@ class _DetailItemRowState extends State<_DetailItemRow> {
             onChanged: (val) => widget.onChanged(widget.row.copyWith(key: val)),
             decoration: InputDecoration(
               hintText: 'Propiedad (ej: Material)',
-              hintStyle: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 13,
-              ),
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 10,
@@ -191,17 +198,11 @@ class _DetailItemRowState extends State<_DetailItemRow> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
               ),
               isDense: true,
             ),
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
         Padding(
@@ -218,13 +219,11 @@ class _DetailItemRowState extends State<_DetailItemRow> {
           flex: 5,
           child: TextField(
             controller: _valCtrl,
-            onChanged: (val) => widget.onChanged(widget.row.copyWith(value: val)),
+            onChanged:
+                (val) => widget.onChanged(widget.row.copyWith(value: val)),
             decoration: InputDecoration(
               hintText: 'Valor (ej: Acero)',
-              hintStyle: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 13,
-              ),
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
                 vertical: 10,
@@ -241,10 +240,7 @@ class _DetailItemRowState extends State<_DetailItemRow> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
               ),
               isDense: true,
             ),
@@ -261,10 +257,7 @@ class _DetailItemRowState extends State<_DetailItemRow> {
           ),
           tooltip: 'Eliminar detalle',
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(
-            minWidth: 32,
-            minHeight: 32,
-          ),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           splashRadius: 16,
         ),
       ],

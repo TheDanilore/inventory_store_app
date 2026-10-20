@@ -43,7 +43,11 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
     final account = widget.account;
     final pct = account.usagePercent.clamp(0.0, 1.0);
     final barColor = _getProgressBarColor(pct, account.isMaxedOut);
-    final debtColor = _getDebtColor(pct, account.isMaxedOut, account.currentDebt);
+    final debtColor = _getDebtColor(
+      pct,
+      account.isMaxedOut,
+      account.currentDebt,
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -54,14 +58,16 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: widget.isSelected
-              ? AppColors.teal.withValues(alpha: 0.04)
-              : AppColors.surface,
+          color:
+              widget.isSelected
+                  ? AppColors.teal.withValues(alpha: 0.04)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.teal
-                : account.isMaxedOut
+            color:
+                widget.isSelected
+                    ? AppColors.teal
+                    : account.isMaxedOut
                     ? AppColors.danger.withValues(alpha: 0.5)
                     : (_isHovered
                         ? AppColors.teal.withValues(alpha: 0.35)
@@ -97,20 +103,24 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(
-                              color: account.isActive
-                                  ? AppColors.tealLight
-                                  : Colors.grey.shade100,
+                              color:
+                                  account.isActive
+                                      ? AppColors.tealLight
+                                      : Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               account.supplierName.isNotEmpty
-                                  ? account.supplierName.substring(0, 1).toUpperCase()
+                                  ? account.supplierName
+                                      .substring(0, 1)
+                                      .toUpperCase()
                                   : 'P',
                               style: TextStyle(
-                                color: account.isActive
-                                    ? AppColors.tealDark
-                                    : Colors.grey.shade600,
+                                color:
+                                    account.isActive
+                                        ? AppColors.tealDark
+                                        : Colors.grey.shade600,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
                               ),
@@ -123,9 +133,10 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                               width: 11,
                               height: 11,
                               decoration: BoxDecoration(
-                                color: account.isActive
-                                    ? AppColors.success
-                                    : Colors.grey.shade400,
+                                color:
+                                    account.isActive
+                                        ? AppColors.success
+                                        : Colors.grey.shade400,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: AppColors.surface,
@@ -172,9 +183,10 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                                     vertical: 1.5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: account.isActive
-                                        ? AppColors.successLight
-                                        : Colors.grey.shade200,
+                                    color:
+                                        account.isActive
+                                            ? AppColors.successLight
+                                            : Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -182,9 +194,10 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
-                                      color: account.isActive
-                                          ? AppColors.successDark
-                                          : Colors.grey.shade700,
+                                      color:
+                                          account.isActive
+                                              ? AppColors.successDark
+                                              : Colors.grey.shade700,
                                     ),
                                   ),
                                 ),
@@ -260,9 +273,10 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
-                                  color: account.isActive
-                                      ? AppColors.tealDark
-                                      : AppColors.textMuted,
+                                  color:
+                                      account.isActive
+                                          ? AppColors.tealDark
+                                          : AppColors.textMuted,
                                 ),
                               ),
                             ],
@@ -303,7 +317,9 @@ class _SupplierCreditCardState extends State<SupplierCreditCard> {
                         child: OutlinedButton.icon(
                           onPressed: widget.onPay ?? widget.onTap,
                           style: OutlinedButton.styleFrom(
-                            backgroundColor: AppColors.tealLight.withValues(alpha: 0.5),
+                            backgroundColor: AppColors.tealLight.withValues(
+                              alpha: 0.5,
+                            ),
                             foregroundColor: AppColors.tealDark,
                             side: BorderSide(
                               color: AppColors.teal.withValues(alpha: 0.25),

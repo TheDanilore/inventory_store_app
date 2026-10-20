@@ -918,12 +918,11 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                       const SizedBox(height: 1),
                       InkWell(
                         onTap: () async {
-                          final code =
-                              await PosCameraScannerDialog.showForRawCode(
-                                context,
-                                title:
-                                    'Escanear Código (Variante #${widget.index + 1})',
-                              );
+                          final code = await PosCameraScannerDialog.showForRawCode(
+                            context,
+                            title:
+                                'Escanear Código (Variante #${widget.index + 1})',
+                          );
                           if (code != null && code.isNotEmpty) {
                             widget.onUpdate(
                               widget.draft.copyWith(barcode: code),
@@ -961,12 +960,11 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                       const SizedBox(height: 1),
                       InkWell(
                         onTap: () async {
-                          final code =
-                              await PosCameraScannerDialog.showForRawCode(
-                                context,
-                                title:
-                                    'Escanear Código (Variante #${widget.index + 1})',
-                              );
+                          final code = await PosCameraScannerDialog.showForRawCode(
+                            context,
+                            title:
+                                'Escanear Código (Variante #${widget.index + 1})',
+                          );
                           if (code != null && code.isNotEmpty) {
                             widget.onUpdate(
                               widget.draft.copyWith(barcode: code),
@@ -1050,16 +1048,13 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                 children: [
                   IconButton(
                     onPressed: () async {
-                      final code =
-                          await PosCameraScannerDialog.showForRawCode(
-                            context,
-                            title:
-                                'Escanear Código (Variante #${widget.index + 1})',
-                          );
+                      final code = await PosCameraScannerDialog.showForRawCode(
+                        context,
+                        title:
+                            'Escanear Código (Variante #${widget.index + 1})',
+                      );
                       if (code != null && code.isNotEmpty) {
-                        widget.onUpdate(
-                          widget.draft.copyWith(barcode: code),
-                        );
+                        widget.onUpdate(widget.draft.copyWith(barcode: code));
                         HapticFeedback.lightImpact();
                       }
                     },

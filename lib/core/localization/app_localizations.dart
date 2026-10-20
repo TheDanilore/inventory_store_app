@@ -54,7 +54,8 @@ class AppLocalizations {
       'greeting_sub_morning': 'Jornada Matutina · Riego & Despacho',
       'greeting_sub_afternoon': 'Jornada Vespertina · Control & Ventas',
       'greeting_sub_evening': 'Cierre de Almacén · Inventario Seguro',
-      'greeting_agro_desc': 'Monitoreo fitosanitario activo · Control de inventarios y rotación FEFO.',
+      'greeting_agro_desc':
+          'Monitoreo fitosanitario activo · Control de inventarios y rotación FEFO.',
 
       // KPIs y Métricas
       'total_sales': 'Ventas Totales',
@@ -74,14 +75,16 @@ class AppLocalizations {
       'fefo_title': 'Lotes Críticos por Vencer (FEFO)',
       'fefo_desc': 'Control preventivo de caducidad en almacén',
       'fefo_healthy_title': 'Salud Fitosanitaria Óptima',
-      'fefo_healthy_desc': 'No hay lotes que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
+      'fefo_healthy_desc':
+          'No hay lotes que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
       'fefo_badge_valid': '✓ 100% Vigente',
       'manage_batches': 'Gestionar lotes y almacenes',
 
       // Perfil & Idioma
       'personal_info': 'Información Personal',
       'system_language': 'Idioma del Sistema',
-      'system_language_desc': 'Selecciona el idioma para toda la plataforma ERP',
+      'system_language_desc':
+          'Selecciona el idioma para toda la plataforma ERP',
       'change_avatar': 'Cambiar Avatar',
       'avatar_agronomic_title': 'Avatares Agrícolas Predeterminados',
       'avatar_custom_title': 'Foto Personalizada',
@@ -126,7 +129,8 @@ class AppLocalizations {
       'greeting_sub_morning': 'Morning Shift · Irrigation & Dispatch',
       'greeting_sub_afternoon': 'Afternoon Shift · Monitoring & Sales',
       'greeting_sub_evening': 'Warehouse Close · Secured Inventory',
-      'greeting_agro_desc': 'Active phytosanitary monitoring · Inventory control and FEFO rotation.',
+      'greeting_agro_desc':
+          'Active phytosanitary monitoring · Inventory control and FEFO rotation.',
 
       'total_sales': 'Total Sales',
       'average_ticket': 'Average Ticket',
@@ -144,7 +148,8 @@ class AppLocalizations {
       'fefo_title': 'Expiring Critical Batches (FEFO)',
       'fefo_desc': 'Preventive expiration monitoring in warehouse',
       'fefo_healthy_title': 'Optimal Phytosanitary Health',
-      'fefo_healthy_desc': 'No batches expiring in the next 30 days. All seeds, fertilizers and agrochemicals are up to date.',
+      'fefo_healthy_desc':
+          'No batches expiring in the next 30 days. All seeds, fertilizers and agrochemicals are up to date.',
       'fefo_badge_valid': '✓ 100% Up to Date',
       'manage_batches': 'Manage batches & warehouses',
 
@@ -195,7 +200,8 @@ class AppLocalizations {
       'greeting_sub_morning': 'Turno Matutino · Irrigação & Expedição',
       'greeting_sub_afternoon': 'Turno Vespertino · Controle & Vendas',
       'greeting_sub_evening': 'Fechamento de Armazém · Estoque Seguro',
-      'greeting_agro_desc': 'Monitoramento fitossanitário ativo · Controle de estoque e rotação FEFO.',
+      'greeting_agro_desc':
+          'Monitoramento fitossanitário ativo · Controle de estoque e rotação FEFO.',
 
       'total_sales': 'Vendas Totais',
       'average_ticket': 'Ticket Médio',
@@ -213,7 +219,8 @@ class AppLocalizations {
       'fefo_title': 'Lotes Críticos a Vencer (FEFO)',
       'fefo_desc': 'Controle preventivo de validade em armazém',
       'fefo_healthy_title': 'Saúde Fitossanitária Ótima',
-      'fefo_healthy_desc': 'Nenhum lote com validade nos próximos 30 dias. Sementes e fertilizantes em dia.',
+      'fefo_healthy_desc':
+          'Nenhum lote com validade nos próximos 30 dias. Sementes e fertilizantes em dia.',
       'fefo_badge_valid': '✓ 100% Válido',
       'manage_batches': 'Gerenciar lotes e armazéns',
 
@@ -264,7 +271,8 @@ class AppLocalizations {
       'greeting_sub_morning': 'Paqarin Llamk\'ay · Qarpay & Qhatuy',
       'greeting_sub_afternoon': 'Sukha Llamk\'ay · Qillqay & Rantiy',
       'greeting_sub_evening': 'Taqi Wisq\'ay · Allin Waqaychasqa',
-      'greeting_agro_desc': 'Chakra qhaway purichkan · Taqisqa kaqkuna FEFOwan kuyuchisqa.',
+      'greeting_agro_desc':
+          'Chakra qhaway purichkan · Taqisqa kaqkuna FEFOwan kuyuchisqa.',
 
       'total_sales': 'Tukuy Rantikusqa',
       'average_ticket': 'Chawpi Rantiy',
@@ -282,7 +290,8 @@ class AppLocalizations {
       'fefo_title': 'Tukuypaq Q\'upachakuq Lote (FEFO)',
       'fefo_desc': 'Taqipi ama q\'upanapaq ñawpaq qhaway',
       'fefo_healthy_title': 'Tukuy Chakra Allinlla Kachkan',
-      'fefo_healthy_desc': 'Manan kanchu kinsa chunka p\'unchawpi tukuq mujukuna wanukunapas. Tukuy kawsaykuna allinlla kachkan.',
+      'fefo_healthy_desc':
+          'Manan kanchu kinsa chunka p\'unchawpi tukuq mujukuna wanukunapas. Tukuy kawsaykuna allinlla kachkan.',
       'fefo_badge_valid': '✓ 100% Allinlla',
       'manage_batches': 'Lotekunata taqikunatapas qhaway',
 

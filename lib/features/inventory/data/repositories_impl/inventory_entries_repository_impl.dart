@@ -44,11 +44,12 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
     final currentUser = _supabase.auth.currentUser;
     if (currentUser != null) {
       try {
-        final profile = await _supabase
-            .from('profiles')
-            .select('id')
-            .eq('auth_user_id', currentUser.id)
-            .maybeSingle();
+        final profile =
+            await _supabase
+                .from('profiles')
+                .select('id')
+                .eq('auth_user_id', currentUser.id)
+                .maybeSingle();
         profileId = profile?['id'] as String?;
       } catch (e) {
         LoggerService.e(
@@ -84,7 +85,8 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
         tag: 'InventoryEntriesRepositoryImpl',
       );
       String userFriendlyMessage = e.message;
-      if (e.code == '23503' && e.message.contains('account_movements_created_by_fkey')) {
+      if (e.code == '23503' &&
+          e.message.contains('account_movements_created_by_fkey')) {
         userFriendlyMessage =
             'No se pudo vincular el perfil del usuario autenticado para registrar el movimiento de cuenta. Vuelva a iniciar sesión.';
       } else if (e.code == '23503') {
@@ -254,9 +256,7 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
             'and(id.gte.$minUuid,id.lte.$maxUuid),and(purchase_order_id.gte.$minUuid,purchase_order_id.lte.$maxUuid),document_number.ilike.$txt,notes.ilike.$txt',
           );
         } else {
-          query = query.or(
-            'document_number.ilike.$txt,notes.ilike.$txt',
-          );
+          query = query.or('document_number.ilike.$txt,notes.ilike.$txt');
         }
       }
 
@@ -333,17 +333,18 @@ class InventoryEntriesRepositoryImpl implements InventoryEntriesRepository {
   @override
   Future<InventoryEntryEntity?> getEntryById(String entryId) async {
     try {
-      final res = await _supabase
-          .from('inventory_entries')
-          .select('''
+      final res =
+          await _supabase
+              .from('inventory_entries')
+              .select('''
           id, created_at, notes, total_amount, payment_mode, status,
           document_type, document_number, document_date, purchase_order_id,
           warehouses!inner(name),
           suppliers(name),
           inventory_entry_items(quantity, unit_cost)
         ''')
-          .eq('id', entryId)
-          .maybeSingle();
+              .eq('id', entryId)
+              .maybeSingle();
 
       if (res == null) return null;
       return InventoryEntryModel.fromJson(res).toEntity();

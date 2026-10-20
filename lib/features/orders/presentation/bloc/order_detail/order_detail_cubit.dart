@@ -31,7 +31,8 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   final GetCreditAccountByCustomerUseCase? getCreditAccountByCustomerUseCase;
 
   GetCreditAccountByCustomerUseCase get _creditAccountUc =>
-      getCreditAccountByCustomerUseCase ?? sl<GetCreditAccountByCustomerUseCase>();
+      getCreditAccountByCustomerUseCase ??
+      sl<GetCreditAccountByCustomerUseCase>();
 
   OrderDetailCubit({
     required this.getOrderDetailsUc,
@@ -205,15 +206,14 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
     }, (r) => r);
   }
 
-  Future<void> selectCustomer(String? customerId, double ratio, double earnRate) async {
+  Future<void> selectCustomer(
+    String? customerId,
+    double ratio,
+    double earnRate,
+  ) async {
     final validId =
         (customerId != null && customerId.isNotEmpty) ? customerId : null;
-    emit(
-      state.copyWith(
-        selectedCustomerId: validId,
-        creditInfo: null,
-      ),
-    );
+    emit(state.copyWith(selectedCustomerId: validId, creditInfo: null));
     _recalculatePoints(ratio, earnRate);
 
     if (validId != null) {
@@ -432,17 +432,14 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
         variantId,
         warehouseId,
       );
-      return result.fold(
-        (failure) {
-          LoggerService.e(
-            'Error al obtener lotes disponibles para variante $variantId',
-            tag: 'ORDER_DETAIL_CUBIT',
-            error: failure.message,
-          );
-          return [];
-        },
-        (batches) => batches,
-      );
+      return result.fold((failure) {
+        LoggerService.e(
+          'Error al obtener lotes disponibles para variante $variantId',
+          tag: 'ORDER_DETAIL_CUBIT',
+          error: failure.message,
+        );
+        return [];
+      }, (batches) => batches);
     } catch (e, st) {
       LoggerService.e(
         'Excepción al obtener lotes para variante $variantId',

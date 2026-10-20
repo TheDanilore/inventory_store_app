@@ -8,10 +8,7 @@ import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.d
 class PosCartFab extends StatelessWidget {
   final bool alwaysShow;
 
-  const PosCartFab({
-    super.key,
-    this.alwaysShow = true,
-  });
+  const PosCartFab({super.key, this.alwaysShow = true});
 
   @override
   Widget build(BuildContext context) {

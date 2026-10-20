@@ -15,6 +15,7 @@ abstract class DashboardRepository {
     DateTime? customEndDate,
     bool forceRefresh = false,
   });
+
   /// Serie temporal real + actividad semanal para el rango (from/to null = histórico).
   Future<Either<Failure, SalesOverview>> getSalesOverview({
     required DateTime? from,

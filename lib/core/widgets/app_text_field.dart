@@ -63,7 +63,8 @@ class AppTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
       focusNode: focusNode,
-      style: style ?? const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+      style:
+          style ?? const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,

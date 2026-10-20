@@ -82,11 +82,13 @@ class IngredientsCubit extends Cubit<IngredientsState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(
-          isSaving: false,
-          errorMessage: failure.message,
-          incrementErrorId: true,
-        ));
+        emit(
+          state.copyWith(
+            isSaving: false,
+            errorMessage: failure.message,
+            incrementErrorId: true,
+          ),
+        );
         return false;
       },
       (_) async {
@@ -103,11 +105,13 @@ class IngredientsCubit extends Cubit<IngredientsState> {
 
     return result.fold(
       (failure) {
-        emit(state.copyWith(
-          isSaving: false,
-          errorMessage: failure.message,
-          incrementErrorId: true,
-        ));
+        emit(
+          state.copyWith(
+            isSaving: false,
+            errorMessage: failure.message,
+            incrementErrorId: true,
+          ),
+        );
         return false;
       },
       (_) {

@@ -329,8 +329,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _batches.length,
-                      separatorBuilder:
-                          (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         return _buildBatchCard(index, isDesktop);
                       },
@@ -350,10 +349,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
                 isDesktop ? 24 : 20,
                 isDesktop ? 20 : (mediaQuery.viewInsets.bottom + 16),
               ),
-              child:
-                  isDesktop
-                      ? _buildDesktopFooter()
-                      : _buildMobileFooter(),
+              child: isDesktop ? _buildDesktopFooter() : _buildMobileFooter(),
             ),
           ],
         ),
@@ -366,14 +362,10 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
         bindings: <ShortcutActivator, VoidCallback>{
           const SingleActivator(LogicalKeyboardKey.escape): _onCancel,
           const SingleActivator(LogicalKeyboardKey.enter): _onConfirm,
-          const SingleActivator(
-            LogicalKeyboardKey.keyR,
-            control: true,
-          ): _resetToFefo,
-          const SingleActivator(
-            LogicalKeyboardKey.keyR,
-            meta: true,
-          ): _resetToFefo,
+          const SingleActivator(LogicalKeyboardKey.keyR, control: true):
+              _resetToFefo,
+          const SingleActivator(LogicalKeyboardKey.keyR, meta: true):
+              _resetToFefo,
         },
         child: Focus(autofocus: true, child: content),
       );
@@ -416,8 +408,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
       textColor = const Color(0xFFC5221F);
       progressColor = const Color(0xFFD93025);
       statusIcon = Icons.error_outline_rounded;
-      statusText =
-          'Exceso de ${-_remaining} unidades. Reduce algún lote';
+      statusText = 'Exceso de ${-_remaining} unidades. Reduce algún lote';
     }
 
     return Container(
@@ -766,7 +757,10 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Cancelar', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Text(
+                'Cancelar',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(width: 8),
               _buildShortcutBadge('Esc'),
             ],

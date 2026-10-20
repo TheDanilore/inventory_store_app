@@ -226,8 +226,10 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.darkSurface : Colors.white;
     final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
-    final textSecondary = isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+    final textPrimary =
+        isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
+    final textSecondary =
+        isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
     final footerBg = isDark ? const Color(0xFF0D1424) : const Color(0xFFF8FAFC);
 
     return Center(
@@ -264,11 +266,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.search_rounded,
-                      color: textSecondary,
-                      size: 22,
-                    ),
+                    Icon(Icons.search_rounded, color: textSecondary, size: 22),
                     const SizedBox(width: 14),
                     Expanded(
                       child: TextField(
@@ -284,7 +282,10 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                           hintText: 'Buscar pantalla, reporte o módulo...',
                           hintStyle: TextStyle(
                             fontSize: 15,
-                            color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                            color:
+                                isDark
+                                    ? const Color(0xFF64748B)
+                                    : const Color(0xFF94A3B8),
                             fontWeight: FontWeight.w400,
                           ),
                           border: InputBorder.none,
@@ -305,7 +306,10 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9),
+                        color:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: borderColor),
                       ),
@@ -378,7 +382,9 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                   color:
                                       isSelected
                                           ? (isDark
-                                              ? AppColors.primary.withValues(alpha: 0.18)
+                                              ? AppColors.primary.withValues(
+                                                alpha: 0.18,
+                                              )
                                               : const Color(0xFFEFF6FF))
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
@@ -395,7 +401,8 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                                   alpha: isDark ? 0.3 : 0.12,
                                                 )
                                                 : (isDark
-                                                    ? AppColors.darkSurfaceElevated
+                                                    ? AppColors
+                                                        .darkSurfaceElevated
                                                     : const Color(0xFFF1F5F9)),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -404,7 +411,9 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                         size: 19,
                                         color:
                                             isSelected
-                                                ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+                                                ? (isDark
+                                                    ? const Color(0xFF60A5FA)
+                                                    : const Color(0xFF2563EB))
                                                 : textSecondary,
                                       ),
                                     ),
@@ -424,7 +433,11 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                                       : FontWeight.w600,
                                               color:
                                                   isSelected
-                                                      ? (isDark ? Colors.white : const Color(0xFF1E40AF))
+                                                      ? (isDark
+                                                          ? Colors.white
+                                                          : const Color(
+                                                            0xFF1E40AF,
+                                                          ))
                                                       : textPrimary,
                                             ),
                                           ),
@@ -447,11 +460,12 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+                                        color:
+                                            isDark
+                                                ? AppColors.darkSurfaceElevated
+                                                : const Color(0xFFF8FAFC),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: borderColor,
-                                        ),
+                                        border: Border.all(color: borderColor),
                                       ),
                                       child: Text(
                                         item.category,
@@ -481,16 +495,17 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                   borderRadius: const BorderRadius.vertical(
                     bottom: Radius.circular(20),
                   ),
-                  border: Border(
-                    top: BorderSide(color: borderColor, width: 1),
-                  ),
+                  border: Border(top: BorderSide(color: borderColor, width: 1)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.keyboard_return_rounded,
                       size: 14,
-                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                      color:
+                          isDark
+                              ? const Color(0xFF64748B)
+                              : const Color(0xFF94A3B8),
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -505,7 +520,10 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                     Icon(
                       Icons.swap_vert_rounded,
                       size: 15,
-                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                      color:
+                          isDark
+                              ? const Color(0xFF64748B)
+                              : const Color(0xFF94A3B8),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -521,7 +539,10 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
                       'DANILORE ONE Command Bar',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? const Color(0xFF475569) : const Color(0xFF94A3B8),
+                        color:
+                            isDark
+                                ? const Color(0xFF475569)
+                                : const Color(0xFF94A3B8),
                         fontWeight: FontWeight.w600,
                       ),
                     ),

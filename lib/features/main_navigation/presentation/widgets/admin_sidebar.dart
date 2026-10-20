@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
@@ -76,6 +78,134 @@ class _AdminSidebarState extends State<AdminSidebar> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final width = widget.isCollapsed ? 72.0 : 272.0;
 
+    final authState = context.watch<AuthCubit>().state;
+    final currentUser = authState.currentUser;
+    final isAdmin = currentUser?.isAdmin ?? false;
+    final isWarehouseKeeper = currentUser?.isWarehouseKeeper ?? false;
+
+    bool can(String perm) =>
+        isAdmin || (currentUser?.hasPermission(perm) ?? false);
+    bool canAny(Iterable<String> perms) =>
+        isAdmin || (currentUser?.hasAnyPermission(perms) ?? false);
+
+    final canViewCatalog = canAny([
+      AppPermissions.productsView,
+      AppPermissions.inventoryView,
+    ]);
+    final canViewOrders = canAny([
+      AppPermissions.posView,
+      AppPermissions.posSale,
+    ]);
+
+    final inventoryChildren = <AdminSidebarItem>[
+      if (can(AppPermissions.productsView))
+        const AdminSidebarItem(
+          icon: Icons.category_outlined,
+          title: 'Productos',
+          routePath: '/products',
+        ),
+      if (can(AppPermissions.inventoryView))
+        const AdminSidebarItem(
+          icon: Icons.grid_view_rounded,
+          title: 'Stock inventario',
+          routePath: '/inventory',
+        ),
+      if (can(AppPermissions.inventoryKardex))
+        const AdminSidebarItem(
+          icon: Icons.article_outlined,
+          title: 'Kardex',
+          routePath: '/kardex',
+        ),
+      if (can(AppPermissions.inventoryExits))
+        const AdminSidebarItem(
+          icon: Icons.remove_rounded,
+          title: 'Salidas inventario',
+          routePath: '/inventory-exits',
+        ),
+    ];
+
+    final purchasesChildren = <AdminSidebarItem>[
+      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+        const AdminSidebarItem(
+          icon: Icons.receipt_long_rounded,
+          title: 'Órdenes de compra',
+          routePath: '/purchase-orders',
+        ),
+      if (can(AppPermissions.inventoryEntries))
+        const AdminSidebarItem(
+          icon: Icons.add_rounded,
+          title: 'Entradas inventario',
+          routePath: '/inventory-entries',
+        ),
+      if (isAdmin || isWarehouseKeeper || can(AppPermissions.reportsFinancial))
+        const AdminSidebarItem(
+          icon: Icons.credit_score_rounded,
+          title: 'Créditos proveedores',
+          routePath: '/supplier-credits',
+        ),
+      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+        const AdminSidebarItem(
+          icon: Icons.local_shipping_outlined,
+          title: 'Proveedores',
+          routePath: '/suppliers',
+        ),
+    ];
+
+    final customersChildren = <AdminSidebarItem>[
+      if (canAny([
+        AppPermissions.posView,
+        AppPermissions.posSale,
+        AppPermissions.reportsFinancial,
+      ])) ...[
+        const AdminSidebarItem(
+          icon: Icons.person_outline_rounded,
+          title: 'Clientes',
+          routePath: '/customers',
+        ),
+        const AdminSidebarItem(
+          icon: Icons.credit_score_rounded,
+          title: 'Créditos clientes',
+          routePath: '/customer-credits',
+        ),
+      ],
+    ];
+
+    final mastersChildren = <AdminSidebarItem>[
+      if (canAny([
+        AppPermissions.productsCreate,
+        AppPermissions.productsEdit,
+      ])) ...[
+        const AdminSidebarItem(
+          icon: Icons.category_outlined,
+          title: 'Categorías',
+          routePath: '/categories',
+        ),
+        const AdminSidebarItem(
+          icon: Icons.branding_watermark_outlined,
+          title: 'Marcas',
+          routePath: '/brands',
+        ),
+        const AdminSidebarItem(
+          icon: Icons.local_offer,
+          title: 'Atributos',
+          routePath: '/attributes',
+        ),
+        const AdminSidebarItem(
+          icon: Icons.science_outlined,
+          title: 'Ingredientes Activos',
+          routePath: '/active-ingredients',
+        ),
+      ],
+    ];
+
+    final hasCommercialSection =
+        canViewOrders ||
+        inventoryChildren.isNotEmpty ||
+        purchasesChildren.isNotEmpty ||
+        customersChildren.isNotEmpty;
+
+    final canViewSettings = can(AppPermissions.settingsView);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOutCubic,
@@ -125,16 +255,17 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       routePath: '/',
                     ),
                   ),
-                  _buildSidebarTile(
-                    context,
-                    const AdminSidebarItem(
-                      icon: Icons.grid_view_rounded,
-                      title: 'Catálogo',
-                      routePath: '/catalog',
+                  if (canViewCatalog)
+                    _buildSidebarTile(
+                      context,
+                      const AdminSidebarItem(
+                        icon: Icons.grid_view_rounded,
+                        title: 'Catálogo',
+                        routePath: '/catalog',
+                      ),
                     ),
-                  ),
 
-                  if (!widget.isCollapsed) ...[
+                  if (hasCommercialSection && !widget.isCollapsed) ...[
                     const SizedBox(height: 12),
                     Divider(
                       height: 1,
@@ -148,200 +279,160 @@ class _AdminSidebarState extends State<AdminSidebar> {
                     _buildSectionHeader(context, 'GESTIÓN COMERCIAL'),
                   ],
 
-                  BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
-                    builder: (ctx, state) {
-                      Widget? badge;
-                      if (state is SidebarBadgeLoaded && state.count > 0) {
-                        badge = _buildBadge(state.count);
-                      } else if (state is SidebarBadgeError) {
-                        badge = const Icon(
-                          Icons.warning_rounded,
-                          color: AppColors.error,
-                          size: 14,
+                  if (canViewOrders)
+                    BlocBuilder<SidebarBadgeCubit, SidebarBadgeState>(
+                      builder: (ctx, state) {
+                        Widget? badge;
+                        if (state is SidebarBadgeLoaded && state.count > 0) {
+                          badge = _buildBadge(state.count);
+                        } else if (state is SidebarBadgeError) {
+                          badge = const Icon(
+                            Icons.warning_rounded,
+                            color: AppColors.error,
+                            size: 14,
+                          );
+                        }
+
+                        return _buildSidebarTile(
+                          context,
+                          AdminSidebarItem(
+                            icon: Icons.receipt_long_rounded,
+                            title: 'Pedidos',
+                            routePath: '/orders',
+                            trailing: badge,
+                          ),
                         );
-                      }
-
-                      return _buildSidebarTile(
-                        context,
-                        AdminSidebarItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Pedidos',
-                          routePath: '/orders',
-                          trailing: badge,
-                        ),
-                      );
-                    },
-                  ),
-
-                  _ExpandableSidebarGroup(
-                    isCollapsed: widget.isCollapsed,
-                    item: const AdminSidebarItem(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'Inventario',
-                      routePath: '',
-                      children: [
-                        AdminSidebarItem(
-                          icon: Icons.category_outlined,
-                          title: 'Productos',
-                          routePath: '/products',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.grid_view_rounded,
-                          title: 'Stock inventario',
-                          routePath: '/inventory',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.article_outlined,
-                          title: 'Kardex',
-                          routePath: '/kardex',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.remove_rounded,
-                          title: 'Salidas inventario',
-                          routePath: '/inventory-exits',
-                        ),
-                      ],
+                      },
                     ),
-                  ),
 
-                  _ExpandableSidebarGroup(
-                    isCollapsed: widget.isCollapsed,
-                    item: const AdminSidebarItem(
-                      icon: Icons.shopping_bag_outlined,
-                      title: 'Compras',
-                      routePath: '',
-                      children: [
-                        AdminSidebarItem(
-                          icon: Icons.receipt_long_rounded,
-                          title: 'Órdenes de compra',
-                          routePath: '/purchase-orders',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.add_rounded,
-                          title: 'Entradas inventario',
-                          routePath: '/inventory-entries',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos proveedores',
-                          routePath: '/supplier-credits',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Proveedores',
-                          routePath: '/suppliers',
-                        ),
-                      ],
+                  if (inventoryChildren.isNotEmpty)
+                    _ExpandableSidebarGroup(
+                      isCollapsed: widget.isCollapsed,
+                      item: AdminSidebarItem(
+                        icon: Icons.inventory_2_outlined,
+                        title: 'Inventario',
+                        routePath: '',
+                        children: inventoryChildren,
+                      ),
                     ),
-                  ),
 
-                  _ExpandableSidebarGroup(
-                    isCollapsed: widget.isCollapsed,
-                    item: const AdminSidebarItem(
-                      icon: Icons.people_outline_rounded,
-                      title: 'Clientes y Créditos',
-                      routePath: '',
-                      children: [
-                        AdminSidebarItem(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Clientes',
-                          routePath: '/customers',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.credit_score_rounded,
-                          title: 'Créditos clientes',
-                          routePath: '/customer-credits',
-                        ),
-                      ],
+                  if (purchasesChildren.isNotEmpty)
+                    _ExpandableSidebarGroup(
+                      isCollapsed: widget.isCollapsed,
+                      item: AdminSidebarItem(
+                        icon: Icons.shopping_bag_outlined,
+                        title: 'Compras',
+                        routePath: '',
+                        children: purchasesChildren,
+                      ),
                     ),
-                  ),
 
-                  if (!widget.isCollapsed) ...[
-                    const SizedBox(height: 12),
-                    Divider(
-                      height: 1,
-                      indent: 16,
-                      endIndent: 16,
-                      color:
-                          isDark
-                              ? AppColors.darkSidebarBorder
-                              : AppColors.sidebarBorder,
+                  if (customersChildren.isNotEmpty)
+                    _ExpandableSidebarGroup(
+                      isCollapsed: widget.isCollapsed,
+                      item: AdminSidebarItem(
+                        icon: Icons.people_outline_rounded,
+                        title: 'Clientes y Créditos',
+                        routePath: '',
+                        children: customersChildren,
+                      ),
                     ),
-                    _buildSectionHeader(context, 'CONFIGURACIÓN ERP'),
-                  ],
 
-                  //"Maestros / Catálogos" (Categorías, Marcas, Atributos, Ingredientes Activos)
-                  _ExpandableSidebarGroup(
-                    isCollapsed: widget.isCollapsed,
-                    item: const AdminSidebarItem(
-                      icon: Icons.category_outlined,
-                      title: 'Maestros / Catálogos',
-                      routePath: '',
-                      children: [
-                        AdminSidebarItem(
-                          icon: Icons.category_outlined,
-                          title: 'Categorías',
-                          routePath: '/categories',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.branding_watermark_outlined,
-                          title: 'Marcas',
-                          routePath: '/brands',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.local_offer,
-                          title: 'Atributos',
-                          routePath: '/attributes',
-                        ),
-                        AdminSidebarItem(
-                          icon: Icons.science_outlined,
-                          title: 'Ingredientes Activos',
-                          routePath: '/active-ingredients',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // "Configuración del Sistema" : Usuarios, Cuentas, Almacenes y Negocio
                   BlocSelector<AppConfigCubit, AppConfigState, bool>(
                     selector:
                         (s) => s.businessInfo?.loyaltyGlobalEnabled ?? false,
                     builder: (context, loyaltyEnabled) {
-                      return _ExpandableSidebarGroup(
-                        isCollapsed: widget.isCollapsed,
-                        item: AdminSidebarItem(
-                          icon: Icons.settings_outlined,
-                          title: 'Configuración del Sistema',
-                          routePath: '',
-                          children: [
-                            const AdminSidebarItem(
-                              icon: Icons.account_circle_outlined,
-                              title: 'Usuarios',
-                              routePath: '/users',
+                      final systemChildren = <AdminSidebarItem>[
+                        if (can(AppPermissions.usersView))
+                          const AdminSidebarItem(
+                            icon: Icons.account_circle_outlined,
+                            title: 'Usuarios',
+                            routePath: '/users',
+                          ),
+                        if (canAny([
+                          AppPermissions.rolesManage,
+                          AppPermissions.permissionsAssign,
+                        ]))
+                          const AdminSidebarItem(
+                            icon: Icons.shield_outlined,
+                            title: 'Roles y Permisos',
+                            routePath: '/roles',
+                          ),
+                        if (canAny([
+                          AppPermissions.reportsFinancial,
+                          AppPermissions.settingsView,
+                        ]))
+                          const AdminSidebarItem(
+                            icon: Icons.account_balance_wallet_outlined,
+                            title: 'Cuentas',
+                            routePath: '/financial-accounts',
+                          ),
+                        if (canAny([
+                          AppPermissions.inventoryTransfer,
+                          AppPermissions.settingsView,
+                        ]))
+                          const AdminSidebarItem(
+                            icon: Icons.warehouse_outlined,
+                            title: 'Almacenes',
+                            routePath: '/warehouses',
+                          ),
+                        if (can(AppPermissions.settingsEdit))
+                          const AdminSidebarItem(
+                            icon: Icons.storefront_outlined,
+                            title: 'Negocio',
+                            routePath: '/business-info',
+                          ),
+                        if (loyaltyEnabled && can(AppPermissions.settingsEdit))
+                          const AdminSidebarItem(
+                            icon: Icons.stars_rounded,
+                            title: 'Puntos y Monedas',
+                            routePath: '/points-settings',
+                          ),
+                      ];
+
+                      final hasErpSection =
+                          mastersChildren.isNotEmpty ||
+                          systemChildren.isNotEmpty;
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (hasErpSection && !widget.isCollapsed) ...[
+                            const SizedBox(height: 12),
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color:
+                                  isDark
+                                      ? AppColors.darkSidebarBorder
+                                      : AppColors.sidebarBorder,
                             ),
-                            const AdminSidebarItem(
-                              icon: Icons.account_balance_wallet_outlined,
-                              title: 'Cuentas',
-                              routePath: '/financial-accounts',
-                            ),
-                            const AdminSidebarItem(
-                              icon: Icons.warehouse_outlined,
-                              title: 'Almacenes',
-                              routePath: '/warehouses',
-                            ),
-                            const AdminSidebarItem(
-                              icon: Icons.storefront_outlined,
-                              title: 'Negocio',
-                              routePath: '/business-info',
-                            ),
-                            if (loyaltyEnabled)
-                              const AdminSidebarItem(
-                                icon: Icons.stars_rounded,
-                                title: 'Puntos y Monedas',
-                                routePath: '/points-settings',
-                              ),
+                            _buildSectionHeader(context, 'CONFIGURACIÓN ERP'),
                           ],
-                        ),
+
+                          if (mastersChildren.isNotEmpty)
+                            _ExpandableSidebarGroup(
+                              isCollapsed: widget.isCollapsed,
+                              item: AdminSidebarItem(
+                                icon: Icons.category_outlined,
+                                title: 'Maestros / Catálogos',
+                                routePath: '',
+                                children: mastersChildren,
+                              ),
+                            ),
+
+                          if (systemChildren.isNotEmpty)
+                            _ExpandableSidebarGroup(
+                              isCollapsed: widget.isCollapsed,
+                              item: AdminSidebarItem(
+                                icon: Icons.settings_outlined,
+                                title: 'Configuración del Sistema',
+                                routePath: '',
+                                children: systemChildren,
+                              ),
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -360,13 +451,15 @@ class _AdminSidebarState extends State<AdminSidebar> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
               children: [
-                _buildActionTile(
-                  context,
-                  icon: Icons.settings_outlined,
-                  title: 'Configuraciones',
-                  isSelected: GoRouterState.of(context).uri.path == '/settings',
-                  onTap: () => context.go('/settings'),
-                ),
+                if (canViewSettings)
+                  _buildActionTile(
+                    context,
+                    icon: Icons.settings_outlined,
+                    title: 'Configuraciones',
+                    isSelected:
+                        GoRouterState.of(context).uri.path == '/settings',
+                    onTap: () => context.go('/settings'),
+                  ),
                 _buildActionTile(
                   context,
                   icon: Icons.help_outline_rounded,
@@ -1083,6 +1176,9 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.item.children.isEmpty) {
+      return const SizedBox.shrink();
+    }
     final currentPath = GoRouterState.of(context).uri.path;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasActiveChild = widget.item.children.any(

@@ -81,8 +81,7 @@ class ProductAdminInfoCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color:
-                      isDark ? const Color(0xFFF8FAFC) : AppColors.slate,
+                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.slate,
                 ),
               ),
             ],

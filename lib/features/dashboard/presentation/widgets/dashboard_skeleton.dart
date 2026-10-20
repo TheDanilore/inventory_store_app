@@ -62,12 +62,24 @@ class DashboardSkeleton extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  AppShimmer(width: double.infinity, height: 88, borderRadius: 18),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 88,
+                    borderRadius: 18,
+                  ),
                   const SizedBox(height: 12),
-                  AppShimmer(width: double.infinity, height: 120, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 120,
+                    borderRadius: 20,
+                  ),
                   const SizedBox(height: 20),
                   // Table Shimmer (Clientes que más compran)
-                  AppShimmer(width: double.infinity, height: 260, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 260,
+                    borderRadius: 20,
+                  ),
                 ],
               ),
             ),
@@ -82,15 +94,27 @@ class DashboardSkeleton extends StatelessWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: AppShimmer(height: 110, borderRadius: 20)),
+                      Expanded(
+                        child: AppShimmer(height: 110, borderRadius: 20),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: AppShimmer(height: 110, borderRadius: 20)),
+                      Expanded(
+                        child: AppShimmer(height: 110, borderRadius: 20),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  AppShimmer(width: double.infinity, height: 88, borderRadius: 18),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 88,
+                    borderRadius: 18,
+                  ),
                   const SizedBox(height: 12),
-                  AppShimmer(width: double.infinity, height: 130, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 130,
+                    borderRadius: 20,
+                  ),
                 ],
               ),
             ),
@@ -121,9 +145,17 @@ class DashboardSkeleton extends StatelessWidget {
               flex: 5,
               child: Column(
                 children: [
-                  AppShimmer(width: double.infinity, height: 116, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 116,
+                    borderRadius: 20,
+                  ),
                   const SizedBox(height: 14),
-                  AppShimmer(width: double.infinity, height: 180, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 180,
+                    borderRadius: 20,
+                  ),
                 ],
               ),
             ),
@@ -132,9 +164,17 @@ class DashboardSkeleton extends StatelessWidget {
               flex: 5,
               child: Column(
                 children: [
-                  AppShimmer(width: double.infinity, height: 150, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 150,
+                    borderRadius: 20,
+                  ),
                   const SizedBox(height: 14),
-                  AppShimmer(width: double.infinity, height: 180, borderRadius: 20),
+                  AppShimmer(
+                    width: double.infinity,
+                    height: 180,
+                    borderRadius: 20,
+                  ),
                 ],
               ),
             ),

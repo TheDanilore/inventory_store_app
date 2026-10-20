@@ -5,10 +5,7 @@ import 'package:inventory_store_app/features/pos/presentation/screens/pos_checko
 
 class PosRoutes {
   static List<RouteBase> get adminRoutes => [
-    GoRoute(
-      path: '/pos',
-      builder: (context, state) => const AdminPosScreen(),
-    ),
+    GoRoute(path: '/pos', builder: (context, state) => const AdminPosScreen()),
     GoRoute(
       path: '/pos-checkout',
       builder: (context, state) => const PosCheckoutScreen(),

@@ -25,7 +25,8 @@ class InventoryLoaded extends InventoryState {
   final int totalStockPages;
   final String stockSearchText;
   final String stockCategoryFilter;
-  final String stockStatusFilter; // 'all', 'low_stock', 'out_of_stock', 'in_stock'
+  final String
+  stockStatusFilter; // 'all', 'low_stock', 'out_of_stock', 'in_stock'
   final List<String> categories;
 
   final List<WarehouseEntity> warehouses;
@@ -118,7 +119,9 @@ class InventoryLoaded extends InventoryState {
       categories: categories ?? this.categories,
       warehouses: warehouses ?? this.warehouses,
       selectedWarehouseId:
-          clearWarehouseId ? null : (selectedWarehouseId ?? this.selectedWarehouseId),
+          clearWarehouseId
+              ? null
+              : (selectedWarehouseId ?? this.selectedWarehouseId),
       selectedWarehouseName:
           clearWarehouseId
               ? 'Todos los almacenes'

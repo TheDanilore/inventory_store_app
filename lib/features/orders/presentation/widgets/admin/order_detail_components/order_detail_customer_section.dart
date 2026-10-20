@@ -17,11 +17,13 @@ class OrderDetailInfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cleanValue = value.trim().isNotEmpty ? value.trim() : 'Cliente general';
+    final cleanValue =
+        value.trim().isNotEmpty ? value.trim() : 'Cliente general';
     final parts = cleanValue.split(' ').where((p) => p.isNotEmpty).toList();
-    final initials = parts.isNotEmpty
-        ? parts.take(2).map((p) => p[0]).join().toUpperCase()
-        : '?';
+    final initials =
+        parts.isNotEmpty
+            ? parts.take(2).map((p) => p[0]).join().toUpperCase()
+            : '?';
 
     return Container(
       width: double.infinity,
@@ -37,16 +39,18 @@ class OrderDetailInfoBox extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: isRegistered
-                  ? AppColors.teal.withValues(alpha: 0.12)
-                  : const Color(0xFFE2E8F0),
+              color:
+                  isRegistered
+                      ? AppColors.teal.withValues(alpha: 0.12)
+                      : const Color(0xFFE2E8F0),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
               child: Text(
                 initials,
                 style: TextStyle(
-                  color: isRegistered ? AppColors.teal : AppColors.textSecondary,
+                  color:
+                      isRegistered ? AppColors.teal : AppColors.textSecondary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
@@ -72,7 +76,9 @@ class OrderDetailInfoBox extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isRegistered ? 'Cliente registrado' : 'Cliente mostrador · Venta rápida',
+                  isRegistered
+                      ? 'Cliente registrado'
+                      : 'Cliente mostrador · Venta rápida',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -88,7 +94,9 @@ class OrderDetailInfoBox extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.teal.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
+                border: Border.all(
+                  color: AppColors.teal.withValues(alpha: 0.25),
+                ),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -159,7 +167,8 @@ class OrderDetailCustomerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isEditing) {
-      final isRegistered = selectedCustomerId != null && selectedCustomerId!.isNotEmpty;
+      final isRegistered =
+          selectedCustomerId != null && selectedCustomerId!.isNotEmpty;
       return OrderDetailSectionCard(
         title: 'Cliente',
         child: OrderDetailInfoBox(

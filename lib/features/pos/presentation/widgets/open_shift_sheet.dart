@@ -14,7 +14,7 @@ class OpenShiftSheet {
   }) {
     final cashShiftsCubit = context.read<CashShiftsCubit>();
     final isDesktop = MediaQuery.of(context).size.width >= 800;
-    
+
     if (isDesktop) {
       return showDialog<bool>(
         context: context,
@@ -167,20 +167,33 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
             _FieldLabel('Cuenta'),
             if (widget.accounts.isEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                    Icon(
+                      Icons.error_outline_rounded,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'No hay cuentas de tipo CAJA configuradas en el sistema.',
-                        style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -194,42 +207,42 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedAccountId,
-                  isExpanded: true,
-                  items:
-                      widget.accounts
-                          .map(
-                            (a) => DropdownMenuItem<String>(
-                              value: a['id'],
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.point_of_sale_rounded,
-                                    size: 16,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    a['name'],
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                  child: DropdownButton<String>(
+                    value: _selectedAccountId,
+                    isExpanded: true,
+                    items:
+                        widget.accounts
+                            .map(
+                              (a) => DropdownMenuItem<String>(
+                                value: a['id'],
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.point_of_sale_rounded,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      a['name'],
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                  onChanged:
-                      (v) =>
-                          v != null
-                              ? setState(() => _selectedAccountId = v)
-                              : null,
+                            )
+                            .toList(),
+                    onChanged:
+                        (v) =>
+                            v != null
+                                ? setState(() => _selectedAccountId = v)
+                                : null,
+                  ),
                 ),
               ),
-            ),
             const SizedBox(height: 14),
 
             _FieldLabel('Monto de apertura (S/)'),
@@ -285,7 +298,10 @@ class _OpenShiftContentState extends State<_OpenShiftContent> {
                 },
                 builder: (context, state) {
                   return ElevatedButton(
-                    onPressed: (state.isLoading || widget.accounts.isEmpty) ? null : _save,
+                    onPressed:
+                        (state.isLoading || widget.accounts.isEmpty)
+                            ? null
+                            : _save,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,

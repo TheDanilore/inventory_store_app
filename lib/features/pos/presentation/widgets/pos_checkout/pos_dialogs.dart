@@ -408,7 +408,11 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                     ),
                     const SizedBox(width: 8),
                   ] else ...[
-                    const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                    const Icon(
+                      Icons.check_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                     const SizedBox(width: 8),
                   ],
                   Text(
@@ -490,9 +494,7 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.isDraft
-                          ? 'Borrador Guardado'
-                          : '¡Venta Exitosa!',
+                      widget.isDraft ? 'Borrador Guardado' : '¡Venta Exitosa!',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -670,9 +672,10 @@ class _KeyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: isPrimary
-            ? Colors.white.withValues(alpha: 0.25)
-            : const Color(0xFFE2E8F0),
+        color:
+            isPrimary
+                ? Colors.white.withValues(alpha: 0.25)
+                : const Color(0xFFE2E8F0),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

@@ -18,6 +18,8 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/users_tab.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/roles/presentation/bloc/roles_cubit.dart';
+import 'package:inventory_store_app/features/roles/presentation/widgets/roles_management_view.dart';
 
 class UsersManagementScreen extends StatefulWidget {
   const UsersManagementScreen({super.key});
@@ -44,7 +46,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
   void initState() {
     super.initState();
     _countsCubit = sl<UsersCubit>()..fetchCounts();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this)..addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   bool _onScrollNotification(UserScrollNotification notification) {
@@ -97,32 +101,14 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
     });
   }
 
-  String get _currentRoleLabel {
-    switch (_tabController.index) {
-      case 1:
-        return 'Administrador';
-      case 2:
-        return 'Empleado';
-      default:
-        return 'Cliente';
-    }
-  }
+  String get _currentRoleLabel => 'Colaborador';
 
-  String get _currentRoleConstant {
-    switch (_tabController.index) {
-      case 1:
-        return AppRoles.admin;
-      case 2:
-        return AppRoles.employee;
-      default:
-        return AppRoles.customer;
-    }
-  }
+  String get _currentRoleConstant => 'staff';
 
   Future<void> _navigateToCreateUser() async {
     final res = await context.push<bool>(
       '/users/form',
-      extra: {'initialRole': _currentRoleConstant},
+      extra: {'initialRole': AppRoles.employee},
     );
     if (res == true && mounted) {
       _countsCubit.fetchCounts();
@@ -239,30 +225,31 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
               onNotification: _onScrollNotification,
               child: Column(
                 children: [
-                  // ─── COMMAND BAR & FILTROS ──────────────────────────────────────
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isDesktop ? 20 : 16,
-                      vertical: isDesktop ? 12 : 14,
+                  // ─── COMMAND BAR & FILTROS (Solo para lista de personal) ─────────
+                  if (_tabController.index == 0)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 20 : 16,
+                        vertical: isDesktop ? 12 : 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child:
+                          isDesktop
+                              ? _buildDesktopCommandBar()
+                              : _buildMobileCommandBar(),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child:
-                        isDesktop
-                            ? _buildDesktopCommandBar()
-                            : _buildMobileCommandBar(),
-                  ),
 
                   // ─── TABS SEGMENTADOS STRIPE / LINEAR ────────────────────────────
                   Container(
@@ -277,19 +264,11 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: BlocSelector<
-                        UsersCubit,
-                        UsersState,
-                        (int, int, int)
-                      >(
-                        selector:
-                            (s) => (
-                              s.customerTotal,
-                              s.adminTotal,
-                              s.employeeTotal,
-                            ),
+                      child: BlocSelector<UsersCubit, UsersState, (int, int)>(
+                        selector: (s) => (s.adminTotal, s.employeeTotal),
                         builder: (context, counts) {
-                          final (cTotal, aTotal, eTotal) = counts;
+                          final (aTotal, eTotal) = counts;
+                          final staffTotal = aTotal + eTotal;
                           return AnimatedBuilder(
                             animation: _tabController,
                             builder: (context, _) {
@@ -312,28 +291,41 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                                   Tab(
                                     height: 48,
                                     child: _buildTabItem(
-                                      icon: Icons.people_outline_rounded,
-                                      label: 'Clientes',
-                                      count: cTotal,
+                                      icon: Icons.badge_outlined,
+                                      label: 'Personal y Colaboradores',
+                                      count: staffTotal,
                                       isSelected: _tabController.index == 0,
                                     ),
                                   ),
                                   Tab(
                                     height: 48,
-                                    child: _buildTabItem(
-                                      icon: Icons.admin_panel_settings_outlined,
-                                      label: 'Admins',
-                                      count: aTotal,
-                                      isSelected: _tabController.index == 1,
-                                    ),
-                                  ),
-                                  Tab(
-                                    height: 48,
-                                    child: _buildTabItem(
-                                      icon: Icons.badge_outlined,
-                                      label: 'Empleados',
-                                      count: eTotal,
-                                      isSelected: _tabController.index == 2,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.shield_outlined,
+                                          size: 18,
+                                          color:
+                                              _tabController.index == 1
+                                                  ? AppColors.primary
+                                                  : Colors.grey.shade600,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Roles y Permisos',
+                                          style: TextStyle(
+                                            color:
+                                                _tabController.index == 1
+                                                    ? AppColors.primary
+                                                    : Colors.grey.shade700,
+                                            fontWeight:
+                                                _tabController.index == 1
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -351,11 +343,10 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                       controller: _tabController,
                       children: [
                         BlocProvider(
-                          key: const ValueKey(AppRoles.customer),
-                          create:
-                              (_) => sl<UsersCubit>()..init(AppRoles.customer),
+                          key: const ValueKey('staff_users'),
+                          create: (_) => sl<UsersCubit>()..init('staff'),
                           child: UsersTab(
-                            role: AppRoles.customer,
+                            role: 'staff',
                             searchQuery: _debouncedQuery,
                             onlyActive: _onlyActive,
                             tabController: _tabController,
@@ -363,27 +354,9 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
                           ),
                         ),
                         BlocProvider(
-                          key: const ValueKey(AppRoles.admin),
-                          create: (_) => sl<UsersCubit>()..init(AppRoles.admin),
-                          child: UsersTab(
-                            role: AppRoles.admin,
-                            searchQuery: _debouncedQuery,
-                            onlyActive: _onlyActive,
-                            tabController: _tabController,
-                            tabIndex: 1,
-                          ),
-                        ),
-                        BlocProvider(
-                          key: const ValueKey(AppRoles.employee),
-                          create:
-                              (_) => sl<UsersCubit>()..init(AppRoles.employee),
-                          child: UsersTab(
-                            role: AppRoles.employee,
-                            searchQuery: _debouncedQuery,
-                            onlyActive: _onlyActive,
-                            tabController: _tabController,
-                            tabIndex: 2,
-                          ),
+                          key: const ValueKey('roles_and_permissions'),
+                          create: (_) => sl<RolesCubit>(),
+                          child: const RolesManagementView(),
                         ),
                       ],
                     ),
@@ -394,7 +367,7 @@ class _UsersManagementScreenState extends State<UsersManagementScreen>
 
             // FAB disponible principalmente en móvil o como atajo rápido
             floatingActionButton:
-                isDesktop
+                isDesktop || _tabController.index != 0
                     ? null
                     : FloatingActionButton.extended(
                       backgroundColor: AppColors.primary,

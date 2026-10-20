@@ -26,8 +26,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
   @override
   Future<Map<String, double>> fetchAppSettings() async {
     try {
-      final response =
-          await _supabase.from('app_settings').select('key, value');
+      final response = await _supabase
+          .from('app_settings')
+          .select('key, value');
 
       final values = <String, double>{};
       for (final item in List<Map<String, dynamic>>.from(response)) {
@@ -143,8 +144,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
           .limit(1);
 
       if (rawResponse.isNotEmpty) {
-        final entity =
-            BusinessInfoModel.fromMap(rawResponse.first).toEntity();
+        final entity = BusinessInfoModel.fromMap(rawResponse.first).toEntity();
         await cacheBusinessInfo(entity);
         return entity;
       }
@@ -225,12 +225,13 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
 
       // Si no tenemos ID en la entidad, buscamos el registro existente (patrón Singleton)
       if (finalId == null) {
-        final checkDb = await _supabase
-            .from('business_info')
-            .select('id')
-            .order('updated_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
+        final checkDb =
+            await _supabase
+                .from('business_info')
+                .select('id')
+                .order('updated_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
         if (checkDb != null) {
           finalId = checkDb['id']?.toString();
         }
@@ -238,25 +239,27 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
 
       if (finalId != null) {
         payload['id'] = finalId;
-        final response = await _supabase
-            .from('business_info')
-            .upsert(payload)
-            .select(
-              'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
-            )
-            .single();
+        final response =
+            await _supabase
+                .from('business_info')
+                .upsert(payload)
+                .select(
+                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+                )
+                .single();
 
         final savedEntity = BusinessInfoModel.fromMap(response).toEntity();
         await cacheBusinessInfo(savedEntity);
         return savedEntity;
       } else {
-        final inserted = await _supabase
-            .from('business_info')
-            .insert(payload)
-            .select(
-              'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
-            )
-            .single();
+        final inserted =
+            await _supabase
+                .from('business_info')
+                .insert(payload)
+                .select(
+                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+                )
+                .single();
 
         final savedEntity = BusinessInfoModel.fromMap(inserted).toEntity();
         await cacheBusinessInfo(savedEntity);
@@ -286,7 +289,9 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
     try {
       // Ruta canónica única con upsert para evitar la acumulación de archivos huérfanos
       const path = 'logos/business_logo.webp';
-      await _supabase.storage.from('business').uploadBinary(
+      await _supabase.storage
+          .from('business')
+          .uploadBinary(
             path,
             bytes,
             fileOptions: const FileOptions(

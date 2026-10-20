@@ -21,10 +21,8 @@ class ProductsMobileFiltersSheet {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder:
-          (_) => BlocProvider.value(
-            value: cubit,
-            child: const _FiltersContent(),
-          ),
+          (_) =>
+              BlocProvider.value(value: cubit, child: const _FiltersContent()),
     );
   }
 }
@@ -273,14 +271,12 @@ class _Chips<T> extends StatelessWidget {
             labelStyle: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color:
-                  selected == value ? Colors.white : AppColors.textPrimary,
+              color: selected == value ? Colors.white : AppColors.textPrimary,
             ),
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.background,
             side: BorderSide(
-              color:
-                  selected == value ? AppColors.primary : AppColors.border,
+              color: selected == value ? AppColors.primary : AppColors.border,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),

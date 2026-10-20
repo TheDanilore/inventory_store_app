@@ -751,10 +751,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
           builder: (context, val, child) {
             return Transform.translate(
               offset: Offset(0, 20 * (1 - val)),
-              child: Opacity(
-                opacity: val.clamp(0.0, 1.0),
-                child: child,
-              ),
+              child: Opacity(opacity: val.clamp(0.0, 1.0), child: child),
             );
           },
           child: Material(
@@ -767,10 +764,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               decoration: BoxDecoration(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.94),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF334155),
-                  width: 1.2,
-                ),
+                border: Border.all(color: const Color(0xFF334155), width: 1.2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),
@@ -867,7 +861,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                                   color:
                                       action.isDestructive
                                           ? const Color(0xFFFCA5A5)
-                                          : (action.customColor ?? Colors.white),
+                                          : (action.customColor ??
+                                              Colors.white),
                                 ),
                               ),
                             ],

@@ -48,7 +48,9 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
       int cmp = 0;
       switch (_sortColumnId) {
         case 'customer':
-          cmp = (a.customerName ?? '').toLowerCase().compareTo((b.customerName ?? '').toLowerCase());
+          cmp = (a.customerName ?? '').toLowerCase().compareTo(
+            (b.customerName ?? '').toLowerCase(),
+          );
           break;
         case 'status':
           cmp = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
@@ -63,8 +65,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           cmp = a.availableCredit.compareTo(b.availableCredit);
           break;
         case 'usage':
-          final usageA = a.creditLimit > 0 ? (a.currentDebt / a.creditLimit) : 0.0;
-          final usageB = b.creditLimit > 0 ? (b.currentDebt / b.creditLimit) : 0.0;
+          final usageA =
+              a.creditLimit > 0 ? (a.currentDebt / a.creditLimit) : 0.0;
+          final usageB =
+              b.creditLimit > 0 ? (b.currentDebt / b.creditLimit) : 0.0;
           cmp = usageA.compareTo(usageB);
           break;
       }
@@ -73,7 +77,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
     return list;
   }
 
-  Widget _buildStatusChip(CustomerCreditEntity account, bool isMaxedOut, bool isRisk) {
+  Widget _buildStatusChip(
+    CustomerCreditEntity account,
+    bool isMaxedOut,
+    bool isRisk,
+  ) {
     if (!account.isActive) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
@@ -89,7 +97,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
             SizedBox(width: 4),
             Text(
               'Suspendida',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFE11D48)),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFE11D48),
+              ),
             ),
           ],
         ),
@@ -106,11 +118,19 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded, size: 12, color: Color(0xFFBE123C)),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 12,
+              color: Color(0xFFBE123C),
+            ),
             SizedBox(width: 4),
             Text(
               'Al Límite',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFBE123C)),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFBE123C),
+              ),
             ),
           ],
         ),
@@ -127,11 +147,19 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.warning_amber_rounded, size: 12, color: Color(0xFFEA580C)),
+            Icon(
+              Icons.warning_amber_rounded,
+              size: 12,
+              color: Color(0xFFEA580C),
+            ),
             SizedBox(width: 4),
             Text(
               'Riesgo Alto',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFEA580C)),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFEA580C),
+              ),
             ),
           ],
         ),
@@ -148,11 +176,19 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.pending_actions_rounded, size: 12, color: Color(0xFFD97706)),
+            Icon(
+              Icons.pending_actions_rounded,
+              size: 12,
+              color: Color(0xFFD97706),
+            ),
             SizedBox(width: 4),
             Text(
               'Con Saldo',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFD97706)),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFD97706),
+              ),
             ),
           ],
         ),
@@ -172,7 +208,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           SizedBox(width: 4),
           Text(
             'Al Día',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF047857)),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF047857),
+            ),
           ),
         ],
       ),
@@ -211,11 +251,18 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           icon: Icons.summarize_rounded,
           customColor: AppColors.teal,
           onPressed: (selectedList) {
-            final double totalDebt = selectedList.fold(0.0, (sum, a) => sum + a.currentDebt);
+            final double totalDebt = selectedList.fold(
+              0.0,
+              (sum, a) => sum + a.currentDebt,
+            );
             final summary = selectedList
-                .map((a) => '- ${a.customerName ?? "Cliente"}: S/ ${a.currentDebt.toStringAsFixed(2)} de deuda [${a.isActive ? "Activo" : "Suspendido"}]')
+                .map(
+                  (a) =>
+                      '- ${a.customerName ?? "Cliente"}: S/ ${a.currentDebt.toStringAsFixed(2)} de deuda [${a.isActive ? "Activo" : "Suspendido"}]',
+                )
                 .join('\n');
-            final fullText = 'RESUMEN LÍNEAS DE CRÉDITO CLIENTES (${selectedList.length})\n$summary\nDeuda total: S/ ${totalDebt.toStringAsFixed(2)}';
+            final fullText =
+                'RESUMEN LÍNEAS DE CRÉDITO CLIENTES (${selectedList.length})\n$summary\nDeuda total: S/ ${totalDebt.toStringAsFixed(2)}';
             widget.onCopy(fullText, 'Resumen de deudas');
           },
         ),
@@ -224,7 +271,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           icon: Icons.contact_phone_rounded,
           onPressed: (selectedList) {
             final contacts = selectedList
-                .map((a) => '${a.customerName ?? "Cliente"}: Doc: ${a.customerDocument ?? "-"} | Tel: ${a.customerPhone ?? "-"}')
+                .map(
+                  (a) =>
+                      '${a.customerName ?? "Cliente"}: Doc: ${a.customerDocument ?? "-"} | Tel: ${a.customerPhone ?? "-"}',
+                )
                 .join('\n');
             widget.onCopy(contacts, 'Contactos');
           },
@@ -276,9 +326,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        account.customerDocument != null && account.customerDocument!.isNotEmpty
+                        account.customerDocument != null &&
+                                account.customerDocument!.isNotEmpty
                             ? 'Doc: ${account.customerDocument}'
-                            : (account.customerPhone != null && account.customerPhone!.isNotEmpty
+                            : (account.customerPhone != null &&
+                                    account.customerPhone!.isNotEmpty
                                 ? 'Tel: ${account.customerPhone}'
                                 : 'Sin documento'),
                         style: const TextStyle(
@@ -304,7 +356,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           isSortable: true,
           tooltip: 'Estado de la línea de crédito',
           cellBuilder: (context, account) {
-            final double pct = account.creditLimit > 0 ? (account.currentDebt / account.creditLimit) : 0.0;
+            final double pct =
+                account.creditLimit > 0
+                    ? (account.currentDebt / account.creditLimit)
+                    : 0.0;
             final isMaxedOut = account.isMaxedOut;
             final isRisk = pct >= 0.8 && !isMaxedOut && !account.isUnlimited;
             return Align(
@@ -323,7 +378,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
           isSortable: true,
           tooltip: 'Saldo deudor acumulado',
           cellBuilder: (context, account) {
-            final double pct = account.creditLimit > 0 ? (account.currentDebt / account.creditLimit) : 0.0;
+            final double pct =
+                account.creditLimit > 0
+                    ? (account.currentDebt / account.creditLimit)
+                    : 0.0;
             final isMaxedOut = account.isMaxedOut;
             final isRisk = pct >= 0.8 && !isMaxedOut && !account.isUnlimited;
             return RichText(
@@ -343,9 +401,12 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w900,
-                      color: account.currentDebt > 0
-                          ? (isMaxedOut || isRisk ? AppColors.danger : const Color(0xFF0F172A))
-                          : AppColors.success,
+                      color:
+                          account.currentDebt > 0
+                              ? (isMaxedOut || isRisk
+                                  ? AppColors.danger
+                                  : const Color(0xFF0F172A))
+                              : AppColors.success,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -370,16 +431,26 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.25)),
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                  ),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.all_inclusive_rounded, size: 13, color: Color(0xFF059669)),
+                    Icon(
+                      Icons.all_inclusive_rounded,
+                      size: 13,
+                      color: Color(0xFF059669),
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'Sin límite',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF059669)),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF059669),
+                      ),
                     ),
                   ],
                 ),
@@ -424,7 +495,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
             if (account.isUnlimited) {
               return const Text(
                 'Ilimitado',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0D9488)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0D9488),
+                ),
               );
             }
             return RichText(
@@ -444,7 +519,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
-                      color: account.isActive ? const Color(0xFF0D9488) : AppColors.textMuted,
+                      color:
+                          account.isActive
+                              ? const Color(0xFF0D9488)
+                              : AppColors.textMuted,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
@@ -465,19 +543,29 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
             if (account.isUnlimited) {
               return const Text(
                 'N/A',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textMuted),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textMuted,
+                ),
               );
             }
-            final double pct = account.creditLimit > 0 ? (account.currentDebt / account.creditLimit) : 0.0;
+            final double pct =
+                account.creditLimit > 0
+                    ? (account.currentDebt / account.creditLimit)
+                    : 0.0;
             final isMaxedOut = account.isMaxedOut;
             final isRisk = pct >= 0.8 && !isMaxedOut && !account.isUnlimited;
-            final Color statusColor = !account.isActive
-                ? AppColors.danger
-                : (isMaxedOut
+            final Color statusColor =
+                !account.isActive
                     ? AppColors.danger
-                    : (isRisk
-                        ? const Color(0xFFEA580C)
-                        : (account.currentDebt > 0 ? const Color(0xFFD97706) : const Color(0xFF0D9488))));
+                    : (isMaxedOut
+                        ? AppColors.danger
+                        : (isRisk
+                            ? const Color(0xFFEA580C)
+                            : (account.currentDebt > 0
+                                ? const Color(0xFFD97706)
+                                : const Color(0xFF0D9488))));
 
             return Row(
               children: [
@@ -525,7 +613,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFFF0FDF4),
                       foregroundColor: const Color(0xFF16A34A),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       visualDensity: VisualDensity.compact,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
@@ -535,7 +626,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                     icon: const Icon(Icons.payments_rounded, size: 14),
                     label: const Text(
                       'Abonar',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -555,9 +649,15 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                   onPressed: () => widget.onEditTap(account),
                 ),
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, size: 18, color: AppColors.textMuted),
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
                   tooltip: 'Más opciones',
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   onSelected: (val) {
                     switch (val) {
                       case 'pay':
@@ -574,27 +674,28 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                         break;
                     }
                   },
-                  itemBuilder: (ctx) => [
-                    if (account.isActive && account.currentDebt > 0)
-                      const PopupMenuItem(
-                        value: 'pay',
-                        child: Text('💵 Abonar a cuenta'),
-                      ),
-                    const PopupMenuItem(
-                      value: 'history',
-                      child: Text('📜 Historial'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('✏️ Editar límite'),
-                    ),
-                    PopupMenuItem(
-                      value: 'toggle_status',
-                      child: Text(
-                        account.isActive ? '🚫 Suspender' : '✅ Reactivar',
-                      ),
-                    ),
-                  ],
+                  itemBuilder:
+                      (ctx) => [
+                        if (account.isActive && account.currentDebt > 0)
+                          const PopupMenuItem(
+                            value: 'pay',
+                            child: Text('💵 Abonar a cuenta'),
+                          ),
+                        const PopupMenuItem(
+                          value: 'history',
+                          child: Text('📜 Historial'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('✏️ Editar límite'),
+                        ),
+                        PopupMenuItem(
+                          value: 'toggle_status',
+                          child: Text(
+                            account.isActive ? '🚫 Suspender' : '✅ Reactivar',
+                          ),
+                        ),
+                      ],
                 ),
               ],
             );
@@ -602,7 +703,10 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
         ),
       ],
       mobileCardBuilder: (context, account, isSelected, onSelect) {
-        final double pct = account.creditLimit > 0 ? (account.currentDebt / account.creditLimit) : 0.0;
+        final double pct =
+            account.creditLimit > 0
+                ? (account.currentDebt / account.creditLimit)
+                : 0.0;
         final isMaxedOut = account.isMaxedOut;
         final isRisk = pct >= 0.8 && !isMaxedOut && !account.isUnlimited;
 
@@ -638,7 +742,11 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                           alignment: Alignment.center,
                           child: Text(
                             _getInitials(account.customerName),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -648,7 +756,9 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                     Checkbox(
                       value: isSelected,
                       activeColor: AppColors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                       onChanged: (val) => onSelect(val ?? false),
                     ),
                   ],
@@ -656,18 +766,27 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                 const SizedBox(height: 8),
                 Text(
                   account.customerName ?? 'Cliente Desconocido',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  account.customerDocument != null && account.customerDocument!.isNotEmpty
+                  account.customerDocument != null &&
+                          account.customerDocument!.isNotEmpty
                       ? 'Doc: ${account.customerDocument}'
-                      : (account.customerPhone != null && account.customerPhone!.isNotEmpty
+                      : (account.customerPhone != null &&
+                              account.customerPhone!.isNotEmpty
                           ? 'Tel: ${account.customerPhone}'
                           : 'Sin documento'),
-                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Row(
@@ -678,14 +797,23 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                       children: [
                         const Text(
                           'Deuda Actual',
-                          style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         Text(
                           'S/ ${account.currentDebt.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w900,
-                            color: account.currentDebt > 0 ? (isMaxedOut ? AppColors.danger : const Color(0xFF0F172A)) : AppColors.success,
+                            color:
+                                account.currentDebt > 0
+                                    ? (isMaxedOut
+                                        ? AppColors.danger
+                                        : const Color(0xFF0F172A))
+                                    : AppColors.success,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
@@ -696,10 +824,16 @@ class _CustomerCreditsTableState extends State<CustomerCreditsTable> {
                       children: [
                         const Text(
                           'Disponible',
-                          style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         Text(
-                          account.isUnlimited ? 'Ilimitado' : 'S/ ${account.availableCredit.toStringAsFixed(2)}',
+                          account.isUnlimited
+                              ? 'Ilimitado'
+                              : 'S/ ${account.availableCredit.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,

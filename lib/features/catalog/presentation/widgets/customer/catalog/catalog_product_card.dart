@@ -20,10 +20,26 @@ class CatalogProductCard extends StatefulWidget {
 
 class _CatalogProductCardState extends State<CatalogProductCard> {
   static const ColorFilter _grayscaleMatrix = ColorFilter.matrix(<double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0,      0,      0,      1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ]);
 
   bool _isCardHovered = false;
@@ -131,10 +147,10 @@ class _CatalogProductCardState extends State<CatalogProductCard> {
                               child:
                                   imageUrl != null
                                       ? CachedNetworkImage(
-                                          imageUrl: imageUrl,
-                                          memCacheWidth: 350,
-                                          memCacheHeight: 350,
-                                          fit: BoxFit.contain,
+                                        imageUrl: imageUrl,
+                                        memCacheWidth: 350,
+                                        memCacheHeight: 350,
+                                        fit: BoxFit.contain,
                                         placeholder:
                                             (context, url) => Container(
                                               color: Colors.grey.shade100,

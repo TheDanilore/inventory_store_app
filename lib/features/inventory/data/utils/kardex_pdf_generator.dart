@@ -78,7 +78,8 @@ class KardexPdfGenerator {
                           m.attrsText!,
                         if (m.sku != null && m.sku!.isNotEmpty) 'SKU: ${m.sku}',
                       ].join(' · '),
-                      m.warehouseName ?? (m.reference.isNotEmpty ? m.reference : 'Principal'),
+                      m.warehouseName ??
+                          (m.reference.isNotEmpty ? m.reference : 'Principal'),
                       m.balance.toString(),
                       '${m.quantity > 0 ? '+' : ''}${m.quantity}',
                       (m.balance).toString(),

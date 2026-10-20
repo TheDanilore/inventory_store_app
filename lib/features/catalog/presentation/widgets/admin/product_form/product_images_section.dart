@@ -38,75 +38,94 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: InteractiveViewer(
-                  maxScale: 3.5,
-                  child: item.isExisting
-                      ? CachedNetworkImage(
-                          imageUrl: _resolveImageUrl(item.existing!.imageUrl),
-                          fit: BoxFit.contain,
-                          placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
-                          ),
-                          errorWidget: (context, url, error) => const Center(
-                            child: Icon(
-                              Icons.broken_image_rounded,
-                              size: 48,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        )
-                      : item.isExternal
-                          ? CachedNetworkImage(
-                              imageUrl: _resolveImageUrl(item.externalUrl!),
-                              fit: BoxFit.contain,
-                              placeholder: (context, url) => const Center(
-                                child: CircularProgressIndicator(color: Colors.white),
-                              ),
-                              errorWidget: (context, url, error) => const Center(
-                                child: Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 48,
-                                  color: Colors.white70,
+      builder:
+          (ctx) => Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: 600,
+                    maxHeight: 600,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: InteractiveViewer(
+                      maxScale: 3.5,
+                      child:
+                          item.isExisting
+                              ? CachedNetworkImage(
+                                imageUrl: _resolveImageUrl(
+                                  item.existing!.imageUrl,
                                 ),
+                                fit: BoxFit.contain,
+                                placeholder:
+                                    (context, url) => const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => const Center(
+                                      child: Icon(
+                                        Icons.broken_image_rounded,
+                                        size: 48,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                              )
+                              : item.isExternal
+                              ? CachedNetworkImage(
+                                imageUrl: _resolveImageUrl(item.externalUrl!),
+                                fit: BoxFit.contain,
+                                placeholder:
+                                    (context, url) => const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => const Center(
+                                      child: Icon(
+                                        Icons.broken_image_rounded,
+                                        size: 48,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                              )
+                              : Image.memory(
+                                item.newBytes!,
+                                fit: BoxFit.contain,
                               ),
-                            )
-                          : Image.memory(
-                              item.newBytes!,
-                              fit: BoxFit.contain,
-                            ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                onPressed: () => Navigator.pop(ctx),
-                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-                tooltip: 'Cerrar vista previa',
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black54,
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    tooltip: 'Cerrar vista previa',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -130,32 +149,35 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: _isDragging
-              ? AppColors.primary.withValues(alpha: 0.05)
-              : AppColors.surface,
+          color:
+              _isDragging
+                  ? AppColors.primary.withValues(alpha: 0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           border: Border.all(
             color: _isDragging ? AppColors.primary : AppColors.border,
             width: _isDragging ? 2.0 : 1.0,
           ),
-          boxShadow: _isDragging
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.16),
-                    blurRadius: 18,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : AppColors.cardShadow(),
+          boxShadow:
+              _isDragging
+                  ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.16),
+                      blurRadius: 18,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                  : AppColors.cardShadow(),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BlocBuilder<ProductFormCubit, ProductFormState>(
-              buildWhen: (p, c) =>
-                  p.isSaving != c.isSaving ||
-                  p.formImages.length != c.formImages.length ||
-                  p.formImages != c.formImages,
+              buildWhen:
+                  (p, c) =>
+                      p.isSaving != c.isSaving ||
+                      p.formImages.length != c.formImages.length ||
+                      p.formImages != c.formImages,
               builder: (context, state) {
                 final count = state.formImages.length;
                 return Column(
@@ -196,9 +218,14 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: count >= 8
-                                    ? AppColors.warning.withValues(alpha: 0.1)
-                                    : AppColors.primary.withValues(alpha: 0.08),
+                                color:
+                                    count >= 8
+                                        ? AppColors.warning.withValues(
+                                          alpha: 0.1,
+                                        )
+                                        : AppColors.primary.withValues(
+                                          alpha: 0.08,
+                                        ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -206,9 +233,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: count >= 8
-                                      ? AppColors.warning
-                                      : AppColors.primary,
+                                  color:
+                                      count >= 8
+                                          ? AppColors.warning
+                                          : AppColors.primary,
                                 ),
                               ),
                             ),
@@ -219,9 +247,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               OutlinedButton.icon(
-                                onPressed: (state.isSaving || count >= 8)
-                                    ? null
-                                    : () => cubit.pickImages(),
+                                onPressed:
+                                    (state.isSaving || count >= 8)
+                                        ? null
+                                        : () => cubit.pickImages(),
                                 icon: const Icon(
                                   Icons.add_photo_alternate_rounded,
                                   size: 15,
@@ -235,7 +264,9 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                                   ),
                                   foregroundColor: AppColors.primary,
                                   side: BorderSide(
-                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -248,9 +279,11 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton.icon(
-                                onPressed: (state.isSaving || count >= 8)
-                                    ? null
-                                    : () => _promptForImageUrl(context, cubit),
+                                onPressed:
+                                    (state.isSaving || count >= 8)
+                                        ? null
+                                        : () =>
+                                            _promptForImageUrl(context, cubit),
                                 icon: const Icon(Icons.link_rounded, size: 15),
                                 label: const Text('Por URL'),
                                 style: OutlinedButton.styleFrom(
@@ -260,7 +293,9 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                                     vertical: 6,
                                   ),
                                   foregroundColor: AppColors.textSecondary,
-                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                  side: const BorderSide(
+                                    color: Color(0xFFCBD5E1),
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -377,15 +412,11 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
 
   Widget _buildImageThumbnail(FormImageItem item) {
     if (item.newBytes != null) {
-      return Image.memory(
-        item.newBytes!,
-        fit: BoxFit.cover,
-      );
+      return Image.memory(item.newBytes!, fit: BoxFit.cover);
     }
 
-    final rawUrl = item.isExisting
-        ? item.existing!.imageUrl
-        : item.externalUrl ?? '';
+    final rawUrl =
+        item.isExisting ? item.existing!.imageUrl : item.externalUrl ?? '';
     final resolvedUrl = _resolveImageUrl(rawUrl);
 
     if (resolvedUrl.isEmpty) {
@@ -395,20 +426,22 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     return CachedNetworkImage(
       imageUrl: resolvedUrl,
       fit: BoxFit.cover,
-      placeholder: (context, url) => Container(
-        color: const Color(0xFFF1F5F9),
-        child: const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: AppColors.primary,
+      placeholder:
+          (context, url) => Container(
+            color: const Color(0xFFF1F5F9),
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-      errorWidget: (context, url, error) => _buildBrokenImageFallback('Error de enlace'),
+      errorWidget:
+          (context, url, error) => _buildBrokenImageFallback('Error de enlace'),
     );
   }
 
@@ -451,14 +484,12 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        vertical: 26,
-        horizontal: 16,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
       decoration: BoxDecoration(
-        color: _isDragging
-            ? AppColors.primary.withValues(alpha: 0.08)
-            : const Color(0xFFF8FAFC),
+        color:
+            _isDragging
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: _isDragging ? AppColors.primary : const Color(0xFFCBD5E1),
@@ -474,9 +505,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _isDragging
-                    ? AppColors.primary.withValues(alpha: 0.16)
-                    : AppColors.primary.withValues(alpha: 0.08),
+                color:
+                    _isDragging
+                        ? AppColors.primary.withValues(alpha: 0.16)
+                        : AppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -507,10 +539,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
           const SizedBox(height: 4),
           const Text(
             'Formatos JPG, PNG, WEBP o HEIC (máx. 5 MB por foto, hasta 8 fotos).',
-            style: TextStyle(
-              fontSize: 11.5,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -520,10 +549,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
               height: 48,
               child: FilledButton.icon(
                 onPressed: state.isSaving ? null : () => cubit.pickImages(),
-                icon: const Icon(
-                  Icons.add_a_photo_rounded,
-                  size: 18,
-                ),
+                icon: const Icon(Icons.add_a_photo_rounded, size: 18),
                 label: const Text('Tomar Foto / Seleccionar de Galería'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -540,9 +566,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
             ),
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: state.isSaving
-                  ? null
-                  : () => _promptForImageUrl(context, cubit),
+              onPressed:
+                  state.isSaving
+                      ? null
+                      : () => _promptForImageUrl(context, cubit),
               icon: const Icon(Icons.link_rounded, size: 16),
               label: const Text('O ingresar URL web'),
               style: TextButton.styleFrom(
@@ -555,10 +582,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
               children: [
                 FilledButton.icon(
                   onPressed: state.isSaving ? null : () => cubit.pickImages(),
-                  icon: const Icon(
-                    Icons.add_photo_alternate_rounded,
-                    size: 16,
-                  ),
+                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 16),
                   label: const Text('Subir Archivos'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -574,9 +598,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
-                  onPressed: state.isSaving
-                      ? null
-                      : () => _promptForImageUrl(context, cubit),
+                  onPressed:
+                      state.isSaving
+                          ? null
+                          : () => _promptForImageUrl(context, cubit),
                   icon: const Icon(Icons.link_rounded, size: 16),
                   label: const Text('Por URL'),
                   style: OutlinedButton.styleFrom(
@@ -616,10 +641,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
           height: size,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.primary,
-              width: 2.2,
-            ),
+            border: Border.all(color: AppColors.primary, width: 2.2),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.14),
@@ -668,7 +690,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                 top: 7,
                 left: 7,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(6),
@@ -806,8 +831,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                 actualIndex: i + 1,
                 isSaving: isSaving,
               ),
-            if (count < 8)
-              _buildAddMoreTile(context, cubit, isSaving),
+            if (count < 8) _buildAddMoreTile(context, cubit, isSaving),
           ],
         ),
       ],
@@ -833,20 +857,22 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(11),
           border: Border.all(
-            color: _hoveredIndex == actualIndex
-                ? AppColors.primary
-                : const Color(0xFFE2E8F0),
+            color:
+                _hoveredIndex == actualIndex
+                    ? AppColors.primary
+                    : const Color(0xFFE2E8F0),
             width: _hoveredIndex == actualIndex ? 1.8 : 1.0,
           ),
-          boxShadow: _hoveredIndex == actualIndex
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          boxShadow:
+              _hoveredIndex == actualIndex
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                  : null,
         ),
         child: Stack(
           fit: StackFit.expand,
@@ -888,7 +914,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
               top: 4,
               left: 4,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 1.5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(4),
@@ -939,9 +968,10 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: isSaving
-                        ? null
-                        : () => cubit.reorderImages(actualIndex, 0),
+                    onTap:
+                        isSaving
+                            ? null
+                            : () => cubit.reorderImages(actualIndex, 0),
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(9.5),
                     ),
@@ -1073,11 +1103,18 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                 const SizedBox(height: 16),
                 const Row(
                   children: [
-                    Icon(Icons.link_rounded, color: AppColors.primary, size: 22),
+                    Icon(
+                      Icons.link_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Añadir imagen por URL',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -1132,7 +1169,9 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         builder: (ctx) {
           final ctrl = TextEditingController();
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: const Row(
               children: [
                 Icon(Icons.link_rounded, color: AppColors.primary, size: 22),

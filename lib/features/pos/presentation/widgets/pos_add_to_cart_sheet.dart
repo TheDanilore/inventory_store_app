@@ -55,12 +55,11 @@ class PosAddToCartSheet extends StatefulWidget {
                 BlocProvider(
                   create:
                       (_) =>
-                          PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(
-                              product,
-                              warehouseId: effectiveWarehouseId,
-                              initialVariantId: initialVariantId,
-                            ),
+                          PosAddToCartCubit(sl<ProductsRepository>())..loadData(
+                            product,
+                            warehouseId: effectiveWarehouseId,
+                            initialVariantId: initialVariantId,
+                          ),
                 ),
               ],
               child: RepaintBoundary(
@@ -94,12 +93,11 @@ class PosAddToCartSheet extends StatefulWidget {
                 BlocProvider(
                   create:
                       (_) =>
-                          PosAddToCartCubit(sl<ProductsRepository>())
-                            ..loadData(
-                              product,
-                              warehouseId: effectiveWarehouseId,
-                              initialVariantId: initialVariantId,
-                            ),
+                          PosAddToCartCubit(sl<ProductsRepository>())..loadData(
+                            product,
+                            warehouseId: effectiveWarehouseId,
+                            initialVariantId: initialVariantId,
+                          ),
                 ),
               ],
               child: Padding(
@@ -307,7 +305,11 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
               // Variantes (Solo mostrar selector si el producto tiene múltiples variantes o atributos reales)
               if (loadedState.variants.length > 1 ||
                   (loadedState.variants.length == 1 &&
-                      loadedState.variants.first.attributeValues.isNotEmpty)) ...[
+                      loadedState
+                          .variants
+                          .first
+                          .attributeValues
+                          .isNotEmpty)) ...[
                 const SizedBox(height: 20),
                 const Text(
                   'Variante',
@@ -341,14 +343,17 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                                 loadedState.hasStockControl
                                     ? '($vStock en stock)'
                                     : '(Stock Libre)';
-                            final vName = v.label.isNotEmpty
-                                ? v.label
-                                : (v.sku?.isNotEmpty == true && v.sku != 'N/A'
-                                    ? v.sku!
-                                    : 'Opción');
-                            final barcodeText = v.barcode != null && v.barcode!.isNotEmpty
-                                ? ' [${v.barcode}]'
-                                : '';
+                            final vName =
+                                v.label.isNotEmpty
+                                    ? v.label
+                                    : (v.sku?.isNotEmpty == true &&
+                                            v.sku != 'N/A'
+                                        ? v.sku!
+                                        : 'Opción');
+                            final barcodeText =
+                                v.barcode != null && v.barcode!.isNotEmpty
+                                    ? ' [${v.barcode}]'
+                                    : '';
                             return DropdownMenuItem(
                               value: v,
                               child: Text(

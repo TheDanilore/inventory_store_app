@@ -47,7 +47,8 @@ class InventoryEntryModel {
     final sup = json['suppliers'] as Map<String, dynamic>?;
     final itemsList = json['inventory_entry_items'] as List?;
 
-    final double totalQty = itemsList?.fold<double>(
+    final double totalQty =
+        itemsList?.fold<double>(
           0.0,
           (sum, item) => sum + ((item['quantity'] as num?)?.toDouble() ?? 0.0),
         ) ??

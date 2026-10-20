@@ -32,10 +32,7 @@ class UsersRoutes {
           }
         }
 
-        return UserFormScreen(
-          existingUser: user,
-          initialRole: role,
-        );
+        return UserFormScreen(existingUser: user, initialRole: role);
       },
     ),
   ];

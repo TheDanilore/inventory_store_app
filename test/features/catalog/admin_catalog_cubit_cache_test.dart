@@ -17,7 +17,8 @@ class MockGetProductsUC implements GetProductsUC {
   List<ProductEntity> returnProducts = [];
 
   @override
-  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>> call({
+  Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
+  call({
     String? searchQuery,
     String? categoryId,
     String? brandId,
@@ -87,7 +88,11 @@ class DummyGetProductStockUC implements GetProductStockUC {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-ProductEntity _createDummyProduct(String id, String name, {bool isActive = true}) {
+ProductEntity _createDummyProduct(
+  String id,
+  String name, {
+  bool isActive = true,
+}) {
   return ProductEntity(
     id: id,
     name: name,
@@ -135,57 +140,69 @@ void main() {
     cubit.close();
   });
 
-  test('L1 cache avoids repeated network calls for identical queries and pages', () async {
-    // 1st fetch: Cache MISS -> calls usecase
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 1);
-    expect(cubit.state.products.length, 2);
+  test(
+    'L1 cache avoids repeated network calls for identical queries and pages',
+    () async {
+      // 1st fetch: Cache MISS -> calls usecase
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 1);
+      expect(cubit.state.products.length, 2);
 
-    // 2nd fetch with same state: Cache HIT -> does NOT call usecase
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 1); // Still 1!
-    expect(cubit.state.products.length, 2);
-  });
+      // 2nd fetch with same state: Cache HIT -> does NOT call usecase
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 1); // Still 1!
+      expect(cubit.state.products.length, 2);
+    },
+  );
 
-  test('refreshProducts(forceRefresh: true) invalidates L1 cache and re-queries', () async {
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 1);
+  test(
+    'refreshProducts(forceRefresh: true) invalidates L1 cache and re-queries',
+    () async {
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 1);
 
-    // Force refresh clears cache
-    await cubit.refreshProducts(forceRefresh: true);
-    expect(mockGetProductsUC.callCount, 2);
-  });
+      // Force refresh clears cache
+      await cubit.refreshProducts(forceRefresh: true);
+      expect(mockGetProductsUC.callCount, 2);
+    },
+  );
 
-  test('toggleProductActive invalidates cache and updates local product state', () async {
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 1);
+  test(
+    'toggleProductActive invalidates cache and updates local product state',
+    () async {
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 1);
 
-    final product = cubit.state.products.first;
-    final toggled = await cubit.toggleProductActive(product);
-    expect(toggled, true);
-    expect(mockSetActiveUC.callCount, 1);
-    expect(cubit.state.products.first.isActive, false);
+      final product = cubit.state.products.first;
+      final toggled = await cubit.toggleProductActive(product);
+      expect(toggled, true);
+      expect(mockSetActiveUC.callCount, 1);
+      expect(cubit.state.products.first.isActive, false);
 
-    // Subsequent refresh queries again because cache was invalidated
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 2);
-  });
+      // Subsequent refresh queries again because cache was invalidated
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 2);
+    },
+  );
 
-  test('deleteProduct invalidates cache and removes product from local state', () async {
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 1);
-    expect(cubit.state.products.length, 2);
+  test(
+    'deleteProduct invalidates cache and removes product from local state',
+    () async {
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 1);
+      expect(cubit.state.products.length, 2);
 
-    final deleted = await cubit.deleteProduct('p-1');
-    expect(deleted, true);
-    expect(mockDeleteProductUC.callCount, 1);
-    expect(cubit.state.products.length, 1);
-    expect(cubit.state.products.first.id, 'p-2');
+      final deleted = await cubit.deleteProduct('p-1');
+      expect(deleted, true);
+      expect(mockDeleteProductUC.callCount, 1);
+      expect(cubit.state.products.length, 1);
+      expect(cubit.state.products.first.id, 'p-2');
 
-    // Subsequent refresh queries again because cache was invalidated
-    await cubit.refreshProducts();
-    expect(mockGetProductsUC.callCount, 2);
-  });
+      // Subsequent refresh queries again because cache was invalidated
+      await cubit.refreshProducts();
+      expect(mockGetProductsUC.callCount, 2);
+    },
+  );
 
   test('submitSearch trims whitespace and queries immediately', () async {
     expect(cubit.state.searchTerm, '');
@@ -197,29 +214,35 @@ void main() {
     expect(mockGetProductsUC.callCount, 1);
   });
 
-  test('submitSearch with identical term is a no-op (anti-redundancy check)', () async {
-    cubit.submitSearch('Ibuprofeno');
-    await pumpEventQueue();
-    expect(mockGetProductsUC.callCount, 1);
+  test(
+    'submitSearch with identical term is a no-op (anti-redundancy check)',
+    () async {
+      cubit.submitSearch('Ibuprofeno');
+      await pumpEventQueue();
+      expect(mockGetProductsUC.callCount, 1);
 
-    // Call submitSearch with exact same term (or extra whitespace)
-    cubit.submitSearch('  Ibuprofeno  ');
-    await pumpEventQueue();
+      // Call submitSearch with exact same term (or extra whitespace)
+      cubit.submitSearch('  Ibuprofeno  ');
+      await pumpEventQueue();
 
-    // Call count remains 1 because redundant execution was blocked
-    expect(mockGetProductsUC.callCount, 1);
-  });
+      // Call count remains 1 because redundant execution was blocked
+      expect(mockGetProductsUC.callCount, 1);
+    },
+  );
 
-  test('clearSearch resets searchTerm to empty string and reloads base catalog', () async {
-    cubit.submitSearch('Antibiotico');
-    await pumpEventQueue();
-    expect(cubit.state.searchTerm, 'Antibiotico');
-    expect(mockGetProductsUC.callCount, 1);
+  test(
+    'clearSearch resets searchTerm to empty string and reloads base catalog',
+    () async {
+      cubit.submitSearch('Antibiotico');
+      await pumpEventQueue();
+      expect(cubit.state.searchTerm, 'Antibiotico');
+      expect(mockGetProductsUC.callCount, 1);
 
-    cubit.clearSearch();
-    await pumpEventQueue();
-    expect(cubit.state.searchTerm, '');
-    // Initial fetch was empty search (not performed), then 'Antibiotico' (1), then clearSearch (2)
-    expect(mockGetProductsUC.callCount, 2);
-  });
+      cubit.clearSearch();
+      await pumpEventQueue();
+      expect(cubit.state.searchTerm, '');
+      // Initial fetch was empty search (not performed), then 'Antibiotico' (1), then clearSearch (2)
+      expect(mockGetProductsUC.callCount, 2);
+    },
+  );
 }

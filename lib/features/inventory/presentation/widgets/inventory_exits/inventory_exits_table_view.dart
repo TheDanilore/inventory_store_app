@@ -56,10 +56,14 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
           cmp = dateA.compareTo(dateB);
           break;
         case 'reason':
-          cmp = (a.reason ?? '').toLowerCase().compareTo((b.reason ?? '').toLowerCase());
+          cmp = (a.reason ?? '').toLowerCase().compareTo(
+            (b.reason ?? '').toLowerCase(),
+          );
           break;
         case 'warehouse':
-          cmp = (a.warehouseName ?? '').toLowerCase().compareTo((b.warehouseName ?? '').toLowerCase());
+          cmp = (a.warehouseName ?? '').toLowerCase().compareTo(
+            (b.warehouseName ?? '').toLowerCase(),
+          );
           break;
         case 'items':
           cmp = a.itemCount.compareTo(b.itemCount);
@@ -169,9 +173,18 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
           icon: Icons.copy_rounded,
           onPressed: (selectedList) {
             final codes = selectedList
-                .map((e) => e.id.length >= 8 ? '#${e.id.substring(0, 8).toUpperCase()}' : '#${e.id.toUpperCase()}')
+                .map(
+                  (e) =>
+                      e.id.length >= 8
+                          ? '#${e.id.substring(0, 8).toUpperCase()}'
+                          : '#${e.id.toUpperCase()}',
+                )
                 .join(', ');
-            _copyToClipboard(context, codes, '${selectedList.length} códigos de salida');
+            _copyToClipboard(
+              context,
+              codes,
+              '${selectedList.length} códigos de salida',
+            );
           },
         ),
         AdminBulkAction<InventoryExitEntity>(
@@ -181,9 +194,13 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
           onPressed: (selectedList) {
             final total = selectedList.fold(0.0, (sum, e) => sum + e.totalCost);
             final summary = selectedList
-                .map((e) => '- #${e.id.substring(0, 8).toUpperCase()} | Motivo: ${e.reason ?? "Ajuste"} | S/ ${e.totalCost.toStringAsFixed(2)}')
+                .map(
+                  (e) =>
+                      '- #${e.id.substring(0, 8).toUpperCase()} | Motivo: ${e.reason ?? "Ajuste"} | S/ ${e.totalCost.toStringAsFixed(2)}',
+                )
                 .join('\n');
-            final fullText = 'RESUMEN SALIDAS DE INVENTARIO (${selectedList.length})\n$summary\nCosto total: S/ ${total.toStringAsFixed(2)}';
+            final fullText =
+                'RESUMEN SALIDAS DE INVENTARIO (${selectedList.length})\n$summary\nCosto total: S/ ${total.toStringAsFixed(2)}';
             _copyToClipboard(context, fullText, 'Resumen de salidas');
           },
         ),
@@ -197,18 +214,27 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
           isSortable: true,
           tooltip: 'Identificador interno de la salida',
           cellBuilder: (context, exit) {
-            final shortId = exit.id.length >= 8
-                ? exit.id.substring(0, 8).toUpperCase()
-                : exit.id.toUpperCase();
+            final shortId =
+                exit.id.length >= 8
+                    ? exit.id.substring(0, 8).toUpperCase()
+                    : exit.id.toUpperCase();
 
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 InkWell(
-                  onTap: () => _copyToClipboard(context, exit.id, 'Código de salida'),
+                  onTap:
+                      () => _copyToClipboard(
+                        context,
+                        exit.id,
+                        'Código de salida',
+                      ),
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(4),
@@ -238,9 +264,10 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
           isSortable: true,
           tooltip: 'Fecha de despacho o registro',
           cellBuilder: (context, exit) {
-            final formattedDate = exit.createdAt != null
-                ? dateFormat.format(exit.createdAt!)
-                : '—';
+            final formattedDate =
+                exit.createdAt != null
+                    ? dateFormat.format(exit.createdAt!)
+                    : '—';
             return Text(
               formattedDate,
               style: const TextStyle(
@@ -370,13 +397,21 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.visibility_outlined, size: 18, color: Color(0xFF64748B)),
+                  icon: const Icon(
+                    Icons.visibility_outlined,
+                    size: 18,
+                    color: Color(0xFF64748B),
+                  ),
                   tooltip: 'Ver detalle',
                   hoverColor: const Color(0xFFF1F5F9),
                   onPressed: () => widget.onSelectExit(exit),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+                  icon: const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFF94A3B8),
+                  ),
                   tooltip: 'Abrir salida',
                   onPressed: () => widget.onSelectExit(exit),
                 ),
@@ -386,12 +421,12 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
         ),
       ],
       mobileCardBuilder: (context, exit, isSelected, onSelect) {
-        final shortId = exit.id.length >= 8
-            ? exit.id.substring(0, 8).toUpperCase()
-            : exit.id.toUpperCase();
-        final formattedDate = exit.createdAt != null
-            ? dateFormat.format(exit.createdAt!)
-            : '—';
+        final shortId =
+            exit.id.length >= 8
+                ? exit.id.substring(0, 8).toUpperCase()
+                : exit.id.toUpperCase();
+        final formattedDate =
+            exit.createdAt != null ? dateFormat.format(exit.createdAt!) : '—';
 
         return InkWell(
           onTap: () => widget.onSelectExit(exit),
@@ -416,7 +451,10 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
@@ -435,14 +473,20 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                         const SizedBox(width: 8),
                         Text(
                           formattedDate,
-                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
                     Checkbox(
                       value: isSelected,
                       activeColor: AppColors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                       onChanged: (val) => onSelect(val ?? false),
                     ),
                   ],
@@ -454,7 +498,11 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                     const SizedBox(width: 8),
                     Text(
                       '${exit.warehouseName ?? "Almacén general"} • ${exit.itemCount} prod.',
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -464,7 +512,11 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                   children: [
                     const Text(
                       'Costo Retirado:',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     RichText(
                       textAlign: TextAlign.end,
@@ -472,7 +524,11 @@ class _InventoryExitsTableViewState extends State<InventoryExitsTableView> {
                         children: [
                           const TextSpan(
                             text: 'S/ ',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                           TextSpan(
                             text: exit.totalCost.toStringAsFixed(2),

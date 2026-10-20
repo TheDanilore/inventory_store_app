@@ -82,7 +82,9 @@ class ProductGallerySection extends StatelessWidget {
                                 ? AppColors.darkSurfaceElevated
                                 : Colors.grey.shade200,
                         highlightColor:
-                            isDark ? AppColors.darkBorder : Colors.grey.shade100,
+                            isDark
+                                ? AppColors.darkBorder
+                                : Colors.grey.shade100,
                         child: Container(
                           decoration: BoxDecoration(
                             color:

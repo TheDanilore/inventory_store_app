@@ -21,10 +21,8 @@ class ProductLoader extends StatelessWidget {
     return BlocProvider(
       create:
           (_) =>
-              sl<ProductDetailCubit>()..loadProduct(
-                productId,
-                initialVariantId: initialVariantId,
-              ),
+              sl<ProductDetailCubit>()
+                ..loadProduct(productId, initialVariantId: initialVariantId),
       child: BlocBuilder<ProductDetailCubit, ProductDetailState>(
         builder: (context, state) {
           if (state.viewState == ViewState.initial ||

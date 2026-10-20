@@ -144,7 +144,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     );
   }
 
-  Widget _buildPaymentBadge(String paymentStatus, String method, double pending, {String? orderStatus}) {
+  Widget _buildPaymentBadge(
+    String paymentStatus,
+    String method,
+    double pending, {
+    String? orderStatus,
+  }) {
     final isCancelled = orderStatus?.toUpperCase() == 'CANCELLED';
     final isReturned = orderStatus?.toUpperCase() == 'RETURNED';
     final isPaid = paymentStatus.toUpperCase() == 'PAID';
@@ -250,7 +255,8 @@ class _OrdersTableViewState extends State<OrdersTableView> {
             }
             AppSnackbar.show(
               context,
-              message: 'Imprimiendo ${selectedList.length} tickets seleccionados...',
+              message:
+                  'Imprimiendo ${selectedList.length} tickets seleccionados...',
               type: SnackbarType.success,
             );
           },
@@ -260,7 +266,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           icon: Icons.copy_rounded,
           onPressed: (selectedList) {
             final ids = selectedList
-                .map((o) => o.id.length >= 8 ? '#${o.id.substring(0, 8).toUpperCase()}' : '#${o.id.toUpperCase()}')
+                .map(
+                  (o) =>
+                      o.id.length >= 8
+                          ? '#${o.id.substring(0, 8).toUpperCase()}'
+                          : '#${o.id.toUpperCase()}',
+                )
                 .join(', ');
             _copyToClipboard(context, ids, '${selectedList.length} IDs');
           },
@@ -269,13 +280,19 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           label: 'Completar Borradores',
           icon: Icons.check_circle_outline_rounded,
           onPressed: (selectedList) {
-            final drafts = selectedList
-                .where((o) => o.status.toUpperCase() == 'DRAFT' || o.status.toUpperCase() == 'PENDING')
-                .toList();
+            final drafts =
+                selectedList
+                    .where(
+                      (o) =>
+                          o.status.toUpperCase() == 'DRAFT' ||
+                          o.status.toUpperCase() == 'PENDING',
+                    )
+                    .toList();
             if (drafts.isEmpty) {
               AppSnackbar.show(
                 context,
-                message: 'No hay pedidos en estado Borrador o Pendiente seleccionados',
+                message:
+                    'No hay pedidos en estado Borrador o Pendiente seleccionados',
                 type: SnackbarType.info,
               );
               return;
@@ -300,9 +317,10 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           isSortable: true,
           tooltip: 'Identificador del pedido',
           cellBuilder: (context, order) {
-            final shortId = order.id.length >= 8
-                ? order.id.substring(0, 8).toUpperCase()
-                : order.id.toUpperCase();
+            final shortId =
+                order.id.length >= 8
+                    ? order.id.substring(0, 8).toUpperCase()
+                    : order.id.toUpperCase();
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -310,7 +328,10 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                   onTap: () => _copyToClipboard(context, shortId, 'ID'),
                   borderRadius: BorderRadius.circular(6),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
@@ -341,7 +362,10 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           tooltip: 'Fecha y hora de registro',
           cellBuilder: (context, order) {
             final date = (order.createdAt ?? DateTime.now()).toLocal();
-            final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
+            final dateFormatted = DateFormat(
+              'dd MMM, hh:mm a',
+              'es',
+            ).format(date);
             return Text(
               dateFormatted,
               style: const TextStyle(
@@ -377,7 +401,8 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  (order.warehouseName != null && order.warehouseName!.isNotEmpty)
+                  (order.warehouseName != null &&
+                          order.warehouseName!.isNotEmpty)
                       ? order.warehouseName!
                       : 'Tienda Principal',
                   style: const TextStyle(
@@ -485,7 +510,8 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                   hoverColor: const Color(0xFFF1F5F9),
                   onPressed: () => widget.onPrintTicket(order),
                 ),
-                if (order.status.toUpperCase() == 'DRAFT' || order.status.toUpperCase() == 'PENDING')
+                if (order.status.toUpperCase() == 'DRAFT' ||
+                    order.status.toUpperCase() == 'PENDING')
                   IconButton(
                     icon: const Icon(
                       Icons.payments_rounded,
@@ -511,9 +537,10 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         ),
       ],
       mobileCardBuilder: (context, order, isSelected, onSelect) {
-        final shortId = order.id.length >= 8
-            ? order.id.substring(0, 8).toUpperCase()
-            : order.id.toUpperCase();
+        final shortId =
+            order.id.length >= 8
+                ? order.id.substring(0, 8).toUpperCase()
+                : order.id.toUpperCase();
         final date = (order.createdAt ?? DateTime.now()).toLocal();
         final dateFormatted = DateFormat('dd MMM, hh:mm a', 'es').format(date);
         final pending = order.totalAmount - order.amountPaid;
@@ -542,7 +569,10 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
@@ -572,16 +602,25 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.receipt_long_rounded, size: 19, color: Color(0xFF64748B)),
+                          icon: const Icon(
+                            Icons.receipt_long_rounded,
+                            size: 19,
+                            color: Color(0xFF64748B),
+                          ),
                           tooltip: 'Imprimir',
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                           onPressed: () => widget.onPrintTicket(order),
                         ),
                         Checkbox(
                           value: isSelected,
                           activeColor: AppColors.teal,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                           onChanged: (val) => onSelect(val ?? false),
                         ),
                       ],
@@ -603,7 +642,8 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  (order.warehouseName != null && order.warehouseName!.isNotEmpty)
+                  (order.warehouseName != null &&
+                          order.warehouseName!.isNotEmpty)
                       ? order.warehouseName!
                       : 'Tienda Principal',
                   style: const TextStyle(
@@ -622,7 +662,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                       children: [
                         _buildStatusBadge(order.status),
                         const SizedBox(width: 6),
-                        _buildPaymentBadge(order.paymentStatus, order.paymentMethod, pending, orderStatus: order.status),
+                        _buildPaymentBadge(
+                          order.paymentStatus,
+                          order.paymentMethod,
+                          pending,
+                          orderStatus: order.status,
+                        ),
                       ],
                     ),
                     RichText(

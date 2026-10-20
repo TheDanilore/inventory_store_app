@@ -25,7 +25,8 @@ abstract class CustomerCreditsRepository {
   Future<void> toggleCreditStatus(String creditId, bool isActive);
 
   // Movimientos
-  Future<({List<CreditMovementEntity> items, int totalCount})> getCreditMovements({
+  Future<({List<CreditMovementEntity> items, int totalCount})>
+  getCreditMovements({
     required String creditId,
     required int limit,
     required int offset,
@@ -33,10 +34,10 @@ abstract class CustomerCreditsRepository {
     String? movementType,
   });
 
-  Future<({double totalCharged, double totalPaid, int chargeCount, int paymentCount})> getCreditMovementsTotals({
-    required String creditId,
-    String? dateFilter,
-  });
+  Future<
+    ({double totalCharged, double totalPaid, int chargeCount, int paymentCount})
+  >
+  getCreditMovementsTotals({required String creditId, String? dateFilter});
 
   Future<void> registerPayment({
     required String customerId,

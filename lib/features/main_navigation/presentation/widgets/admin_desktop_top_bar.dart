@@ -57,7 +57,9 @@ class AdminDesktopTopBar extends StatelessWidget {
             _TopBarIconButton(
               icon: Icons.arrow_back_rounded,
               tooltip: 'Volver atrás',
-              onTap: () => AppBackHandler.handleBack(context, onCustomBack: onBack),
+              onTap:
+                  () =>
+                      AppBackHandler.handleBack(context, onCustomBack: onBack),
             ),
             const SizedBox(width: 12),
             if (title.isNotEmpty) ...[

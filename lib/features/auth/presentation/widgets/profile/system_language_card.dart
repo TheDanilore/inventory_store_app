@@ -140,28 +140,38 @@ class SystemLanguageCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         onTap: () {
                           if (!isSelected) {
-                            context.read<LocaleCubit>().changeLocale(Locale(item.code));
+                            context.read<LocaleCubit>().changeLocale(
+                              Locale(item.code),
+                            );
                           }
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFFECFDF5)
-                                : const Color(0xFFF8FAFC),
+                            color:
+                                isSelected
+                                    ? const Color(0xFFECFDF5)
+                                    : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFF059669)
-                                  : const Color(0xFFE2E8F0),
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFFE2E8F0),
                               width: isSelected ? 2 : 1,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: isSelected
-                                    ? const Color(0xFF059669).withValues(alpha: 0.1)
-                                    : Colors.transparent,
+                                color:
+                                    isSelected
+                                        ? const Color(
+                                          0xFF059669,
+                                        ).withValues(alpha: 0.1)
+                                        : Colors.transparent,
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -184,9 +194,10 @@ class SystemLanguageCard extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w700,
-                                        color: isSelected
-                                            ? const Color(0xFF065F46)
-                                            : const Color(0xFF0F172A),
+                                        color:
+                                            isSelected
+                                                ? const Color(0xFF065F46)
+                                                : const Color(0xFF0F172A),
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -194,9 +205,10 @@ class SystemLanguageCard extends StatelessWidget {
                                       item.subtitle,
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: isSelected
-                                            ? const Color(0xFF059669)
-                                            : const Color(0xFF64748B),
+                                        color:
+                                            isSelected
+                                                ? const Color(0xFF059669)
+                                                : const Color(0xFF64748B),
                                         fontWeight: FontWeight.w500,
                                       ),
                                       maxLines: 1,

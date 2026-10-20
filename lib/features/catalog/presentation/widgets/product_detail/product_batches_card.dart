@@ -33,7 +33,8 @@ class ProductBatchesCard extends StatelessWidget {
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
             initiallyExpanded: initiallyExpanded,
-            collapsedIconColor: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
+            collapsedIconColor:
+                isDark ? const Color(0xFF94A3B8) : AppColors.slate,
             iconColor: isDark ? const Color(0xFF94A3B8) : AppColors.slate,
             tilePadding: const EdgeInsets.symmetric(
               horizontal: 16,

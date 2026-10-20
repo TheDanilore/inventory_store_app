@@ -95,25 +95,28 @@ class _POCardState extends State<POCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: widget.isSelected
-              ? AppColors.primary.withValues(alpha: 0.04)
-              : Colors.white,
+          color:
+              widget.isSelected
+                  ? AppColors.primary.withValues(alpha: 0.04)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.primary
-                : _isHovered
+            color:
+                widget.isSelected
+                    ? AppColors.primary
+                    : _isHovered
                     ? AppColors.primary.withValues(alpha: 0.35)
                     : AppColors.border,
             width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: widget.isSelected
-                  ? AppColors.primary.withValues(alpha: 0.08)
-                  : Colors.black.withValues(
-                      alpha: _isHovered ? 0.06 : 0.02,
-                    ),
+              color:
+                  widget.isSelected
+                      ? AppColors.primary.withValues(alpha: 0.08)
+                      : Colors.black.withValues(
+                        alpha: _isHovered ? 0.06 : 0.02,
+                      ),
               blurRadius: (widget.isSelected || _isHovered) ? 14 : 6,
               offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 3),
             ),
@@ -128,198 +131,198 @@ class _POCardState extends State<POCard> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Proveedor + Status Pill
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      po.supplierName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                        color: AppColors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _Pill(
-                    icon: _statusIcon(po.status),
-                    label: _statusLabel(po.status),
-                    color: statusColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-
-              // Subtítulo: ID y detalles
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      shortCode,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'monospace',
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '• ${po.itemCount} ${po.itemCount == 1 ? 'producto' : 'productos'}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    DateFormat('dd MMM yyyy', 'es').format(po.createdAt),
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Divider muy sutil
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              const SizedBox(height: 10),
-
-              // Base: Deuda/Pago a la izquierda, Total a la derecha
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (isCancelled)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Anulado',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.error,
+                  // Header: Proveedor + Status Pill
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          po.supplierName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    )
-                  else if (isUnpaid)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+                      const SizedBox(width: 8),
+                      _Pill(
+                        icon: _statusIcon(po.status),
+                        label: _statusLabel(po.status),
+                        color: statusColor,
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.25),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Subtítulo: ID y detalles
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          shortCode,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.pending_actions_rounded,
-                            size: 13,
-                            color: AppColors.warning,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Deuda: S/ ${debt.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFFB45309), // Warm amber dark
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (po.paymentStatus == 'PAID')
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.teal.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.teal.withValues(alpha: 0.25),
+                      const SizedBox(width: 6),
+                      Text(
+                        '• ${po.itemCount} ${po.itemCount == 1 ? 'producto' : 'productos'}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            size: 13,
-                            color: AppColors.teal,
+                      const Spacer(),
+                      Text(
+                        DateFormat('dd MMM yyyy', 'es').format(po.createdAt),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Divider muy sutil
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  const SizedBox(height: 10),
+
+                  // Base: Deuda/Pago a la izquierda, Total a la derecha
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (isCancelled)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Pagado',
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Anulado',
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.teal,
+                              color: AppColors.error,
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  else
-                    const SizedBox.shrink(),
+                        )
+                      else if (isUnpaid)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.pending_actions_rounded,
+                                size: 13,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Deuda: S/ ${debt.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFB45309), // Warm amber dark
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (po.paymentStatus == 'PAID')
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppColors.teal.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 13,
+                                color: AppColors.teal,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Pagado',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.teal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const SizedBox.shrink(),
 
-                  // Monto Total
-                  Text(
-                    'S/ ${po.totalAmount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15.5,
-                      color:
-                          isCancelled
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
-                      decoration:
-                          isCancelled ? TextDecoration.lineThrough : null,
-                    ),
+                      // Monto Total
+                      Text(
+                        'S/ ${po.totalAmount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15.5,
+                          color:
+                              isCancelled
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
+                          decoration:
+                              isCancelled ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 }
 
 class _Pill extends StatelessWidget {

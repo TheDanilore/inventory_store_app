@@ -15,6 +15,8 @@ class AuthUserModel {
   final String documentNumber;
   final String? avatarUrl;
   final bool isActive;
+  final List<String> roles;
+  final Set<String> permissions;
 
   const AuthUserModel({
     required this.id,
@@ -27,22 +29,56 @@ class AuthUserModel {
     required this.documentNumber,
     this.avatarUrl,
     required this.isActive,
+    this.roles = const [],
+    this.permissions = const {},
   });
 
-  factory AuthUserModel.fromMap(Map<String, dynamic> map, String email) {
+  factory AuthUserModel.fromMap(
+    Map<String, dynamic> map,
+    String email, {
+    List<String>? userRoles,
+    Set<String>? userPermissions,
+  }) {
+    final primaryRole = map['role']?.toString() ?? 'customer';
+
+    // Parsear lista de roles
+    final List<String> parsedRoles = [];
+    if (userRoles != null && userRoles.isNotEmpty) {
+      parsedRoles.addAll(userRoles);
+    } else if (map['roles'] is List) {
+      parsedRoles.addAll(
+        (map['roles'] as List)
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty),
+      );
+    }
+    if (!parsedRoles.contains(primaryRole)) {
+      parsedRoles.add(primaryRole);
+    }
+
+    // Parsear permisos
+    final Set<String> parsedPermissions = {};
+    if (userPermissions != null) {
+      parsedPermissions.addAll(userPermissions);
+    } else if (map['permissions'] is Iterable) {
+      parsedPermissions.addAll(
+        (map['permissions'] as Iterable).map((e) => e.toString()),
+      );
+    }
+
     return AuthUserModel(
-      // profiles.id (UUID real del perfil) — FK destino de wishlist, shopping_carts, etc.
       id: map['id']?.toString() ?? '',
-      // profiles.auth_user_id — UUID del sistema Auth de Supabase
       authUserId: map['auth_user_id']?.toString() ?? '',
       email: email,
-      role: map['role']?.toString() ?? 'customer',
+      role: primaryRole,
       fullName: map['full_name']?.toString() ?? '',
       phone: map['phone']?.toString() ?? '',
       documentType: map['document_type']?.toString() ?? 'DNI',
       documentNumber: map['document_number']?.toString() ?? '',
       avatarUrl: map['avatar_url']?.toString(),
       isActive: map['is_active'] as bool? ?? true,
+      roles: parsedRoles,
+      permissions: parsedPermissions,
     );
   }
 
@@ -58,6 +94,8 @@ class AuthUserModel {
       documentNumber: entity.documentNumber,
       avatarUrl: entity.avatarUrl,
       isActive: entity.isActive,
+      roles: entity.roles,
+      permissions: entity.permissions,
     );
   }
 
@@ -73,6 +111,8 @@ class AuthUserModel {
       documentNumber: documentNumber,
       avatarUrl: avatarUrl,
       isActive: isActive,
+      roles: roles,
+      permissions: permissions,
     );
   }
 }
@@ -83,6 +123,8 @@ extension AuthUserModelCopyWith on AuthUserModel {
     String? fullName,
     String? phone,
     String? documentNumber,
+    List<String>? roles,
+    Set<String>? permissions,
   }) {
     return AuthUserModel(
       id: id,
@@ -95,6 +137,8 @@ extension AuthUserModelCopyWith on AuthUserModel {
       documentNumber: documentNumber ?? this.documentNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isActive: isActive,
+      roles: roles ?? this.roles,
+      permissions: permissions ?? this.permissions,
     );
   }
 }

@@ -17,8 +17,12 @@ class CustomersTableView extends StatefulWidget {
   final ValueChanged<CustomerEntity> onOpenDetail;
   final ValueChanged<CustomerEntity> onEditCustomer;
   final ValueChanged<String> onWhatsApp;
-  final void Function(BuildContext context, Offset pos, CustomerEntity customer)?
-      onContextMenu;
+  final void Function(
+    BuildContext context,
+    Offset pos,
+    CustomerEntity customer,
+  )?
+  onContextMenu;
   final VoidCallback? onLoadMore;
 
   const CustomersTableView({
@@ -109,15 +113,20 @@ class _CustomersTableViewState extends State<CustomersTableView> {
           items: sortedCustomers,
           itemId: (c) => c.id,
           selectedIds: _selectedIds,
-          onSelectionChanged: (ids) => setState(() => _selectedIds
-            ..clear()
-            ..addAll(ids)),
+          onSelectionChanged:
+              (ids) => setState(
+                () =>
+                    _selectedIds
+                      ..clear()
+                      ..addAll(ids),
+              ),
           sortColumnId: _sortColumnId,
           isSortAscending: _isSortAscending,
-          onSort: (colId, asc) => setState(() {
-            _sortColumnId = colId;
-            _isSortAscending = asc;
-          }),
+          onSort:
+              (colId, asc) => setState(() {
+                _sortColumnId = colId;
+                _isSortAscending = asc;
+              }),
           minTableWidth: 960,
           margin: EdgeInsets.zero,
           onRowTap: widget.onRowTap ?? widget.onOpenDetail,
@@ -199,11 +208,12 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               cellBuilder: (context, c) {
                 if (c.documentNumber != null && c.documentNumber!.isNotEmpty) {
                   return InkWell(
-                    onTap: () => _copyToClipboard(
-                      context,
-                      c.documentNumber!,
-                      'Doc ${c.documentNumber}',
-                    ),
+                    onTap:
+                        () => _copyToClipboard(
+                          context,
+                          c.documentNumber!,
+                          'Doc ${c.documentNumber}',
+                        ),
                     borderRadius: BorderRadius.circular(4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -413,36 +423,37 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               id: 'actions',
               label: 'ACCIONES',
               fixedWidth: 105,
-              cellBuilder: (context, c) => Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (c.phone != null && c.phone!.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 15,
-                        color: Color(0xFF25D366),
+              cellBuilder:
+                  (context, c) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (c.phone != null && c.phone!.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 15,
+                            color: Color(0xFF25D366),
+                          ),
+                          tooltip: 'WhatsApp',
+                          splashRadius: 14,
+                          onPressed: () => widget.onWhatsApp(c.phone!),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 15),
+                        tooltip: 'Editar',
+                        splashRadius: 14,
+                        color: AppColors.textSecondary,
+                        onPressed: () => widget.onEditCustomer(c),
                       ),
-                      tooltip: 'WhatsApp',
-                      splashRadius: 14,
-                      onPressed: () => widget.onWhatsApp(c.phone!),
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 15),
-                    tooltip: 'Editar',
-                    splashRadius: 14,
-                    color: AppColors.textSecondary,
-                    onPressed: () => widget.onEditCustomer(c),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 15),
+                        tooltip: 'Ver Ficha',
+                        splashRadius: 14,
+                        color: AppColors.primary,
+                        onPressed: () => widget.onOpenDetail(c),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 15),
-                    tooltip: 'Ver Ficha',
-                    splashRadius: 14,
-                    color: AppColors.primary,
-                    onPressed: () => widget.onOpenDetail(c),
-                  ),
-                ],
-              ),
             ),
           ],
           // Chameleon Mobile Touch Card (<640px)
@@ -581,7 +592,10 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                               padding: EdgeInsets.zero,
                             ),
                             IconButton(
-                              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                              icon: const Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                              ),
                               color: AppColors.primary,
                               onPressed: () => widget.onOpenDetail(c),
                               constraints: const BoxConstraints(
@@ -636,9 +650,16 @@ class _CustomersTableViewState extends State<CustomersTableView> {
   }
 
   Widget _buildAvatar(CustomerEntity c, {double size = 32}) {
-    final initials = c.fullName.isNotEmpty
-        ? c.fullName.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase()
-        : '?';
+    final initials =
+        c.fullName.isNotEmpty
+            ? c.fullName
+                .trim()
+                .split(' ')
+                .map((e) => e.isNotEmpty ? e[0] : '')
+                .take(2)
+                .join()
+                .toUpperCase()
+            : '?';
 
     return Container(
       width: size,
@@ -698,11 +719,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w800,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: fg),
       ),
     );
   }

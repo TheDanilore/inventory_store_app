@@ -58,7 +58,10 @@ class ProductsMobileCommandBar extends StatelessWidget {
               focusNode: searchFocusNode,
               onChanged: cubit.setSearchTerm,
               textInputAction: TextInputAction.search,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
               decoration: InputDecoration(
                 hintText:
                     state.searchByIngredient
@@ -110,7 +113,8 @@ class ProductsMobileCommandBar extends StatelessWidget {
                         : AppColors.surface,
                 borderRadius: BorderRadius.circular(AppColors.radius),
                 border: Border.all(
-                  color: hasActiveFilters ? AppColors.primary : AppColors.border,
+                  color:
+                      hasActiveFilters ? AppColors.primary : AppColors.border,
                 ),
                 boxShadow: [
                   BoxShadow(

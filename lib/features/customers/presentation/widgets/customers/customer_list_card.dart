@@ -35,9 +35,10 @@ class _CustomerListCardState extends State<CustomerListCard> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isHovered
-                  ? AppColors.primary.withValues(alpha: 0.3)
-                  : AppColors.border,
+              color:
+                  _isHovered
+                      ? AppColors.primary.withValues(alpha: 0.3)
+                      : AppColors.border,
               width: _isHovered ? 1.2 : 1.0,
             ),
             boxShadow: AppColors.cardShadow(opacity: _isHovered ? 0.07 : 0.02),
@@ -83,7 +84,9 @@ class _CustomerListCardState extends State<CustomerListCard> {
                                   ),
                                   margin: const EdgeInsets.only(left: 8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.slateLight.withValues(alpha: 0.6),
+                                    color: AppColors.slateLight.withValues(
+                                      alpha: 0.6,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(color: AppColors.border),
                                   ),

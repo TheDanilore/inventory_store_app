@@ -155,7 +155,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(ctx).size.height * 0.75,
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -174,7 +177,11 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                       // Título y botón cerrar
                       Row(
                         children: [
-                          const Icon(Icons.person_search_rounded, color: AppColors.teal, size: 20),
+                          const Icon(
+                            Icons.person_search_rounded,
+                            color: AppColors.teal,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           const Text(
                             'Seleccionar Cliente',
@@ -218,14 +225,29 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                       const SizedBox(height: 10),
                       // Opción Cliente Varios
                       ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         leading: CircleAvatar(
                           radius: 16,
                           backgroundColor: Colors.grey.shade200,
-                          child: const Icon(Icons.person_outline_rounded, size: 18, color: Colors.grey),
+                          child: const Icon(
+                            Icons.person_outline_rounded,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
                         ),
-                        title: const Text('Cliente Varios (Venta rápida)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                        subtitle: const Text('Venta genérica sin registrar datos', style: TextStyle(fontSize: 11.5)),
+                        title: const Text(
+                          'Cliente Varios (Venta rápida)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Venta genérica sin registrar datos',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
                         onTap: () {
                           widget.onClearClient();
                           Navigator.pop(bottomSheetCtx);
@@ -234,53 +256,93 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                       const Divider(height: 1),
                       // Lista de resultados
                       Expanded(
-                        child: widget.searching
-                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.teal))
-                            : widget.matches.isEmpty
-                                ? Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.person_off_outlined, size: 36, color: Colors.grey.shade400),
-                                          const SizedBox(height: 8),
-                                          const Text('No se encontraron clientes', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    shrinkWrap: true,
-                                    itemCount: widget.matches.length,
-                                    separatorBuilder: (_, _) => const Divider(height: 1),
-                                    itemBuilder: (context, idx) {
-                                      final c = widget.matches[idx];
-                                      final name = c['full_name'] as String? ?? 'Cliente';
-                                      final doc = c['document_number'] as String?;
-                                      final wallet = (c['wallet_balance'] as num?)?.toInt() ?? 0;
-                                      return ListTile(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                        leading: CircleAvatar(
-                                          radius: 16,
-                                          backgroundColor: AppColors.teal.withValues(alpha: 0.15),
-                                          child: const Icon(Icons.person_rounded, size: 18, color: AppColors.teal),
-                                        ),
-                                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
-                                        subtitle: Text(
-                                          [
-                                            if (doc != null && doc.isNotEmpty) 'Doc: $doc',
-                                            if (widget.isLoyaltyEnabled && wallet > 0) '$wallet pts',
-                                          ].join(' • '),
-                                          style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted),
-                                        ),
-                                        onTap: () {
-                                          widget.onClientTap(c);
-                                          Navigator.pop(bottomSheetCtx);
-                                        },
-                                      );
-                                    },
+                        child:
+                            widget.searching
+                                ? const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.teal,
                                   ),
+                                )
+                                : widget.matches.isEmpty
+                                ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.person_off_outlined,
+                                          size: 36,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'No se encontraron clientes',
+                                          style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                : ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: widget.matches.length,
+                                  separatorBuilder:
+                                      (_, _) => const Divider(height: 1),
+                                  itemBuilder: (context, idx) {
+                                    final c = widget.matches[idx];
+                                    final name =
+                                        c['full_name'] as String? ?? 'Cliente';
+                                    final doc = c['document_number'] as String?;
+                                    final wallet =
+                                        (c['wallet_balance'] as num?)
+                                            ?.toInt() ??
+                                        0;
+                                    return ListTile(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      leading: CircleAvatar(
+                                        radius: 16,
+                                        backgroundColor: AppColors.teal
+                                            .withValues(alpha: 0.15),
+                                        child: const Icon(
+                                          Icons.person_rounded,
+                                          size: 18,
+                                          color: AppColors.teal,
+                                        ),
+                                      ),
+                                      title: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13.5,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        [
+                                          if (doc != null && doc.isNotEmpty)
+                                            'Doc: $doc',
+                                          if (widget.isLoyaltyEnabled &&
+                                              wallet > 0)
+                                            '$wallet pts',
+                                        ].join(' • '),
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        widget.onClientTap(c);
+                                        Navigator.pop(bottomSheetCtx);
+                                      },
+                                    );
+                                  },
+                                ),
                       ),
                       // Botón Nuevo Cliente
                       Padding(
@@ -291,11 +353,19 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
-                            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                            label: const Text('Crear Nuevo Cliente Express', style: TextStyle(fontWeight: FontWeight.bold)),
+                            icon: const Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Crear Nuevo Cliente Express',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             onPressed: () {
                               Navigator.pop(bottomSheetCtx);
                               _openCreateCustomerDialog();
@@ -318,9 +388,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
   Widget build(BuildContext context) {
     final hasClient = widget.selectedClientId != null;
     final clientName = widget.controller.text.trim();
-    final displayName = hasClient
-        ? (clientName.isNotEmpty ? clientName : 'Cliente Registrado')
-        : (clientName.isNotEmpty ? clientName : 'Cliente Varios');
+    final displayName =
+        hasClient
+            ? (clientName.isNotEmpty ? clientName : 'Cliente Registrado')
+            : (clientName.isNotEmpty ? clientName : 'Cliente Varios');
 
     return Container(
       decoration: BoxDecoration(
@@ -358,7 +429,9 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                             child: GestureDetector(
                               behavior: HitTestBehavior.translucent,
                               onTap: _closeDesktopSearch,
-                              child: const ColoredBox(color: Colors.transparent),
+                              child: const ColoredBox(
+                                color: Colors.transparent,
+                              ),
                             ),
                           ),
                           Positioned(
@@ -461,16 +534,20 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                   borderRadius: BorderRadius.circular(6),
                   onTap: widget.isCartEmpty ? null : widget.onClearCart,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.delete_outline_rounded,
                           size: 14,
-                          color: widget.isCartEmpty
-                              ? Colors.grey.shade300
-                              : AppColors.error,
+                          color:
+                              widget.isCartEmpty
+                                  ? Colors.grey.shade300
+                                  : AppColors.error,
                         ),
                         const SizedBox(width: 3),
                         Text(
@@ -478,9 +555,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: widget.isCartEmpty
-                                ? Colors.grey.shade300
-                                : AppColors.error,
+                            color:
+                                widget.isCartEmpty
+                                    ? Colors.grey.shade300
+                                    : AppColors.error,
                           ),
                         ),
                       ],
@@ -501,9 +579,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
     String displayName,
   ) {
     return Material(
-      color: hasClient
-          ? AppColors.teal.withValues(alpha: 0.07)
-          : AppColors.surface,
+      color:
+          hasClient
+              ? AppColors.teal.withValues(alpha: 0.07)
+              : AppColors.surface,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
@@ -515,9 +594,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: hasClient
-                  ? AppColors.teal.withValues(alpha: 0.35)
-                  : Colors.grey.shade300,
+              color:
+                  hasClient
+                      ? AppColors.teal.withValues(alpha: 0.35)
+                      : Colors.grey.shade300,
               width: 1,
             ),
           ),
@@ -527,15 +607,19 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: hasClient
-                      ? AppColors.teal.withValues(alpha: 0.15)
-                      : Colors.grey.shade200,
+                  color:
+                      hasClient
+                          ? AppColors.teal.withValues(alpha: 0.15)
+                          : Colors.grey.shade200,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  hasClient ? Icons.person_rounded : Icons.person_outline_rounded,
+                  hasClient
+                      ? Icons.person_rounded
+                      : Icons.person_outline_rounded,
                   size: 14,
-                  color: hasClient ? AppColors.tealDark : AppColors.textSecondary,
+                  color:
+                      hasClient ? AppColors.tealDark : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -550,13 +634,22 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: hasClient ? FontWeight.w700 : FontWeight.w600,
-                        color: hasClient ? AppColors.tealDark : AppColors.textPrimary,
+                        fontWeight:
+                            hasClient ? FontWeight.w700 : FontWeight.w600,
+                        color:
+                            hasClient
+                                ? AppColors.tealDark
+                                : AppColors.textPrimary,
                       ),
                     ),
-                    if (hasClient && widget.creditInfo != null && widget.isCredito)
+                    if (hasClient &&
+                        widget.creditInfo != null &&
+                        widget.isCredito)
                       Text(
-                        ((widget.creditInfo!['credit_limit'] as num?)?.toDouble() ?? 0) <= 0
+                        ((widget.creditInfo!['credit_limit'] as num?)
+                                        ?.toDouble() ??
+                                    0) <=
+                                0
                             ? 'Crédito: Ilimitado (∞)'
                             : 'Crédito: S/ ${(widget.creditInfo!['credit_limit'] ?? 0)}',
                         style: const TextStyle(
@@ -578,14 +671,22 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                 ),
               ),
               // Badge de puntos SOLO si el sistema está activo y cliente tiene saldo
-              if (hasClient && widget.isLoyaltyEnabled && widget.saldoActualCliente > 0) ...[
+              if (hasClient &&
+                  widget.isLoyaltyEnabled &&
+                  widget.saldoActualCliente > 0) ...[
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.amber.shade300, width: 0.8),
+                    border: Border.all(
+                      color: Colors.amber.shade300,
+                      width: 0.8,
+                    ),
                   ),
                   child: Text(
                     '${widget.saldoActualCliente} pts',
@@ -687,7 +788,6 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
     bool hasClient,
     double cardWidth,
   ) {
-
     return SizedBox(
       width: cardWidth,
       child: Material(
@@ -752,10 +852,16 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                           children: [
                             if (_searchFieldCtrl.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.cancel_rounded, size: 16),
+                                icon: const Icon(
+                                  Icons.cancel_rounded,
+                                  size: 16,
+                                ),
                                 color: AppColors.textMuted,
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
                                 tooltip: 'Borrar texto',
                                 onPressed: () {
                                   _searchFieldCtrl.clear();
@@ -768,7 +874,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                                 icon: const Icon(Icons.close_rounded, size: 16),
                                 color: AppColors.textMuted,
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                constraints: const BoxConstraints(
+                                  minWidth: 28,
+                                  minHeight: 28,
+                                ),
                                 tooltip: 'Cerrar (Esc)',
                                 onPressed: _closeDesktopSearch,
                               ),
@@ -798,7 +907,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                           _closeDesktopSearch();
                         },
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
                               Container(
@@ -870,14 +982,20 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: widget.matches.length,
-                          separatorBuilder: (_, _) => const Divider(height: 1, color: AppColors.divider),
+                          separatorBuilder:
+                              (_, _) => const Divider(
+                                height: 1,
+                                color: AppColors.divider,
+                              ),
                           itemBuilder: (context, index) {
                             final c = widget.matches[index];
                             final name = c['full_name'] as String? ?? 'Cliente';
                             final doc = c['document_number'] as String?;
                             final phone = c['phone'] as String?;
-                            final wallet = (c['wallet_balance'] as num?)?.toInt() ?? 0;
-                            final isSelected = c['id'] == widget.selectedClientId;
+                            final wallet =
+                                (c['wallet_balance'] as num?)?.toInt() ?? 0;
+                            final isSelected =
+                                c['id'] == widget.selectedClientId;
 
                             return InkWell(
                               onTap: () {
@@ -885,42 +1003,60 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                                 _closeDesktopSearch();
                               },
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 child: Row(
                                   children: [
                                     Container(
                                       width: 28,
                                       height: 28,
                                       decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? AppColors.teal
-                                            : AppColors.teal.withValues(alpha: 0.1),
+                                        color:
+                                            isSelected
+                                                ? AppColors.teal
+                                                : AppColors.teal.withValues(
+                                                  alpha: 0.1,
+                                                ),
                                         borderRadius: BorderRadius.circular(7),
                                       ),
                                       child: Icon(
                                         Icons.person_rounded,
                                         size: 16,
-                                        color: isSelected ? Colors.white : AppColors.teal,
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : AppColors.teal,
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             name,
                                             style: TextStyle(
                                               fontSize: 12.5,
-                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                              fontWeight:
+                                                  isSelected
+                                                      ? FontWeight.w800
+                                                      : FontWeight.w600,
                                               color: AppColors.textPrimary,
                                             ),
                                           ),
                                           Text(
                                             [
-                                              if (doc != null && doc.isNotEmpty) 'Doc: $doc',
-                                              if (phone != null && phone.isNotEmpty) 'Tel: $phone',
-                                              if (widget.isLoyaltyEnabled && wallet > 0) '$wallet pts',
+                                              if (doc != null && doc.isNotEmpty)
+                                                'Doc: $doc',
+                                              if (phone != null &&
+                                                  phone.isNotEmpty)
+                                                'Tel: $phone',
+                                              if (widget.isLoyaltyEnabled &&
+                                                  wallet > 0)
+                                                '$wallet pts',
                                             ].join(' • '),
                                             style: const TextStyle(
                                               fontSize: 10.5,
@@ -965,9 +1101,13 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                               ),
                               TextButton(
                                 style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   backgroundColor: AppColors.primary,
                                   foregroundColor: Colors.white,
                                 ),
@@ -975,7 +1115,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                                   final q = _searchFieldCtrl.text.trim();
                                   _openCreateCustomerDialog(q);
                                 },
-                                child: const Text('Crear', style: TextStyle(fontSize: 11.5)),
+                                child: const Text(
+                                  'Crear',
+                                  style: TextStyle(fontSize: 11.5),
+                                ),
                               ),
                             ],
                           ),
@@ -987,10 +1130,15 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
 
               // Pie del popover con atajo y botón nuevo
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(11)),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(11),
+                  ),
                   border: Border(top: BorderSide(color: Colors.grey.shade200)),
                 ),
                 child: Row(
@@ -998,17 +1146,26 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                   children: [
                     Text(
                       'Atajo: Alt+A para nuevo',
-                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () => _openCreateCustomerDialog(),
                       icon: const Icon(Icons.add_rounded, size: 14),
                       label: const Text(
                         'Nuevo cliente',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),

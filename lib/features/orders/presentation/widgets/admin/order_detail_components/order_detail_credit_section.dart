@@ -38,17 +38,26 @@ class OrderDetailCreditSection extends StatelessWidget {
     final limit = (creditInfo!['credit_limit'] as num).toDouble();
     final isUnlimited = limit <= 0;
     final debt = (creditInfo!['current_debt'] as num).toDouble();
-    final available = isUnlimited ? double.infinity : (limit - debt).clamp(0.0, double.infinity);
+    final available =
+        isUnlimited
+            ? double.infinity
+            : (limit - debt).clamp(0.0, double.infinity);
 
     return OrderDetailSectionCard(
       title: 'Línea de Crédito',
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
+          color:
+              isActive
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isActive ? AppColors.success.withValues(alpha: 0.25) : AppColors.error.withValues(alpha: 0.25),
+            color:
+                isActive
+                    ? AppColors.success.withValues(alpha: 0.25)
+                    : AppColors.error.withValues(alpha: 0.25),
           ),
         ),
         child: Text(
@@ -65,7 +74,10 @@ class OrderDetailCreditSection extends StatelessWidget {
           Expanded(
             child: _CreditStatCell(
               label: 'Límite Global',
-              value: isUnlimited ? 'Sin límite (∞)' : 'S/ ${limit.toStringAsFixed(2)}',
+              value:
+                  isUnlimited
+                      ? 'Sin límite (∞)'
+                      : 'S/ ${limit.toStringAsFixed(2)}',
               icon: Icons.account_balance_wallet_outlined,
             ),
           ),
@@ -83,8 +95,14 @@ class OrderDetailCreditSection extends StatelessWidget {
           Expanded(
             child: _CreditStatCell(
               label: 'Disponible',
-              value: isUnlimited ? 'Ilimitado' : 'S/ ${available.toStringAsFixed(2)}',
-              valueColor: (isUnlimited || available > 0) ? AppColors.teal : AppColors.textMuted,
+              value:
+                  isUnlimited
+                      ? 'Ilimitado'
+                      : 'S/ ${available.toStringAsFixed(2)}',
+              valueColor:
+                  (isUnlimited || available > 0)
+                      ? AppColors.teal
+                      : AppColors.textMuted,
               icon: Icons.check_circle_outline_rounded,
             ),
           ),

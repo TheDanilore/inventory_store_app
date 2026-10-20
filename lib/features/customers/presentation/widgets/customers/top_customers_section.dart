@@ -84,8 +84,7 @@ class TopCustomersSection extends StatelessWidget {
                     ),
                     const Spacer(),
                     TextButton(
-                      onPressed:
-                          () => context.go('/customers/top-customers'),
+                      onPressed: () => context.go('/customers/top-customers'),
                       child: const Text('Ver todos'),
                     ),
                   ],
@@ -121,26 +120,45 @@ class TopCustomersSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dangerLight,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.danger,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'No se pudo cargar el ranking de compradores: ${state.message}',
-                    style: const TextStyle(fontSize: 12.5, color: AppColors.danger),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: AppColors.danger,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: () => context.read<TopCustomersCubit>().loadTopCustomers(),
-                  icon: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.danger),
+                  onPressed:
+                      () =>
+                          context.read<TopCustomersCubit>().loadTopCustomers(),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 16,
+                    color: AppColors.danger,
+                  ),
                   label: const Text(
                     'Reintentar',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.danger),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.danger,
+                    ),
                   ),
                 ),
               ],

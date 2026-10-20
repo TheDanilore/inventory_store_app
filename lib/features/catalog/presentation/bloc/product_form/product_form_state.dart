@@ -162,7 +162,8 @@ class ProductFormState extends Equatable {
           batchManagementEnabled ?? this.batchManagementEnabled,
       ingredientsEnabled: ingredientsEnabled ?? this.ingredientsEnabled,
       hasMultipleVariants: hasMultipleVariants ?? this.hasMultipleVariants,
-      isActive: isActive ??
+      isActive:
+          isActive ??
           (publicationStatus != null
               ? publicationStatus == 'active'
               : this.isActive),

@@ -136,7 +136,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                     fontSize: 12.5,
                     letterSpacing: 0.6,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    color:
+                        isDark
+                            ? const Color(0xFFE2E8F0)
+                            : const Color(0xFF1E293B),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -202,7 +205,8 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                 fontSize: 12.5,
                 letterSpacing: 0.6,
                 fontWeight: FontWeight.w800,
-                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                color:
+                    isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
               ),
             ),
             const SizedBox(height: 8),
@@ -210,7 +214,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  color:
+                      isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFCBD5E1),
                 ),
                 color: isDark ? const Color(0xFF0F172A) : Colors.white,
               ),
@@ -218,20 +225,25 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                 children: [
                   // Prefijo de Dominio tienda.com/productos/ (Imagen 5)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E293B)
-                          : const Color(0xFFF1F5F9),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(11),
                         bottomLeft: Radius.circular(11),
                       ),
                       border: Border(
                         right: BorderSide(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFCBD5E1),
+                          color:
+                              isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFCBD5E1),
                         ),
                       ),
                     ),
@@ -240,9 +252,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF64748B),
+                        color:
+                            isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                       ),
                     ),
                   ),
@@ -292,12 +305,15 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 500;
 
-                final categoryField =
-                    BlocBuilder<ProductFormCubit, ProductFormState>(
-                  buildWhen: (p, c) =>
-                      p.isLoadingCategories != c.isLoadingCategories ||
-                      p.categories != c.categories ||
-                      p.selectedCategoryId != c.selectedCategoryId,
+                final categoryField = BlocBuilder<
+                  ProductFormCubit,
+                  ProductFormState
+                >(
+                  buildWhen:
+                      (p, c) =>
+                          p.isLoadingCategories != c.isLoadingCategories ||
+                          p.categories != c.categories ||
+                          p.selectedCategoryId != c.selectedCategoryId,
                   builder: (context, state) {
                     if (state.isLoadingCategories) {
                       return const Center(
@@ -321,14 +337,21 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                       initialValue: effectiveCategoryId,
                       decoration: InputDecoration(
                         labelText: 'Categoría',
-                        prefixIcon: const Icon(Icons.category_outlined, size: 20),
+                        prefixIcon: const Icon(
+                          Icons.category_outlined,
+                          size: 20,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFCBD5E1),
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFCBD5E1),
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -354,63 +377,71 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
 
                 final brandField =
                     BlocBuilder<ProductFormCubit, ProductFormState>(
-                  buildWhen: (p, c) =>
-                      p.isLoadingBrands != c.isLoadingBrands ||
-                      p.brands != c.brands ||
-                      p.selectedBrandId != c.selectedBrandId,
-                  builder: (context, state) {
-                    if (state.isLoadingBrands) {
-                      return const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      );
-                    }
-                    final hasMatchingBrand = state.brands.any(
-                      (brand) => brand.id == state.selectedBrandId,
-                    );
-                    final effectiveBrandId =
-                        hasMatchingBrand ? state.selectedBrandId : null;
+                      buildWhen:
+                          (p, c) =>
+                              p.isLoadingBrands != c.isLoadingBrands ||
+                              p.brands != c.brands ||
+                              p.selectedBrandId != c.selectedBrandId,
+                      builder: (context, state) {
+                        if (state.isLoadingBrands) {
+                          return const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          );
+                        }
+                        final hasMatchingBrand = state.brands.any(
+                          (brand) => brand.id == state.selectedBrandId,
+                        );
+                        final effectiveBrandId =
+                            hasMatchingBrand ? state.selectedBrandId : null;
 
-                    return DropdownButtonFormField<String?>(
-                      key: ValueKey(
-                        'brand_${effectiveBrandId}_${state.brands.length}',
-                      ),
-                      initialValue: effectiveBrandId,
-                      decoration: InputDecoration(
-                        labelText: 'Marca / Fabricante',
-                        prefixIcon: const Icon(Icons.verified_outlined, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Sin marca'),
-                        ),
-                        ...state.brands.map(
-                          (brand) => DropdownMenuItem<String?>(
-                            value: brand.id,
-                            child: Text(brand.name),
+                        return DropdownButtonFormField<String?>(
+                          key: ValueKey(
+                            'brand_${effectiveBrandId}_${state.brands.length}',
                           ),
-                        ),
-                      ],
-                      onChanged: cubit.setSelectedBrand,
+                          initialValue: effectiveBrandId,
+                          decoration: InputDecoration(
+                            labelText: 'Marca / Fabricante',
+                            prefixIcon: const Icon(
+                              Icons.verified_outlined,
+                              size: 20,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFCBD5E1),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFCBD5E1),
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Sin marca'),
+                            ),
+                            ...state.brands.map(
+                              (brand) => DropdownMenuItem<String?>(
+                                value: brand.id,
+                                child: Text(brand.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: cubit.setSelectedBrand,
+                        );
+                      },
                     );
-                  },
-                );
 
                 if (isWide) {
                   return Row(
@@ -444,7 +475,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                     fontSize: 12.5,
                     letterSpacing: 0.6,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                    color:
+                        isDark
+                            ? const Color(0xFFE2E8F0)
+                            : const Color(0xFF1E293B),
                   ),
                 ),
                 Text(
@@ -452,7 +486,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
                   ),
                 ),
               ],
@@ -464,7 +501,10 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  color:
+                      isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFCBD5E1),
                 ),
                 color: isDark ? const Color(0xFF0F172A) : Colors.white,
               ),
@@ -472,20 +512,25 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                 children: [
                   // Toolbar de formato según Imagen 5: B, I, U, |, Listas, |, Link, Clear
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF1E293B)
-                          : const Color(0xFFF8FAFC),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(13),
                         topRight: Radius.circular(13),
                       ),
                       border: Border(
                         bottom: BorderSide(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFCBD5E1),
+                          color:
+                              isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFCBD5E1),
                         ),
                       ),
                     ),
@@ -599,7 +644,8 @@ class _ToolbarButton extends StatelessWidget {
               fontSize: 13.5,
               fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
               fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
-              decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+              decoration:
+                  isUnderline ? TextDecoration.underline : TextDecoration.none,
               color: const Color(0xFF475569),
             ),
           ),

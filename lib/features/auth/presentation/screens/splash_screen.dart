@@ -87,9 +87,10 @@ class _SplashScreenState extends State<SplashScreen> {
                       vertical: 20.0,
                     ),
                     child: BlocBuilder<AuthCubit, AuthState>(
-                      buildWhen: (prev, curr) =>
-                          prev.authStatus != curr.authStatus ||
-                          prev.errorMessage != curr.errorMessage,
+                      buildWhen:
+                          (prev, curr) =>
+                              prev.authStatus != curr.authStatus ||
+                              prev.errorMessage != curr.errorMessage,
                       builder: (context, state) {
                         return Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -208,4 +209,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-

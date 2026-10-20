@@ -7,11 +7,7 @@ class ProductSeoSection extends StatefulWidget {
   final TextEditingController? nombreCtrl;
   final TextEditingController? descCtrl;
 
-  const ProductSeoSection({
-    super.key,
-    this.nombreCtrl,
-    this.descCtrl,
-  });
+  const ProductSeoSection({super.key, this.nombreCtrl, this.descCtrl});
 
   @override
   State<ProductSeoSection> createState() => _ProductSeoSectionState();
@@ -51,8 +47,9 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocConsumer<ProductFormCubit, ProductFormState>(
-      listenWhen: (p, c) =>
-          p.seoTitle != c.seoTitle || p.seoDescription != c.seoDescription,
+      listenWhen:
+          (p, c) =>
+              p.seoTitle != c.seoTitle || p.seoDescription != c.seoDescription,
       listener: (context, state) {
         if (_titleCtrl.text != state.seoTitle) {
           _titleCtrl.text = state.seoTitle;
@@ -61,25 +58,29 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
           _descCtrl.text = state.seoDescription;
         }
       },
-      buildWhen: (p, c) =>
-          p.slug != c.slug ||
-          p.seoTitle != c.seoTitle ||
-          p.seoDescription != c.seoDescription,
+      buildWhen:
+          (p, c) =>
+              p.slug != c.slug ||
+              p.seoTitle != c.seoTitle ||
+              p.seoDescription != c.seoDescription,
       builder: (context, state) {
-        final slug = state.slug.isNotEmpty ? state.slug : 'audifonos-nova-pro-wireless';
+        final slug =
+            state.slug.isNotEmpty ? state.slug : 'audifonos-nova-pro-wireless';
         final fallbackName = widget.nombreCtrl?.text.trim() ?? '';
-        final displayTitle = state.seoTitle.isNotEmpty
-            ? state.seoTitle
-            : (fallbackName.isNotEmpty
-                ? '$fallbackName | Tienda Oficial'
-                : 'Audífonos Nova Pro Wireless | Tienda Oficial Aura');
+        final displayTitle =
+            state.seoTitle.isNotEmpty
+                ? state.seoTitle
+                : (fallbackName.isNotEmpty
+                    ? '$fallbackName | Tienda Oficial'
+                    : 'Audífonos Nova Pro Wireless | Tienda Oficial Aura');
 
         final fallbackDesc = widget.descCtrl?.text.trim() ?? '';
-        final displayDesc = state.seoDescription.isNotEmpty
-            ? state.seoDescription
-            : (fallbackDesc.isNotEmpty
-                ? fallbackDesc
-                : 'Audífonos inalámbricos de alta definición con cancelación activa de ruido (ANC) híbrida y hasta 55 horas de batería continua.');
+        final displayDesc =
+            state.seoDescription.isNotEmpty
+                ? state.seoDescription
+                : (fallbackDesc.isNotEmpty
+                    ? fallbackDesc
+                    : 'Audífonos inalámbricos de alta definición con cancelación activa de ruido (ANC) híbrida y hasta 55 horas de batería continua.');
 
         return Container(
           width: double.infinity,
@@ -109,7 +110,10 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                   fontSize: 13,
                   letterSpacing: 0.8,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                  color:
+                      isDark
+                          ? const Color(0xFFE2E8F0)
+                          : const Color(0xFF1E293B),
                 ),
               ),
               const SizedBox(height: 4),
@@ -117,7 +121,10 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                 'Personaliza la forma en que los motores de búsqueda como Google indexan esta ficha.',
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  color:
+                      isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
                 ),
               ),
               const SizedBox(height: 18),
@@ -127,10 +134,16 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  color:
+                      isDark
+                          ? const Color(0xFF0F172A)
+                          : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                    color:
+                        isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Column(
@@ -142,7 +155,10 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.7,
-                        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                        color:
+                            isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -177,7 +193,10 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                       style: TextStyle(
                         fontSize: 12.5,
                         height: 1.4,
-                        color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                        color:
+                            isDark
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF475569),
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -205,9 +224,12 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
-                      color: _titleCtrl.text.length > 70
-                          ? Colors.red
-                          : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                      color:
+                          _titleCtrl.text.length > 70
+                              ? Colors.red
+                              : (isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B)),
                     ),
                   ),
                 ],
@@ -218,19 +240,28 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                 style: const TextStyle(fontSize: 13.5),
                 decoration: InputDecoration(
                   hintText: 'Ingresa un título optimizado para buscadores',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   filled: true,
                   fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      color:
+                          isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      color:
+                          isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFCBD5E1),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -262,9 +293,12 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
-                      color: _descCtrl.text.length > 160
-                          ? Colors.red
-                          : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                      color:
+                          _descCtrl.text.length > 160
+                              ? Colors.red
+                              : (isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B)),
                     ),
                   ),
                 ],
@@ -275,20 +309,30 @@ class _ProductSeoSectionState extends State<ProductSeoSection> {
                 maxLines: 3,
                 style: const TextStyle(fontSize: 13.5),
                 decoration: InputDecoration(
-                  hintText: 'Breve resumen persuasivo que aparecerá en los resultados de búsqueda',
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  hintText:
+                      'Breve resumen persuasivo que aparecerá en los resultados de búsqueda',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   filled: true,
                   fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      color:
+                          isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFCBD5E1),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      color:
+                          isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFCBD5E1),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(

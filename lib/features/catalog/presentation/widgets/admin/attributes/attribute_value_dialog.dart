@@ -32,11 +32,12 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     final rawText = _valueCtrl.text.trim();
-    final values = rawText
-        .split(',')
-        .map((v) => v.trim())
-        .where((v) => v.isNotEmpty)
-        .toList();
+    final values =
+        rawText
+            .split(',')
+            .map((v) => v.trim())
+            .where((v) => v.isNotEmpty)
+            .toList();
     if (values.isEmpty) return;
 
     final cubit = context.read<AttributesCubit>();
@@ -125,7 +126,10 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.5,
+                  ),
                 ),
               ),
               validator: (val) {
@@ -154,7 +158,10 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   child: const Text(
                     'Cancelar',
@@ -169,22 +176,26 @@ class _AttributeValueDialogState extends State<AttributeValueDialog> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                   ),
                   onPressed: isSaving ? null : _save,
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                  child:
+                      isSaving
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : const Text(
+                            'Añadir',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        )
-                      : const Text(
-                          'Añadir',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
                 ),
               ],
             );

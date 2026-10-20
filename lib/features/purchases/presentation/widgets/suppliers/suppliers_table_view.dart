@@ -76,10 +76,14 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
           cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
           break;
         case 'contact':
-          cmp = (a.contactName ?? '').toLowerCase().compareTo((b.contactName ?? '').toLowerCase());
+          cmp = (a.contactName ?? '').toLowerCase().compareTo(
+            (b.contactName ?? '').toLowerCase(),
+          );
           break;
         case 'address':
-          cmp = (a.address ?? '').toLowerCase().compareTo((b.address ?? '').toLowerCase());
+          cmp = (a.address ?? '').toLowerCase().compareTo(
+            (b.address ?? '').toLowerCase(),
+          );
           break;
         case 'status':
           cmp = (a.isActive ? 1 : 0).compareTo(b.isActive ? 1 : 0);
@@ -124,7 +128,11 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             final text = selectedItems
                 .map((s) => '${s.name} (RUC: ${s.taxId ?? "—"})')
                 .join('\n');
-            _copyToClipboard(context, text, '${selectedItems.length} proveedores');
+            _copyToClipboard(
+              context,
+              text,
+              '${selectedItems.length} proveedores',
+            );
           },
         ),
         AdminBulkAction<SupplierEntity>(
@@ -136,7 +144,8 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
             }
             AppSnackbar.show(
               context,
-              message: 'Se actualizó el estado de ${selectedItems.length} proveedores',
+              message:
+                  'Se actualizó el estado de ${selectedItems.length} proveedores',
               type: SnackbarType.info,
             );
           },
@@ -156,9 +165,10 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: supplier.isActive
-                        ? AppColors.tealLight
-                        : Colors.grey.shade100,
+                    color:
+                        supplier.isActive
+                            ? AppColors.tealLight
+                            : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   alignment: Alignment.center,
@@ -167,9 +177,10 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         ? supplier.name.substring(0, 1).toUpperCase()
                         : 'P',
                     style: TextStyle(
-                      color: supplier.isActive
-                          ? AppColors.tealDark
-                          : Colors.grey.shade600,
+                      color:
+                          supplier.isActive
+                              ? AppColors.tealDark
+                              : Colors.grey.shade600,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
@@ -186,12 +197,14 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
-                          color: supplier.isActive
-                              ? AppColors.textPrimary
-                              : AppColors.textMuted,
-                          decoration: supplier.isActive
-                              ? null
-                              : TextDecoration.lineThrough,
+                          color:
+                              supplier.isActive
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                          decoration:
+                              supplier.isActive
+                                  ? null
+                                  : TextDecoration.lineThrough,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -199,11 +212,12 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                       const SizedBox(height: 2),
                       if (supplier.taxId != null && supplier.taxId!.isNotEmpty)
                         InkWell(
-                          onTap: () => _copyToClipboard(
-                            context,
-                            supplier.taxId!,
-                            'RUC',
-                          ),
+                          onTap:
+                              () => _copyToClipboard(
+                                context,
+                                supplier.taxId!,
+                                'RUC',
+                              ),
                           borderRadius: BorderRadius.circular(4),
                           child: Text(
                             'RUC ${supplier.taxId}',
@@ -238,7 +252,8 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
           flex: 3,
           isSortable: true,
           cellBuilder: (context, supplier) {
-            if (supplier.contactName != null && supplier.contactName!.isNotEmpty) {
+            if (supplier.contactName != null &&
+                supplier.contactName!.isNotEmpty) {
               return Row(
                 children: [
                   const Icon(
@@ -331,12 +346,14 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
           flex: 4,
           isSortable: true,
           cellBuilder: (context, supplier) {
-            final hasAddress = supplier.address != null && supplier.address!.isNotEmpty;
+            final hasAddress =
+                supplier.address != null && supplier.address!.isNotEmpty;
             return Text(
               hasAddress ? supplier.address! : '—',
               style: TextStyle(
                 fontSize: 11.5,
-                color: hasAddress ? AppColors.textSecondary : AppColors.textMuted,
+                color:
+                    hasAddress ? AppColors.textSecondary : AppColors.textMuted,
                 fontWeight: hasAddress ? FontWeight.normal : FontWeight.w600,
               ),
               maxLines: 1,
@@ -358,16 +375,21 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                 onTap: () => widget.onToggleStatus(supplier),
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: supplier.isActive
-                        ? AppColors.successLight
-                        : const Color(0xFFF1F5F9),
+                    color:
+                        supplier.isActive
+                            ? AppColors.successLight
+                            : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: supplier.isActive
-                          ? AppColors.success.withValues(alpha: 0.3)
-                          : const Color(0xFFE2E8F0),
+                      color:
+                          supplier.isActive
+                              ? AppColors.success.withValues(alpha: 0.3)
+                              : const Color(0xFFE2E8F0),
                     ),
                   ),
                   child: Row(
@@ -378,9 +400,10 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         height: 6,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: supplier.isActive
-                              ? AppColors.success
-                              : AppColors.textMuted,
+                          color:
+                              supplier.isActive
+                                  ? AppColors.success
+                                  : AppColors.textMuted,
                         ),
                       ),
                       const SizedBox(width: 5),
@@ -389,9 +412,10 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: supplier.isActive
-                              ? AppColors.successDark
-                              : AppColors.textSecondary,
+                          color:
+                              supplier.isActive
+                                  ? AppColors.successDark
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -417,15 +441,15 @@ class _SuppliersTableViewState extends State<SuppliersTableView> {
                 icon: const Icon(Icons.edit_outlined, size: 13),
                 label: const Text(
                   'Editar',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
                   side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   visualDensity: VisualDensity.compact,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),

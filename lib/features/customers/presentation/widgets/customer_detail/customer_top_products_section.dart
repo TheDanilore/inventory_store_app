@@ -141,15 +141,16 @@ class _Thumb extends StatelessWidget {
           Positioned.fill(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: (url == null || url!.isEmpty)
-                  ? fallback
-                  : CachedNetworkImage(
-                      imageUrl: url!,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 160,
-                      placeholder: (_, _) => fallback,
-                      errorWidget: (_, _, _) => fallback,
-                    ),
+              child:
+                  (url == null || url!.isEmpty)
+                      ? fallback
+                      : CachedNetworkImage(
+                        imageUrl: url!,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 160,
+                        placeholder: (_, _) => fallback,
+                        errorWidget: (_, _, _) => fallback,
+                      ),
             ),
           ),
           Positioned(

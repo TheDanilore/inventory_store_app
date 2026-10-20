@@ -491,6 +491,11 @@ import '../../features/purchases/presentation/bloc/supplier_credits/supplier_cre
     as _i54;
 import '../../features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart'
     as _i431;
+import '../../features/roles/data/repositories_impl/roles_repository_impl.dart'
+    as _i337;
+import '../../features/roles/domain/repositories/roles_repository.dart'
+    as _i1024;
+import '../../features/roles/presentation/bloc/roles_cubit.dart' as _i629;
 import '../../features/users/data/repositories_impl/users_repository_impl.dart'
     as _i960;
 import '../../features/users/domain/repositories/users_repository.dart'
@@ -576,6 +581,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i561.AccountMovementsRepository>(
       () => _i802.AccountMovementsRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i1024.RolesRepository>(
+      () => _i337.RolesRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i862.TransferFundsUseCase>(
       () => _i862.TransferFundsUseCase(
@@ -1214,6 +1222,9 @@ extension GetItInjectableX on _i174.GetIt {
         registerSupplierPaymentUseCase:
             gh<_i955.RegisterSupplierPaymentUseCase>(),
       ),
+    );
+    gh.factory<_i629.RolesCubit>(
+      () => _i629.RolesCubit(gh<_i1024.RolesRepository>()),
     );
     gh.factory<_i970.GetAccountMovementTotalsUseCase>(
       () => _i970.GetAccountMovementTotalsUseCase(

@@ -26,10 +26,26 @@ class ProductTopSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final (statusLabel, statusColor, statusBg) =
         !isActive
-            ? ('No disponible', isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary, isDark ? AppColors.darkSurfaceElevated : AppColors.slateLight)
+            ? (
+              'No disponible',
+              isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
+              isDark ? AppColors.darkSurfaceElevated : AppColors.slateLight,
+            )
             : effectiveStock > 0
-            ? ('En stock', AppColors.success, isDark ? AppColors.success.withValues(alpha: 0.15) : AppColors.successLight)
-            : ('Agotado', AppColors.danger, isDark ? AppColors.danger.withValues(alpha: 0.15) : AppColors.dangerLight);
+            ? (
+              'En stock',
+              AppColors.success,
+              isDark
+                  ? AppColors.success.withValues(alpha: 0.15)
+                  : AppColors.successLight,
+            )
+            : (
+              'Agotado',
+              AppColors.danger,
+              isDark
+                  ? AppColors.danger.withValues(alpha: 0.15)
+                  : AppColors.dangerLight,
+            );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +141,8 @@ class ProductTopSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
+                  color:
+                      isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 ),
               ),
               const SizedBox(width: 4),

@@ -75,16 +75,17 @@ class KardexKpiStrip extends StatelessWidget {
 
         if (isDesktop) {
           return Row(
-            children: items
-                .map(
-                  (item) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: item,
-                    ),
-                  ),
-                )
-                .toList(),
+            children:
+                items
+                    .map(
+                      (item) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: item,
+                        ),
+                      ),
+                    )
+                    .toList(),
           );
         }
 
@@ -92,14 +93,15 @@ class KardexKpiStrip extends StatelessWidget {
           return Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: items
-                .map(
-                  (item) => SizedBox(
-                    width: (constraints.maxWidth - 24) / 2,
-                    child: item,
-                  ),
-                )
-                .toList(),
+            children:
+                items
+                    .map(
+                      (item) => SizedBox(
+                        width: (constraints.maxWidth - 24) / 2,
+                        child: item,
+                      ),
+                    )
+                    .toList(),
           );
         }
 
@@ -181,9 +183,10 @@ class _KpiItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: color == AppColors.primary
-                        ? AppColors.textPrimary
-                        : color,
+                    color:
+                        color == AppColors.primary
+                            ? AppColors.textPrimary
+                            : color,
                     letterSpacing: -0.3,
                   ),
                   maxLines: 1,

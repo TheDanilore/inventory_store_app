@@ -103,9 +103,7 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                  ),
+                                  border: Border.all(color: AppColors.border),
                                 ),
                                 child: const Text(
                                   'Ctrl K',
@@ -263,7 +261,10 @@ class OrdersFiltersHeaderDelegate extends SliverPersistentHeaderDelegate {
                                     color: AppColors.teal,
                                   ),
                                   SizedBox(width: 8),
-                                  Text('Pagados', style: TextStyle(fontSize: 13)),
+                                  Text(
+                                    'Pagados',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
                                 ],
                               ),
                             ),

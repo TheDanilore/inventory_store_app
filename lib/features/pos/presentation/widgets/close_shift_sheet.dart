@@ -47,7 +47,10 @@ class CloseShiftSheet {
       builder:
           (_) => BlocProvider.value(
             value: cashShiftsCubit,
-            child: _CloseShiftContent(shift: shift, expectedAmount: expectedAmount),
+            child: _CloseShiftContent(
+              shift: shift,
+              expectedAmount: expectedAmount,
+            ),
           ),
     );
   }
@@ -294,8 +297,12 @@ class _CloseShiftContentState extends State<_CloseShiftContent> {
               maxLength: 250,
               textCapitalization: TextCapitalization.sentences,
               buildCounter:
-                  (_, {required currentLength, required isFocused, maxLength}) =>
-                      null,
+                  (
+                    _, {
+                    required currentLength,
+                    required isFocused,
+                    maxLength,
+                  }) => null,
               decoration: InputDecoration(
                 hintText: 'Ej. Faltante por pago de pasajes...',
                 isDense: true,

@@ -693,7 +693,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                   icon: Icons.barcode_reader,
                                   hintText: 'Ej: 7751234567890',
                                   suffixIcon: Tooltip(
-                                    message: 'Escanear código con cámara o pistola',
+                                    message:
+                                        'Escanear código con cámara o pistola',
                                     child: IconButton(
                                       icon: const Icon(
                                         Icons.qr_code_scanner_rounded,
@@ -702,12 +703,11 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                       ),
                                       onPressed: () async {
                                         final code =
-                                            await PosCameraScannerDialog
-                                                .showForRawCode(
-                                                  context,
-                                                  title:
-                                                      'Escanear Código de Variante',
-                                                );
+                                            await PosCameraScannerDialog.showForRawCode(
+                                              context,
+                                              title:
+                                                  'Escanear Código de Variante',
+                                            );
                                         if (code != null && code.isNotEmpty) {
                                           barcodeCtrl.text = code;
                                           _onFieldChanged();
@@ -729,7 +729,8 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                             icon: Icons.warning_amber_rounded,
                             keyboardType: TextInputType.number,
                             hintText: 'Ej: 5',
-                            helperText: 'Alerta de stock bajo para esta variante',
+                            helperText:
+                                'Alerta de stock bajo para esta variante',
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                             ],

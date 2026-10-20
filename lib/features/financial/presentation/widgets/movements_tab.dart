@@ -522,7 +522,8 @@ class _MovementsTabState extends State<MovementsTab> {
                               Expanded(
                                 child: LayoutBuilder(
                                   builder: (context, constraints) {
-                                    final isDesktop = constraints.maxWidth >= 720;
+                                    final isDesktop =
+                                        constraints.maxWidth >= 720;
                                     if (isDesktop) {
                                       return _MovementsDesktopTable(
                                         movements: movements,
@@ -543,7 +544,8 @@ class _MovementsTabState extends State<MovementsTab> {
                                           ),
                                           itemCount: movements.length,
                                           separatorBuilder:
-                                              (_, _) => const SizedBox(height: 8),
+                                              (_, _) =>
+                                                  const SizedBox(height: 8),
                                           itemBuilder:
                                               (_, i) =>
                                                   AnimationConfiguration.staggeredList(
@@ -555,7 +557,8 @@ class _MovementsTabState extends State<MovementsTab> {
                                                       verticalOffset: 30.0,
                                                       child: FadeInAnimation(
                                                         child: _MovementCard(
-                                                          movement: movements[i],
+                                                          movement:
+                                                              movements[i],
                                                         ),
                                                       ),
                                                     ),
@@ -820,111 +823,109 @@ class _MovementCardState extends State<_MovementCard> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(
-                alpha: _isHovered ? 0.06 : 0.025,
-              ),
+              color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.025),
               blurRadius: _isHovered ? 14 : 6,
               offset: Offset(0, _isHovered ? 4 : 2),
             ),
           ],
         ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    movement.description,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.account_balance_wallet_rounded,
-                        size: 12,
-                        color: AppColors.textSecondary.withValues(alpha: 0.8),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      movement.description,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
                       ),
-                      Flexible(
-                        child: Text(
-                          movement.accountName ?? 'Sin cuenta',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet_rounded,
+                          size: 12,
+                          color: AppColors.textSecondary.withValues(alpha: 0.8),
+                        ),
+                        Flexible(
+                          child: Text(
+                            movement.accountName ?? 'Sin cuenta',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: AppColors.textSecondary.withValues(alpha: 0.8),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat(
+                            'dd/MM/yyyy HH:mm',
+                            'es',
+                          ).format(movement.createdAt.toLocal()),
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.textSecondary,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 12,
-                        color: AppColors.textSecondary.withValues(alpha: 0.8),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        DateFormat(
-                          'dd/MM/yyyy HH:mm',
-                          'es',
-                        ).format(movement.createdAt.toLocal()),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${isIncome ? '+' : '-'} S/ ${movement.amount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    movement.createdByName?.split(' ').first ?? 'Sistema',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${isIncome ? '+' : '-'} S/ ${movement.amount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  movement.createdByName?.split(' ').first ?? 'Sistema',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 class _MovementsSkeleton extends StatelessWidget {
@@ -1094,11 +1095,12 @@ class _MovementsDesktopTable extends StatelessWidget {
               child: ListView.separated(
                 controller: scrollController,
                 itemCount: movements.length,
-                separatorBuilder: (_, _) => const Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: Color(0xFFF1F5F9),
-                ),
+                separatorBuilder:
+                    (_, _) => const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF1F5F9),
+                    ),
                 itemBuilder: (context, index) {
                   return _DesktopMovementRow(movement: movements[index]);
                 },
@@ -1128,17 +1130,18 @@ class _DesktopMovementRowState extends State<_DesktopMovementRow> {
     final isIncome = m.movementType == 'INCOME';
     final isExpense = m.movementType == 'EXPENSE';
 
-    final Color badgeBg = isIncome
-        ? AppColors.teal.withValues(alpha: 0.1)
-        : (isExpense
-            ? AppColors.danger.withValues(alpha: 0.1)
-            : AppColors.info.withValues(alpha: 0.1));
-    final Color badgeColor = isIncome
-        ? AppColors.tealDark
-        : (isExpense ? AppColors.dangerDark : AppColors.info);
-    final String badgeLabel = isIncome
-        ? 'Ingreso'
-        : (isExpense ? 'Egreso' : 'Transfer.');
+    final Color badgeBg =
+        isIncome
+            ? AppColors.teal.withValues(alpha: 0.1)
+            : (isExpense
+                ? AppColors.danger.withValues(alpha: 0.1)
+                : AppColors.info.withValues(alpha: 0.1));
+    final Color badgeColor =
+        isIncome
+            ? AppColors.tealDark
+            : (isExpense ? AppColors.dangerDark : AppColors.info);
+    final String badgeLabel =
+        isIncome ? 'Ingreso' : (isExpense ? 'Egreso' : 'Transfer.');
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -1160,7 +1163,10 @@ class _DesktopMovementRowState extends State<_DesktopMovementRow> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    DateFormat('dd/MM/yyyy HH:mm', 'es').format(m.createdAt.toLocal()),
+                    DateFormat(
+                      'dd/MM/yyyy HH:mm',
+                      'es',
+                    ).format(m.createdAt.toLocal()),
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
@@ -1218,7 +1224,10 @@ class _DesktopMovementRowState extends State<_DesktopMovementRow> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeBg,
                     borderRadius: BorderRadius.circular(6),

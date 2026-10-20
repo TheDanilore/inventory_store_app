@@ -117,7 +117,9 @@ class ProductIngredientsSection extends StatelessWidget {
                         }
                       },
                       activeThumbColor: AppColors.primary,
-                      activeTrackColor: AppColors.primary.withValues(alpha: 0.38),
+                      activeTrackColor: AppColors.primary.withValues(
+                        alpha: 0.38,
+                      ),
                     ),
                   ],
                 ),
@@ -167,14 +169,14 @@ class ProductIngredientsSection extends StatelessWidget {
                                     key: ValueKey(row.id),
                                     row: row,
                                     index: idx,
-                                    onChanged: (updated) =>
-                                        cubit.updateIngredientRow(
+                                    onChanged:
+                                        (updated) => cubit.updateIngredientRow(
                                           idx,
                                           updated,
                                           syncState: true,
                                         ),
-                                    onRemove: () =>
-                                        cubit.removeIngredientRow(idx),
+                                    onRemove:
+                                        () => cubit.removeIngredientRow(idx),
                                   );
                                 },
                               ),
@@ -283,10 +285,7 @@ class _IngredientItemRowState extends State<_IngredientItemRow> {
           final newId = result['id'] as String;
           _nameCtrl.text = newName;
           widget.onChanged(
-            widget.row.copyWith(
-              ingredientId: newId,
-              name: newName,
-            ),
+            widget.row.copyWith(ingredientId: newId, name: newName),
           );
         }
       },
@@ -302,18 +301,13 @@ class _IngredientItemRowState extends State<_IngredientItemRow> {
               color: AppColors.primary,
               size: 20,
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 12,
               vertical: 10,
             ),
           ),
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -321,16 +315,13 @@ class _IngredientItemRowState extends State<_IngredientItemRow> {
     Widget concentrationField = TextField(
       controller: _concentrationCtrl,
       keyboardType: TextInputType.number,
-      onChanged: (val) => widget.onChanged(
-        widget.row.copyWith(concentration: val),
-      ),
+      onChanged:
+          (val) => widget.onChanged(widget.row.copyWith(concentration: val)),
       decoration: InputDecoration(
         labelText: 'Concentración',
         hintText: 'Ej: 500',
         isDense: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
@@ -341,16 +332,12 @@ class _IngredientItemRowState extends State<_IngredientItemRow> {
 
     Widget unitField = TextField(
       controller: _unitCtrl,
-      onChanged: (val) => widget.onChanged(
-        widget.row.copyWith(unit: val),
-      ),
+      onChanged: (val) => widget.onChanged(widget.row.copyWith(unit: val)),
       decoration: InputDecoration(
         labelText: 'Unidad',
         hintText: 'Ej: mg',
         isDense: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
           vertical: 10,
@@ -374,51 +361,34 @@ class _IngredientItemRowState extends State<_IngredientItemRow> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.grey.shade200,
-        ),
+        border: Border.all(color: Colors.grey.shade200),
       ),
-      child: isWideScreen
-          ? Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: nameField,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: concentrationField,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: unitField,
-                ),
-                const SizedBox(width: 6),
-                deleteBtn,
-              ],
-            )
-          : Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(child: nameField),
-                    deleteBtn,
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: concentrationField,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: unitField),
-                  ],
-                ),
-              ],
-            ),
+      child:
+          isWideScreen
+              ? Row(
+                children: [
+                  Expanded(flex: 5, child: nameField),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: concentrationField),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: unitField),
+                  const SizedBox(width: 6),
+                  deleteBtn,
+                ],
+              )
+              : Column(
+                children: [
+                  Row(children: [Expanded(child: nameField), deleteBtn]),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: concentrationField),
+                      const SizedBox(width: 8),
+                      Expanded(child: unitField),
+                    ],
+                  ),
+                ],
+              ),
     );
   }
 }
@@ -563,7 +533,11 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
                 ),
               ),
             IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
+              icon: const Icon(
+                Icons.close_rounded,
+                color: Colors.grey,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -587,15 +561,16 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
             hintText: 'Ej: Paracetamol, Clorpirifos, Ibuprofeno...',
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
-            suffixIcon: _searchCtrl.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear_rounded, size: 18),
-                    onPressed: () {
-                      _searchCtrl.clear();
-                      _search('');
-                    },
-                  )
-                : null,
+            suffixIcon:
+                _searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        _search('');
+                      },
+                    )
+                    : null,
             filled: true,
             fillColor: Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -608,7 +583,10 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
@@ -673,7 +651,10 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(
                     'Crear "${_searchCtrl.text.trim()}"',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -694,9 +675,10 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
         else if (_results.isNotEmpty)
           ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: isDesktop
-                  ? (screenHeight * 0.45).clamp(240.0, 420.0)
-                  : screenHeight * 0.4,
+              maxHeight:
+                  isDesktop
+                      ? (screenHeight * 0.45).clamp(240.0, 420.0)
+                      : screenHeight * 0.4,
             ),
             child: ListView.separated(
               shrinkWrap: true,
@@ -775,10 +757,7 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
         elevation: 12,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: content,
-          ),
+          child: Padding(padding: const EdgeInsets.all(20.0), child: content),
         ),
       );
     } else {
@@ -805,10 +784,7 @@ class _IngredientSearchDialogState extends State<IngredientSearchDialog> {
             top: 12,
             bottom: 28,
           ),
-          child: SafeArea(
-            top: false,
-            child: content,
-          ),
+          child: SafeArea(top: false, child: content),
         ),
       );
     }

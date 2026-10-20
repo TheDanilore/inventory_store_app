@@ -616,14 +616,20 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                       decoration: BoxDecoration(
                         color:
                             isSelected
-                                ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.08)
-                                : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
+                                ? AppColors.primary.withValues(
+                                  alpha: isDark ? 0.2 : 0.08,
+                                )
+                                : (isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : Colors.white),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color:
                               isSelected
                                   ? AppColors.primary
-                                  : (isDark ? AppColors.darkBorder : AppColors.border),
+                                  : (isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.border),
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -654,9 +660,10 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                       isSelected
                                           ? FontWeight.w800
                                           : FontWeight.w600,
-                                  color: isDark
-                                      ? const Color(0xFFF8FAFC)
-                                      : AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFF8FAFC)
+                                          : AppColors.textPrimary,
                                 ),
                               ),
                               Row(

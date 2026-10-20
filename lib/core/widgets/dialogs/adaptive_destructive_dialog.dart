@@ -202,7 +202,9 @@ class _AdaptiveDestructiveDialogState extends State<AdaptiveDestructiveDialog> {
                   tooltip: 'Cerrar (Esc)',
                   splashRadius: 18,
                   onPressed:
-                      _isLoading ? null : () => Navigator.of(context).pop(false),
+                      _isLoading
+                          ? null
+                          : () => Navigator.of(context).pop(false),
                 ),
               ],
             ),
@@ -298,9 +300,7 @@ class _AdaptiveDestructiveDialogState extends State<AdaptiveDestructiveDialog> {
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       borderSide: BorderSide(
                         color:
-                            _isMatching
-                                ? AppColors.error
-                                : AppColors.primary,
+                            _isMatching ? AppColors.error : AppColors.primary,
                         width: 1.8,
                       ),
                     ),

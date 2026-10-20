@@ -317,132 +317,140 @@ class _InventoryProductQuickViewContentState
           ),
         ),
       ],
-      headerBottom: (!_isLoadingProduct && variants.length > 1)
-          ? Container(
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.border.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-              itemCount: variants.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (context, idx) {
-                final v = variants[idx];
-                final isSelected = v.id == _activeVariantId;
-                final vStock = _calculateVariantStockFor(v.id);
-                final vTitle =
-                    v.attributeValues.isNotEmpty
-                        ? v.label
-                        : (v.sku?.isNotEmpty == true
-                            ? v.sku!
-                            : 'Var. #${idx + 1}');
-
-                return InkWell(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _activeVariantId = v.id);
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color:
-                            isSelected ? AppColors.primary : AppColors.border,
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                      boxShadow:
-                          isSelected
-                              ? [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.25,
-                                  ),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                              : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          vTitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight:
-                                isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color:
-                                isSelected
-                                    ? Colors.white
-                                    : AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color:
-                                isSelected
-                                    ? Colors.white.withValues(alpha: 0.2)
-                                    : (vStock <= 0
-                                        ? AppColors.danger.withValues(
-                                          alpha: 0.1,
-                                        )
-                                        : AppColors.teal.withValues(
-                                          alpha: 0.1,
-                                        )),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '$vStock',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color:
-                                  isSelected
-                                      ? Colors.white
-                                      : (vStock <= 0
-                                          ? AppColors.danger
-                                          : AppColors.tealDark),
-                            ),
-                          ),
-                        ),
-                      ],
+      headerBottom:
+          (!_isLoadingProduct && variants.length > 1)
+              ? Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.border.withValues(alpha: 0.8),
                     ),
                   ),
-                );
-              },
-            ),
-          )
-          : null,
+                ),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 7,
+                  ),
+                  itemCount: variants.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
+                  itemBuilder: (context, idx) {
+                    final v = variants[idx];
+                    final isSelected = v.id == _activeVariantId;
+                    final vStock = _calculateVariantStockFor(v.id);
+                    final vTitle =
+                        v.attributeValues.isNotEmpty
+                            ? v.label
+                            : (v.sku?.isNotEmpty == true
+                                ? v.sku!
+                                : 'Var. #${idx + 1}');
+
+                    return InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _activeVariantId = v.id);
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? AppColors.primary
+                                  : AppColors.surface,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                          boxShadow:
+                              isSelected
+                                  ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              vTitle,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    isSelected
+                                        ? Colors.white.withValues(alpha: 0.2)
+                                        : (vStock <= 0
+                                            ? AppColors.danger.withValues(
+                                              alpha: 0.1,
+                                            )
+                                            : AppColors.teal.withValues(
+                                              alpha: 0.1,
+                                            )),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '$vStock',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      isSelected
+                                          ? Colors.white
+                                          : (vStock <= 0
+                                              ? AppColors.danger
+                                              : AppColors.tealDark),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+              : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_errorMessage != null)
             Container(
               margin: const EdgeInsets.only(bottom: 14),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
@@ -548,9 +556,7 @@ class _InventoryProductQuickViewContentState
                               HapticFeedback.lightImpact();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text(
-                                    'SKU copiado al portapapeles',
-                                  ),
+                                  content: Text('SKU copiado al portapapeles'),
                                   duration: Duration(seconds: 1),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -565,9 +571,7 @@ class _InventoryProductQuickViewContentState
                               decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                ),
+                                border: Border.all(color: AppColors.border),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -600,9 +604,7 @@ class _InventoryProductQuickViewContentState
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(
-                                alpha: 0.07,
-                              ),
+                              color: AppColors.primary.withValues(alpha: 0.07),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -622,14 +624,10 @@ class _InventoryProductQuickViewContentState
             ],
           ),
 
-          if (activeIngredient != null &&
-              activeIngredient.isNotEmpty) ...[
+          if (activeIngredient != null && activeIngredient.isNotEmpty) ...[
             const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 7,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: AppColors.accentLight.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
@@ -713,11 +711,7 @@ class _InventoryProductQuickViewContentState
                         ],
                       ),
                     ),
-                    Container(
-                      width: 1,
-                      height: 36,
-                      color: AppColors.border,
-                    ),
+                    Container(width: 1, height: 36, color: AppColors.border),
                     const SizedBox(width: 14),
 
                     // Precio Venta
@@ -740,19 +734,13 @@ class _InventoryProductQuickViewContentState
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
-                              fontFeatures: [
-                                FontFeature.tabularFigures(),
-                              ],
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      width: 1,
-                      height: 36,
-                      color: AppColors.border,
-                    ),
+                    Container(width: 1, height: 36, color: AppColors.border),
                     const SizedBox(width: 14),
 
                     // Costo Unitario
@@ -775,9 +763,7 @@ class _InventoryProductQuickViewContentState
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textSecondary,
-                              fontFeatures: [
-                                FontFeature.tabularFigures(),
-                              ],
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
@@ -879,8 +865,7 @@ class _InventoryProductQuickViewContentState
             ),
             const SizedBox(height: 8),
 
-            if (_activeVariantId == item.variantId &&
-                item.batches.isNotEmpty)
+            if (_activeVariantId == item.variantId && item.batches.isNotEmpty)
               Column(
                 children:
                     item.batches.map((batch) {
@@ -998,16 +983,11 @@ class _InventoryProductQuickViewContentState
                       ),
                       child: const Row(
                         children: [
-                          AppShimmer(
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                          ),
+                          AppShimmer(width: 8, height: 8, borderRadius: 4),
                           SizedBox(width: 10),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 AppShimmer(
                                   width: 120,
@@ -1023,11 +1003,7 @@ class _InventoryProductQuickViewContentState
                               ],
                             ),
                           ),
-                          AppShimmer(
-                            width: 60,
-                            height: 16,
-                            borderRadius: 4,
-                          ),
+                          AppShimmer(width: 60, height: 16, borderRadius: 4),
                         ],
                       ),
                     ),
@@ -1039,8 +1015,7 @@ class _InventoryProductQuickViewContentState
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: variants.length,
-                separatorBuilder:
-                    (context, index) => const SizedBox(height: 8),
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final v = variants[index];
                   final isSelected = v.id == _activeVariantId;
@@ -1137,9 +1112,7 @@ class _InventoryProductQuickViewContentState
             flex: 2,
             child: ElevatedButton.icon(
               onPressed: () {
-                final router = GoRouter.of(
-                  context,
-                ); // capturar antes de cerrar
+                final router = GoRouter.of(context); // capturar antes de cerrar
                 Navigator.pop(context);
                 router.go(
                   '/product/${item.productId}?variantId=$_activeVariantId',

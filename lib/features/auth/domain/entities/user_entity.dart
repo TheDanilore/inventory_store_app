@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
 
 class UserEntity extends Equatable {
   /// `profiles.id` — UUID real del perfil. Se usa como FK en wishlist, shopping_carts, etc.
@@ -16,6 +17,12 @@ class UserEntity extends Equatable {
   final String? avatarUrl;
   final bool isActive;
 
+  /// Lista de roles asignados al usuario (Soporta múltiples roles vía `user_roles`)
+  final List<String> roles;
+
+  /// Conjunto de códigos de permisos efectivos asignados al usuario
+  final Set<String> permissions;
+
   const UserEntity({
     required this.id,
     required this.authUserId,
@@ -27,7 +34,56 @@ class UserEntity extends Equatable {
     required this.documentNumber,
     this.avatarUrl,
     required this.isActive,
+    this.roles = const [],
+    this.permissions = const {},
   });
+
+  /// Verifica si el usuario cuenta con un permiso específico.
+  /// Los administradores (`admin`) tienen acceso total automático (Superuser).
+  bool hasPermission(String permissionCode) {
+    if (isAdmin) return true;
+    return permissions.contains(permissionCode);
+  }
+
+  /// Verifica si el usuario cuenta con al menos uno de los permisos indicados.
+  bool hasAnyPermission(Iterable<String> permissionCodes) {
+    if (isAdmin) return true;
+    for (final code in permissionCodes) {
+      if (permissions.contains(code)) return true;
+    }
+    return false;
+  }
+
+  /// Verifica si el usuario cuenta con todos los permisos indicados.
+  bool hasAllPermissions(Iterable<String> permissionCodes) {
+    if (isAdmin) return true;
+    for (final code in permissionCodes) {
+      if (!permissions.contains(code)) return false;
+    }
+    return true;
+  }
+
+  /// Verifica si el usuario posee un rol determinado (sea como rol primario o secundario).
+  bool hasRole(String roleName) {
+    if (role == roleName) return true;
+    return roles.contains(roleName);
+  }
+
+  /// Helpers de roles frecuentes
+  bool get isAdmin => role == AppRoles.admin || roles.contains(AppRoles.admin);
+  bool get isCashier =>
+      role == AppRoles.cashier || roles.contains(AppRoles.cashier);
+  bool get isWarehouseKeeper =>
+      role == AppRoles.warehouseKeeper ||
+      roles.contains(AppRoles.warehouseKeeper);
+  bool get isEmployee =>
+      role == AppRoles.employee || roles.contains(AppRoles.employee);
+  bool get isCustomer =>
+      AppRoles.isCustomer(role) &&
+      !isAdmin &&
+      !isCashier &&
+      !isWarehouseKeeper &&
+      !isEmployee;
 
   @override
   List<Object?> get props => [
@@ -41,6 +97,8 @@ class UserEntity extends Equatable {
     documentNumber,
     avatarUrl,
     isActive,
+    roles,
+    permissions,
   ];
 
   UserEntity copyWith({
@@ -54,6 +112,8 @@ class UserEntity extends Equatable {
     String? documentNumber,
     String? avatarUrl,
     bool? isActive,
+    List<String>? roles,
+    Set<String>? permissions,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -66,6 +126,8 @@ class UserEntity extends Equatable {
       documentNumber: documentNumber ?? this.documentNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isActive: isActive ?? this.isActive,
+      roles: roles ?? this.roles,
+      permissions: permissions ?? this.permissions,
     );
   }
 }

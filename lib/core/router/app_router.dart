@@ -23,6 +23,7 @@ import 'package:inventory_store_app/features/pos/presentation/routes/pos_routes.
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/routes/purchases_routes.dart';
+import 'package:inventory_store_app/features/roles/presentation/routes/roles_routes.dart';
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
@@ -105,8 +106,7 @@ class AppRouter {
           path != '/splash' &&
           path != '/login' &&
           !path.startsWith('/goal')) {
-        _pendingDeepLink =
-            path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
+        _pendingDeepLink = path + (uri.query.isNotEmpty ? '?${uri.query}' : '');
         LoggerService.i(
           'Deep link inicial capturado -> $_pendingDeepLink',
           tag: 'AppRouter',
@@ -135,7 +135,11 @@ class AppRouter {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.link_off_rounded, size: 64, color: Colors.grey),
+                  const Icon(
+                    Icons.link_off_rounded,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Esta página no existe',
@@ -244,8 +248,7 @@ class AppRouter {
               routes: [
                 ShellRoute(
                   builder:
-                      (context, state, child) =>
-                          AdminShellLayout(child: child),
+                      (context, state, child) => AdminShellLayout(child: child),
                   routes: [
                     GoRoute(
                       path: '/',
@@ -276,6 +279,7 @@ class AppRouter {
                     ...LoyaltyRoutes.adminRoutes,
                     ...OrdersRoutes.adminRoutes,
                     ...PurchasesRoutes.adminRoutes,
+                    ...RolesRoutes.adminRoutes,
                     ...UsersRoutes.adminRoutes,
                   ],
                 ),

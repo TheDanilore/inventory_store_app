@@ -159,8 +159,9 @@ class KardexLedgerTable extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: items.length,
-            separatorBuilder: (context, index) =>
-                const Divider(height: 1, color: AppColors.border),
+            separatorBuilder:
+                (context, index) =>
+                    const Divider(height: 1, color: AppColors.border),
             itemBuilder: (context, index) {
               final item = items[index];
               final isSelected = selectedItem?.id == item.id;
@@ -247,9 +248,10 @@ class _LedgerRowState extends State<_LedgerRow> {
     final isReturn = upperType.contains('DEVOLUCIÓN');
     final isSale = upperType.contains('VENTA');
 
-    final Color deltaColor = isEntry
-        ? (isReturn ? Colors.purple.shade700 : Colors.green.shade700)
-        : (isSale ? Colors.blue.shade700 : Colors.red.shade700);
+    final Color deltaColor =
+        isEntry
+            ? (isReturn ? Colors.purple.shade700 : Colors.green.shade700)
+            : (isSale ? Colors.blue.shade700 : Colors.red.shade700);
 
     final String deltaSign = isEntry ? '+' : '-';
     final double quantityAbs = item.quantity.abs();
@@ -265,11 +267,10 @@ class _LedgerRowState extends State<_LedgerRow> {
       refShort = '#${refShort.substring(0, 8)}';
     }
 
-    final Color rowBg = widget.isSelected
-        ? AppColors.primary.withValues(alpha: 0.08)
-        : (_isHovered
-            ? AppColors.background
-            : AppColors.surface);
+    final Color rowBg =
+        widget.isSelected
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : (_isHovered ? AppColors.background : AppColors.surface);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -316,22 +317,23 @@ class _LedgerRowState extends State<_LedgerRow> {
                         width: 28,
                         height: 28,
                         color: AppColors.background,
-                        child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: item.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorWidget:
-                                  (context, url, error) => const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 14,
-                                    color: AppColors.textSecondary,
-                                  ),
-                            )
-                            : const Icon(
-                              Icons.inventory_2_outlined,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
+                        child:
+                            item.imageUrl != null && item.imageUrl!.isNotEmpty
+                                ? CachedNetworkImage(
+                                  imageUrl: item.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget:
+                                      (context, url, error) => const Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 14,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                )
+                                : const Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -386,10 +388,11 @@ class _LedgerRowState extends State<_LedgerRow> {
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: (item.batchNumber != null &&
-                            item.batchNumber != 'DEFAULT')
-                        ? Colors.purple.shade700
-                        : AppColors.textSecondary,
+                    color:
+                        (item.batchNumber != null &&
+                                item.batchNumber != 'DEFAULT')
+                            ? Colors.purple.shade700
+                            : AppColors.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -476,9 +479,10 @@ class _LedgerRowState extends State<_LedgerRow> {
                       ? Icons.arrow_forward_ios_rounded
                       : Icons.more_horiz_rounded,
                   size: 14,
-                  color: widget.isSelected
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  color:
+                      widget.isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                 ),
               ),
             ],

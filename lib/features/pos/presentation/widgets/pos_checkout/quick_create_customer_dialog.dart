@@ -22,38 +22,43 @@ class QuickCreateCustomerDialog extends StatefulWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (ctx) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        builder:
+            (ctx) => Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: QuickCreateCustomerDialog(initialQuery: initialQuery),
+                ),
+              ),
             ),
-            child: SafeArea(
-              top: false,
-              child: QuickCreateCustomerDialog(initialQuery: initialQuery),
-            ),
-          ),
-        ),
       );
     }
 
     return showDialog<CustomerEntity>(
       context: context,
       barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        ),
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: QuickCreateCustomerDialog(initialQuery: initialQuery),
-        ),
-      ),
+      builder:
+          (ctx) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+            ),
+            backgroundColor: Colors.white,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 24,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: QuickCreateCustomerDialog(initialQuery: initialQuery),
+            ),
+          ),
     );
   }
 
@@ -118,9 +123,10 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
       final newCustomer = await createCustomerUC.call(
         fullName: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
-        documentNumber: _docNumberCtrl.text.trim().isEmpty
-            ? null
-            : _docNumberCtrl.text.trim(),
+        documentNumber:
+            _docNumberCtrl.text.trim().isEmpty
+                ? null
+                : _docNumberCtrl.text.trim(),
         documentType: _docType,
       );
 
@@ -132,10 +138,14 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
         setState(() {
           _isLoading = false;
           final err = e.toString().toLowerCase();
-          if (err.contains('unique') || err.contains('duplicate') || err.contains('document_number')) {
-            _errorMessage = 'Ya existe un cliente registrado con este documento.';
+          if (err.contains('unique') ||
+              err.contains('duplicate') ||
+              err.contains('document_number')) {
+            _errorMessage =
+                'Ya existe un cliente registrado con este documento.';
           } else {
-            _errorMessage = 'No se pudo registrar el cliente. Intente nuevamente.';
+            _errorMessage =
+                'No se pudo registrar el cliente. Intente nuevamente.';
           }
         });
       }
@@ -218,7 +228,10 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
 
             if (_errorMessage != null) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.error.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
@@ -262,36 +275,40 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 8,
-              children: ['DNI', 'RUC', 'CE', 'OTRO'].map((type) {
-                final isSelected = _docType == type;
-                return ChoiceChip(
-                  label: Text(type),
-                  selected: isSelected,
-                  selectedColor: AppColors.teal.withValues(alpha: 0.15),
-                  backgroundColor: AppColors.background,
-                  labelStyle: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? AppColors.teal : AppColors.textSecondary,
-                  ),
-                  side: BorderSide(
-                    color: isSelected
-                        ? AppColors.teal
-                        : Colors.grey.shade300,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  onSelected: (val) {
-                    if (val) {
-                      setState(() {
-                        _docType = type;
-                        _docNumberCtrl.clear();
-                      });
-                    }
-                  },
-                );
-              }).toList(),
+              children:
+                  ['DNI', 'RUC', 'CE', 'OTRO'].map((type) {
+                    final isSelected = _docType == type;
+                    return ChoiceChip(
+                      label: Text(type),
+                      selected: isSelected,
+                      selectedColor: AppColors.teal.withValues(alpha: 0.15),
+                      backgroundColor: AppColors.background,
+                      labelStyle: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color:
+                            isSelected
+                                ? AppColors.teal
+                                : AppColors.textSecondary,
+                      ),
+                      side: BorderSide(
+                        color:
+                            isSelected ? AppColors.teal : Colors.grey.shade300,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() {
+                            _docType = type;
+                            _docNumberCtrl.clear();
+                          });
+                        }
+                      },
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 14),
 
@@ -299,15 +316,17 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
             AppTextField(
               controller: _docNumberCtrl,
               label: 'N° de Documento ($_docType)',
-              hintText: _docType == 'DNI'
-                  ? 'Ej: 45892134 (8 dígitos)'
-                  : _docType == 'RUC'
+              hintText:
+                  _docType == 'DNI'
+                      ? 'Ej: 45892134 (8 dígitos)'
+                      : _docType == 'RUC'
                       ? 'Ej: 20601234567 (11 dígitos)'
                       : 'Número de documento',
               icon: Icons.badge_outlined,
-              keyboardType: _docType == 'DNI' || _docType == 'RUC'
-                  ? TextInputType.number
-                  : TextInputType.text,
+              keyboardType:
+                  _docType == 'DNI' || _docType == 'RUC'
+                      ? TextInputType.number
+                      : TextInputType.text,
               inputFormatters: [
                 if (_docType == 'DNI') ...[
                   FilteringTextInputFormatter.digitsOnly,
@@ -335,12 +354,14 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
             // Nombre / Razón Social
             AppTextField(
               controller: _nameCtrl,
-              label: _docType == 'RUC'
-                  ? 'Razón Social / Empresa *'
-                  : 'Nombre Completo del Cliente *',
-              hintText: _docType == 'RUC'
-                  ? 'Ej: Agroinsumos del Norte S.A.C.'
-                  : 'Ej: Juan Carlos Pérez Ramos',
+              label:
+                  _docType == 'RUC'
+                      ? 'Razón Social / Empresa *'
+                      : 'Nombre Completo del Cliente *',
+              hintText:
+                  _docType == 'RUC'
+                      ? 'Ej: Agroinsumos del Norte S.A.C.'
+                      : 'Ej: Juan Carlos Pérez Ramos',
               icon: Icons.person_outline_rounded,
               textCapitalization: TextCapitalization.words,
               validator: (val) {
@@ -384,7 +405,10 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
                 TextButton(
                   onPressed: _isLoading ? null : () => Navigator.pop(context),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     foregroundColor: AppColors.textSecondary,
                   ),
                   child: const Text('Cancelar'),
@@ -403,16 +427,17 @@ class _QuickCreateCustomerDialogState extends State<QuickCreateCustomerDialog> {
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
                     ),
                   ),
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.check_rounded, size: 18),
+                  icon:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.check_rounded, size: 18),
                   label: Text(
                     _isLoading ? 'Guardando…' : 'Guardar y Asignar',
                     style: const TextStyle(fontWeight: FontWeight.w700),

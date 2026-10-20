@@ -236,9 +236,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         final isShortHex = RegExp(r'^[0-9a-fA-F]{4,8}$').hasMatch(clean);
 
         if (isFullUuid) {
-          query = query.or(
-            'id.eq.$clean,customer_name.ilike.$txt',
-          );
+          query = query.or('id.eq.$clean,customer_name.ilike.$txt');
         } else if (isShortHex) {
           final prefix = clean.toLowerCase();
           final padZeros = '0' * (8 - prefix.length);
@@ -249,9 +247,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
             'and(id.gte.$minUuid,id.lte.$maxUuid),customer_name.ilike.$txt',
           );
         } else {
-          query = query.or(
-            'customer_name.ilike.$txt',
-          );
+          query = query.or('customer_name.ilike.$txt');
         }
       }
 
@@ -595,11 +591,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     if (authUserId == null) return null;
 
     try {
-      final res = await _supabase
-          .from('profiles')
-          .select('id')
-          .eq('auth_user_id', authUserId)
-          .maybeSingle();
+      final res =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
 
       return res?['id'] as String?;
     } catch (e) {
@@ -618,8 +615,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? currentProfileId,
   }) async {
     try {
-      final effectiveProfileId =
-          await _resolveCurrentProfileId(currentProfileId);
+      final effectiveProfileId = await _resolveCurrentProfileId(
+        currentProfileId,
+      );
 
       if (newStatus == 'COMPLETED' &&
           (order.status == 'PENDING' || order.status == 'DRAFT')) {
@@ -711,8 +709,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-      final effectiveProfileId =
-          await _resolveCurrentProfileId(currentProfileId);
+      final effectiveProfileId = await _resolveCurrentProfileId(
+        currentProfileId,
+      );
       final wasCompleted = originalStatus.toUpperCase() == 'COMPLETED';
       final isNowCompleted = newStatus.toUpperCase() == 'COMPLETED';
       final isNowCancelled = newStatus.toUpperCase() == 'CANCELLED';
@@ -893,8 +892,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-      final effectiveProfileId =
-          await _resolveCurrentProfileId(currentProfileId);
+      final effectiveProfileId = await _resolveCurrentProfileId(
+        currentProfileId,
+      );
       final payload = {
         'order_id': orderId,
         'selected_customer_id': customerId,
@@ -962,8 +962,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>>
-  getFinancialAccounts({bool forceRefresh = false}) async {
+  Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts({
+    bool forceRefresh = false,
+  }) async {
     if (!forceRefresh && _accountsCache != null && !_accountsCache!.isExpired) {
       return Right(_accountsCache!.accounts);
     }
@@ -1044,27 +1045,29 @@ class OrdersRepositoryImpl implements OrdersRepository {
     try {
       final user = _supabase.auth.currentUser;
       if (user != null) {
-        final userShift = await _supabase
-            .from('cash_shifts')
-            .select('id')
-            .eq('status', 'OPEN')
-            .eq('opened_by', user.id)
-            .order('opened_at', ascending: false)
-            .limit(1)
-            .maybeSingle();
+        final userShift =
+            await _supabase
+                .from('cash_shifts')
+                .select('id')
+                .eq('status', 'OPEN')
+                .eq('opened_by', user.id)
+                .order('opened_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
 
         if (userShift != null && userShift['id'] != null) {
           return Right(userShift['id'] as String);
         }
       }
 
-      final anyShift = await _supabase
-          .from('cash_shifts')
-          .select('id')
-          .eq('status', 'OPEN')
-          .order('opened_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+      final anyShift =
+          await _supabase
+              .from('cash_shifts')
+              .select('id')
+              .eq('status', 'OPEN')
+              .order('opened_at', ascending: false)
+              .limit(1)
+              .maybeSingle();
 
       if (anyShift != null && anyShift['id'] != null) {
         return Right(anyShift['id'] as String);

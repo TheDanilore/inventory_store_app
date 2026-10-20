@@ -58,12 +58,13 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
     final selectedType = selectedAcc['type'] as String? ?? '';
     final isCajaSelected = !isCredito && selectedType == 'CAJA';
 
-    final sortedAccounts = List<Map<String, dynamic>>.from(accountsList)..sort((a, b) {
-      const order = ['CAJA', 'DIGITAL', 'BANCO', 'OTRO'];
-      final ai = order.indexOf(a['type'] as String? ?? 'OTRO');
-      final bi = order.indexOf(b['type'] as String? ?? 'OTRO');
-      return ai.compareTo(bi);
-    });
+    final sortedAccounts = List<Map<String, dynamic>>.from(accountsList)
+      ..sort((a, b) {
+        const order = ['CAJA', 'DIGITAL', 'BANCO', 'OTRO'];
+        final ai = order.indexOf(a['type'] as String? ?? 'OTRO');
+        final bi = order.indexOf(b['type'] as String? ?? 'OTRO');
+        return ai.compareTo(bi);
+      });
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -97,7 +98,9 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
               const Spacer(),
               if (isCredito || selectedAcc.isNotEmpty)
                 Text(
-                  isCredito ? 'Crédito' : (selectedAcc['name'] as String? ?? ''),
+                  isCredito
+                      ? 'Crédito'
+                      : (selectedAcc['name'] as String? ?? ''),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -119,11 +122,15 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                 children: [
                   ...sortedAccounts.map((acc) {
                     final type = acc['type'] as String? ?? 'OTRO';
-                    final chipColor = _typeColors[type] ?? AppColors.textSecondary;
+                    final chipColor =
+                        _typeColors[type] ?? AppColors.textSecondary;
                     final chipIcon = _typeIcons[type] ?? Icons.wallet_rounded;
-                    final isSelected = !isCredito && acc['id'] == selectedAccountId;
-                    final balance = (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
-                    final isCashRegister = PosCalculatorUtils.accountRequiresShift(acc);
+                    final isSelected =
+                        !isCredito && acc['id'] == selectedAccountId;
+                    final balance =
+                        (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
+                    final isCashRegister =
+                        PosCalculatorUtils.accountRequiresShift(acc);
 
                     return SizedBox(
                       width: itemWidth,
@@ -135,14 +142,19 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? chipColor.withValues(alpha: 0.1)
-                                  : AppColors.background,
+                              color:
+                                  isSelected
+                                      ? chipColor.withValues(alpha: 0.1)
+                                      : AppColors.background,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: isSelected ? chipColor : AppColors.border,
+                                color:
+                                    isSelected ? chipColor : AppColors.border,
                                 width: isSelected ? 1.5 : 1,
                               ),
                             ),
@@ -152,22 +164,27 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                   width: 28,
                                   height: 28,
                                   decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? chipColor.withValues(alpha: 0.15)
-                                        : Colors.white,
+                                    color:
+                                        isSelected
+                                            ? chipColor.withValues(alpha: 0.15)
+                                            : Colors.white,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     chipIcon,
                                     size: 15,
-                                    color: isSelected ? chipColor : AppColors.textSecondary,
+                                    color:
+                                        isSelected
+                                            ? chipColor
+                                            : AppColors.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         acc['name'] as String,
@@ -176,9 +193,10 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w700,
-                                          color: isSelected
-                                              ? chipColor
-                                              : AppColors.textPrimary,
+                                          color:
+                                              isSelected
+                                                  ? chipColor
+                                                  : AppColors.textPrimary,
                                         ),
                                       ),
                                       Text(
@@ -188,9 +206,12 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? chipColor.withValues(alpha: 0.85)
-                                              : AppColors.textSecondary,
+                                          color:
+                                              isSelected
+                                                  ? chipColor.withValues(
+                                                    alpha: 0.85,
+                                                  )
+                                                  : AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -199,17 +220,19 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                 if (isCashRegister) ...[
                                   const SizedBox(width: 4),
                                   Tooltip(
-                                    message: activeShift != null
-                                        ? 'Turno abierto'
-                                        : 'Turno de caja cerrado',
+                                    message:
+                                        activeShift != null
+                                            ? 'Turno abierto'
+                                            : 'Turno de caja cerrado',
                                     child: Icon(
                                       activeShift != null
                                           ? Icons.check_circle_rounded
                                           : Icons.lock_clock_rounded,
                                       size: 14,
-                                      color: activeShift != null
-                                          ? AppColors.success
-                                          : const Color(0xFFF59E0B),
+                                      color:
+                                          activeShift != null
+                                              ? AppColors.success
+                                              : const Color(0xFFF59E0B),
                                     ),
                                   ),
                                 ],
@@ -227,23 +250,30 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                     height: 48,
                     child: Material(
                       color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            if (!isCredito) {
-                              onCreditoToggle(true);
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        onTap: () {
+                          if (!isCredito) {
+                            onCreditoToggle(true);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(10),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
-                            color: isCredito
-                                ? Colors.deepOrange.withValues(alpha: 0.1)
-                                : AppColors.background,
+                            color:
+                                isCredito
+                                    ? Colors.deepOrange.withValues(alpha: 0.1)
+                                    : AppColors.background,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isCredito ? Colors.deepOrange : AppColors.border,
+                              color:
+                                  isCredito
+                                      ? Colors.deepOrange
+                                      : AppColors.border,
                               width: isCredito ? 1.5 : 1,
                             ),
                           ),
@@ -253,17 +283,21 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
-                                  color: isCredito
-                                      ? Colors.deepOrange.withValues(alpha: 0.15)
-                                      : Colors.white,
+                                  color:
+                                      isCredito
+                                          ? Colors.deepOrange.withValues(
+                                            alpha: 0.15,
+                                          )
+                                          : Colors.white,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(
                                   Icons.handshake_rounded,
                                   size: 15,
-                                  color: isCredito
-                                      ? Colors.deepOrange
-                                      : AppColors.textSecondary,
+                                  color:
+                                      isCredito
+                                          ? Colors.deepOrange
+                                          : AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -279,9 +313,10 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w700,
-                                        color: isCredito
-                                            ? Colors.deepOrange
-                                            : AppColors.textPrimary,
+                                        color:
+                                            isCredito
+                                                ? Colors.deepOrange
+                                                : AppColors.textPrimary,
                                       ),
                                     ),
                                     Text(
@@ -291,9 +326,12 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                       style: TextStyle(
                                         fontSize: 10.5,
                                         fontWeight: FontWeight.w600,
-                                        color: isCredito
-                                            ? Colors.deepOrange.withValues(alpha: 0.85)
-                                            : AppColors.textSecondary,
+                                        color:
+                                            isCredito
+                                                ? Colors.deepOrange.withValues(
+                                                  alpha: 0.85,
+                                                )
+                                                : AppColors.textSecondary,
                                       ),
                                     ),
                                   ],

@@ -549,10 +549,7 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
                   value: state.selectedAccount,
                   hint: const Text(
                     'Seleccionar cuenta (Caja / Banco)...',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
-                    ),
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
                   isExpanded: true,
                   items:

@@ -79,16 +79,13 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       final suppliersResult =
           futures[1] as Either<Failure, List<SupplierEntity>>;
-      final suppliers = suppliersResult.fold(
-        (l) {
-          developer.log(
-            'suppliers error: ${l.message}',
-            name: 'InventoryEntryFormCubit',
-          );
-          return <SupplierEntity>[];
-        },
-        (r) => r,
-      );
+      final suppliers = suppliersResult.fold((l) {
+        developer.log(
+          'suppliers error: ${l.message}',
+          name: 'InventoryEntryFormCubit',
+        );
+        return <SupplierEntity>[];
+      }, (r) => r);
 
       final rawAccounts = futures[2] as List<FinancialAccountEntity>;
       final accounts = rawAccounts.where((a) => a.isActive).toList();
@@ -307,8 +304,9 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
         // Validación de Turno de Caja Abierto
         if (selectedAcc.type.toUpperCase() == 'CAJA') {
-          final hasOpenShift =
-              state.activeShiftsByAccount.containsKey(selectedAcc.id);
+          final hasOpenShift = state.activeShiftsByAccount.containsKey(
+            selectedAcc.id,
+          );
           if (!hasOpenShift) {
             emit(
               state.copyWith(
@@ -470,8 +468,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
               productId: itemJson['product_id'] as String? ?? '',
               productName: itemJson['product_name'] as String? ?? '—',
               variantId: itemJson['variant_id'] as String? ?? '',
-              variantLabel:
-                  itemJson['variant_label'] as String? ?? '',
+              variantLabel: itemJson['variant_label'] as String? ?? '',
               imageUrl: itemJson['image_url'] as String?,
               usesBatches: itemJson['uses_batches'] as bool? ?? false,
               quantity: (itemJson['quantity'] as num).toDouble(),

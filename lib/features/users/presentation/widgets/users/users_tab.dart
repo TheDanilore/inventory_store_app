@@ -359,9 +359,9 @@ class _UsersTabState extends State<UsersTab>
                     ),
                   ),
                   const Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: Text(
-                      'ROL',
+                      'ROLES',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -617,50 +617,19 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
                   ),
                 ),
 
-                // 4. Rol
+                // 4. Roles
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            user.role == AppRoles.admin
-                                ? Colors.indigo.shade50
-                                : user.role == AppRoles.employee
-                                ? Colors.orange.shade50
-                                : AppColors.surface,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color:
-                              user.role == AppRoles.admin
-                                  ? Colors.indigo.shade200
-                                  : user.role == AppRoles.employee
-                                  ? Colors.orange.shade200
-                                  : AppColors.border,
-                        ),
-                      ),
-                      child: Text(
-                        user.role == AppRoles.admin
-                            ? 'ADMIN'
-                            : user.role == AppRoles.employee
-                            ? 'EMPLEADO'
-                            : 'CLIENTE',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              user.role == AppRoles.admin
-                                  ? Colors.indigo.shade700
-                                  : user.role == AppRoles.employee
-                                  ? Colors.orange.shade700
-                                  : AppColors.textSecondary,
-                        ),
-                      ),
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children:
+                          user.allRoles
+                              .where((r) => r.isNotEmpty)
+                              .map(_buildRoleBadge)
+                              .toList(),
                     ),
                   ),
                 ),
@@ -819,6 +788,68 @@ class _DesktopTableRowState extends State<_DesktopTableRow> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRoleBadge(String r) {
+    Color bg;
+    Color fg;
+    Color border;
+    String label;
+
+    switch (r.toLowerCase()) {
+      case 'admin':
+        bg = Colors.indigo.shade50;
+        fg = Colors.indigo.shade700;
+        border = Colors.indigo.shade200;
+        label = 'Admin';
+        break;
+      case 'cashier':
+      case 'cajero':
+        bg = Colors.teal.shade50;
+        fg = Colors.teal.shade700;
+        border = Colors.teal.shade200;
+        label = 'Cajero';
+        break;
+      case 'warehouse_keeper':
+      case 'almacenero':
+        bg = Colors.purple.shade50;
+        fg = Colors.purple.shade700;
+        border = Colors.purple.shade200;
+        label = 'Almacén';
+        break;
+      case 'employee':
+      case 'empleado':
+        bg = Colors.amber.shade50;
+        fg = Colors.amber.shade800;
+        border = Colors.amber.shade200;
+        label = 'Empleado';
+        break;
+      case 'customer':
+      case 'cliente':
+        bg = Colors.blue.shade50;
+        fg = Colors.blue.shade700;
+        border = Colors.blue.shade200;
+        label = 'Cliente';
+        break;
+      default:
+        bg = Colors.blueGrey.shade50;
+        fg = Colors.blueGrey.shade800;
+        border = Colors.blueGrey.shade200;
+        label = r.toUpperCase();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }

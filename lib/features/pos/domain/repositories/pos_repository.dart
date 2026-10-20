@@ -58,5 +58,6 @@ abstract class PosRepository {
   });
 
   /// Obtiene el consolidado de ventas del día actual de forma eficiente (<100 bytes Data Egress).
-  Future<Either<Failure, ({double totalAmount, int totalCount})>> fetchDailySalesSummary();
+  Future<Either<Failure, ({double totalAmount, int totalCount})>>
+  fetchDailySalesSummary();
 }

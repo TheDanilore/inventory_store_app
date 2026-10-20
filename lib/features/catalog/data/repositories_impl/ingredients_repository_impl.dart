@@ -123,7 +123,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
         }
       } on PostgrestException catch (rpcError, rpcSt) {
         // Si la RPC aún no ha sido creada en Supabase, pasamos al fallback local
-        final isMissingRpc = rpcError.code == 'PGRST202' ||
+        final isMissingRpc =
+            rpcError.code == 'PGRST202' ||
             rpcError.message.contains('function') &&
                 rpcError.message.contains('does not exist');
 
@@ -139,10 +140,13 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           .eq('ingredient_id', id);
 
       if (usages.isNotEmpty) {
-        final productList = (usages as List).map((u) {
-          final productMap = u['products'] as Map<String, dynamic>?;
-          return productMap?['name'] as String? ?? 'Producto';
-        }).take(3).join(', ');
+        final productList = (usages as List)
+            .map((u) {
+              final productMap = u['products'] as Map<String, dynamic>?;
+              return productMap?['name'] as String? ?? 'Producto';
+            })
+            .take(3)
+            .join(', ');
 
         final count = (usages as List).length;
         final extraText = count > 3 ? ' entre otros' : '';

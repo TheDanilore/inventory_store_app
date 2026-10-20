@@ -40,13 +40,21 @@ class KardexCubit extends Cubit<KardexState> {
       final currentProductId =
           clearProductId ? null : (productId ?? currentState?.productId);
       final currentVariantId =
-          (clearProductId || clearVariantId) ? null : (variantId ?? currentState?.variantId);
+          (clearProductId || clearVariantId)
+              ? null
+              : (variantId ?? currentState?.variantId);
       final currentVariantName =
-          (clearProductId || clearVariantId) ? null : (variantName ?? currentState?.variantName);
+          (clearProductId || clearVariantId)
+              ? null
+              : (variantName ?? currentState?.variantName);
       final currentBatchId =
-          (clearProductId || clearVariantId || clearBatchId) ? null : (batchId ?? currentState?.batchId);
+          (clearProductId || clearVariantId || clearBatchId)
+              ? null
+              : (batchId ?? currentState?.batchId);
       final currentBatchNumber =
-          (clearProductId || clearVariantId || clearBatchId) ? null : (batchNumber ?? currentState?.batchNumber);
+          (clearProductId || clearVariantId || clearBatchId)
+              ? null
+              : (batchNumber ?? currentState?.batchNumber);
       final currentPage = page ?? currentState?.currentPage ?? 0;
       final currentStartDate =
           clearDateRange ? null : (startDate ?? currentState?.startDate);
@@ -143,7 +151,8 @@ class KardexCubit extends Cubit<KardexState> {
       return;
     }
     // Si el usuario borra la búsqueda o escribe texto libre, limpiamos el productId, variantId y batchId
-    final clearProd = text.isEmpty ||
+    final clearProd =
+        text.isEmpty ||
         (state is KardexLoaded && (state as KardexLoaded).searchText != text);
     loadMovements(
       searchText: text,
@@ -165,18 +174,11 @@ class KardexCubit extends Cubit<KardexState> {
   }
 
   void clearVariantFilter() {
-    loadMovements(
-      page: 0,
-      clearVariantId: true,
-      clearBatchId: true,
-    );
+    loadMovements(page: 0, clearVariantId: true, clearBatchId: true);
   }
 
   void clearBatchFilter() {
-    loadMovements(
-      page: 0,
-      clearBatchId: true,
-    );
+    loadMovements(page: 0, clearBatchId: true);
   }
 
   void changePage(int newPage) {

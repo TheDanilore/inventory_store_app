@@ -318,10 +318,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               builder: (context, child) {
-                return Transform.scale(
-                  scale: _blobAnim.value,
-                  child: child,
-                );
+                return Transform.scale(scale: _blobAnim.value, child: child);
               },
             ),
           ),

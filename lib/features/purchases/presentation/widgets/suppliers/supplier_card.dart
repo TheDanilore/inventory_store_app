@@ -57,7 +57,8 @@ class _SupplierCardState extends State<SupplierCard> {
   Widget build(BuildContext context) {
     final supplier = widget.supplier;
     final hasRuc = supplier.taxId != null && supplier.taxId!.isNotEmpty;
-    final hasContact = supplier.contactName != null && supplier.contactName!.isNotEmpty;
+    final hasContact =
+        supplier.contactName != null && supplier.contactName!.isNotEmpty;
     final hasPhone = supplier.phone != null && supplier.phone!.isNotEmpty;
     final hasEmail = supplier.email != null && supplier.email!.isNotEmpty;
 
@@ -70,14 +71,16 @@ class _SupplierCardState extends State<SupplierCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: widget.isSelected
-              ? AppColors.teal.withValues(alpha: 0.04)
-              : AppColors.surface,
+          color:
+              widget.isSelected
+                  ? AppColors.teal.withValues(alpha: 0.04)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.teal
-                : _isHovered
+            color:
+                widget.isSelected
+                    ? AppColors.teal
+                    : _isHovered
                     ? AppColors.teal.withValues(alpha: 0.35)
                     : AppColors.border,
             width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
@@ -113,9 +116,10 @@ class _SupplierCardState extends State<SupplierCard> {
                         width: 42,
                         height: 42,
                         decoration: BoxDecoration(
-                          color: supplier.isActive
-                              ? AppColors.tealLight
-                              : Colors.grey.shade100,
+                          color:
+                              supplier.isActive
+                                  ? AppColors.tealLight
+                                  : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
@@ -124,9 +128,10 @@ class _SupplierCardState extends State<SupplierCard> {
                               ? supplier.name.substring(0, 1).toUpperCase()
                               : 'P',
                           style: TextStyle(
-                            color: supplier.isActive
-                                ? AppColors.tealDark
-                                : Colors.grey.shade500,
+                            color:
+                                supplier.isActive
+                                    ? AppColors.tealDark
+                                    : Colors.grey.shade500,
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
                           ),
@@ -144,12 +149,14 @@ class _SupplierCardState extends State<SupplierCard> {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
-                                color: supplier.isActive
-                                    ? AppColors.textPrimary
-                                    : AppColors.textMuted,
-                                decoration: supplier.isActive
-                                    ? null
-                                    : TextDecoration.lineThrough,
+                                color:
+                                    supplier.isActive
+                                        ? AppColors.textPrimary
+                                        : AppColors.textMuted,
+                                decoration:
+                                    supplier.isActive
+                                        ? null
+                                        : TextDecoration.lineThrough,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -179,9 +186,10 @@ class _SupplierCardState extends State<SupplierCard> {
 
                       // Switch Estado con Tooltip
                       Tooltip(
-                        message: supplier.isActive
-                            ? 'Desactivar proveedor'
-                            : 'Activar proveedor',
+                        message:
+                            supplier.isActive
+                                ? 'Desactivar proveedor'
+                                : 'Activar proveedor',
                         child: Transform.scale(
                           scale: 0.85,
                           child: Switch(
@@ -201,7 +209,10 @@ class _SupplierCardState extends State<SupplierCard> {
 
                   // --- Pie de Tarjeta: Contacto y Canales Directos ---
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
@@ -225,15 +236,18 @@ class _SupplierCardState extends State<SupplierCard> {
                                       : 'Sin contacto asignado',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: hasContact
-                                        ? AppColors.textPrimary
-                                        : AppColors.textMuted,
-                                    fontWeight: hasContact
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    fontStyle: hasContact
-                                        ? FontStyle.normal
-                                        : FontStyle.italic,
+                                    color:
+                                        hasContact
+                                            ? AppColors.textPrimary
+                                            : AppColors.textMuted,
+                                    fontWeight:
+                                        hasContact
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                    fontStyle:
+                                        hasContact
+                                            ? FontStyle.normal
+                                            : FontStyle.italic,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

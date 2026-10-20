@@ -45,7 +45,9 @@ class PosRepositoryImpl implements PosRepository {
   }) async {
     try {
       List<WarehouseModel> warehouses;
-      if (!forceRefresh && _cachedWarehouses != null && _cachedWarehouses!.isNotEmpty) {
+      if (!forceRefresh &&
+          _cachedWarehouses != null &&
+          _cachedWarehouses!.isNotEmpty) {
         warehouses = _cachedWarehouses!;
       } else {
         final whRes = await _supabase
@@ -67,12 +69,7 @@ class PosRepositoryImpl implements PosRepository {
 
       final accData = List<Map<String, dynamic>>.from(accRes);
 
-      return right(
-        PosInitData(
-          warehouses: warehouses,
-          accounts: accData,
-        ),
-      );
+      return right(PosInitData(warehouses: warehouses, accounts: accData));
     } on PostgrestException catch (e, stack) {
       LoggerService.e(
         'PostgrestException en loadInitialData',
@@ -93,7 +90,8 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> fetchFinancialAccounts() async {
+  Future<Either<Failure, List<Map<String, dynamic>>>>
+  fetchFinancialAccounts() async {
     try {
       final accRes = await _supabase
           .from('financial_accounts')
@@ -129,9 +127,7 @@ class PosRepositoryImpl implements PosRepository {
     try {
       final response = await _supabase
           .from('profiles')
-          .select(
-            'id, full_name, phone, document_number, wallet_balance',
-          )
+          .select('id, full_name, phone, document_number, wallet_balance')
           .eq('is_active', true)
           .or(
             'full_name.ilike.%$text%,document_number.ilike.%$text%,phone.ilike.%$text%',
@@ -162,7 +158,12 @@ class PosRepositoryImpl implements PosRepository {
               .maybeSingle();
       return right(response);
     } catch (e, stack) {
-      LoggerService.e('Error en fetchClientCredit', tag: 'PosRepositoryImpl', error: e, stackTrace: stack);
+      LoggerService.e(
+        'Error en fetchClientCredit',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
       return left(Failure.from(e));
     }
   }
@@ -291,7 +292,8 @@ class PosRepositoryImpl implements PosRepository {
             ? e.message
             : 'Crédito insuficiente para completar la venta.';
     }
-    if (e.message.contains('turno de caja') || e.message.contains('cash_shifts')) {
+    if (e.message.contains('turno de caja') ||
+        e.message.contains('cash_shifts')) {
       return 'No hay un turno de caja abierto para registrar esta venta en efectivo. Por favor, abre un turno.';
     }
     if (e.message.contains('stock') || e.message.contains('insuficiente')) {
@@ -317,12 +319,12 @@ class PosRepositoryImpl implements PosRepository {
               .single();
 
       final itemsResp = await _supabase
-              .from('order_items')
-              .select(
-                // Se omite product_images intencionalmente: no se muestran en el PDF del ticket.
-                'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name), product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))',
-              )
-              .eq('order_id', orderId);
+          .from('order_items')
+          .select(
+            // Se omite product_images intencionalmente: no se muestran en el PDF del ticket.
+            'id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at, products(name), product_variants(sku, variant_attribute_values(attribute_values(value, attributes(name))))',
+          )
+          .eq('order_id', orderId);
 
       // Delegar la deserialización a un Isolate de forma segura
       final result = await IsolateUtils.run(() {
@@ -354,9 +356,11 @@ class PosRepositoryImpl implements PosRepository {
   }) async {
     try {
       await _ensureProfileLoaded();
-      var query = _supabase.from('orders').select(
-        'id, total_amount, created_at, customer_name, status, payment_method, payment_status',
-      );
+      var query = _supabase
+          .from('orders')
+          .select(
+            'id, total_amount, created_at, customer_name, status, payment_method, payment_status',
+          );
 
       if (_cachedRole != 'admin' && _cachedProfileId != null) {
         query = query.eq('created_by', _cachedProfileId!);

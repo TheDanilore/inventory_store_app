@@ -31,9 +31,10 @@ class GlobalStatsBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Cuentas Activas',
           value: '$activeAccounts',
-          subtitle: suspendedAccounts > 0
-              ? '$suspendedAccounts suspendidas'
-              : '100% habilitadas',
+          subtitle:
+              suspendedAccounts > 0
+                  ? '$suspendedAccounts suspendidas'
+                  : '100% habilitadas',
           icon: Icons.people_alt_rounded,
           accentColor: AppColors.tealDark,
           gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
@@ -55,15 +56,18 @@ class GlobalStatsBar extends StatelessWidget {
                 ? const Color(0xFFFEF2F2)
                 : const Color(0xFFECFDF5),
           ],
-          iconGradient: maxedOutAccounts > 0
-              ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-              : const [Color(0xFF10B981), Color(0xFF059669)],
-          borderColor: maxedOutAccounts > 0
-              ? const Color(0xFFFECACA)
-              : const Color(0xFFA7F3D0),
-          glowColor: maxedOutAccounts > 0
-              ? const Color(0x2EEF4444)
-              : const Color(0x2E10B981),
+          iconGradient:
+              maxedOutAccounts > 0
+                  ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+                  : const [Color(0xFF10B981), Color(0xFF059669)],
+          borderColor:
+              maxedOutAccounts > 0
+                  ? const Color(0xFFFECACA)
+                  : const Color(0xFFA7F3D0),
+          glowColor:
+              maxedOutAccounts > 0
+                  ? const Color(0x2EEF4444)
+                  : const Color(0x2E10B981),
           valueColor:
               maxedOutAccounts > 0 ? AppColors.danger : AppColors.textPrimary,
           isAlert: maxedOutAccounts > 0,
@@ -71,23 +75,23 @@ class GlobalStatsBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total por Cobrar',
           value: _compact(totalDebt),
-          subtitle: totalDebt > 0
-              ? (accountsWithDebt > 0
-                  ? '$accountsWithDebt clientes con saldo'
-                  : 'Deuda total por cobrar')
-              : 'Cuentas al día',
+          subtitle:
+              totalDebt > 0
+                  ? (accountsWithDebt > 0
+                      ? '$accountsWithDebt clientes con saldo'
+                      : 'Deuda total por cobrar')
+                  : 'Cuentas al día',
           icon: Icons.account_balance_wallet_rounded,
           accentColor:
               totalDebt > 0 ? AppColors.primary : AppColors.successDark,
           gradientColors: [
             Colors.white,
-            totalDebt > 0
-                ? const Color(0xFFF8FAFC)
-                : const Color(0xFFECFDF5),
+            totalDebt > 0 ? const Color(0xFFF8FAFC) : const Color(0xFFECFDF5),
           ],
-          iconGradient: totalDebt > 0
-              ? const [Color(0xFF334155), Color(0xFF1E293B)]
-              : const [Color(0xFF10B981), Color(0xFF059669)],
+          iconGradient:
+              totalDebt > 0
+                  ? const [Color(0xFF334155), Color(0xFF1E293B)]
+                  : const [Color(0xFF10B981), Color(0xFF059669)],
           borderColor:
               totalDebt > 0 ? const Color(0xFFE2E8F0) : const Color(0xFFA7F3D0),
           glowColor:

@@ -56,7 +56,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
-      currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentPage =
+          page ?? ((refresh && !background) ? 0 : currentState.currentPage);
       currentPageSize = pageSize ?? currentState.pageSize;
       currentOrders =
           (refresh && !background && currentState.orders.isEmpty)
@@ -68,7 +69,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
-      currentPage = page ?? ((refresh && !background) ? 0 : currentState.currentPage);
+      currentPage =
+          page ?? ((refresh && !background) ? 0 : currentState.currentPage);
       currentPageSize = pageSize ?? currentState.pageSize;
       currentOrders =
           (refresh && !background && currentState.currentOrders.isEmpty)

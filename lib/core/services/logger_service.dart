@@ -11,20 +11,64 @@ enum LogLevel { debug, info, warning, error }
 class LoggerService {
   const LoggerService();
 
-  static void d(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.debug, message, tag: tag, error: error, stackTrace: stackTrace);
+  static void d(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _log(
+      LogLevel.debug,
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
-  static void i(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.info, message, tag: tag, error: error, stackTrace: stackTrace);
+  static void i(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _log(
+      LogLevel.info,
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
-  static void w(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.warning, message, tag: tag, error: error, stackTrace: stackTrace);
+  static void w(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _log(
+      LogLevel.warning,
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
-  static void e(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    _log(LogLevel.error, message, tag: tag, error: error, stackTrace: stackTrace ?? StackTrace.current);
+  static void e(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _log(
+      LogLevel.error,
+      message,
+      tag: tag,
+      error: error,
+      stackTrace: stackTrace ?? StackTrace.current,
+    );
   }
 
   static void _log(
@@ -62,15 +106,31 @@ class LoggerService {
     }
   }
 
-  void debug(String message, {String? tag, Object? error, StackTrace? stackTrace}) =>
-      d(message, tag: tag, error: error, stackTrace: stackTrace);
+  void debug(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) => d(message, tag: tag, error: error, stackTrace: stackTrace);
 
-  void info(String message, {String? tag, Object? error, StackTrace? stackTrace}) =>
-      i(message, tag: tag, error: error, stackTrace: stackTrace);
+  void info(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) => i(message, tag: tag, error: error, stackTrace: stackTrace);
 
-  void warning(String message, {String? tag, Object? error, StackTrace? stackTrace}) =>
-      w(message, tag: tag, error: error, stackTrace: stackTrace);
+  void warning(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) => w(message, tag: tag, error: error, stackTrace: stackTrace);
 
-  void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) =>
-      e(message, tag: tag, error: error, stackTrace: stackTrace);
+  void error(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) => e(message, tag: tag, error: error, stackTrace: stackTrace);
 }

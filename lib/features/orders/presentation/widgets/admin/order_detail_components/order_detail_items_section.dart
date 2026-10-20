@@ -171,7 +171,11 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                   const SizedBox(height: 3),
                   Text(
                     'P. unit: S/ ${widget.item.appliedPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
 
                   if (canEditBatches) ...[
@@ -422,7 +426,10 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(6),
@@ -463,7 +470,11 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Icon(Icons.inventory_2_outlined, color: AppColors.teal, size: 22),
+      child: const Icon(
+        Icons.inventory_2_outlined,
+        color: AppColors.teal,
+        size: 22,
+      ),
     );
   }
 }

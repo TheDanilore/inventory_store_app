@@ -21,13 +21,16 @@ class AppShortcutLabels {
   static String get search => kIsWeb ? 'Alt K' : (isApple ? '⌘K' : 'Ctrl K');
 
   /// Etiqueta con signo: 'Alt+K', '⌘+K' o 'Ctrl+K'
-  static String get searchPlus => kIsWeb ? 'Alt+K' : (isApple ? '⌘+K' : 'Ctrl+K');
+  static String get searchPlus =>
+      kIsWeb ? 'Alt+K' : (isApple ? '⌘+K' : 'Ctrl+K');
 
   /// Etiqueta para nuevo registro: 'Alt+N', '⌘+N' o 'Ctrl+N'
-  static String get newRecord => kIsWeb ? 'Alt+N' : (isApple ? '⌘+N' : 'Ctrl+N');
+  static String get newRecord =>
+      kIsWeb ? 'Alt+N' : (isApple ? '⌘+N' : 'Ctrl+N');
 
   /// Etiqueta para alternar vistas: 'Alt+V', '⌘+V' o 'Ctrl+V'
-  static String get toggleView => kIsWeb ? 'Alt+V' : (isApple ? '⌘+V' : 'Ctrl+V');
+  static String get toggleView =>
+      kIsWeb ? 'Alt+V' : (isApple ? '⌘+V' : 'Ctrl+V');
 
   /// Etiqueta para atajos numéricos de pestañas: 'Alt+1', '⌘+1' o 'Ctrl+1'
   static String tab(int index) =>

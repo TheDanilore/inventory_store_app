@@ -137,7 +137,9 @@ class ProductAvailabilityCard extends StatelessWidget {
                               ok
                                   ? (isDark
                                       ? AppColors.primary.withValues(alpha: 0.2)
-                                      : AppColors.primary.withValues(alpha: 0.08))
+                                      : AppColors.primary.withValues(
+                                        alpha: 0.08,
+                                      ))
                                   : (isDark
                                       ? AppColors.danger.withValues(alpha: 0.2)
                                       : AppColors.dangerLight),

@@ -456,7 +456,9 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                           size: 19,
                         ),
                         color:
-                            isDark ? const Color(0xFF60A5FA) : AppColors.tealDark,
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : AppColors.tealDark,
                         tooltip: widget.scanBarcodeTooltip,
                         splashRadius: 18,
                         onPressed: () {
@@ -637,7 +639,9 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                         Icons.qr_code_scanner_rounded,
                         size: 20,
                         color:
-                            isDark ? const Color(0xFF60A5FA) : AppColors.primary,
+                            isDark
+                                ? const Color(0xFF60A5FA)
+                                : AppColors.primary,
                       ),
                       tooltip: widget.scanBarcodeTooltip,
                       splashRadius: 20,

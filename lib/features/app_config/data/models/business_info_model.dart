@@ -41,10 +41,14 @@ class BusinessInfoModel {
       address: map['address']?.toString() ?? '',
       phone: map['phone']?.toString() ?? '',
       logoUrl: map['logo_url']?.toString() ?? '',
-      loyaltyGlobalEnabled:
-          _parseBool(map['loyalty_global_enabled'], defaultValue: false),
-      loyaltyCustomerVisible:
-          _parseBool(map['loyalty_customer_visible'], defaultValue: false),
+      loyaltyGlobalEnabled: _parseBool(
+        map['loyalty_global_enabled'],
+        defaultValue: false,
+      ),
+      loyaltyCustomerVisible: _parseBool(
+        map['loyalty_customer_visible'],
+        defaultValue: false,
+      ),
     );
   }
 

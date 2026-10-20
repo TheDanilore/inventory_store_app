@@ -41,7 +41,9 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   }) : super(PurchaseOrderFormInitial());
 
   Future<void> initForm({bool forceReload = false, String? editOrderId}) async {
-    if (editOrderId == null && !forceReload && state is PurchaseOrderFormLoaded) {
+    if (editOrderId == null &&
+        !forceReload &&
+        state is PurchaseOrderFormLoaded) {
       final loaded = state as PurchaseOrderFormLoaded;
       if (loaded.suppliers.isNotEmpty || loaded.warehouses.isNotEmpty) {
         return; // Evitar recargas redundantes si el estado ya está cargado
@@ -82,10 +84,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
             final orderRes = await getPurchaseOrderByIdUseCase(editOrderId);
             Map<String, dynamic>? orderData;
             String? orderError;
-            orderRes.fold(
-              (f) => orderError = f.message,
-              (d) => orderData = d,
-            );
+            orderRes.fold((f) => orderError = f.message, (d) => orderData = d);
 
             if (orderError != null || orderData == null) {
               emit(
@@ -94,7 +93,8 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
                   warehouses: warehouses,
                   accounts: accounts,
                   errorMessage:
-                      orderError ?? 'No se encontró la orden de compra a editar.',
+                      orderError ??
+                      'No se encontró la orden de compra a editar.',
                 ),
               );
               return;
@@ -172,8 +172,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
                 orderData!['payment_method'] as String? ?? 'EFECTIVO';
             final paymentStatus =
                 orderData!['payment_status'] as String? ?? 'PENDING';
-            final docType =
-                orderData!['document_type'] as String? ?? 'NINGUNO';
+            final docType = orderData!['document_type'] as String? ?? 'NINGUNO';
             final docNumber = orderData!['document_number'] as String? ?? '';
             final notes = orderData!['notes'] as String? ?? '';
             final dueDate =
@@ -589,7 +588,8 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
             emit(
               loadingState.copyWith(
                 isSaving: false,
-                errorMessage: 'Error al actualizar la orden: ${failure.message}',
+                errorMessage:
+                    'Error al actualizar la orden: ${failure.message}',
               ),
             );
           },

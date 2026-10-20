@@ -11,6 +11,7 @@ class UserEntity extends Equatable {
   final bool isActive;
   final DateTime? createdAt;
   final int walletBalance;
+  final List<String> roles;
 
   const UserEntity({
     required this.id,
@@ -23,7 +24,18 @@ class UserEntity extends Equatable {
     required this.isActive,
     this.createdAt,
     this.walletBalance = 0,
+    this.roles = const [],
   });
+
+  /// Lista de todos los roles asignados, incluyendo el rol primario
+  List<String> get allRoles {
+    final list = <String>[];
+    if (role.isNotEmpty) list.add(role);
+    for (final r in roles) {
+      if (!list.contains(r)) list.add(r);
+    }
+    return list;
+  }
 
   @override
   List<Object?> get props => [
@@ -37,6 +49,7 @@ class UserEntity extends Equatable {
     isActive,
     createdAt,
     walletBalance,
+    roles,
   ];
 
   UserEntity copyWith({
@@ -50,6 +63,7 @@ class UserEntity extends Equatable {
     bool? isActive,
     DateTime? createdAt,
     int? walletBalance,
+    List<String>? roles,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -62,6 +76,7 @@ class UserEntity extends Equatable {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       walletBalance: walletBalance ?? this.walletBalance,
+      roles: roles ?? this.roles,
     );
   }
 }

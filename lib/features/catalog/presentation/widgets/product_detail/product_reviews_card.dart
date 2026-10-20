@@ -241,9 +241,7 @@ class _ReviewRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 color:
-                    isDark
-                        ? const Color(0xFF94A3B8)
-                        : AppColors.textSecondary,
+                    isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
                 height: 1.5,
               ),
               maxLines: 3,

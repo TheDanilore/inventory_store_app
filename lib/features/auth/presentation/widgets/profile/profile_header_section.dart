@@ -84,13 +84,16 @@ class ProfileHeaderSection extends StatelessWidget {
                                     imageBytes != null
                                         ? MemoryImage(imageBytes!)
                                             as ImageProvider
-                                        : (avatarUrl != null && avatarUrl!.isNotEmpty
+                                        : (avatarUrl != null &&
+                                                avatarUrl!.isNotEmpty
                                             ? CachedNetworkImageProvider(
                                               avatarUrl!,
                                             )
                                             : null),
                                 child:
-                                    (imageBytes == null && (avatarUrl == null || avatarUrl!.isEmpty))
+                                    (imageBytes == null &&
+                                            (avatarUrl == null ||
+                                                avatarUrl!.isEmpty))
                                         ? Text(
                                           displayName.isNotEmpty
                                               ? displayName[0].toUpperCase()
@@ -111,9 +114,10 @@ class ProfileHeaderSection extends StatelessWidget {
                                 width: 26,
                                 height: 26,
                                 decoration: BoxDecoration(
-                                  color: isEditing
-                                      ? AppColors.accent
-                                      : const Color(0xFF059669),
+                                  color:
+                                      isEditing
+                                          ? AppColors.accent
+                                          : const Color(0xFF059669),
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: Colors.white,
@@ -121,7 +125,9 @@ class ProfileHeaderSection extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),

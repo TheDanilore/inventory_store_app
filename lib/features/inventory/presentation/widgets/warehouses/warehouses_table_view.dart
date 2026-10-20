@@ -56,10 +56,7 @@ class WarehousesTableView extends StatelessWidget {
                     decoration: const BoxDecoration(
                       color: Color(0xFFF8FAFC),
                       border: Border(
-                        bottom: BorderSide(
-                          color: Color(0xFFE2E8F0),
-                          width: 1,
-                        ),
+                        bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
                       ),
                     ),
                     child: Row(

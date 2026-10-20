@@ -439,8 +439,10 @@ class _PaymentStatusSectionState extends State<PaymentStatusSection> {
                     color: Colors.grey.shade400,
                     fontSize: 13,
                   ),
-                  prefixIconConstraints:
-                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
+                  ),
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(left: 14, right: 8),
                     child: Text(

@@ -62,7 +62,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 CREATE TYPE "public"."user_role" AS ENUM (
     'customer',
     'admin',
-    'employee'
+    'employee',
+    'cashier',
+    'warehouse_keeper'
 );
 
 
@@ -1390,6 +1392,27 @@ $_$;
 
 
 ALTER FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_my_permissions"() RETURNS TABLE("role_name" "text", "permission_code" "text", "permission_name" "text", "module" "text")
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT DISTINCT
+    r.name as role_name,
+    p.code as permission_code,
+    p.name as permission_name,
+    p.module as module
+  FROM public.profiles pr
+  JOIN public.user_roles ur ON ur.profile_id = pr.id
+  JOIN public.roles r ON r.id = ur.role_id
+  LEFT JOIN public.role_permissions rp ON rp.role_id = r.id
+  LEFT JOIN public.permissions p ON p.id = rp.permission_id
+  WHERE pr.auth_user_id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."get_my_permissions"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") RETURNS "jsonb"
@@ -5057,6 +5080,17 @@ CREATE OR REPLACE VIEW "public"."partner_credit_summary" WITH ("security_invoker
 ALTER VIEW "public"."partner_credit_summary" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."permissions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "code" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "module" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."permissions" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."physical_inventories" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "warehouse_id" "uuid" NOT NULL,
@@ -5278,6 +5312,26 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_orders" (
 ALTER TABLE "public"."purchase_orders" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."role_permissions" (
+    "role_id" "uuid" NOT NULL,
+    "permission_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."role_permissions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."roles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."roles" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."shopping_carts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "profile_id" "uuid" NOT NULL,
@@ -5339,6 +5393,35 @@ CREATE TABLE IF NOT EXISTS "public"."suppliers" (
 
 
 ALTER TABLE "public"."suppliers" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_roles" (
+    "profile_id" "uuid" NOT NULL,
+    "role_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."user_roles" OWNER TO "postgres";
+
+
+CREATE OR REPLACE VIEW "public"."user_effective_permissions" AS
+ SELECT DISTINCT "pr"."id" AS "profile_id",
+    "pr"."auth_user_id",
+    "r"."id" AS "role_id",
+    "r"."name" AS "role_name",
+    "p"."id" AS "permission_id",
+    "p"."code" AS "permission_code",
+    "p"."name" AS "permission_name",
+    "p"."module" AS "permission_module"
+   FROM (((("public"."profiles" "pr"
+     JOIN "public"."user_roles" "ur" ON (("ur"."profile_id" = "pr"."id")))
+     JOIN "public"."roles" "r" ON (("r"."id" = "ur"."role_id")))
+     JOIN "public"."role_permissions" "rp" ON (("rp"."role_id" = "r"."id")))
+     JOIN "public"."permissions" "p" ON (("p"."id" = "rp"."permission_id")));
+
+
+ALTER VIEW "public"."user_effective_permissions" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."variant_attribute_values" (
@@ -5534,6 +5617,16 @@ ALTER TABLE ONLY "public"."orders"
 
 
 
+ALTER TABLE ONLY "public"."permissions"
+    ADD CONSTRAINT "permissions_code_key" UNIQUE ("code");
+
+
+
+ALTER TABLE ONLY "public"."permissions"
+    ADD CONSTRAINT "permissions_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."physical_inventories"
     ADD CONSTRAINT "physical_inventories_pkey" PRIMARY KEY ("id");
 
@@ -5594,6 +5687,21 @@ ALTER TABLE ONLY "public"."purchase_orders"
 
 
 
+ALTER TABLE ONLY "public"."role_permissions"
+    ADD CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("role_id", "permission_id");
+
+
+
+ALTER TABLE ONLY "public"."roles"
+    ADD CONSTRAINT "roles_name_key" UNIQUE ("name");
+
+
+
+ALTER TABLE ONLY "public"."roles"
+    ADD CONSTRAINT "roles_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."shopping_carts"
     ADD CONSTRAINT "shopping_carts_pkey" PRIMARY KEY ("id");
 
@@ -5631,6 +5739,11 @@ ALTER TABLE ONLY "public"."suppliers"
 
 ALTER TABLE ONLY "public"."financial_accounts"
     ADD CONSTRAINT "unique_financial_account_name" UNIQUE ("name");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_pkey" PRIMARY KEY ("profile_id", "role_id");
 
 
 
@@ -5783,6 +5896,10 @@ CREATE INDEX "idx_orders_warehouse_id" ON "public"."orders" USING "btree" ("ware
 
 
 
+CREATE INDEX "idx_permissions_code" ON "public"."permissions" USING "btree" ("code");
+
+
+
 CREATE INDEX "idx_product_images_product_id" ON "public"."product_images" USING "btree" ("product_id");
 
 
@@ -5807,6 +5924,14 @@ CREATE INDEX "idx_purchase_orders_supplier_id" ON "public"."purchase_orders" USI
 
 
 
+CREATE INDEX "idx_role_permissions_permission_id" ON "public"."role_permissions" USING "btree" ("permission_id");
+
+
+
+CREATE INDEX "idx_role_permissions_role_id" ON "public"."role_permissions" USING "btree" ("role_id");
+
+
+
 CREATE INDEX "idx_supplier_credit_movements_created_by" ON "public"."supplier_credit_movements" USING "btree" ("created_by");
 
 
@@ -5816,6 +5941,14 @@ CREATE INDEX "idx_supplier_credit_movements_credit_id" ON "public"."supplier_cre
 
 
 CREATE INDEX "idx_supplier_credit_movements_po_id" ON "public"."supplier_credit_movements" USING "btree" ("purchase_order_id");
+
+
+
+CREATE INDEX "idx_user_roles_profile_id" ON "public"."user_roles" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "idx_user_roles_role_id" ON "public"."user_roles" USING "btree" ("role_id");
 
 
 
@@ -6411,6 +6544,16 @@ ALTER TABLE ONLY "public"."purchase_orders"
 
 
 
+ALTER TABLE ONLY "public"."role_permissions"
+    ADD CONSTRAINT "role_permissions_permission_id_fkey" FOREIGN KEY ("permission_id") REFERENCES "public"."permissions"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."role_permissions"
+    ADD CONSTRAINT "role_permissions_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."shopping_carts"
     ADD CONSTRAINT "shopping_carts_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id");
 
@@ -6438,6 +6581,16 @@ ALTER TABLE ONLY "public"."supplier_credits"
 
 ALTER TABLE ONLY "public"."supplier_credits"
     ADD CONSTRAINT "supplier_credits_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_roles"
+    ADD CONSTRAINT "user_roles_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE CASCADE;
 
 
 
@@ -6925,6 +7078,58 @@ CREATE POLICY "Modificacion admin/empleado" ON "public"."variant_attribute_value
 
 
 
+CREATE POLICY "Permitir lectura de permisos a usuarios autenticados" ON "public"."permissions" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+
+CREATE POLICY "Permitir lectura de role_permissions a usuarios autenticados" ON "public"."role_permissions" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+
+CREATE POLICY "Permitir lectura de roles a usuarios autenticados" ON "public"."roles" FOR SELECT TO "authenticated", "anon" USING (true);
+
+
+
+CREATE POLICY "Solo administradores pueden asignar user_roles" ON "public"."user_roles" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+
+
+
+CREATE POLICY "Solo administradores pueden modificar permisos" ON "public"."permissions" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+
+
+
+CREATE POLICY "Solo administradores pueden modificar role_permissions" ON "public"."role_permissions" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+
+
+
+CREATE POLICY "Solo administradores pueden modificar roles" ON "public"."roles" TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+
+
+
+CREATE POLICY "Usuarios pueden ver sus propios roles asignados" ON "public"."user_roles" FOR SELECT TO "authenticated" USING ((("profile_id" IN ( SELECT "profiles"."id"
+   FROM "public"."profiles"
+  WHERE ("profiles"."auth_user_id" = "auth"."uid"()))) OR (EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))));
+
+
+
 ALTER TABLE "public"."account_movements" ENABLE ROW LEVEL SECURITY;
 
 
@@ -6994,6 +7199,9 @@ ALTER TABLE "public"."order_items" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."orders" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."permissions" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."physical_inventories" ENABLE ROW LEVEL SECURITY;
 
 
@@ -7024,6 +7232,12 @@ ALTER TABLE "public"."purchase_order_items" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."purchase_orders" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."role_permissions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."roles" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."shopping_carts" ENABLE ROW LEVEL SECURITY;
 
 
@@ -7034,6 +7248,9 @@ ALTER TABLE "public"."supplier_credits" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."suppliers" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."variant_attribute_values" ENABLE ROW LEVEL SECURITY;
@@ -7349,6 +7566,12 @@ GRANT ALL ON FUNCTION "public"."get_loyalty_dashboard"("p_auth_user_id" "uuid") 
 GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "anon";
 GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "service_role";
 
 
 
@@ -7713,6 +7936,12 @@ GRANT ALL ON TABLE "public"."partner_credit_summary" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."permissions" TO "anon";
+GRANT ALL ON TABLE "public"."permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."permissions" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."physical_inventories" TO "anon";
 GRANT ALL ON TABLE "public"."physical_inventories" TO "authenticated";
 GRANT ALL ON TABLE "public"."physical_inventories" TO "service_role";
@@ -7785,6 +8014,18 @@ GRANT ALL ON TABLE "public"."purchase_orders" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."role_permissions" TO "anon";
+GRANT ALL ON TABLE "public"."role_permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."role_permissions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."roles" TO "anon";
+GRANT ALL ON TABLE "public"."roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."roles" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."shopping_carts" TO "anon";
 GRANT ALL ON TABLE "public"."shopping_carts" TO "authenticated";
 GRANT ALL ON TABLE "public"."shopping_carts" TO "service_role";
@@ -7806,6 +8047,18 @@ GRANT ALL ON TABLE "public"."supplier_credits" TO "service_role";
 GRANT ALL ON TABLE "public"."suppliers" TO "anon";
 GRANT ALL ON TABLE "public"."suppliers" TO "authenticated";
 GRANT ALL ON TABLE "public"."suppliers" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_roles" TO "anon";
+GRANT ALL ON TABLE "public"."user_roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_roles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_effective_permissions" TO "anon";
+GRANT ALL ON TABLE "public"."user_effective_permissions" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_effective_permissions" TO "service_role";
 
 
 

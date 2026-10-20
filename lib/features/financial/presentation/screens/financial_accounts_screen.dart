@@ -181,68 +181,70 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
 
         return AdminLayout(
           title: 'Cuentas y Bancos',
-          actions: isMobile
-              ? [
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded),
-                    tooltip: 'Actualizar [R]',
-                    onPressed: _refreshAll,
-                  ),
-                ]
-              : [
-                  FilledButton.icon(
-                    onPressed: () => MovementFormSheet.show(context),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Nuevo Movimiento [N]'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.teal,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+          actions:
+              isMobile
+                  ? [
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      tooltip: 'Actualizar [R]',
+                      onPressed: _refreshAll,
+                    ),
+                  ]
+                  : [
+                    FilledButton.icon(
+                      onPressed: () => MovementFormSheet.show(context),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Nuevo Movimiento [N]'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.teal,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => AccountFormSheet.show(context),
-                    icon: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 16,
-                    ),
-                    label: const Text('Nueva Cuenta [C]'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => AccountFormSheet.show(context),
+                      icon: const Icon(
+                        Icons.account_balance_wallet_outlined,
+                        size: 16,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      label: const Text('Nueva Cuenta [C]'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: 'Actualizar [R]',
-                    icon: const Icon(Icons.refresh_rounded),
-                    onPressed: _refreshAll,
-                  ),
-                  const SizedBox(width: 4),
-                ],
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'Actualizar [R]',
+                      icon: const Icon(Icons.refresh_rounded),
+                      onPressed: _refreshAll,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
           floatingActionButton: isMobile ? _buildMobileFab() : null,
           body: Focus(
             focusNode: _screenFocusNode,
             autofocus: true,
             onKeyEvent: _handleKeyEvent,
-            child: isMobile
-                ? _buildMobileLayout()
-                : _buildDesktopLayout(isDesktop),
+            child:
+                isMobile
+                    ? _buildMobileLayout()
+                    : _buildDesktopLayout(isDesktop),
           ),
         );
       },

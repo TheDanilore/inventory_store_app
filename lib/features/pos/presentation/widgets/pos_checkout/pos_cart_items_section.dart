@@ -109,7 +109,10 @@ class PosCartItemRow extends StatelessWidget {
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 autofocus: true,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                ),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -196,10 +199,10 @@ class PosCartItemRow extends StatelessWidget {
                 child:
                     item.imageUrl != null
                         ? CachedNetworkImage(
-                            imageUrl: item.imageUrl!,
-                            memCacheWidth: 120,
-                            memCacheHeight: 120,
-                            fit: BoxFit.cover,
+                          imageUrl: item.imageUrl!,
+                          memCacheWidth: 120,
+                          memCacheHeight: 120,
+                          fit: BoxFit.cover,
                           placeholder:
                               (context, url) => const Center(
                                 child: SizedBox(
@@ -374,7 +377,9 @@ class PosCartItemRow extends StatelessWidget {
                                 color:
                                     item.quantity > 1
                                         ? AppColors.textSecondary
-                                        : AppColors.textMuted.withValues(alpha: 0.5),
+                                        : AppColors.textMuted.withValues(
+                                          alpha: 0.5,
+                                        ),
                               ),
                             ),
                           ),
@@ -384,7 +389,9 @@ class PosCartItemRow extends StatelessWidget {
                               onTap: () => _showQuantityDialog(context),
                               child: Container(
                                 constraints: const BoxConstraints(minWidth: 32),
-                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
                                 alignment: Alignment.center,
                                 child: Text(
                                   '${item.quantity}',
@@ -426,7 +433,9 @@ class PosCartItemRow extends StatelessWidget {
                                     color:
                                         canIncrement
                                             ? AppColors.textSecondary
-                                            : AppColors.textMuted.withValues(alpha: 0.5),
+                                            : AppColors.textMuted.withValues(
+                                              alpha: 0.5,
+                                            ),
                                   ),
                                 ),
                               );
@@ -466,7 +475,9 @@ class PosCartItemRow extends StatelessWidget {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => context.read<CartCubit>().removeItem(item.cartKey),
+                    onTap:
+                        () =>
+                            context.read<CartCubit>().removeItem(item.cartKey),
                     borderRadius: BorderRadius.circular(8),
                     hoverColor: AppColors.dangerLight.withValues(alpha: 0.7),
                     child: Container(
@@ -476,7 +487,9 @@ class PosCartItemRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+                        border: Border.all(
+                          color: AppColors.border.withValues(alpha: 0.7),
+                        ),
                       ),
                       child: const Icon(
                         Icons.delete_outline_rounded,

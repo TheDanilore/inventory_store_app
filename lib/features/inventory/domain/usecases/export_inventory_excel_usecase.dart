@@ -5,16 +5,9 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_repository.dart';
 
-enum InventoryExportMode {
-  consolidated,
-  byWarehouse,
-}
+enum InventoryExportMode { consolidated, byWarehouse }
 
-enum InventoryStockFilterOption {
-  all,
-  inStockOnly,
-  lowStockOnly,
-}
+enum InventoryStockFilterOption { all, inStockOnly, lowStockOnly }
 
 @injectable
 class ExportInventoryExcelUseCase {
@@ -29,19 +22,21 @@ class ExportInventoryExcelUseCase {
     InventoryStockFilterOption filter = InventoryStockFilterOption.all,
   }) async {
     final items = await _repository.getAllStockForExport(
-      warehouseId: mode == InventoryExportMode.consolidated ? null : warehouseId,
+      warehouseId:
+          mode == InventoryExportMode.consolidated ? null : warehouseId,
     );
 
     // Filtrar según criterio
-    final filteredItems = items.where((item) {
-      if (filter == InventoryStockFilterOption.inStockOnly) {
-        return item.stock > 0;
-      }
-      if (filter == InventoryStockFilterOption.lowStockOnly) {
-        return item.stockControl && item.isLowStock;
-      }
-      return true;
-    }).toList();
+    final filteredItems =
+        items.where((item) {
+          if (filter == InventoryStockFilterOption.inStockOnly) {
+            return item.stock > 0;
+          }
+          if (filter == InventoryStockFilterOption.lowStockOnly) {
+            return item.stockControl && item.isLowStock;
+          }
+          return true;
+        }).toList();
 
     final csvString = await compute(
       _generateInventoryCsvString,
@@ -57,11 +52,12 @@ class ExportInventoryExcelUseCase {
     final dateStr =
         '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
 
-    final prefix = mode == InventoryExportMode.consolidated
-        ? 'inventario_general_consolidado'
-        : (warehouseId != null && warehouseId.isNotEmpty
-            ? 'inventario_${warehouseName?.replaceAll(' ', '_').toLowerCase() ?? 'almacen'}'
-            : 'inventario_por_almacen');
+    final prefix =
+        mode == InventoryExportMode.consolidated
+            ? 'inventario_general_consolidado'
+            : (warehouseId != null && warehouseId.isNotEmpty
+                ? 'inventario_${warehouseName?.replaceAll(' ', '_').toLowerCase() ?? 'almacen'}'
+                : 'inventario_por_almacen');
 
     final fileName = '${prefix}_$dateStr';
 
@@ -104,14 +100,16 @@ String _generateInventoryCsvString(_ExportData data) {
     );
 
     for (final item in data.items) {
-      final margin = item.salePrice > 0 && item.unitCost > 0
-          ? (((item.salePrice - item.unitCost) / item.salePrice) * 100)
-              .toStringAsFixed(1)
-          : '0.0';
+      final margin =
+          item.salePrice > 0 && item.unitCost > 0
+              ? (((item.salePrice - item.unitCost) / item.salePrice) * 100)
+                  .toStringAsFixed(1)
+              : '0.0';
 
-      final statusStr = item.stock <= 0
-          ? 'Agotado'
-          : (item.isLowStock ? 'Bajo Stock' : 'Normal');
+      final statusStr =
+          item.stock <= 0
+              ? 'Agotado'
+              : (item.isLowStock ? 'Bajo Stock' : 'Normal');
 
       final row = [
         _escapeCsv(item.productName),

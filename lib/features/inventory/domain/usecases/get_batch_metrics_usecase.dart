@@ -8,6 +8,9 @@ class GetBatchMetricsUseCase {
   GetBatchMetricsUseCase(this._repository);
 
   Future<Map<String, int>> call({String search = '', String? warehouseId}) {
-    return _repository.getBatchMetrics(search: search, warehouseId: warehouseId);
+    return _repository.getBatchMetrics(
+      search: search,
+      warehouseId: warehouseId,
+    );
   }
 }

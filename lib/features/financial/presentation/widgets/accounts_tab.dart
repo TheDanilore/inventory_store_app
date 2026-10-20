@@ -101,12 +101,21 @@ class _AccountsTabState extends State<AccountsTab> {
                                 ),
                                 children: [
                                   _buildGlobalBalanceCard(activeAccounts),
-                                  if (widget.onSelectAll != null && activeAccounts.isNotEmpty) ...[
+                                  if (widget.onSelectAll != null &&
+                                      activeAccounts.isNotEmpty) ...[
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                                      padding: const EdgeInsets.only(
+                                        top: 8,
+                                        bottom: 4,
+                                      ),
                                       child: _AllAccountsCard(
-                                        isSelected: widget.selectedAccountId == null,
-                                        totalBalance: activeAccounts.fold<double>(0.0, (sum, a) => sum + a.balance),
+                                        isSelected:
+                                            widget.selectedAccountId == null,
+                                        totalBalance: activeAccounts
+                                            .fold<double>(
+                                              0.0,
+                                              (sum, a) => sum + a.balance,
+                                            ),
                                         activeCount: activeAccounts.length,
                                         onTap: widget.onSelectAll!,
                                       ),
@@ -589,9 +598,12 @@ class _AccountCardState extends State<_AccountCard> {
                                   vertical: 1.5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: account.isActive
-                                      ? AppColors.teal.withValues(alpha: 0.1)
-                                      : const Color(0xFFF1F5F9),
+                                  color:
+                                      account.isActive
+                                          ? AppColors.teal.withValues(
+                                            alpha: 0.1,
+                                          )
+                                          : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -681,18 +693,22 @@ class _AllAccountsCardState extends State<_AllAccountsCard> {
           color: isSelected ? const Color(0xFFF0FDFA) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected
-                ? AppColors.teal
-                : _isHovered
+            color:
+                isSelected
+                    ? AppColors.teal
+                    : _isHovered
                     ? AppColors.teal.withValues(alpha: 0.4)
                     : AppColors.border,
             width: (isSelected || _isHovered) ? 1.5 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? AppColors.teal.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.025),
+              color:
+                  isSelected
+                      ? AppColors.teal.withValues(alpha: 0.1)
+                      : Colors.black.withValues(
+                        alpha: _isHovered ? 0.06 : 0.025,
+                      ),
               blurRadius: (isSelected || _isHovered) ? 14 : 6,
               offset: Offset(0, (isSelected || _isHovered) ? 4 : 2),
             ),
@@ -783,9 +799,10 @@ class _AllAccountsCardState extends State<_AllAccountsCard> {
                               vertical: 1.5,
                             ),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.teal.withValues(alpha: 0.12)
-                                  : const Color(0xFFF1F5F9),
+                              color:
+                                  isSelected
+                                      ? AppColors.teal.withValues(alpha: 0.12)
+                                      : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -793,9 +810,10 @@ class _AllAccountsCardState extends State<_AllAccountsCard> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: isSelected
-                                    ? AppColors.tealDark
-                                    : AppColors.textSecondary,
+                                color:
+                                    isSelected
+                                        ? AppColors.tealDark
+                                        : AppColors.textSecondary,
                               ),
                             ),
                           ),
@@ -859,4 +877,3 @@ class _AccountsSkeleton extends StatelessWidget {
     );
   }
 }
-

@@ -63,11 +63,7 @@ class PosSidebarRail extends StatelessWidget {
                   ],
                 ),
                 child: const Center(
-                  child: Icon(
-                    Icons.eco_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                  child: Icon(Icons.eco_rounded, color: Colors.white, size: 28),
                 ),
               ),
             ),
@@ -175,21 +171,23 @@ class PosSidebarRail extends StatelessWidget {
             decoration: BoxDecoration(
               color: isSelected ? sidebarActiveBg : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: isSelected
-                  ? Border.all(
-                      color: limeAccent.withValues(alpha: 0.4),
-                      width: 1,
-                    )
-                  : Border.all(color: Colors.transparent, width: 1),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+              border:
+                  isSelected
+                      ? Border.all(
+                        color: limeAccent.withValues(alpha: 0.4),
+                        width: 1,
+                      )
+                      : Border.all(color: Colors.transparent, width: 1),
+              boxShadow:
+                  isSelected
+                      ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
             ),
             child: Stack(
               clipBehavior: Clip.none,
@@ -200,7 +198,10 @@ class PosSidebarRail extends StatelessWidget {
                     children: [
                       Icon(
                         icon,
-                        color: isSelected ? limeAccentLight : const Color(0xFF94A3B8),
+                        color:
+                            isSelected
+                                ? limeAccentLight
+                                : const Color(0xFF94A3B8),
                         size: 24,
                       ),
                       const SizedBox(height: 5),
@@ -208,9 +209,13 @@ class PosSidebarRail extends StatelessWidget {
                         label,
                         style: TextStyle(
                           fontSize: 9.5,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight:
+                              isSelected ? FontWeight.w800 : FontWeight.w600,
                           letterSpacing: 0.8,
-                          color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                          color:
+                              isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF94A3B8),
                         ),
                       ),
                     ],
@@ -220,16 +225,21 @@ class PosSidebarRail extends StatelessWidget {
                   top: -2,
                   right: 2,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? limeAccent.withValues(alpha: 0.25)
-                          : Colors.white.withValues(alpha: 0.08),
+                      color:
+                          isSelected
+                              ? limeAccent.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: isSelected
-                            ? limeAccent.withValues(alpha: 0.4)
-                            : Colors.white.withValues(alpha: 0.12),
+                        color:
+                            isSelected
+                                ? limeAccent.withValues(alpha: 0.4)
+                                : Colors.white.withValues(alpha: 0.12),
                         width: 0.5,
                       ),
                     ),
@@ -238,7 +248,10 @@ class PosSidebarRail extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w800,
-                        color: isSelected ? limeAccentLight : const Color(0xFF94A3B8),
+                        color:
+                            isSelected
+                                ? limeAccentLight
+                                : const Color(0xFF94A3B8),
                       ),
                     ),
                   ),

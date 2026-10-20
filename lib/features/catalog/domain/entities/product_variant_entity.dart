@@ -23,7 +23,9 @@ class ProductVariantEntity {
     if (attributeValues.isNotEmpty) {
       return attributeValues.map((av) => av.value).join(' / ');
     }
-    if (sku != null && sku!.trim().isNotEmpty && sku!.trim() != 'N/A') return sku!;
+    if (sku != null && sku!.trim().isNotEmpty && sku!.trim() != 'N/A') {
+      return sku!;
+    }
     return '';
   }
 

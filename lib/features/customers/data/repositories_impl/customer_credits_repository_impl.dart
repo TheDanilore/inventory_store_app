@@ -38,9 +38,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         );
         if (statsResult is Map) {
           totalDebt = (statsResult['totalDebt'] as num?)?.toDouble() ?? 0.0;
-          activeAccounts = (statsResult['activeAccounts'] as num?)?.toInt() ?? 0;
-          suspendedAccounts = (statsResult['suspendedAccounts'] as num?)?.toInt() ?? 0;
-          maxedOutAccounts = (statsResult['maxedOutAccounts'] as num?)?.toInt() ?? 0;
+          activeAccounts =
+              (statsResult['activeAccounts'] as num?)?.toInt() ?? 0;
+          suspendedAccounts =
+              (statsResult['suspendedAccounts'] as num?)?.toInt() ?? 0;
+          maxedOutAccounts =
+              (statsResult['maxedOutAccounts'] as num?)?.toInt() ?? 0;
         }
       } catch (statsErr) {
         LoggerService.w(
@@ -79,7 +82,9 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         profiles!customer_credits_profile_id_fkey!inner ( id, full_name, phone, document_number, document_type )
       ''';
 
-      var queryBuilder = _supabase.from('customer_credits').select(selectFields);
+      var queryBuilder = _supabase
+          .from('customer_credits')
+          .select(selectFields);
 
       if (cleanQuery.isNotEmpty) {
         queryBuilder = queryBuilder.or(
@@ -97,9 +102,10 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
           .count(CountOption.exact);
 
       final totalCount = response.count;
-      final accounts = (response.data as List)
-          .map((e) => CreditAccountModel.fromJoin(e).toEntity())
-          .toList();
+      final accounts =
+          (response.data as List)
+              .map((e) => CreditAccountModel.fromJoin(e).toEntity())
+              .toList();
 
       return CustomerCreditListResultEntity(
         accounts: accounts,
@@ -269,7 +275,9 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         error: e,
         stackTrace: st,
       );
-      throw ServerException(message: 'Error al actualizar límite: ${e.message}');
+      throw ServerException(
+        message: 'Error al actualizar límite: ${e.message}',
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en updateCreditLimit',
@@ -308,7 +316,8 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   }
 
   @override
-  Future<({List<CreditMovementEntity> items, int totalCount})> getCreditMovements({
+  Future<({List<CreditMovementEntity> items, int totalCount})>
+  getCreditMovements({
     required String creditId,
     required int limit,
     required int offset,
@@ -343,14 +352,15 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
           .count(CountOption.exact);
 
       final totalCount = response.count;
-      final items = (response.data as List)
-          .map(
-            (e) =>
-                CustomerCreditMovementModel.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ).toEntity(),
-          )
-          .toList();
+      final items =
+          (response.data as List)
+              .map(
+                (e) =>
+                    CustomerCreditMovementModel.fromJson(
+                      Map<String, dynamic>.from(e as Map),
+                    ).toEntity(),
+              )
+              .toList();
 
       return (items: items, totalCount: totalCount);
     } catch (viewErr) {
@@ -385,7 +395,8 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         if (dateFilter != null && dateFilter != 'all') {
           final now = DateTime.now();
           if (dateFilter == '30_days') {
-            final date = now.subtract(const Duration(days: 30)).toIso8601String();
+            final date =
+                now.subtract(const Duration(days: 30)).toIso8601String();
             fbQuery = fbQuery.gte('created_at', date);
           } else if (dateFilter == 'this_month') {
             final date = DateTime(now.year, now.month, 1).toIso8601String();
@@ -399,14 +410,15 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
             .count(CountOption.exact);
 
         final totalCount = fbResponse.count;
-        final items = (fbResponse.data as List)
-            .map(
-              (e) =>
-                  CustomerCreditMovementModel.fromJson(
-                    Map<String, dynamic>.from(e as Map),
-                  ).toEntity(),
-            )
-            .toList();
+        final items =
+            (fbResponse.data as List)
+                .map(
+                  (e) =>
+                      CustomerCreditMovementModel.fromJson(
+                        Map<String, dynamic>.from(e as Map),
+                      ).toEntity(),
+                )
+                .toList();
 
         return (items: items, totalCount: totalCount);
       } on PostgrestException catch (e, st) {
@@ -432,7 +444,10 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
   }
 
   @override
-  Future<({double totalCharged, double totalPaid, int chargeCount, int paymentCount})> getCreditMovementsTotals({
+  Future<
+    ({double totalCharged, double totalPaid, int chargeCount, int paymentCount})
+  >
+  getCreditMovementsTotals({
     required String creditId,
     String? dateFilter,
   }) async {
@@ -482,7 +497,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         error: e,
         stackTrace: st,
       );
-      return (totalCharged: 0.0, totalPaid: 0.0, chargeCount: 0, paymentCount: 0);
+      return (
+        totalCharged: 0.0,
+        totalPaid: 0.0,
+        chargeCount: 0,
+        paymentCount: 0,
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en getCreditMovementsTotals',
@@ -490,7 +510,12 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         error: e,
         stackTrace: st,
       );
-      return (totalCharged: 0.0, totalPaid: 0.0, chargeCount: 0, paymentCount: 0);
+      return (
+        totalCharged: 0.0,
+        totalPaid: 0.0,
+        chargeCount: 0,
+        paymentCount: 0,
+      );
     }
   }
 

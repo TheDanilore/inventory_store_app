@@ -877,19 +877,18 @@ class _ScannerOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Usamos PathFillType.evenOdd para vaciar el marco central sin costosas
     // operaciones booleanas (Path.combine), evitando glitches de renderizado en Flutter Web/CanvasKit.
-    final path = Path()
-      ..fillType = PathFillType.evenOdd
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          scanWindow,
-          Radius.circular(borderRadius),
-        ),
-      );
+    final path =
+        Path()
+          ..fillType = PathFillType.evenOdd
+          ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+          ..addRRect(
+            RRect.fromRectAndRadius(scanWindow, Radius.circular(borderRadius)),
+          );
 
-    final paint = Paint()
-      ..color = overlayColor
-      ..style = PaintingStyle.fill;
+    final paint =
+        Paint()
+          ..color = overlayColor
+          ..style = PaintingStyle.fill;
 
     canvas.drawPath(path, paint);
   }
@@ -901,4 +900,3 @@ class _ScannerOverlayPainter extends CustomPainter {
         oldDelegate.overlayColor != overlayColor;
   }
 }
-

@@ -30,9 +30,7 @@ class BrandsRepositoryImpl implements BrandsRepository {
       }
       if (e.code == '23505') {
         return left(
-          Failure.from(
-            'Ya existe una marca registrada con ese nombre.',
-          ),
+          Failure.from('Ya existe una marca registrada con ese nombre.'),
         );
       }
       return left(Failure.from('Error de BD: ${e.message}'));

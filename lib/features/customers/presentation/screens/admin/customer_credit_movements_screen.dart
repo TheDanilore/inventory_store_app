@@ -202,89 +202,86 @@ class _CustomerCreditMovementsScreenContentState
       },
       child: Focus(
         autofocus: true,
-        child:
-            BlocConsumer<
-              CustomerCreditMovementsCubit,
-              CustomerCreditMovementsState
-            >(
-              listenWhen:
-                  (previous, current) =>
-                      previous.isExporting != current.isExporting ||
-                      previous.exportSuccess != current.exportSuccess ||
-                      previous.error != current.error,
-              listener: (context, state) {
-                if (state.exportSuccess && !state.isExporting) {
-                  AppSnackbar.show(
-                    context,
-                    message: 'Estado de cuenta en PDF generado con éxito',
-                    type: SnackbarType.success,
-                  );
-                } else if (state.error != null) {
-                  AppSnackbar.show(
-                    context,
-                    message: state.error!,
-                    type: SnackbarType.error,
-                  );
-                } else if (state.isExporting) {
-                  AppSnackbar.show(
-                    context,
-                    message: 'Generando PDF de movimientos...',
-                    type: SnackbarType.info,
-                  );
-                }
-              },
-              builder: (context, state) {
-                return AdminLayout(
-                  title: 'Historial de Crédito',
-                  showBackButton: true,
-                  showDrawerButton: false,
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Refrescar datos',
-                      onPressed: () {
-                        context
-                            .read<CustomerCreditMovementsCubit>()
-                            .loadData();
-                      },
-                    ),
-                    IconButton(
-                      icon:
-                          state.isExporting
-                              ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
-                              )
-                              : const Icon(Icons.picture_as_pdf_rounded),
-                      tooltip: 'Exportar PDF [Alt + E]',
-                      onPressed: state.isExporting ? null : _exportToPdf,
-                    ),
-                  ],
-                  body: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isDesktop = constraints.maxWidth >= 1050;
-                      final isTablet =
-                          constraints.maxWidth >= 700 &&
-                          constraints.maxWidth < 1050;
+        child: BlocConsumer<
+          CustomerCreditMovementsCubit,
+          CustomerCreditMovementsState
+        >(
+          listenWhen:
+              (previous, current) =>
+                  previous.isExporting != current.isExporting ||
+                  previous.exportSuccess != current.exportSuccess ||
+                  previous.error != current.error,
+          listener: (context, state) {
+            if (state.exportSuccess && !state.isExporting) {
+              AppSnackbar.show(
+                context,
+                message: 'Estado de cuenta en PDF generado con éxito',
+                type: SnackbarType.success,
+              );
+            } else if (state.error != null) {
+              AppSnackbar.show(
+                context,
+                message: state.error!,
+                type: SnackbarType.error,
+              );
+            } else if (state.isExporting) {
+              AppSnackbar.show(
+                context,
+                message: 'Generando PDF de movimientos...',
+                type: SnackbarType.info,
+              );
+            }
+          },
+          builder: (context, state) {
+            return AdminLayout(
+              title: 'Historial de Crédito',
+              showBackButton: true,
+              showDrawerButton: false,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Refrescar datos',
+                  onPressed: () {
+                    context.read<CustomerCreditMovementsCubit>().loadData();
+                  },
+                ),
+                IconButton(
+                  icon:
+                      state.isExporting
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                          : const Icon(Icons.picture_as_pdf_rounded),
+                  tooltip: 'Exportar PDF [Alt + E]',
+                  onPressed: state.isExporting ? null : _exportToPdf,
+                ),
+              ],
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth >= 1050;
+                  final isTablet =
+                      constraints.maxWidth >= 700 &&
+                      constraints.maxWidth < 1050;
 
-                      if (isDesktop) {
-                        return _buildDesktopLayout(context, state);
-                      }
+                  if (isDesktop) {
+                    return _buildDesktopLayout(context, state);
+                  }
 
-                      if (isTablet) {
-                        return _buildTabletLayout(context, state);
-                      }
+                  if (isTablet) {
+                    return _buildTabletLayout(context, state);
+                  }
 
-                      return _buildMobileLayout(context, state);
-                    },
-                  ),
-                );
-              },
-            ),
+                  return _buildMobileLayout(context, state);
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -479,7 +476,9 @@ class _CustomerCreditMovementsScreenContentState
                                           cubit.setTypeFilter('ALL');
                                           cubit.setDateFilter('all');
                                         },
-                                        child: const Text('Restablecer filtros'),
+                                        child: const Text(
+                                          'Restablecer filtros',
+                                        ),
                                       )
                                       : FilledButton.icon(
                                         onPressed: _openPaymentModal,
@@ -642,10 +641,7 @@ class _CustomerCreditMovementsScreenContentState
     return Column(
       children: [
         if (state.isExporting)
-          const LinearProgressIndicator(
-            minHeight: 3,
-            color: AppColors.primary,
-          ),
+          const LinearProgressIndicator(minHeight: 3, color: AppColors.primary),
 
         // Filtros táctiles en scroll horizontal
         Container(

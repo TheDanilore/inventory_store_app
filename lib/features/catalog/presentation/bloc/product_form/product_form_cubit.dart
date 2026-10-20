@@ -228,7 +228,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final targetReorderPoint = reorderPoint ?? current.reorderPoint;
     final targetUnitCost = unitCost ?? current.unitCost;
 
-    final hasChanged = current.sku != targetSku ||
+    final hasChanged =
+        current.sku != targetSku ||
         current.barcode != targetBarcode ||
         current.price != targetPrice ||
         current.wholesalePrice != targetWholesalePrice ||
@@ -389,7 +390,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         _batchManagementEnabled = targetProduct.usesBatches;
 
         targetProduct.details.forEach((key, value) {
-          if (!['publication_status', 'sales_channels', 'slug', 'seo_title', 'seo_description', 'changelog'].contains(key)) {
+          if (![
+            'publication_status',
+            'sales_channels',
+            'slug',
+            'seo_title',
+            'seo_description',
+            'changelog',
+          ].contains(key)) {
             _detailRows.add(DetailModel(key: key, value: value.toString()));
           }
         });
@@ -414,19 +422,25 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           };
         }
         _slug = (d['slug'] as String?) ?? _slugify(nombre);
-        _seoTitle = (d['seo_title'] as String?) ?? (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
-        _seoDescription = (d['seo_description'] as String?) ?? (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
+        _seoTitle =
+            (d['seo_title'] as String?) ??
+            (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
+        _seoDescription =
+            (d['seo_description'] as String?) ??
+            (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
         if (d['changelog'] is List) {
-          _changelog = (d['changelog'] as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
+          _changelog =
+              (d['changelog'] as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
         } else {
           _changelog = [
             {
               'action': 'Ficha creada e inventario registrado',
-              'time': targetProduct.createdAt != null
-                  ? '${targetProduct.createdAt!.day}/${targetProduct.createdAt!.month}/${targetProduct.createdAt!.year}'
-                  : 'Fecha inicial',
+              'time':
+                  targetProduct.createdAt != null
+                      ? '${targetProduct.createdAt!.day}/${targetProduct.createdAt!.month}/${targetProduct.createdAt!.year}'
+                      : 'Fecha inicial',
               'author': targetProduct.createdBy ?? 'Admin',
             },
           ];
@@ -663,9 +677,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     for (final archivo in archivos) {
       final nombre = _normalizarNombreArchivo(archivo);
-      final extension = nombre.contains('.')
-          ? nombre.split('.').last.toLowerCase()
-          : '';
+      final extension =
+          nombre.contains('.') ? nombre.split('.').last.toLowerCase() : '';
 
       // Validación 1: Formatos válidos de imagen
       if (!allowedExtensions.contains(extension)) {
@@ -727,18 +740,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       feedbackMessages.add('$duplicadas imagen(es) repetidas omitidas.');
     }
     if (excedidas > 0) {
-      feedbackMessages.add(
-        '$excedidas exceden el cupo de $maxImages fotos.',
-      );
+      feedbackMessages.add('$excedidas exceden el cupo de $maxImages fotos.');
     }
 
     emit(
       state.copyWith(
         formImages: List.of(_formImages),
         isDirty: _isDirty,
-        snackMessage: feedbackMessages.isNotEmpty
-            ? feedbackMessages.join(' ')
-            : null,
+        snackMessage:
+            feedbackMessages.isNotEmpty ? feedbackMessages.join(' ') : null,
       ),
     );
   }
@@ -885,7 +895,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }) {
     if (index >= 0 && index < _variantDrafts.length) {
       final current = _variantDrafts[index];
-      final isSame = current.sku == updated.sku &&
+      final isSame =
+          current.sku == updated.sku &&
           current.barcode == updated.barcode &&
           current.price == updated.price &&
           current.wholesalePrice == updated.wholesalePrice &&
@@ -896,7 +907,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           current.externalImageUrl == updated.externalImageUrl &&
           listEquals(current.urlsExistentes, updated.urlsExistentes) &&
           current.nuevasImagenes.length == updated.nuevasImagenes.length &&
-          current.selectedAttributes.length == updated.selectedAttributes.length;
+          current.selectedAttributes.length ==
+              updated.selectedAttributes.length;
 
       if (isSame) return;
 
@@ -1044,7 +1056,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       final updatedChangelog = List<Map<String, dynamic>>.from(_changelog);
       updatedChangelog.insert(0, {
-        'action': isUpdating ? 'Ficha y datos actualizados' : 'Ficha creada e inventario registrado',
+        'action':
+            isUpdating
+                ? 'Ficha y datos actualizados'
+                : 'Ficha creada e inventario registrado',
         'time': 'Hace unos momentos',
         'author': 'Usuario actual',
       });
@@ -1062,7 +1077,10 @@ class ProductFormCubit extends Cubit<ProductFormState> {
             if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),
           'sales_channels': _salesChannels,
           'slug': _slug.trim().isEmpty ? _slugify(nombre) : _slug.trim(),
-          'seo_title': _seoTitle.trim().isEmpty ? '$nombre | Tienda Oficial' : _seoTitle.trim(),
+          'seo_title':
+              _seoTitle.trim().isEmpty
+                  ? '$nombre | Tienda Oficial'
+                  : _seoTitle.trim(),
           'seo_description': _seoDescription.trim(),
           'changelog': _changelog,
         },

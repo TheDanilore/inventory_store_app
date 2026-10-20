@@ -135,6 +135,7 @@ class AdminShellHelper {
     '/': 'Inicio  ›  Dashboard',
     '/users/form': 'Inicio  ›  Usuarios  ›  Formulario Usuario',
     '/users': 'Inicio  ›  Usuarios',
+    '/roles': 'Inicio  ›  Roles y Permisos',
     '/customer-credit-movements':
         'Inicio  ›  Créditos Clientes  ›  Movimientos',
     '/customer-credits': 'Inicio  ›  Créditos Clientes',
@@ -173,6 +174,7 @@ class AdminShellHelper {
     '/': 'Dashboard General',
     '/users/form': 'Formulario de Usuario',
     '/users': 'Gestión de Usuarios',
+    '/roles': 'Roles y Permisos Granulares',
     '/customer-credit-movements': 'Movimientos de Crédito Clientes',
     '/customer-credits': 'Créditos de Clientes',
     '/customers/customer-detail': 'Detalle de Cliente',

@@ -191,7 +191,8 @@ class PosCalculatorUtils {
       if (posState.isDiscountPercentage && rawDiscount > 100) {
         return 'El porcentaje de descuento no puede superar el 100%.';
       }
-      if (!posState.isDiscountPercentage && rawDiscount > cartState.totalAmount) {
+      if (!posState.isDiscountPercentage &&
+          rawDiscount > cartState.totalAmount) {
         return 'El descuento en soles no puede exceder el total de la venta.';
       }
     }

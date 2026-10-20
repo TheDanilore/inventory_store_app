@@ -287,7 +287,9 @@ class PurchaseOrderItemsTable extends StatelessWidget {
                       label: const Text('Escanear código'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: p.accent,
-                        side: BorderSide(color: p.accent.withValues(alpha: 0.4)),
+                        side: BorderSide(
+                          color: p.accent.withValues(alpha: 0.4),
+                        ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 14,

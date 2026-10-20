@@ -1635,9 +1635,7 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
               )
               : Container(
                 color:
-                    isDark
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFF1F5F9),
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.inventory_2_outlined,
@@ -2095,9 +2093,8 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                       isHovered
                                           ? (isDark
                                               ? AppColors.darkSurfaceElevated
-                                              : AppColors.primaryLight.withValues(
-                                                alpha: 0.45,
-                                              ))
+                                              : AppColors.primaryLight
+                                                  .withValues(alpha: 0.45))
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -2138,8 +2135,12 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                                       : rank == 3
                                                       ? const Color(0xFFB45309)
                                                       : (isDark
-                                                          ? const Color(0xFF94A3B8)
-                                                          : const Color(0xFF64748B)),
+                                                          ? const Color(
+                                                            0xFF94A3B8,
+                                                          )
+                                                          : const Color(
+                                                            0xFF64748B,
+                                                          )),
                                             ),
                                           ),
                                         ],
@@ -2181,8 +2182,12 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                                 fontWeight: FontWeight.w600,
                                                 color:
                                                     isDark
-                                                        ? const Color(0xFFF8FAFC)
-                                                        : const Color(0xFF0F172A),
+                                                        ? const Color(
+                                                          0xFFF8FAFC,
+                                                        )
+                                                        : const Color(
+                                                          0xFF0F172A,
+                                                        ),
                                               ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -2232,11 +2237,16 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                         decoration: BoxDecoration(
                                           color: ((p['statusColor'] is Color
                                                   ? p['statusColor'] as Color
-                                                  : (p['status'] == 'Alta Rotación'
+                                                  : (p['status'] ==
+                                                          'Alta Rotación'
                                                       ? const Color(0xFF16A34A)
-                                                      : const Color(0xFF2563EB))))
+                                                      : const Color(
+                                                        0xFF2563EB,
+                                                      ))))
                                               .withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: Text(
                                           p['status'] as String,
@@ -2246,9 +2256,14 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                             color:
                                                 (p['statusColor'] is Color
                                                     ? p['statusColor'] as Color
-                                                    : (p['status'] == 'Alta Rotación'
-                                                        ? const Color(0xFF16A34A)
-                                                        : const Color(0xFF2563EB))),
+                                                    : (p['status'] ==
+                                                            'Alta Rotación'
+                                                        ? const Color(
+                                                          0xFF16A34A,
+                                                        )
+                                                        : const Color(
+                                                          0xFF2563EB,
+                                                        ))),
                                           ),
                                           textAlign: TextAlign.center,
                                         ),

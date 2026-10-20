@@ -26,7 +26,8 @@ class AgronomicAvatarPreset {
 class AgronomicAvatarPickerDialog extends StatefulWidget {
   final String? currentAvatarUrl;
   final String userInitial;
-  final void Function(String? newAvatarUrl, Uint8List? imageBytes) onAvatarSelected;
+  final void Function(String? newAvatarUrl, Uint8List? imageBytes)
+  onAvatarSelected;
 
   const AgronomicAvatarPickerDialog({
     super.key,
@@ -97,26 +98,32 @@ class AgronomicAvatarPickerDialog extends StatefulWidget {
     required String? currentAvatarUrl,
     required String userInitial,
     required void Function(String? newAvatarUrl, Uint8List? imageBytes)
-        onAvatarSelected,
+    onAvatarSelected,
   }) {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
 
     if (isDesktop) {
       return showDialog(
         context: context,
-        builder: (ctx) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          backgroundColor: Colors.white,
-          elevation: 16,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 580, maxHeight: 720),
-            child: AgronomicAvatarPickerDialog(
-              currentAvatarUrl: currentAvatarUrl,
-              userInitial: userInitial,
-              onAvatarSelected: onAvatarSelected,
+        builder:
+            (ctx) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 16,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 580,
+                  maxHeight: 720,
+                ),
+                child: AgronomicAvatarPickerDialog(
+                  currentAvatarUrl: currentAvatarUrl,
+                  userInitial: userInitial,
+                  onAvatarSelected: onAvatarSelected,
+                ),
+              ),
             ),
-          ),
-        ),
       );
     } else {
       return showModalBottomSheet(
@@ -126,14 +133,15 @@ class AgronomicAvatarPickerDialog extends StatefulWidget {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        builder: (ctx) => FractionallySizedBox(
-          heightFactor: 0.88,
-          child: AgronomicAvatarPickerDialog(
-            currentAvatarUrl: currentAvatarUrl,
-            userInitial: userInitial,
-            onAvatarSelected: onAvatarSelected,
-          ),
-        ),
+        builder:
+            (ctx) => FractionallySizedBox(
+              heightFactor: 0.88,
+              child: AgronomicAvatarPickerDialog(
+                currentAvatarUrl: currentAvatarUrl,
+                userInitial: userInitial,
+                onAvatarSelected: onAvatarSelected,
+              ),
+            ),
       );
     }
   }
@@ -144,7 +152,8 @@ class AgronomicAvatarPickerDialog extends StatefulWidget {
 }
 
 class _AgronomicAvatarPickerDialogState
-    extends State<AgronomicAvatarPickerDialog> with SingleTickerProviderStateMixin {
+    extends State<AgronomicAvatarPickerDialog>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _selectedUrl;
   Uint8List? _uploadedBytes;
@@ -246,7 +255,11 @@ class _AgronomicAvatarPickerDialogState
               ),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 20,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ],
           ),
@@ -278,7 +291,10 @@ class _AgronomicAvatarPickerDialogState
               ),
               labelColor: const Color(0xFF0F172A),
               unselectedLabelColor: const Color(0xFF64748B),
-              labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+              labelStyle: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
               tabs: const [
                 Tab(
                   iconMargin: EdgeInsets.zero,
@@ -311,10 +327,7 @@ class _AgronomicAvatarPickerDialogState
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildPresetsTab(),
-              _buildCustomPhotoTab(),
-            ],
+            children: [_buildPresetsTab(), _buildCustomPhotoTab()],
           ),
         ),
 
@@ -349,23 +362,39 @@ class _AgronomicAvatarPickerDialogState
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF64748B),
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
-                    child: const Text('Cancelar', style: TextStyle(fontSize: 12.5)),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   FilledButton.icon(
                     onPressed: _handleApply,
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF065F46),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                     ),
                     icon: const Icon(Icons.check_rounded, size: 16),
                     label: const Text(
                       'Aplicar Avatar',
-                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -389,7 +418,8 @@ class _AgronomicAvatarPickerDialogState
       itemCount: AgronomicAvatarPickerDialog.presets.length,
       itemBuilder: (context, index) {
         final preset = AgronomicAvatarPickerDialog.presets[index];
-        final isSelected = !_isResetToInitials &&
+        final isSelected =
+            !_isResetToInitials &&
             _uploadedBytes == null &&
             _selectedUrl == preset.avatarUrl;
 
@@ -406,21 +436,24 @@ class _AgronomicAvatarPickerDialogState
             duration: const Duration(milliseconds: 160),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFECFDF5)
-                  : const Color(0xFFF8FAFC),
+              color:
+                  isSelected
+                      ? const Color(0xFFECFDF5)
+                      : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF059669)
-                    : const Color(0xFFE2E8F0),
+                color:
+                    isSelected
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFE2E8F0),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: isSelected
-                      ? const Color(0xFF059669).withValues(alpha: 0.12)
-                      : Colors.black.withValues(alpha: 0.02),
+                  color:
+                      isSelected
+                          ? const Color(0xFF059669).withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.02),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -434,7 +467,9 @@ class _AgronomicAvatarPickerDialogState
                     CircleAvatar(
                       radius: 26,
                       backgroundColor: Colors.white,
-                      backgroundImage: CachedNetworkImageProvider(preset.avatarUrl),
+                      backgroundImage: CachedNetworkImageProvider(
+                        preset.avatarUrl,
+                      ),
                     ),
                     if (isSelected)
                       Positioned(
@@ -446,7 +481,11 @@ class _AgronomicAvatarPickerDialogState
                             color: Color(0xFF059669),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check, size: 11, color: Colors.white),
+                          child: const Icon(
+                            Icons.check,
+                            size: 11,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                   ],
@@ -462,9 +501,10 @@ class _AgronomicAvatarPickerDialogState
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? const Color(0xFF065F46)
-                              : const Color(0xFF0F172A),
+                          color:
+                              isSelected
+                                  ? const Color(0xFF065F46)
+                                  : const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -503,20 +543,22 @@ class _AgronomicAvatarPickerDialogState
               shape: BoxShape.circle,
               color: const Color(0xFFF1F5F9),
               border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
-              image: _uploadedBytes != null
-                  ? DecorationImage(
-                      image: MemoryImage(_uploadedBytes!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+              image:
+                  _uploadedBytes != null
+                      ? DecorationImage(
+                        image: MemoryImage(_uploadedBytes!),
+                        fit: BoxFit.cover,
+                      )
+                      : null,
             ),
-            child: _uploadedBytes == null
-                ? const Icon(
-                    Icons.photo_camera_outlined,
-                    size: 38,
-                    color: Color(0xFF94A3B8),
-                  )
-                : null,
+            child:
+                _uploadedBytes == null
+                    ? const Icon(
+                      Icons.photo_camera_outlined,
+                      size: 38,
+                      color: Color(0xFF94A3B8),
+                    )
+                    : null,
           ),
           const SizedBox(height: 16),
           const Text(
@@ -541,22 +583,38 @@ class _AgronomicAvatarPickerDialogState
               OutlinedButton.icon(
                 onPressed: () => _pickImage(ImageSource.camera),
                 style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                label: const Text('Tomar Foto', style: TextStyle(fontSize: 12.5)),
+                label: const Text(
+                  'Tomar Foto',
+                  style: TextStyle(fontSize: 12.5),
+                ),
               ),
               const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: () => _pickImage(ImageSource.gallery),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                 ),
                 icon: const Icon(Icons.photo_library_rounded, size: 16),
-                label: const Text('Seleccionar de Galería', style: TextStyle(fontSize: 12.5)),
+                label: const Text(
+                  'Seleccionar de Galería',
+                  style: TextStyle(fontSize: 12.5),
+                ),
               ),
             ],
           ),

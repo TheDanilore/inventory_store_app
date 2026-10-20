@@ -31,8 +31,7 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     this.pageSize = PurchaseOrdersState.pageSize,
   });
 
-  int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   @override
   List<Object?> get props => [
@@ -68,8 +67,7 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     this.pageSize = PurchaseOrdersState.pageSize,
   });
 
-  int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   PurchaseOrdersLoaded copyWith({
     List<dynamic>? orders,
@@ -129,8 +127,7 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     this.pageSize = PurchaseOrdersState.pageSize,
   });
 
-  int get totalPages =>
-      totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
+  int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 
   @override
   List<Object?> get props => [

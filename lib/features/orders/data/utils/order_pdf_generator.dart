@@ -348,7 +348,8 @@ class OrderPdfGenerator {
       String displayName = item.productName ?? 'Producto';
       final String vLabel = item.variantLabel.trim();
 
-      final bool hasRealVariant = item.hasVariantAttributes &&
+      final bool hasRealVariant =
+          item.hasVariantAttributes &&
           vLabel.isNotEmpty &&
           vLabel != '()' &&
           vLabel.toLowerCase() != 'variante estándar' &&

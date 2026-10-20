@@ -206,7 +206,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
             }
           }
           _barcodeBuffer.clear();
-        } else if (char != null && char.isNotEmpty && char.codeUnitAt(0) >= 32) {
+        } else if (char != null &&
+            char.isNotEmpty &&
+            char.codeUnitAt(0) >= 32) {
           if (diffMs > 250) {
             _barcodeBuffer.clear();
           }

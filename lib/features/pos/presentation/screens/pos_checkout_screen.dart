@@ -585,11 +585,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Tooltip(
-                                                message: 'Escanear código de barra / QR',
+                                                message:
+                                                    'Escanear código de barra / QR',
                                                 child: TextButton.icon(
                                                   onPressed: _openCameraScanner,
                                                   icon: const Icon(
-                                                    Icons.qr_code_scanner_rounded,
+                                                    Icons
+                                                        .qr_code_scanner_rounded,
                                                     color: AppColors.teal,
                                                     size: 18,
                                                   ),
@@ -598,16 +600,20 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                                     style: TextStyle(
                                                       color: AppColors.teal,
                                                       fontSize: 13,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                   style: TextButton.styleFrom(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
                                                     minimumSize: Size.zero,
-                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
                                                   ),
                                                 ),
                                               ),
@@ -629,16 +635,20 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                                       style: TextStyle(
                                                         color: AppColors.error,
                                                         fontSize: 13,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
                                                     style: TextButton.styleFrom(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8,
-                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 12,
+                                                            vertical: 8,
+                                                          ),
                                                       minimumSize: Size.zero,
-                                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                      tapTargetSize:
+                                                          MaterialTapTargetSize
+                                                              .shrinkWrap,
                                                     ),
                                                   );
                                                 },
@@ -706,7 +716,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Tooltip(
-                                            message: 'Escanear código de barra / QR',
+                                            message:
+                                                'Escanear código de barra / QR',
                                             child: TextButton.icon(
                                               onPressed: _openCameraScanner,
                                               icon: const Icon(
@@ -723,12 +734,15 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                                 ),
                                               ),
                                               style: TextButton.styleFrom(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 6,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
                                                 minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                tapTargetSize:
+                                                    MaterialTapTargetSize
+                                                        .shrinkWrap,
                                               ),
                                             ),
                                           ),

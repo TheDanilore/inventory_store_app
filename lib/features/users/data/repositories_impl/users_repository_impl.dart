@@ -14,6 +14,67 @@ class UsersRepositoryImpl implements UsersRepository {
 
   UsersRepositoryImpl(this._supabase);
 
+  Future<Map<String, List<String>>> _fetchUserRoles(
+    List<String> profileIds,
+  ) async {
+    if (profileIds.isEmpty) return {};
+    try {
+      final res = await _supabase
+          .from('user_roles')
+          .select('profile_id, roles(name)')
+          .filter('profile_id', 'in', '(${profileIds.join(',')})');
+      final map = <String, List<String>>{};
+      for (final item in res as List) {
+        final pid = item['profile_id'] as String?;
+        final rName = (item['roles'] as Map?)?['name']?.toString();
+        if (pid != null && rName != null && rName.isNotEmpty) {
+          map.putIfAbsent(pid, () => []).add(rName);
+        }
+      }
+      return map;
+    } catch (e) {
+      developer.log(
+        'Aviso: error obteniendo user_roles: $e',
+        name: 'UsersRepositoryImpl',
+      );
+      return {};
+    }
+  }
+
+  Future<void> _syncUserRoles(String profileId, List<String> roleNames) async {
+    try {
+      if (roleNames.isEmpty) return;
+      // 1. Obtener los IDs de roles correspondientes a los nombres
+      final rolesRes = await _supabase
+          .from('roles')
+          .select('id, name')
+          .filter('name', 'in', '(${roleNames.join(',')})');
+
+      final roleIds = <String>[];
+      for (final r in rolesRes as List) {
+        final rId = r['id']?.toString();
+        if (rId != null) roleIds.add(rId);
+      }
+
+      // 2. Eliminar roles previos del perfil
+      await _supabase.from('user_roles').delete().eq('profile_id', profileId);
+
+      // 3. Insertar nuevos roles
+      if (roleIds.isNotEmpty) {
+        final rowsToInsert =
+            roleIds
+                .map((rid) => {'profile_id': profileId, 'role_id': rid})
+                .toList();
+        await _supabase.from('user_roles').insert(rowsToInsert);
+      }
+    } catch (e) {
+      developer.log(
+        'Aviso: error sincronizando user_roles: $e',
+        name: 'UsersRepositoryImpl',
+      );
+    }
+  }
+
   @override
   Future<Either<Failure, Map<String, dynamic>>> getUsers({
     required String role,
@@ -30,7 +91,11 @@ class UsersRepositoryImpl implements UsersRepository {
             'document_type, document_number, wallet_balance, created_at',
           );
 
-      query = query.eq('role', role);
+      if (role == 'staff' || role == 'all' || role.isEmpty) {
+        query = query.neq('role', 'customer').neq('role', 'cliente');
+      } else {
+        query = query.eq('role', role);
+      }
 
       if (onlyActive) {
         query = query.eq('is_active', true);
@@ -51,10 +116,22 @@ class UsersRepositoryImpl implements UsersRepository {
           .range(start, end)
           .count(CountOption.exact);
 
-      final List<UserEntity> users =
+      final List<UserEntity> rawUsers =
           (response.data as List)
               .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
               .toList();
+
+      final ids = rawUsers.map((u) => u.id).toList();
+      final rolesMap = await _fetchUserRoles(ids);
+
+      final List<UserEntity> users =
+          rawUsers.map((u) {
+            final assignedRoles = rolesMap[u.id];
+            if (assignedRoles != null && assignedRoles.isNotEmpty) {
+              return u.copyWith(roles: assignedRoles);
+            }
+            return u;
+          }).toList();
 
       return Right({'data': users, 'count': response.count});
     } on PostgrestException catch (e, st) {
@@ -97,7 +174,11 @@ class UsersRepositoryImpl implements UsersRepository {
             'document_type, document_number, wallet_balance, created_at',
           );
 
-      query = query.eq('role', role);
+      if (role == 'staff' || role == 'all' || role.isEmpty) {
+        query = query.neq('role', 'customer').neq('role', 'cliente');
+      } else {
+        query = query.eq('role', role);
+      }
 
       if (onlyActive) {
         query = query.eq('is_active', true);
@@ -112,10 +193,22 @@ class UsersRepositoryImpl implements UsersRepository {
 
       final response = await query.order('created_at', ascending: false);
 
-      final List<UserEntity> users =
+      final List<UserEntity> rawUsers =
           (response as List)
               .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
               .toList();
+
+      final ids = rawUsers.map((u) => u.id).toList();
+      final rolesMap = await _fetchUserRoles(ids);
+
+      final List<UserEntity> users =
+          rawUsers.map((u) {
+            final assignedRoles = rolesMap[u.id];
+            if (assignedRoles != null && assignedRoles.isNotEmpty) {
+              return u.copyWith(roles: assignedRoles);
+            }
+            return u;
+          }).toList();
 
       return Right(users);
     } on PostgrestException catch (e, st) {
@@ -142,12 +235,17 @@ class UsersRepositoryImpl implements UsersRepository {
     required String role,
   }) async {
     try {
-      // Usar count directo sin select para Zero Data Egress
-      final count = await _supabase
+      var query = _supabase
           .from('profiles_with_email')
-          .count(CountOption.exact)
-          .eq('role', role);
+          .count(CountOption.exact);
 
+      if (role == 'staff' || role == 'all' || role.isEmpty) {
+        query = query.neq('role', 'customer').neq('role', 'cliente');
+      } else {
+        query = query.eq('role', role);
+      }
+
+      final count = await query;
       return Right(count);
     } on PostgrestException catch (e, st) {
       developer.log(
@@ -185,7 +283,14 @@ class UsersRepositoryImpl implements UsersRepository {
               .eq('id', id)
               .single();
 
-      return Right(UserModel.fromJson(response));
+      final user = UserModel.fromJson(response);
+      final rolesMap = await _fetchUserRoles([id]);
+      final assignedRoles = rolesMap[id];
+      if (assignedRoles != null && assignedRoles.isNotEmpty) {
+        return Right(user.copyWith(roles: assignedRoles));
+      }
+
+      return Right(user);
     } on PostgrestException catch (e, st) {
       developer.log(
         '🔴 [UsersRepo] PostgrestException en getUserById (id=$id): $e',
@@ -214,18 +319,21 @@ class UsersRepositoryImpl implements UsersRepository {
     required String email,
     required String password,
     required String role,
+    List<String>? roles,
     required String fullName,
     String? phone,
     required String documentType,
     String? documentNumber,
   }) async {
     try {
+      final primaryRole =
+          role.isNotEmpty ? role : (roles?.firstOrNull ?? 'employee');
       final response = await _supabase.functions.invoke(
         'crear-usuario-admin',
         body: {
           'email': email,
           'password': password,
-          'role': role,
+          'role': primaryRole,
           'name': fullName,
           'phone': phone,
           'document_type': documentType,
@@ -237,6 +345,25 @@ class UsersRepositoryImpl implements UsersRepository {
         return Left(
           ServerFailure(message: 'Error al crear usuario: ${response.data}'),
         );
+      }
+
+      // Sincronizar roles en user_roles si se especificaron
+      if (roles != null && roles.isNotEmpty) {
+        try {
+          final profileData =
+              await _supabase
+                  .from('profiles_with_email')
+                  .select('id')
+                  .eq('email', email)
+                  .maybeSingle();
+
+          final profileId = profileData?['id']?.toString();
+          if (profileId != null) {
+            await _syncUserRoles(profileId, roles);
+          }
+        } catch (e) {
+          developer.log('Aviso al asociar roles a nuevo usuario: $e');
+        }
       }
 
       return const Right(null);
@@ -273,6 +400,7 @@ class UsersRepositoryImpl implements UsersRepository {
     required String id,
     required String fullName,
     required String role,
+    List<String>? roles,
     String? phone,
     required String documentType,
     String? documentNumber,
@@ -280,17 +408,29 @@ class UsersRepositoryImpl implements UsersRepository {
     String? newPassword,
   }) async {
     try {
-      await _supabase
-          .from('profiles')
-          .update({
-            'full_name': fullName,
-            'phone': phone,
-            'document_type': documentType,
-            'document_number': documentNumber,
-            'role': role,
-            'is_active': isActive,
-          })
-          .eq('id', id);
+      final updateData = <String, dynamic>{
+        'full_name': fullName,
+        'phone': phone,
+        'document_type': documentType,
+        'document_number': documentNumber,
+        'is_active': isActive,
+      };
+
+      // Si se especificó rol o roles, sincronizamos también la columna de compatibilidad en profiles
+      final primaryRole =
+          (roles != null && roles.isNotEmpty)
+              ? roles.first
+              : (role.isNotEmpty ? role : null);
+      if (primaryRole != null) {
+        updateData['role'] = primaryRole;
+      }
+
+      await _supabase.from('profiles').update(updateData).eq('id', id);
+
+      // Sincronizar roles en tabla relacional user_roles (fuente de verdad multi-rol)
+      if (roles != null) {
+        await _syncUserRoles(id, roles);
+      }
 
       if (newPassword != null && newPassword.trim().isNotEmpty) {
         final passResponse = await _supabase.functions.invoke(
