@@ -7,6 +7,7 @@ class PosSidebarRail extends StatelessWidget {
   final ValueChanged<int> onDestinationSelected;
   final VoidCallback onExitPos;
   final int? cartItemCount;
+  final bool isCashierOnly;
 
   const PosSidebarRail({
     super.key,
@@ -14,6 +15,7 @@ class PosSidebarRail extends StatelessWidget {
     required this.onDestinationSelected,
     required this.onExitPos,
     this.cartItemCount,
+    this.isCashierOnly = false,
   });
 
   // Tono verde bosque oscuro de alta gama agronómica
@@ -108,9 +110,9 @@ class PosSidebarRail extends StatelessWidget {
 
             const Spacer(),
 
-            // ── Botón de Salir / Volver al ERP ────────────────────────────────
+            // ── Botón de Salir / Volver al ERP o Cerrar Sesión ────────────────
             Tooltip(
-              message: 'Volver al ERP',
+              message: isCashierOnly ? 'Cerrar Sesión' : 'Volver al ERP',
               preferBelow: false,
               child: Material(
                 color: Colors.transparent,
@@ -122,16 +124,27 @@ class PosSidebarRail extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06),
+                      color:
+                          isCashierOnly
+                              ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color:
+                            isCashierOnly
+                                ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.1),
                         width: 1,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.logout_rounded,
-                      color: Color(0xFF94A3B8),
+                    child: Icon(
+                      isCashierOnly
+                          ? Icons.power_settings_new_rounded
+                          : Icons.logout_rounded,
+                      color:
+                          isCashierOnly
+                              ? const Color(0xFFF87171)
+                              : const Color(0xFF94A3B8),
                       size: 22,
                     ),
                   ),

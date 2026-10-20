@@ -17,6 +17,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_header.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_category_chips.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_grid_view.dart';
@@ -29,13 +30,13 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sidebar_rail.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 extension ProductToCartExtension on ProductEntity {
   CartItemEntity toCartItem() {
@@ -409,9 +410,67 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     });
   }
 
+  bool get _isCashierOnly {
+    final user = context.read<AuthCubit>().state.currentUser;
+    return (user?.isCashier ?? false) &&
+        !(user?.isAdmin ?? false) &&
+        !(user?.isWarehouseKeeper ?? false);
+  }
+
   Future<void> _onExitPos() async {
+    final authCubit = context.read<AuthCubit>();
     final cart = context.read<CartCubit>();
     final hasItems = cart.state.items.isNotEmpty;
+    final posState = context.read<PosCubit>().state;
+    final isShiftOpen = posState.activeShift != null;
+    final isCashier = _isCashierOnly;
+
+    if (isCashier) {
+      final shouldLogout = await showDialog<bool>(
+        context: context,
+        builder:
+            (dialogCtx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(
+                    Icons.power_settings_new_rounded,
+                    color: AppColors.error,
+                  ),
+                  SizedBox(width: 8),
+                  Text('¿Cerrar Sesión de Caja?'),
+                ],
+              ),
+              content: Text(
+                isShiftOpen
+                    ? 'Atención: Tu turno de caja aún se encuentra ABIERTO.\n\nTe recomendamos realizar el arqueo y cierre de turno en la pestaña "Turnos" antes de retirarte.\n\n¿Deseas cerrar tu sesión ahora?'
+                    : (hasItems
+                        ? 'Tienes productos en la caja actual.\n\n¿Estás seguro de que deseas cerrar tu sesión?'
+                        : '¿Estás seguro de que deseas cerrar tu sesión de cajero?'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx, false),
+                  child: const Text('Permanecer en Caja'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.error,
+                  ),
+                  onPressed: () => Navigator.pop(dialogCtx, true),
+                  child: const Text('Cerrar Sesión'),
+                ),
+              ],
+            ),
+      );
+
+      if (shouldLogout == true && mounted) {
+        await authCubit.logout();
+      }
+      return;
+    }
 
     final shouldExit = await showDialog<bool>(
       context: context,
@@ -885,6 +944,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                                 selectedIndex: _selectedSidebarIndex,
                                 onDestinationSelected: _onSidebarTabSelected,
                                 onExitPos: _onExitPos,
+                                isCashierOnly: _isCashierOnly,
                               ),
                             ),
                           activeView,

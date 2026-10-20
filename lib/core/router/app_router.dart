@@ -192,9 +192,21 @@ class AppRouter {
           return '/';
         }
 
-        final role = authState.currentUser?.role;
-        if (role == null) {
+        final user = authState.currentUser;
+        if (user == null) {
           return isLogin ? null : '/login';
+        }
+
+        // Si es rol Cajero Exclusivo (solo POS):
+        final isCashierOnly =
+            user.isCashier && !user.isAdmin && !user.isWarehouseKeeper;
+        if (isCashierOnly) {
+          if (isSplash ||
+              isLogin ||
+              (!currentPath.startsWith('/pos') && currentPath != '/login')) {
+            return '/pos';
+          }
+          return null;
         }
 
         if (isSplash || isLogin) {

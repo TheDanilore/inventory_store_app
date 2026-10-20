@@ -58,7 +58,8 @@ class _UsersTabState extends State<UsersTab>
     }
     widget.tabController?.addListener(_onTabChanged);
     // Fetch initial data if this is the active tab or standalone
-    if (widget.tabController == null || widget.tabController!.index == widget.tabIndex) {
+    if (widget.tabController == null ||
+        widget.tabController!.index == widget.tabIndex) {
       _fetchData();
     }
   }
@@ -69,7 +70,8 @@ class _UsersTabState extends State<UsersTab>
     if (oldWidget.searchQuery != widget.searchQuery ||
         oldWidget.onlyActive != widget.onlyActive) {
       // Solo actualiza si es el tab activo (o si no hay tabs) para evitar múltiples peticiones
-      if (widget.tabController == null || widget.tabController!.index == widget.tabIndex) {
+      if (widget.tabController == null ||
+          widget.tabController!.index == widget.tabIndex) {
         _fetchData();
       } else {
         _hasFetched = false;
