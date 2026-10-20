@@ -396,6 +396,7 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
                       return Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (hasErpSection && !widget.isCollapsed) ...[
                             const SizedBox(height: 12),
@@ -799,18 +800,21 @@ class _AdminSidebarState extends State<AdminSidebar> {
   Widget _buildSectionHeader(BuildContext context, String title) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color:
-              isDark
-                  ? AppColors.darkSidebarSectionHeader
-                  : const Color(0xFF94A3B8),
-          letterSpacing: 1.2,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color:
+                isDark
+                    ? AppColors.darkSidebarSectionHeader
+                    : const Color(0xFF94A3B8),
+            letterSpacing: 1.2,
+          ),
         ),
       ),
     );

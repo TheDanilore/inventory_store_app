@@ -245,7 +245,7 @@ class _UsersTabState extends State<UsersTab>
           minTableWidth: 960,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           onRowTap: (user) => _showUserDetail(context, user.id),
-          isLoading: state is UsersLoading,
+          isLoading: state is UsersLoading && state.currentUsers.isEmpty,
           emptyState: const AppEmptyState(
             icon: Icons.people_outline_rounded,
             title: 'Sin Colaboradores',

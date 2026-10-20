@@ -488,6 +488,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
                       return Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (hasErpSection) ...[
                             const _SectionDivider(),
@@ -783,15 +784,18 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
 // ─────────────────────────────────────────────────────────────────────────
 
 Widget _buildSectionTitle(String title) {
-  return Padding(
-    padding: const EdgeInsets.fromLTRB(24, 12, 24, 6),
-    child: Text(
-      title,
-      style: const TextStyle(
-        color: AppColors.textMuted,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.4,
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+        ),
       ),
     ),
   );

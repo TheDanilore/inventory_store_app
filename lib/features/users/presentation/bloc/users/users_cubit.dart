@@ -48,24 +48,23 @@ class UsersCubit extends Cubit<UsersState> {
     adminRes.fold((l) => null, (r) => aTotal = r);
     employeeRes.fold((l) => null, (r) => eTotal = r);
 
-    emit(
-      UsersLoading(
-        currentUsers: state.currentUsers,
-        searchQuery: state.searchQuery,
-        onlyActive: state.onlyActive,
-        currentPage: state.currentPage,
-        totalCount: state.totalCount,
-        customerTotal: cTotal,
-        adminTotal: aTotal,
-        employeeTotal: eTotal,
-      ),
-    );
-
-    // We emit Loading but don't fetch users here, fetchUsers should be called separately or we emit Loaded if we were already loaded
     if (state is UsersLoaded) {
       emit(
         UsersLoaded(
           users: state.currentUsers,
+          searchQuery: state.searchQuery,
+          onlyActive: state.onlyActive,
+          currentPage: state.currentPage,
+          totalCount: state.totalCount,
+          customerTotal: cTotal,
+          adminTotal: aTotal,
+          employeeTotal: eTotal,
+        ),
+      );
+    } else {
+      emit(
+        UsersLoading(
+          currentUsers: state.currentUsers,
           searchQuery: state.searchQuery,
           onlyActive: state.onlyActive,
           currentPage: state.currentPage,
