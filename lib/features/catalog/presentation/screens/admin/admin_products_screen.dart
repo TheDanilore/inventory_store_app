@@ -26,6 +26,8 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_products/quick_view/product_quick_view_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 
 /// Pantalla Principal de Catálogo e Inventario de Productos para Administradores.
 /// Diseño camaleónico de alta densidad para Desktop, eficiencia híbrida para Tablet
@@ -761,16 +763,23 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                               tooltip: 'Exportar catálogo (Excel / PDF / CSV)',
                               onPressed: () => _handleExport(cubit, state),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.upload_file_rounded),
-                              tooltip: 'Importar Lote (Excel / CSV)',
-                              onPressed:
-                                  () => context.go('/products/bulk-import'),
-                            ),
+                            if (context.hasAnyPermission(const [
+                              AppPermissions.productsCreate,
+                              AppPermissions.productsEdit,
+                            ]))
+                              IconButton(
+                                icon: const Icon(Icons.upload_file_rounded),
+                                tooltip: 'Importar Lote (Excel / CSV)',
+                                onPressed:
+                                    () => context.go('/products/bulk-import'),
+                              ),
                           ]
                           : null,
                   floatingActionButton:
-                      isMobile
+                      isMobile &&
+                              context.hasPermission(
+                                AppPermissions.productsCreate,
+                              )
                           ? ValueListenableBuilder<bool>(
                             valueListenable: _isFabExtended,
                             builder: (context, extended, child) {
@@ -827,15 +836,19 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       'Administra precios, márgenes brutos, inventario en tiempo real y visibilidad multicanal.',
                                   isDesktop: !isMobile,
                                   actions: [
-                                    AdminHeaderButton.outlined(
-                                      label: 'Importar',
-                                      icon: Icons.upload_file_rounded,
-                                      tooltip: 'Importar lote de productos',
-                                      onPressed:
-                                          () => context.go(
-                                            '/products/bulk-import',
-                                          ),
-                                    ),
+                                    if (context.hasAnyPermission(const [
+                                      AppPermissions.productsCreate,
+                                      AppPermissions.productsEdit,
+                                    ]))
+                                      AdminHeaderButton.outlined(
+                                        label: 'Importar',
+                                        icon: Icons.upload_file_rounded,
+                                        tooltip: 'Importar lote de productos',
+                                        onPressed:
+                                            () => context.go(
+                                              '/products/bulk-import',
+                                            ),
+                                      ),
                                     AdminHeaderButton.outlined(
                                       label: 'Exportar',
                                       icon: Icons.file_download_outlined,
@@ -845,16 +858,19 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                       onPressed:
                                           () => _handleExport(cubit, state),
                                     ),
-                                    AdminHeaderButton.primary(
-                                      label: 'Nuevo Producto',
-                                      icon: Icons.add_rounded,
-                                      tooltip:
-                                          'Registrar nuevo producto (Atajo: N)',
-                                      onPressed:
-                                          () => context.go(
-                                            '/products/product-form',
-                                          ),
-                                    ),
+                                    if (context.hasPermission(
+                                      AppPermissions.productsCreate,
+                                    ))
+                                      AdminHeaderButton.primary(
+                                        label: 'Nuevo Producto',
+                                        icon: Icons.add_rounded,
+                                        tooltip:
+                                            'Registrar nuevo producto (Atajo: N)',
+                                        onPressed:
+                                            () => context.go(
+                                              '/products/product-form',
+                                            ),
+                                      ),
                                   ],
                                 ),
                               ),
