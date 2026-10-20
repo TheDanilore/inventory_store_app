@@ -334,6 +334,7 @@ class UsersRepositoryImpl implements UsersRepository {
           'email': email,
           'password': password,
           'role': primaryRole,
+          'roles': roles,
           'name': fullName,
           'phone': phone,
           'document_type': documentType,
@@ -433,8 +434,8 @@ class UsersRepositoryImpl implements UsersRepository {
       }
 
       if (newPassword != null && newPassword.trim().isNotEmpty) {
-        final passResponse = await _supabase.functions.invoke(
-          'actualizar-password',
+        var passResponse = await _supabase.functions.invoke(
+          'actualizar-password-admin',
           body: {'user_id': id, 'new_password': newPassword.trim()},
         );
 

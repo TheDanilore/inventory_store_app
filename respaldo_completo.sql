@@ -2059,6 +2059,25 @@ $$;
 ALTER FUNCTION "public"."import_norm"("t" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_admin"() RETURNS boolean
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.user_roles ur
+    JOIN public.roles r ON r.id = ur.role_id
+    JOIN public.profiles p ON p.id = ur.profile_id
+    WHERE p.auth_user_id = auth.uid() 
+      AND r.name = 'admin'
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."is_admin"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -4843,7 +4862,6 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "auth_user_id" "uuid",
     "full_name" "text" NOT NULL,
     "avatar_url" "text",
-    "role" "public"."user_role" DEFAULT 'customer'::"public"."user_role" NOT NULL,
     "phone" "text",
     "document_type" "text" DEFAULT 'DNI'::"text",
     "document_number" "text",
@@ -5241,12 +5259,37 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
 ALTER TABLE "public"."products" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."roles" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."roles" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."user_roles" (
+    "profile_id" "uuid" NOT NULL,
+    "role_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."user_roles" OWNER TO "postgres";
+
+
 CREATE OR REPLACE VIEW "public"."profiles_with_email" WITH ("security_invoker"='false') AS
  SELECT "p"."id",
     "p"."auth_user_id",
     "p"."full_name",
     "p"."avatar_url",
-    "p"."role",
+    COALESCE(( SELECT "r"."name"
+           FROM ("public"."user_roles" "ur"
+             JOIN "public"."roles" "r" ON (("r"."id" = "ur"."role_id")))
+          WHERE ("ur"."profile_id" = "p"."id")
+         LIMIT 1), 'customer'::"text") AS "role",
     "p"."phone",
     "p"."document_type",
     "p"."document_number",
@@ -5321,17 +5364,6 @@ CREATE TABLE IF NOT EXISTS "public"."role_permissions" (
 ALTER TABLE "public"."role_permissions" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."roles" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "name" "text" NOT NULL,
-    "description" "text",
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."roles" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."shopping_carts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "profile_id" "uuid" NOT NULL,
@@ -5393,16 +5425,6 @@ CREATE TABLE IF NOT EXISTS "public"."suppliers" (
 
 
 ALTER TABLE "public"."suppliers" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."user_roles" (
-    "profile_id" "uuid" NOT NULL,
-    "role_id" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"()
-);
-
-
-ALTER TABLE "public"."user_roles" OWNER TO "postgres";
 
 
 CREATE OR REPLACE VIEW "public"."user_effective_permissions" AS
@@ -7090,43 +7112,25 @@ CREATE POLICY "Permitir lectura de roles a usuarios autenticados" ON "public"."r
 
 
 
-CREATE POLICY "Solo administradores pueden asignar user_roles" ON "public"."user_roles" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+CREATE POLICY "Solo administradores pueden asignar user_roles" ON "public"."user_roles" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 
-CREATE POLICY "Solo administradores pueden modificar permisos" ON "public"."permissions" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+CREATE POLICY "Solo administradores pueden modificar permisos" ON "public"."permissions" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 
-CREATE POLICY "Solo administradores pueden modificar role_permissions" ON "public"."role_permissions" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+CREATE POLICY "Solo administradores pueden modificar role_permissions" ON "public"."role_permissions" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 
-CREATE POLICY "Solo administradores pueden modificar roles" ON "public"."roles" TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text")))));
+CREATE POLICY "Solo administradores pueden modificar roles" ON "public"."roles" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
 
 CREATE POLICY "Usuarios pueden ver sus propios roles asignados" ON "public"."user_roles" FOR SELECT TO "authenticated" USING ((("profile_id" IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
-  WHERE ("profiles"."auth_user_id" = "auth"."uid"()))) OR (EXISTS ( SELECT 1
-   FROM "public"."profiles"
-  WHERE (("profiles"."auth_user_id" = "auth"."uid"()) AND (("profiles"."role")::"text" = 'admin'::"text"))))));
+  WHERE ("profiles"."auth_user_id" = "auth"."uid"()))) OR "public"."is_admin"()));
 
 
 
@@ -7623,6 +7627,12 @@ GRANT ALL ON FUNCTION "public"."import_norm"("t" "text") TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "anon";
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_admin"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "anon";
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_customer_checkout"("p_customer_id" "uuid", "p_warehouse_id" "uuid", "p_items" "jsonb", "p_use_points" boolean) TO "service_role";
@@ -7996,6 +8006,18 @@ GRANT ALL ON TABLE "public"."products" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."roles" TO "anon";
+GRANT ALL ON TABLE "public"."roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."roles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_roles" TO "anon";
+GRANT ALL ON TABLE "public"."user_roles" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_roles" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."profiles_with_email" TO "anon";
 GRANT ALL ON TABLE "public"."profiles_with_email" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles_with_email" TO "service_role";
@@ -8020,12 +8042,6 @@ GRANT ALL ON TABLE "public"."role_permissions" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."roles" TO "anon";
-GRANT ALL ON TABLE "public"."roles" TO "authenticated";
-GRANT ALL ON TABLE "public"."roles" TO "service_role";
-
-
-
 GRANT ALL ON TABLE "public"."shopping_carts" TO "anon";
 GRANT ALL ON TABLE "public"."shopping_carts" TO "authenticated";
 GRANT ALL ON TABLE "public"."shopping_carts" TO "service_role";
@@ -8047,12 +8063,6 @@ GRANT ALL ON TABLE "public"."supplier_credits" TO "service_role";
 GRANT ALL ON TABLE "public"."suppliers" TO "anon";
 GRANT ALL ON TABLE "public"."suppliers" TO "authenticated";
 GRANT ALL ON TABLE "public"."suppliers" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."user_roles" TO "anon";
-GRANT ALL ON TABLE "public"."user_roles" TO "authenticated";
-GRANT ALL ON TABLE "public"."user_roles" TO "service_role";
 
 
 

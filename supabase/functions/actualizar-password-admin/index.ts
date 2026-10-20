@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -13,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // Es vital usar el SERVICE_ROLE_KEY para poder editar usuarios por ID sin su sesión actual
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -25,18 +25,32 @@ serve(async (req) => {
       }
     )
 
-    const { auth_user_id, new_password } = await req.json()
+    const { auth_user_id, user_id, new_password } = await req.json()
+    const targetId = auth_user_id ?? user_id
 
-    if (!auth_user_id || !new_password) {
-      return new Response(JSON.stringify({ error: 'Faltan parámetros requeridos.' }), {
+    if (!targetId || !new_password) {
+      return new Response(JSON.stringify({ error: 'Faltan parámetros requeridos (auth_user_id o user_id, new_password).' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       })
     }
 
+    let authUserIdToUpdate = targetId
+
+    // Si se envió un ID de perfil en lugar del auth_user_id, resolverlo desde profiles
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('auth_user_id')
+      .eq('id', targetId)
+      .maybeSingle()
+
+    if (profile?.auth_user_id) {
+      authUserIdToUpdate = profile.auth_user_id
+    }
+
     // Actualizamos la contraseña del usuario mediante su ID de Auth
     const { data, error } = await supabaseClient.auth.admin.updateUserById(
-      auth_user_id,
+      authUserIdToUpdate,
       { password: new_password }
     )
 
