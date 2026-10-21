@@ -4,7 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_radial_goal_card.dart';
 
 /// Modal auxiliar o bottom sheet para configurar la meta del admin
 class AdminGoalHelper {

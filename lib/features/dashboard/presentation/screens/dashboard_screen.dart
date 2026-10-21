@@ -24,7 +24,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/dash
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_admin_goal_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_bento_grid.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_subheader.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_best_sellers_table.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_health_summary_bar.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_kpis_section.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_sales_cards.dart';
