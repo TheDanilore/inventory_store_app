@@ -106,7 +106,7 @@ class AuthRepositoryImpl implements AuthRepository {
         return left(Failure.from('Credenciales inválidas.'));
       }
 
-      return getCurrentUser();
+      return await getCurrentUser();
     } on sb.AuthException catch (e, st) {
       LoggerService.w(
         'Fallo de autenticación en login: ${e.message}',

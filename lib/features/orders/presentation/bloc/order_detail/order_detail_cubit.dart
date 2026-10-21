@@ -432,7 +432,7 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
         variantId,
         warehouseId,
       );
-      return result.fold((failure) {
+      return await result.fold((failure) {
         LoggerService.e(
           'Error al obtener lotes disponibles para variante $variantId',
           tag: 'ORDER_DETAIL_CUBIT',

@@ -207,7 +207,7 @@ class OrdersCubit extends Cubit<OrdersState> {
         ),
       );
 
-      return result.fold(
+      return await result.fold(
         (failure) {
           LoggerService.e(
             'Error actualizando estado: ${failure.message}',

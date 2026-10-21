@@ -764,7 +764,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       }
       // ─── ESCENARIO 2: COMPLETED → CANCELLED (RPC) ───────────────────────
       else if (wasCompleted && isNowCancelled) {
-        return cancelOrder(
+        return await cancelOrder(
           orderId: orderId,
           customerId: selectedCustomerId,
           currentProfileId: effectiveProfileId,

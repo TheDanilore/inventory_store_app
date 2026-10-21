@@ -213,7 +213,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         );
         if (rpcResp != null && rpcResp['profile_id'] != null) {
           final String newId = rpcResp['profile_id'] as String;
-          return getCustomerDetail(newId);
+          return await getCustomerDetail(newId);
         }
       } catch (rpcErr) {
         LoggerService.w(

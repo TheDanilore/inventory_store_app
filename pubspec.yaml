@@ -47,11 +47,11 @@ dependencies:
   path_provider: ^2.1.6
   http: ^1.6.0
   shared_preferences: ^2.5.5
-  connectivity_plus: ^7.3.0
+  connectivity_plus: ^7.3.1
   flutter_image_compress: ^2.5.0
   collection: ^1.19.1
-  file_saver: ^0.4.0
-  cached_network_image: ^4.0.3
+  file_saver: ^0.7.0
+  cached_network_image: ^4.0.5
   vibration: ^3.2.0
   go_router: ^18.0.0
   flutter_web_plugins:

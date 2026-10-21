@@ -14,6 +14,11 @@ analyzer:
     unused_element: warning
     unused_import: warning
     unused_local_variable: warning
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
 
 linter:
   # The lint rules applied to this project can be customized in the
