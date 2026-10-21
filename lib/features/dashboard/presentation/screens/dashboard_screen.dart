@@ -1,31 +1,37 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
+
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
+
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/services/dashboard_export_service.dart';
+
+// Componentes extraídos
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_admin_goal_card.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_bento_grid.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_subheader.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_widgets.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_health_summary_bar.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_kpis_section.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_sales_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/admin_goal_dialog.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/expiring_batches_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/app_date_range_picker_modal.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
-import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/services/dashboard_export_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -41,80 +47,6 @@ class DashboardScreen extends StatelessWidget {
 
 class _DashboardScreenContent extends StatefulWidget {
   const _DashboardScreenContent();
-
-  static void _openGoalDialog(
-    BuildContext context,
-    double currentAmount,
-    double targetAmount,
-  ) {
-    final isDesktop = MediaQuery.of(context).size.width >= 720;
-
-    if (isDesktop) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-            elevation: 12,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: AdminGoalDialog(
-                currentAmount: currentAmount,
-                targetAmount: targetAmount,
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurface : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-            ),
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 38,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? AppColors.darkBorder
-                              : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  AdminGoalDialog(
-                    currentAmount: currentAmount,
-                    targetAmount: targetAmount,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-    }
-  }
 
   @override
   State<_DashboardScreenContent> createState() =>
@@ -145,7 +77,6 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       if (cubit.state is DashboardInitial) {
         cubit.loadDashboardData();
       } else {
-        // Stale-While-Revalidate: si ya existen datos en caché, revalidar en segundo plano sin parpadeo de shimmers
         cubit.loadDashboardData(background: true);
       }
     });
@@ -220,6 +151,17 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   }
 
   Future<void> _handleExportReport() async {
+    // Validación adicional de permisos UI
+    if (!context.isAdmin &&
+        !context.hasPermission(AppPermissions.reportsExport)) {
+      AppSnackbar.show(
+        context,
+        message: 'No cuentas con permiso para exportar reportes.',
+        type: SnackbarType.warning,
+      );
+      return;
+    }
+
     final cubit = context.read<DashboardCubit>();
     final state = cubit.state;
     if (state is DashboardLoaded) {
@@ -272,7 +214,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           if (_isTextFieldFocused()) return;
           context.read<DashboardCubit>().refresh();
         },
-        // Atajo W: Abrir panel Add Widget (Shopeers Style)
+        // Atajo W: Abrir panel Add Widget
         const SingleActivator(LogicalKeyboardKey.keyW): () {
           if (_isTextFieldFocused()) return;
           _openAddWidgetSheet();
@@ -306,7 +248,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         const SingleActivator(LogicalKeyboardKey.keyG): () {
           if (_isTextFieldFocused()) return;
           final cfg = context.read<AppConfigCubit>();
-          _DashboardScreenContent._openGoalDialog(
+          AdminGoalHelper.openGoalDialog(
             context,
             cfg.getDouble('admin_goal_current', 0.0),
             cfg.getDouble('admin_goal_target', 2600.0),
@@ -315,7 +257,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         const SingleActivator(LogicalKeyboardKey.keyM): () {
           if (_isTextFieldFocused()) return;
           final cfg = context.read<AppConfigCubit>();
-          _DashboardScreenContent._openGoalDialog(
+          AdminGoalHelper.openGoalDialog(
             context,
             cfg.getDouble('admin_goal_current', 0.0),
             cfg.getDouble('admin_goal_target', 2600.0),
@@ -348,48 +290,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               }
 
               if (state is DashboardError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.error_outline_rounded,
-                            size: 48,
-                            color: AppColors.error,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          state.message,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed:
-                              () =>
-                                  context
-                                      .read<DashboardCubit>()
-                                      .loadDashboardData(),
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Reintentar conexión'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                return _buildErrorState(state.message);
               }
 
               if (state is DashboardLoaded) {
@@ -434,427 +335,57 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SUB-HEADER: CONTEXT BAR (SHOPEERS / APPLE STYLE FECHA + FILTROS + ACCIONES)
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildExecutiveSubheader(
-    BuildContext context,
-    DashboardLoaded state, {
-    required bool isDesktop,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (!isDesktop) {
-      // ── MÓVIL: DISEÑO SIMÉTRICO EN 2 FILAS SHOPEERS ─────────────────────────
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Fila 1: Título y Botón Exportar (ambos con balance perfecto)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color:
-                          isDark
-                              ? const Color(0xFFF8FAFC)
-                              : const Color(0xFF0F172A),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Métricas en tiempo real',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 34,
-                child: FilledButton.icon(
-                  onPressed: _handleExportReport,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 34),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  icon: const Icon(Icons.arrow_downward_rounded, size: 14),
-                  label: const Text('Exportar'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Fila 2: Cápsula de Fecha Shopeers + Botón +Widget
-          Row(
-            children: [
-              Expanded(
-                child: _buildShopeersDateRangePill(
-                  context,
-                  state,
-                  isDesktop: false,
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // Botón Añadir Widget en móvil (Shopeers exact match)
-              InkWell(
-                onTap: _openAddWidgetSheet,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  height: 34,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? AppColors.darkBorder
-                              : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.add_rounded,
-                        size: 15,
-                        color: Color(0xFF2563EB),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Widget (${_visibleWidgets.length})',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isDark
-                                  ? const Color(0xFFF8FAFC)
-                                  : const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    // ── DESKTOP / TABLET: FILA ÚNICA CON ALTURA 38DP Y RADIO 10DP ─────────────
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Left: Screen Title & Subtitle
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Dashboard',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color:
-                    isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
-                letterSpacing: -0.6,
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Métricas clave de rendimiento y control en tiempo real',
-              style: TextStyle(
-                fontSize: 13,
-                color:
-                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
-              ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed:
+                  () => context.read<DashboardCubit>().loadDashboardData(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Reintentar conexión'),
             ),
           ],
         ),
-
-        // Right: Shopeers Date Range Composite Pill + Actions (Exact 38dp height)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildShopeersDateRangePill(context, state, isDesktop: true),
-            const SizedBox(width: 10),
-
-            // Botón Añadir Widget (Shopeers Style)
-            Tooltip(
-              message: 'Personalizar widgets del dashboard (Atajo: W)',
-              child: SizedBox(
-                height: 38,
-                child: OutlinedButton.icon(
-                  onPressed: _openAddWidgetSheet,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
-                    foregroundColor:
-                        isDark
-                            ? const Color(0xFFF8FAFC)
-                            : const Color(0xFF0F172A),
-                    side: BorderSide(
-                      color:
-                          isDark
-                              ? AppColors.darkBorder
-                              : const Color(0xFFE2E8F0),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  icon: const Icon(
-                    Icons.widgets_outlined,
-                    size: 15,
-                    color: Color(0xFF2563EB),
-                  ),
-                  label: Text(
-                    'Widgets (${_visibleWidgets.length}/7)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-
-            // Reload Button with Shortcut Hint
-            Tooltip(
-              message: 'Recargar métricas (Atajo: R)',
-              child: SizedBox(
-                height: 38,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    if (!kIsWeb) {
-                      Vibration.vibrate(duration: 30, amplitude: 60);
-                    }
-                    context.read<DashboardCubit>().refresh();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
-                    foregroundColor:
-                        isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF475569),
-                    side: BorderSide(
-                      color:
-                          isDark
-                              ? AppColors.darkBorder
-                              : const Color(0xFFE2E8F0),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  icon: Icon(
-                    Icons.refresh_rounded,
-                    size: 15,
-                    color:
-                        isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF475569),
-                  ),
-                  label: const Text(
-                    'Actualizar',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-
-            // Export Button
-            SizedBox(
-              height: 38,
-              child: FilledButton.icon(
-                onPressed: _handleExportReport,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                icon: const Icon(Icons.arrow_downward_rounded, size: 15),
-                label: const Text('Exportar'),
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // TOP 4 KPIS UNIFORM STRIP (SHOPEERS / APPLE STYLE)
-  // ─────────────────────────────────────────────────────────────────────────────
-  Widget _buildTopKpiStrip(BuildContext context, DashboardLoaded state) {
-    return Row(
-      children: [
-        Expanded(
-          child: DashboardKpiStripCard(
-            title: 'Ventas Totales',
-            value: 'S/ ${state.sales.totalRevenue.toStringAsFixed(2)}',
-            deltaText: '15.5%',
-            isPositiveDelta: true,
-            subtitle: '${state.sales.totalSales} órdenes en período',
-            icon: Icons.point_of_sale_rounded,
-            accentColor: const Color(0xFF2563EB),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: DashboardKpiStripCard(
-            title: 'Ticket Promedio',
-            value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
-            deltaText: '8.4%',
-            isPositiveDelta: true,
-            subtitle: 'Gasto medio por orden',
-            icon: Icons.calculate_rounded,
-            accentColor: const Color(0xFF0D9488),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: DashboardKpiStripCard(
-            title: 'Stock Total',
-            value: '${state.inventory.totalStock} unid.',
-            deltaText:
-                state.inventory.lowStockProducts > 0
-                    ? '${state.inventory.lowStockProducts} alertas'
-                    : 'Óptimo',
-            isPositiveDelta: state.inventory.lowStockProducts == 0,
-            subtitle: '${state.inventory.totalProducts} prods.',
-            icon: Icons.inventory_2_rounded,
-            accentColor: const Color(0xFF0EA5E9),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: DashboardKpiStripCard(
-            title: 'Ganancia Bruta',
-            value: 'S/ ${state.sales.totalProfit.toStringAsFixed(2)}',
-            deltaText: '${state.sales.salesMargin.toStringAsFixed(1)}%',
-            isPositiveDelta: true,
-            subtitle:
-                'Fondo: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
-            icon: Icons.trending_up_rounded,
-            accentColor: const Color(0xFF10B981),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletKpiGrid(BuildContext context, DashboardLoaded state) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: DashboardKpiStripCard(
-                title: 'Ventas Totales',
-                value: 'S/ ${state.sales.totalRevenue.toStringAsFixed(2)}',
-                deltaText: '15.5%',
-                isPositiveDelta: true,
-                subtitle: '${state.sales.totalSales} órdenes en período',
-                icon: Icons.point_of_sale_rounded,
-                accentColor: const Color(0xFF2563EB),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DashboardKpiStripCard(
-                title: 'Ticket Promedio',
-                value: 'S/ ${state.sales.averageTicket.toStringAsFixed(2)}',
-                deltaText: '8.4%',
-                isPositiveDelta: true,
-                subtitle: 'Gasto promedio por orden',
-                icon: Icons.calculate_rounded,
-                accentColor: const Color(0xFF0D9488),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: DashboardKpiStripCard(
-                title: 'Stock Total',
-                value: '${state.inventory.totalStock} unid.',
-                deltaText:
-                    state.inventory.lowStockProducts > 0
-                        ? '${state.inventory.lowStockProducts} alertas'
-                        : 'Óptimo',
-                isPositiveDelta: state.inventory.lowStockProducts == 0,
-                subtitle:
-                    '${state.inventory.totalProducts} productos registrados',
-                icon: Icons.inventory_2_rounded,
-                accentColor: const Color(0xFF0EA5E9),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DashboardKpiStripCard(
-                title: 'Ganancia Bruta',
-                value: 'S/ ${state.sales.totalProfit.toStringAsFixed(2)}',
-                deltaText: '${state.sales.salesMargin.toStringAsFixed(1)}%',
-                isPositiveDelta: true,
-                subtitle:
-                    'Reposición: S/ ${state.sales.replacementFund.toStringAsFixed(2)}',
-                icon: Icons.trending_up_rounded,
-                accentColor: const Color(0xFF10B981),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // DESKTOP: BENTO GRID INTERNACIONAL (SPLINE PROFIT + ACTIVITY + RADIAL GOAL)
+  // DESKTOP LAYOUT
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildDesktopLayout(BuildContext context, DashboardLoaded state) {
+    final canViewInventory = context.hasAnyPermission(const [
+      AppPermissions.inventoryView,
+      AppPermissions.reportsInventory,
+    ]);
+
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -864,34 +395,44 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Banner Ejecutivo de Bienvenida Agronómica
+                // 1. Banner Ejecutivo de Bienvenida
                 const AgronomicGreetingBanner(),
                 const SizedBox(height: 20),
 
-                if (state.inventory.lowStockProducts > 0 ||
-                    state.criticalBatches.isNotEmpty) ...[
-                  _HealthSummaryBar(
+                // 2. Alerta de Salud Operativa (Inventario)
+                if (canViewInventory &&
+                    (state.inventory.lowStockProducts > 0 ||
+                        state.criticalBatches.isNotEmpty)) ...[
+                  DashboardHealthSummaryBar(
                     lowStockCount: state.inventory.lowStockProducts,
                     criticalBatchesCount: state.criticalBatches.length,
                   ),
                   const SizedBox(height: 16),
                 ],
 
-                // Subheader con selector de fecha y acciones rápidas
-                _buildExecutiveSubheader(context, state, isDesktop: true),
+                // 3. Subheader Ejecutivo
+                DashboardExecutiveSubheader(
+                  state: state,
+                  isDesktop: true,
+                  visibleWidgetsCount: _visibleWidgets.length,
+                  onOpenAddWidgetSheet: _openAddWidgetSheet,
+                  onExportReport: _handleExportReport,
+                ),
                 const SizedBox(height: 20),
 
-                // Strip superior de 4 KPIs ejecutivos simétricos
+                // 4. Strip Superior de 4 KPIs
                 if (_visibleWidgets.contains('kpi_strip')) ...[
-                  _buildTopKpiStrip(context, state),
+                  DashboardKpisSection(state: state, isTabletOrMobile: false),
                   const SizedBox(height: 24),
                 ],
 
-                // Bento Grid Principal Modulado
-                if (!_hasAnyBodyWidgets(state))
-                  _buildEmptyWidgetsPlaceholder()
-                else
-                  _buildDesktopBentoGrid(context, state),
+                // 5. Bento Grid Modular
+                DashboardBentoGrid(
+                  state: state,
+                  visibleWidgets: _visibleWidgets,
+                  onToggleWidget: _toggleWidget,
+                  onOpenAddWidgetSheet: _openAddWidgetSheet,
+                ),
               ],
             ),
           ),
@@ -900,275 +441,15 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     );
   }
 
-  bool _hasAnyBodyWidgets(DashboardLoaded state) {
-    return _visibleWidgets.contains('profit_spline') ||
-        _visibleWidgets.contains('best_sellers') ||
-        (_visibleWidgets.contains('customer_segments') &&
-            state.topCustomers.isNotEmpty) ||
-        _visibleWidgets.contains('weekly_activity') ||
-        _visibleWidgets.contains('radial_goal') ||
-        _visibleWidgets.contains('expiring_batches');
-  }
-
-  /// Tendencia de ventas (RPC overview). Sin overview no se dibuja.
-  Widget _buildTrendCard(DashboardLoaded state) {
-    final overview = state.overview;
-    if (overview == null) return const SizedBox.shrink();
-    return SalesTrendCard(overview: overview);
-  }
-
-  /// Actividad por día de la semana (RPC overview). Sin overview no se dibuja.
-  Widget _buildWeeklyCard(DashboardLoaded state) {
-    final overview = state.overview;
-    if (overview == null) return const SizedBox.shrink();
-    return WeeklyActivityCard(overview: overview);
-  }
-
-  Widget _buildDesktopBentoGrid(BuildContext context, DashboardLoaded state) {
-    // ── NIVEL 1: GRÁFICOS ANALÍTICOS Y METAS ──────────────────────────────
-    final hasSpline = _visibleWidgets.contains('profit_spline');
-    final hasWeekly = _visibleWidgets.contains('weekly_activity');
-    final hasGoal = _visibleWidgets.contains('radial_goal');
-
-    Widget? level1Widget;
-    if (hasSpline && (hasWeekly || hasGoal)) {
-      level1Widget = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 7, child: _buildTrendCard(state)),
-          const SizedBox(width: 20),
-          Expanded(
-            flex: 5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (hasWeekly) _buildWeeklyCard(state),
-                if (hasWeekly && hasGoal) const SizedBox(height: 20),
-                if (hasGoal) const _DashboardAdminGoalCard(),
-              ],
-            ),
-          ),
-        ],
-      );
-    } else if (hasSpline) {
-      level1Widget = _buildTrendCard(state);
-    } else if (hasWeekly || hasGoal) {
-      level1Widget = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (hasWeekly) Expanded(flex: 6, child: _buildWeeklyCard(state)),
-          if (hasWeekly && hasGoal) const SizedBox(width: 20),
-          if (hasGoal)
-            const Expanded(flex: 6, child: _DashboardAdminGoalCard()),
-        ],
-      );
-    }
-
-    // ── NIVEL 2: OPERACIONES, ROTACIÓN Y FEFO (SIMETRÍA 1:1) ───────────────
-    final hasBestSellers = _visibleWidgets.contains('best_sellers');
-    final hasCustomers =
-        _visibleWidgets.contains('customer_segments') &&
-        state.topCustomers.isNotEmpty;
-    final hasBatches = _visibleWidgets.contains('expiring_batches');
-
-    final leftLevel2 = <Widget>[
-      if (hasBestSellers)
-        DashboardBestSellersTable(
-          bestSellers: state.sales.bestSellers,
-          criticalBatches: state.criticalBatches,
-        ),
-    ];
-
-    final rightLevel2 = <Widget>[
-      if (hasCustomers)
-        TopCustomersCard(
-          customers: state.topCustomers,
-          displayMode: TopCustomersDisplayMode.desktop,
-        ),
-      if (hasBatches) ExpiringBatchesCard(batches: state.criticalBatches),
-    ];
-
-    Widget? level2Widget;
-    if (leftLevel2.isNotEmpty && rightLevel2.isNotEmpty) {
-      level2Widget = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _withSpacers(leftLevel2, 20),
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: _withSpacers(rightLevel2, 20),
-            ),
-          ),
-        ],
-      );
-    } else if (leftLevel2.isNotEmpty) {
-      level2Widget = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _withSpacers(leftLevel2, 20),
-      );
-    } else if (rightLevel2.isNotEmpty) {
-      level2Widget = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _withSpacers(rightLevel2, 20),
-      );
-    }
-
-    final allLevels = <Widget>[
-      if (level1Widget != null) level1Widget,
-      if (level2Widget != null) level2Widget,
-    ];
-
-    if (allLevels.isEmpty) {
-      return _buildEmptyWidgetsPlaceholder();
-    }
-
-    return DragTarget<String>(
-      onWillAcceptWithDetails: (details) => true,
-      onAcceptWithDetails: (details) {
-        final widgetId = details.data;
-        if (!_visibleWidgets.contains(widgetId)) {
-          _toggleWidget(widgetId, true);
-          if (!kIsWeb) {
-            Vibration.vibrate(duration: 40);
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Widget añadido al Dashboard con éxito'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Color(0xFF16A34A),
-            ),
-          );
-        }
-      },
-      builder: (context, candidateData, rejectedData) {
-        final isHovering = candidateData.isNotEmpty;
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.all(isHovering ? 8 : 0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border:
-                isHovering
-                    ? Border.all(color: const Color(0xFF2563EB), width: 2)
-                    : null,
-            color:
-                isHovering
-                    ? const Color(0xFFEFF6FF).withValues(alpha: 0.25)
-                    : Colors.transparent,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: _withSpacers(allLevels, 20),
-          ),
-        );
-      },
-    );
-  }
-
-  List<Widget> _withSpacers(List<Widget> list, double spacing) {
-    if (list.isEmpty) return [];
-    final res = <Widget>[];
-    for (int i = 0; i < list.length; i++) {
-      res.add(list[i]);
-      if (i < list.length - 1) {
-        res.add(SizedBox(height: spacing));
-      }
-    }
-    return res;
-  }
-
-  Widget _buildEmptyWidgetsPlaceholder() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
-                        : const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.dashboard_customize_outlined,
-                size: 28,
-                color:
-                    isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Lienzo de Dashboard Vacío',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color:
-                    isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Has ocultado los componentes del lienzo. Personaliza tu vista añadiendo widgets clave.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color:
-                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _openAddWidgetSheet,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(
-                'Añadir Widgets (Atajo: W)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ─────────────────────────────────────────────────────────────────────────────
-  // TABLET: HYBRID EFFICIENCY (2-COLUMN RESPONSIVE)
+  // TABLET LAYOUT
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildTabletLayout(BuildContext context, DashboardLoaded state) {
+    final canViewInventory = context.hasAnyPermission(const [
+      AppPermissions.inventoryView,
+      AppPermissions.reportsInventory,
+    ]);
+
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -1178,28 +459,39 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Banner Ejecutivo de Bienvenida Agronómica
                 const AgronomicGreetingBanner(),
                 const SizedBox(height: 16),
 
-                if (state.inventory.lowStockProducts > 0 ||
-                    state.criticalBatches.isNotEmpty) ...[
-                  _HealthSummaryBar(
+                if (canViewInventory &&
+                    (state.inventory.lowStockProducts > 0 ||
+                        state.criticalBatches.isNotEmpty)) ...[
+                  DashboardHealthSummaryBar(
                     lowStockCount: state.inventory.lowStockProducts,
                     criticalBatchesCount: state.criticalBatches.length,
                   ),
                   const SizedBox(height: 14),
                 ],
-                _buildExecutiveSubheader(context, state, isDesktop: false),
+
+                DashboardExecutiveSubheader(
+                  state: state,
+                  isDesktop: false,
+                  visibleWidgetsCount: _visibleWidgets.length,
+                  onOpenAddWidgetSheet: _openAddWidgetSheet,
+                  onExportReport: _handleExportReport,
+                ),
                 const SizedBox(height: 16),
+
                 if (_visibleWidgets.contains('kpi_strip')) ...[
-                  _buildTabletKpiGrid(context, state),
+                  DashboardKpisSection(state: state, isTabletOrMobile: true),
                   const SizedBox(height: 20),
                 ],
-                if (!_hasAnyBodyWidgets(state))
-                  _buildEmptyWidgetsPlaceholder()
-                else
-                  _buildDesktopBentoGrid(context, state),
+
+                DashboardBentoGrid(
+                  state: state,
+                  visibleWidgets: _visibleWidgets,
+                  onToggleWidget: _toggleWidget,
+                  onOpenAddWidgetSheet: _openAddWidgetSheet,
+                ),
               ],
             ),
           ),
@@ -1209,42 +501,73 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // MOBILE: APPLE HIG / IOS PREMIUM (THUMB-ZONE FIRST + FLUID SCROLL)
+  // MOBILE LAYOUT
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildMobileLayout(BuildContext context, DashboardLoaded state) {
+    final canViewSales = context.hasAnyPermission(const [
+      AppPermissions.reportsSales,
+      AppPermissions.reportsFinancial,
+      AppPermissions.reportsView,
+    ]);
+    final canViewInventory = context.hasAnyPermission(const [
+      AppPermissions.inventoryView,
+      AppPermissions.reportsInventory,
+    ]);
+
     final mobileWidgets = <Widget>[
-      // 1. Banner Ejecutivo de Bienvenida Agronómica
       const AgronomicGreetingBanner(),
       const SizedBox(height: 14),
 
-      if (state.inventory.lowStockProducts > 0 ||
-          state.criticalBatches.isNotEmpty) ...[
-        _HealthSummaryBar(
+      if (canViewInventory &&
+          (state.inventory.lowStockProducts > 0 ||
+              state.criticalBatches.isNotEmpty)) ...[
+        DashboardHealthSummaryBar(
           lowStockCount: state.inventory.lowStockProducts,
           criticalBatchesCount: state.criticalBatches.length,
         ),
       ],
-      _buildExecutiveSubheader(context, state, isDesktop: false),
+
+      DashboardExecutiveSubheader(
+        state: state,
+        isDesktop: false,
+        visibleWidgetsCount: _visibleWidgets.length,
+        onOpenAddWidgetSheet: _openAddWidgetSheet,
+        onExportReport: _handleExportReport,
+      ),
+
       if (_visibleWidgets.contains('kpi_strip'))
-        _buildTabletKpiGrid(context, state),
-      if (_visibleWidgets.contains('profit_spline')) _buildTrendCard(state),
+        DashboardKpisSection(state: state, isTabletOrMobile: true),
+
+      if (_visibleWidgets.contains('profit_spline') &&
+          state.overview != null &&
+          canViewSales)
+        SalesTrendCard(overview: state.overview!),
+
       if (_visibleWidgets.contains('customer_segments') &&
-          state.topCustomers.isNotEmpty)
+          state.topCustomers.isNotEmpty &&
+          canViewSales)
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.mobile,
         ),
-      if (_visibleWidgets.contains('weekly_activity')) _buildWeeklyCard(state),
-      if (_visibleWidgets.contains('radial_goal'))
-        const _DashboardAdminGoalCard(),
-      if (_visibleWidgets.contains('best_sellers'))
+
+      if (_visibleWidgets.contains('weekly_activity') &&
+          state.overview != null &&
+          canViewSales)
+        WeeklyActivityCard(overview: state.overview!),
+
+      if (_visibleWidgets.contains('radial_goal') &&
+          (context.isAdmin || canViewSales))
+        const DashboardAdminGoalCard(),
+
+      if (_visibleWidgets.contains('best_sellers') && canViewSales)
         DashboardBestSellersTable(
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
         ),
-      if (_visibleWidgets.contains('expiring_batches'))
+
+      if (_visibleWidgets.contains('expiring_batches') && canViewInventory)
         ExpiringBatchesCard(batches: state.criticalBatches),
-      if (!_hasAnyWidgetsVisible(state)) _buildEmptyWidgetsPlaceholder(),
     ];
 
     return CustomScrollView(
@@ -1260,1162 +583,15 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     );
   }
 
-  bool _hasAnyWidgetsVisible(DashboardLoaded state) {
-    return _visibleWidgets.contains('kpi_strip') || _hasAnyBodyWidgets(state);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SELECTOR DE FECHAS Y RANGOS PERSONALIZADOS (SHOPEERS STYLE)
-  // ─────────────────────────────────────────────────────────────────────────────
-  Future<void> _openCustomDatePicker(
-    BuildContext context,
-    DashboardLoaded state,
-  ) async {
-    final now = DateTime.now();
-    final picked = await AppDateRangePickerModal.show(
-      context,
-      initialStartDate:
-          state.customStartDate ?? now.subtract(const Duration(days: 7)),
-      initialEndDate: state.customEndDate ?? now,
-      firstDate: DateTime(2022),
-      lastDate: now.add(const Duration(days: 365)),
-    );
-
-    if (picked != null) {
-      if (!kIsWeb) {
-        Vibration.vibrate(duration: 30, amplitude: 64);
-      }
-      if (context.mounted) {
-        context.read<DashboardCubit>().updateSalesFilter(
-          SalesTimeFilter.custom,
-          customStartDate: picked.start,
-          customEndDate: picked.end,
-        );
+  List<Widget> _withSpacers(List<Widget> list, double spacing) {
+    if (list.isEmpty) return [];
+    final res = <Widget>[];
+    for (int i = 0; i < list.length; i++) {
+      res.add(list[i]);
+      if (i < list.length - 1) {
+        res.add(SizedBox(height: spacing));
       }
     }
-  }
-
-  Widget _buildShopeersDateRangePill(
-    BuildContext context,
-    DashboardLoaded state, {
-    required bool isDesktop,
-  }) {
-    final now = DateTime.now();
-    String rangeLabel = '';
-    String presetLabel = '';
-
-    switch (state.salesFilter) {
-      case SalesTimeFilter.today:
-        rangeLabel = DateFormat('d MMM, yyyy', 'es').format(now);
-        presetLabel = 'Hoy';
-        break;
-      case SalesTimeFilter.thisWeek:
-        final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-        final endOfWeek = startOfWeek.add(const Duration(days: 6));
-        rangeLabel =
-            '${DateFormat('d MMM', 'es').format(startOfWeek)} - ${DateFormat('d MMM, yyyy', 'es').format(endOfWeek)}';
-        presetLabel = isDesktop ? 'Esta semana' : 'Semana';
-        break;
-      case SalesTimeFilter.thisMonth:
-        final startOfMonth = DateTime(now.year, now.month, 1);
-        final nextMonth =
-            now.month == 12
-                ? DateTime(now.year + 1, 1, 1)
-                : DateTime(now.year, now.month + 1, 1);
-        final endOfMonth = nextMonth.subtract(const Duration(days: 1));
-        rangeLabel =
-            '${DateFormat('d MMM', 'es').format(startOfMonth)} - ${DateFormat('d MMM, yyyy', 'es').format(endOfMonth)}';
-        presetLabel = isDesktop ? 'Este mes' : 'Mes';
-        break;
-      case SalesTimeFilter.allTime:
-        rangeLabel = 'Todo el histórico';
-        presetLabel = isDesktop ? 'Histórico' : 'Hist';
-        break;
-      case SalesTimeFilter.custom:
-        if (state.customStartDate != null && state.customEndDate != null) {
-          rangeLabel =
-              '${DateFormat('d MMM', 'es').format(state.customStartDate!)} - ${DateFormat('d MMM, yyyy', 'es').format(state.customEndDate!)}';
-        } else {
-          rangeLabel = 'Personalizado';
-        }
-        presetLabel = isDesktop ? 'Personalizado' : 'Pers';
-        break;
-    }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: isDesktop ? 38 : 34,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-        ),
-        boxShadow:
-            isDark
-                ? []
-                : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-      ),
-      child: Row(
-        mainAxisSize: isDesktop ? MainAxisSize.min : MainAxisSize.max,
-        children: [
-          // Left: Calendar Picker Trigger
-          if (isDesktop)
-            InkWell(
-              onTap: () => _openCustomDatePicker(context, state),
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(10),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (state.isSalesLoading)
-                      const SizedBox(
-                        width: 13,
-                        height: 13,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF2563EB),
-                          ),
-                        ),
-                      )
-                    else
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 13,
-                        color: Color(0xFF64748B),
-                      ),
-                    const SizedBox(width: 6),
-                    Text(
-                      rangeLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isDark
-                                ? const Color(0xFFF8FAFC)
-                                : const Color(0xFF0F172A),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: InkWell(
-                onTap: () => _openCustomDatePicker(context, state),
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(10),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Row(
-                    children: [
-                      if (state.isSalesLoading)
-                        const SizedBox(
-                          width: 13,
-                          height: 13,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF2563EB),
-                            ),
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 13,
-                          color: Color(0xFF64748B),
-                        ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          rangeLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                isDark
-                                    ? const Color(0xFFF8FAFC)
-                                    : const Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Divider
-          Container(
-            width: 1,
-            height: isDesktop ? 18 : 16,
-            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-          ),
-
-          // Right: Presets Dropdown
-          PopupMenuButton<SalesTimeFilter>(
-            tooltip: 'Filtro por fecha (Atajos: 1-4)',
-            offset: const Offset(0, 40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-              ),
-            ),
-            color: isDark ? AppColors.darkSurface : Colors.white,
-            elevation: 8,
-            onSelected: (filter) {
-              if (filter == SalesTimeFilter.custom) {
-                _openCustomDatePicker(context, state);
-              } else {
-                if (!kIsWeb) {
-                  Vibration.vibrate(duration: 30, amplitude: 64);
-                }
-                context.read<DashboardCubit>().updateSalesFilter(filter);
-              }
-            },
-            itemBuilder:
-                (context) => [
-                  _buildFilterMenuItem(
-                    value: SalesTimeFilter.today,
-                    label: 'Hoy',
-                    shortcut: '1',
-                    isSelected: state.salesFilter == SalesTimeFilter.today,
-                    isDark: isDark,
-                  ),
-                  _buildFilterMenuItem(
-                    value: SalesTimeFilter.thisWeek,
-                    label: 'Esta semana',
-                    shortcut: '2',
-                    isSelected: state.salesFilter == SalesTimeFilter.thisWeek,
-                    isDark: isDark,
-                  ),
-                  _buildFilterMenuItem(
-                    value: SalesTimeFilter.thisMonth,
-                    label: 'Este mes',
-                    shortcut: '3',
-                    isSelected: state.salesFilter == SalesTimeFilter.thisMonth,
-                    isDark: isDark,
-                  ),
-                  _buildFilterMenuItem(
-                    value: SalesTimeFilter.allTime,
-                    label: 'Histórico',
-                    shortcut: '4',
-                    isSelected: state.salesFilter == SalesTimeFilter.allTime,
-                    isDark: isDark,
-                  ),
-                  PopupMenuDivider(height: 1),
-                  _buildFilterMenuItem(
-                    value: SalesTimeFilter.custom,
-                    label: 'Personalizado...',
-                    icon: Icons.date_range_outlined,
-                    isSelected: state.salesFilter == SalesTimeFilter.custom,
-                    isDark: isDark,
-                  ),
-                ],
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: isDesktop ? 10 : 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    presetLabel,
-                    style: TextStyle(
-                      fontSize: isDesktop ? 12 : 11,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          isDark
-                              ? const Color(0xFFF8FAFC)
-                              : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 15,
-                    color: Color(0xFF64748B),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  PopupMenuItem<SalesTimeFilter> _buildFilterMenuItem({
-    required SalesTimeFilter value,
-    required String label,
-    String? shortcut,
-    IconData? icon,
-    required bool isSelected,
-    bool isDark = false,
-  }) {
-    return PopupMenuItem<SalesTimeFilter>(
-      value: value,
-      height: 38,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 16,
-                  color:
-                      isSelected
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFF64748B),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color:
-                      isSelected
-                          ? const Color(0xFF2563EB)
-                          : (isDark
-                              ? const Color(0xFFF8FAFC)
-                              : const Color(0xFF0F172A)),
-                ),
-              ),
-            ],
-          ),
-          if (shortcut != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-              decoration: BoxDecoration(
-                color:
-                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                shortcut,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-            ),
-          if (isSelected && shortcut == null)
-            const Icon(Icons.check_rounded, size: 16, color: Color(0xFF2563EB)),
-        ],
-      ),
-    );
-  }
-}
-
-class _HealthSummaryBar extends StatefulWidget {
-  final int lowStockCount;
-  final int criticalBatchesCount;
-
-  const _HealthSummaryBar({
-    required this.lowStockCount,
-    required this.criticalBatchesCount,
-  });
-
-  @override
-  State<_HealthSummaryBar> createState() => _HealthSummaryBarState();
-}
-
-class _HealthSummaryBarState extends State<_HealthSummaryBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _scaleAnimation = TweenSequence([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.0,
-          end: 1.15,
-        ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.15,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 1,
-      ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 3),
-    ]).animate(_controller);
-
-    if (widget.lowStockCount > 0 || widget.criticalBatchesCount > 0) {
-      _controller.repeat();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _HealthSummaryBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.lowStockCount > 0 || widget.criticalBatchesCount > 0) {
-      if (!_controller.isAnimating) _controller.repeat();
-    } else {
-      _controller.stop();
-      _controller.reset();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (widget.lowStockCount == 0 && widget.criticalBatchesCount == 0) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color:
-              isDark
-                  ? AppColors.darkSurface
-                  : Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color:
-                isDark
-                    ? const Color(0xFF059669).withValues(alpha: 0.35)
-                    : AppColors.success.withValues(alpha: 0.25),
-          ),
-          boxShadow:
-              isDark
-                  ? []
-                  : [
-                    BoxShadow(
-                      color: AppColors.success.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Inventario y Lotes Saludables · Cero Alertas Críticas',
-              style: TextStyle(
-                color: isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final totalAlerts = widget.lowStockCount + widget.criticalBatchesCount;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color:
-            isDark
-                ? const Color(0xFF78350F).withValues(alpha: 0.22)
-                : AppColors.warning.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color:
-              isDark
-                  ? const Color(0xFFB45309).withValues(alpha: 0.45)
-                  : AppColors.warning.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          ScaleTransition(
-            scale: _scaleAnimation,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
-                        : AppColors.warning.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.warning_amber_rounded,
-                color: Color(0xFFF59E0B),
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$totalAlerts Alertas de Salud Operativa',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                    color:
-                        isDark
-                            ? const Color(0xFFF8FAFC)
-                            : AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  '${widget.lowStockCount} stock bajo · ${widget.criticalBatchesCount} lotes en alerta',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        isDark
-                            ? const Color(0xFF94A3B8)
-                            : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton.icon(
-            onPressed: () {
-              if (widget.criticalBatchesCount > 0) {
-                context.go('/inventory?tab=batches');
-              } else {
-                context.go('/inventory');
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor:
-                  isDark ? const Color(0xFFFBBF24) : AppColors.warning,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(44, 38),
-            ),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-            label: const Text(
-              'Revisar',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ExpiringBatchesCard extends StatefulWidget {
-  final List<Map<String, dynamic>> batches;
-  final VoidCallback? onHide;
-
-  const ExpiringBatchesCard({super.key, required this.batches, this.onHide});
-
-  @override
-  State<ExpiringBatchesCard> createState() => _ExpiringBatchesCardState();
-}
-
-class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
-  int? _hoveredIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final batches = widget.batches;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (batches.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(
-              0xFF10B981,
-            ).withValues(alpha: isDark ? 0.35 : 0.25),
-            width: 1.2,
-          ),
-          boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.04),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.verified_rounded,
-                    color: Color(0xFF10B981),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Lotes Críticos por Vencer (FEFO)',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isDark
-                                  ? const Color(0xFFF8FAFC)
-                                  : AppColors.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      Text(
-                        'Control preventivo de caducidad en almacén',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    '✓ 100% Vigente',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF059669),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? const Color(0xFF064E3B).withValues(alpha: 0.25)
-                        : const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color:
-                      isDark
-                          ? const Color(0xFF059669).withValues(alpha: 0.35)
-                          : const Color(0xFFBBF7D0),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.eco_rounded,
-                    color: Color(0xFF16A34A),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Salud Fitosanitaria Óptima',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFF34D399)
-                                    : const Color(0xFF166534),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'No hay lotes vencidos ni que expiren en los próximos 30 días. Tu stock de semillas, fertilizantes y agroquímicos está vigente.',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color:
-                                isDark
-                                    ? const Color(0xFF6EE7B7)
-                                    : const Color(
-                                      0xFF166534,
-                                    ).withValues(alpha: 0.9),
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () => context.go('/inventory?tab=batches'),
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Gestionar lotes y almacenes',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 14,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final urgent = batches.take(3).toList();
-    final expiredCount =
-        batches.where((b) {
-          final expiryStr = b['expiry_date'] as String?;
-          final expiryDate =
-              expiryStr != null ? DateTime.tryParse(expiryStr) : null;
-          return expiryDate != null && expiryDate.isBefore(DateTime.now());
-        }).length;
-    final expiringSoonCount = batches.length - expiredCount;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.error.withValues(alpha: isDark ? 0.35 : 0.25),
-          width: 1.2,
-        ),
-        boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.05),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.timelapse_rounded,
-                  color: AppColors.error,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Lotes Críticos por Vencer (FEFO)',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color:
-                            isDark
-                                ? const Color(0xFFF8FAFC)
-                                : AppColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    Text(
-                      expiredCount > 0
-                          ? '$expiredCount vencido(s) · $expiringSoonCount por vencer'
-                          : '${batches.length} lote(s) requieren rotación prioritaria en POS',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isDark
-                                ? const Color(0xFF94A3B8)
-                                : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (expiredCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '⚠️ $expiredCount Vencido(s)',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          MouseRegion(
-            onExit: (_) {
-              if (_hoveredIndex != null) {
-                setState(() => _hoveredIndex = null);
-              }
-            },
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: urgent.length,
-              separatorBuilder:
-                  (context, index) => Divider(
-                    height: 1,
-                    color: isDark ? AppColors.darkBorder : AppColors.border,
-                  ),
-              itemBuilder: (context, index) {
-                final b = urgent[index];
-                final isHovered = _hoveredIndex == index;
-
-                // Mapeo defensivo de campos (PostgreSQL vs Dart)
-                final expiryStr = b['expiry_date'] as String?;
-                final expiryDate =
-                    expiryStr != null ? DateTime.tryParse(expiryStr) : null;
-                final days =
-                    expiryDate != null
-                        ? expiryDate.difference(DateTime.now()).inDays
-                        : (b['days_until_expiration'] as int? ?? 0);
-
-                final code =
-                    (b['batch_number'] ?? b['batch_code'] ?? 'S/L').toString();
-                final prod =
-                    (b['products'] is Map
-                            ? b['products']['name']
-                            : (b['product_name'] ?? 'Insumo'))
-                        .toString();
-
-                String? imgUrl;
-                if (b['products'] is Map) {
-                  final prodImgs =
-                      b['products']['product_images'] as List<dynamic>?;
-                  if (prodImgs != null && prodImgs.isNotEmpty) {
-                    final mainImg =
-                        prodImgs.firstWhere(
-                              (img) =>
-                                  (img as Map<String, dynamic>)['is_main'] ==
-                                  true,
-                              orElse: () => prodImgs.first,
-                            )
-                            as Map<String, dynamic>?;
-                    imgUrl = mainImg?['image_url'] as String?;
-                  }
-                }
-                if (imgUrl == null && b['product_variants'] is Map) {
-                  final varImgs =
-                      b['product_variants']['product_images'] as List<dynamic>?;
-                  if (varImgs != null && varImgs.isNotEmpty) {
-                    final mainImg =
-                        varImgs.firstWhere(
-                              (img) =>
-                                  (img as Map<String, dynamic>)['is_main'] ==
-                                  true,
-                              orElse: () => varImgs.first,
-                            )
-                            as Map<String, dynamic>?;
-                    imgUrl = mainImg?['image_url'] as String?;
-                  }
-                }
-
-                return MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  onEnter: (_) {
-                    if (_hoveredIndex != index) {
-                      setState(() => _hoveredIndex = index);
-                    }
-                  },
-                  child: GestureDetector(
-                    onTap: () {
-                      context.go('/inventory?tab=batches');
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color:
-                            isHovered
-                                ? (isDark
-                                    ? AppColors.darkSurfaceElevated
-                                    : AppColors.primaryLight.withValues(
-                                      alpha: 0.45,
-                                    ))
-                                : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 9,
-                        horizontal: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? const Color(0xFF1E293B)
-                                      : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color:
-                                    isDark
-                                        ? AppColors.darkBorder
-                                        : AppColors.border,
-                                width: 0.8,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child:
-                                imgUrl != null && imgUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                      imageUrl: imgUrl,
-                                      fit: BoxFit.cover,
-                                      placeholder:
-                                          (context, url) => Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 16,
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF94A3B8)
-                                                    : AppColors.textSecondary,
-                                          ),
-                                      errorWidget:
-                                          (context, url, error) => Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 16,
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF94A3B8)
-                                                    : AppColors.textSecondary,
-                                          ),
-                                    )
-                                    : Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 16,
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF94A3B8)
-                                              : AppColors.textSecondary,
-                                    ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  prod,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFFF8FAFC)
-                                            : AppColors.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  'Lote: $code · Click para revisar stock',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF94A3B8)
-                                            : AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  days <= 0
-                                      ? AppColors.error.withValues(alpha: 0.15)
-                                      : days <= 7
-                                      ? AppColors.error.withValues(alpha: 0.12)
-                                      : AppColors.warning.withValues(
-                                        alpha: 0.12,
-                                      ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              days < 0
-                                  ? 'Vencido (${days.abs()}d)'
-                                  : days == 0
-                                  ? 'Vence hoy'
-                                  : days == 1
-                                  ? '1 día'
-                                  : '$days días',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                    days <= 7
-                                        ? AppColors.error
-                                        : AppColors.warning,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => context.go('/inventory?tab=batches'),
-              style: TextButton.styleFrom(
-                backgroundColor:
-                    isDark
-                        ? AppColors.darkSurfaceElevated
-                        : const Color(0xFFEFF6FF),
-                foregroundColor:
-                    isDark ? const Color(0xFF60A5FA) : AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(
-                    color:
-                        isDark ? AppColors.darkBorder : const Color(0xFFBFDBFE),
-                  ),
-                ),
-              ),
-              icon: Icon(
-                Icons.inventory_2_outlined,
-                size: 14,
-                color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
-              ),
-              label: Text(
-                'Gestionar todos los lotes (${batches.length})',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DashboardAdminGoalCard extends StatelessWidget {
-  const _DashboardAdminGoalCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocSelector<AppConfigCubit, AppConfigState, (double, double)>(
-      selector: (_) {
-        final config = context.read<AppConfigCubit>();
-        return (
-          config.getDouble('admin_goal_current', 0.0),
-          config.getDouble('admin_goal_target', 2600.0),
-        );
-      },
-      builder: (context, goal) {
-        return DashboardRadialGoalCard(
-          currentAmount: goal.$1,
-          targetAmount: goal.$2,
-          onConfigure:
-              () => _DashboardScreenContent._openGoalDialog(
-                context,
-                goal.$1,
-                goal.$2,
-              ),
-        );
-      },
-    );
+    return res;
   }
 }
