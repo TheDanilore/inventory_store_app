@@ -53,6 +53,8 @@ android {
         release {
             // SE REEMPLAZÓ LA CLAVE DE DEBUG POR TU NUEVA FIRMA OFICIAL DE RELEASE
             signingConfig = signingConfigs.getByName("release")
+            
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
