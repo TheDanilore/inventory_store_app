@@ -1,32 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_cubit.dart';
-import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 import 'package:inventory_store_app/features/users/domain/usecases/delete_user_usecase.dart';
-import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_cubit.dart';
+import 'package:inventory_store_app/features/users/presentation/bloc/user_detail/user_detail_state.dart';
 import 'package:inventory_store_app/features/users/presentation/widgets/users/user_delete_flow.dart';
 
+/// Ficha de usuario. Se abre con [UserDetailSheet.show], que delega en
+/// [AdaptiveDetailSheet] (slide-over en desktop/tablet, bottom sheet en móvil).
 class UserDetailSheet extends StatelessWidget {
   final String userId;
   final VoidCallback onUserUpdated;
-  final bool isSideSheet;
   final Future<void> Function(UserEntity user)? onToggleStatus;
 
   const UserDetailSheet({
     super.key,
     required this.userId,
     required this.onUserUpdated,
-    this.isSideSheet = false,
     this.onToggleStatus,
   });
+
+  static Future<void> show(
+    BuildContext context, {
+    required String userId,
+    required VoidCallback onUserUpdated,
+    Future<void> Function(UserEntity user)? onToggleStatus,
+  }) {
+    return AdaptiveDetailSheet.show<void>(
+      context,
+      barrierLabel: 'Cerrar ficha del usuario',
+      builder:
+          (_) => UserDetailSheet(
+            userId: userId,
+            onUserUpdated: onUserUpdated,
+            onToggleStatus: onToggleStatus,
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +53,6 @@ class UserDetailSheet extends StatelessWidget {
       create: (_) => sl<UserDetailCubit>()..fetchUser(userId),
       child: _UserDetailContent(
         onUserUpdated: onUserUpdated,
-        isSideSheet: isSideSheet,
         onToggleStatus: onToggleStatus,
       ),
     );
@@ -43,20 +61,16 @@ class UserDetailSheet extends StatelessWidget {
 
 class _UserDetailContent extends StatefulWidget {
   final VoidCallback onUserUpdated;
-  final bool isSideSheet;
   final Future<void> Function(UserEntity user)? onToggleStatus;
 
-  const _UserDetailContent({
-    required this.onUserUpdated,
-    required this.isSideSheet,
-    this.onToggleStatus,
-  });
+  const _UserDetailContent({required this.onUserUpdated, this.onToggleStatus});
 
   @override
   State<_UserDetailContent> createState() => _UserDetailContentState();
 }
 
 class _UserDetailContentState extends State<_UserDetailContent> {
+  static const _title = 'Ficha del Usuario';
   final _pointsCtrl = TextEditingController();
 
   @override
@@ -75,10 +89,10 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     }
   }
 
-  void _openEditForm(BuildContext context, UserDetailLoaded state) {
-    final user = state.user;
+  void _openEditForm(BuildContext context, UserEntity user) {
+    final router = GoRouter.of(context);
     Navigator.of(context).pop();
-    context.go(
+    router.go(
       '/users/form',
       extra: {'existingUser': user, 'initialRole': user.role},
     );
@@ -119,6 +133,56 @@ class _UserDetailContentState extends State<_UserDetailContent> {
     }
   }
 
+  void _copy(BuildContext context, String value, String label) {
+    Clipboard.setData(ClipboardData(text: value));
+    AppSnackbar.show(
+      context,
+      message: '$label copiado',
+      type: SnackbarType.success,
+    );
+  }
+
+  void _adjustPoints(
+    BuildContext context,
+    UserDetailLoaded state, {
+    required bool add,
+  }) {
+    void warn(String msg) =>
+        AppSnackbar.show(context, message: msg, type: SnackbarType.warning);
+
+    final input = _pointsCtrl.text.trim();
+    if (input.isEmpty) return warn('Ingresa un monto válido');
+
+    final amount = int.tryParse(input) ?? 0;
+    if (add) {
+      if (amount <= 0) return warn('El monto a sumar debe ser mayor a 0');
+      if (amount > 100000) {
+        return warn(
+          'Por seguridad, el límite por ajuste manual es de 100,000 pt.',
+        );
+      }
+      context.read<UserDetailCubit>().adjustPoints(amount);
+    } else {
+      if (amount <= 0) return warn('El monto a descontar debe ser mayor a 0');
+      if (amount > state.user.walletBalance) {
+        return warn(
+          'No puedes restar más de los puntos actuales (${state.user.walletBalance} pt.)',
+        );
+      }
+      context.read<UserDetailCubit>().adjustPoints(-amount);
+    }
+  }
+
+  /// Marco con spinner / error: mantiene cabecera y botón de cerrar visibles.
+  Widget _stateFrame(Widget child) {
+    return DetailSheetFrame(
+      title: _title,
+      fillMobileHeight: true,
+      bodyPadding: const EdgeInsets.all(24),
+      body: SizedBox(height: 260, child: Center(child: child)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoyaltyEnabled =
@@ -154,13 +218,13 @@ class _UserDetailContentState extends State<_UserDetailContent> {
       },
       builder: (context, state) {
         if (state is UserDetailInitial || state is UserDetailLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return _stateFrame(const CircularProgressIndicator());
         }
 
         if (state is UserDetailError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          return _stateFrame(
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
                   Icons.error_outline_rounded,
@@ -176,11 +240,6 @@ class _UserDetailContentState extends State<_UserDetailContent> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cerrar'),
-                ),
               ],
             ),
           );
@@ -190,751 +249,498 @@ class _UserDetailContentState extends State<_UserDetailContent> {
           return const SizedBox.shrink();
         }
 
-        final role = state.user.role;
-        final fullName = state.user.fullName;
-        final email = state.user.email;
-        final phone = state.user.phone;
-        final documentType = state.user.documentType;
-        final documentNumber = state.user.documentNumber;
-        final isActive = state.user.isActive;
-        final walletBalance = state.user.walletBalance;
+        final user = state.user;
+        final roles = user.allRoles.where((r) => r.isNotEmpty).toList();
+        final isAdmin =
+            roles.contains(AppRoles.admin) || user.role == AppRoles.admin;
+        final isEmployee =
+            roles.contains(AppRoles.employee) || user.role == AppRoles.employee;
+        final avatarBg =
+            isAdmin
+                ? Colors.indigo.withValues(alpha: 0.12)
+                : isEmployee
+                ? Colors.orange.withValues(alpha: 0.12)
+                : AppColors.primary.withValues(alpha: 0.1);
+        final avatarFg =
+            isAdmin
+                ? Colors.indigo.shade700
+                : isEmployee
+                ? Colors.orange.shade700
+                : AppColors.primary;
+        final initial =
+            user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?';
 
-        final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
-
-        return Column(
-          children: [
-            // ─── CABECERA DRAWER EN DESKTOP ──────────────────────────────────
-            if (widget.isSideSheet)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade200),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Ficha del Usuario',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      color: Colors.grey.shade500,
-                      tooltip: 'Cerrar (Esc)',
-                      splashRadius: 20,
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  widget.isSideSheet ? 24 : 20,
-                  widget.isSideSheet ? 20 : 16,
-                  widget.isSideSheet ? 24 : 20,
-                  24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Handle solo en BottomSheet móvil
-                    if (!widget.isSideSheet)
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-
-                    // ─── CABECERA DEL PERFIL + BOTÓN EDITAR ──────────
-                    Row(
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color:
-                                role == AppRoles.admin
-                                    ? Colors.indigo.withValues(alpha: 0.12)
-                                    : role == AppRoles.employee
-                                    ? Colors.orange.withValues(alpha: 0.12)
-                                    : AppColors.primary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color:
-                                    role == AppRoles.admin
-                                        ? Colors.indigo.shade700
-                                        : role == AppRoles.employee
-                                        ? Colors.orange.shade700
-                                        : AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                fullName,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          role == AppRoles.admin
-                                              ? Colors.indigo.shade50
-                                              : role == AppRoles.employee
-                                              ? Colors.orange.shade50
-                                              : AppColors.surface,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color:
-                                            role == AppRoles.admin
-                                                ? Colors.indigo.shade200
-                                                : role == AppRoles.employee
-                                                ? Colors.orange.shade200
-                                                : AppColors.border,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      role == AppRoles.admin
-                                          ? 'ADMINISTRADOR'
-                                          : role == AppRoles.employee
-                                          ? 'EMPLEADO'
-                                          : 'CLIENTE',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color:
-                                            role == AppRoles.admin
-                                                ? Colors.indigo.shade700
-                                                : role == AppRoles.employee
-                                                ? Colors.orange.shade700
-                                                : AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isActive
-                                              ? Colors.green.shade50
-                                              : Colors.red.shade50,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade200
-                                                : Colors.red.shade200,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      isActive ? 'ACTIVO' : 'INACTIVO',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color:
-                                            isActive
-                                                ? Colors.green.shade700
-                                                : Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Botón Editar
-                        IconButton(
-                          onPressed: () => _openEditForm(context, state),
-                          tooltip: 'Editar usuario',
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppColors.primary.withValues(
-                              alpha: 0.08,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(
-                            Icons.edit_rounded,
-                            size: 20,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ─── BOTÓN ACCIÓN DIRECTA EDITAR ─────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openEditForm(context, state),
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: const Text(
-                          'Editar datos de este usuario',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.4),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ─── INFORMACIÓN DEL USUARIO ──────────
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          if (email != null && email.isNotEmpty) ...[
-                            _buildInfoRow(
-                              context,
-                              icon: Icons.email_outlined,
-                              label: 'Correo Electrónico',
-                              value: email,
-                              onCopy: () {
-                                Clipboard.setData(ClipboardData(text: email));
-                                AppSnackbar.show(
-                                  context,
-                                  message: 'Correo copiado',
-                                  type: SnackbarType.success,
-                                );
-                              },
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1),
-                            ),
-                          ],
-                          if (phone != null && phone.isNotEmpty) ...[
-                            _buildInfoRow(
-                              context,
-                              icon: Icons.phone_outlined,
-                              label: 'Teléfono',
-                              value: phone,
-                              onCopy: () {
-                                Clipboard.setData(ClipboardData(text: phone));
-                                AppSnackbar.show(
-                                  context,
-                                  message: 'Teléfono copiado',
-                                  type: SnackbarType.success,
-                                );
-                              },
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1),
-                            ),
-                          ],
-                          if (documentNumber != null &&
-                              documentNumber.isNotEmpty) ...[
-                            _buildInfoRow(
-                              context,
-                              icon: Icons.badge_outlined,
-                              label: 'Documento ($documentType)',
-                              value: documentNumber,
-                              onCopy: () {
-                                Clipboard.setData(
-                                  ClipboardData(text: documentNumber),
-                                );
-                                AppSnackbar.show(
-                                  context,
-                                  message: 'Documento copiado',
-                                  type: SnackbarType.success,
-                                );
-                              },
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1),
-                            ),
-                          ],
-                          _buildInfoRow(
-                            context,
-                            icon: Icons.calendar_today_outlined,
-                            label: 'Fecha de registro',
-                            value: _formatDate(
-                              state.user.createdAt?.toIso8601String(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ─── FIDELIDAD (Opcional) ──────────
-                    if (isLoyaltyEnabled) ...[
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Programa de Fidelidad',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.amber.shade200),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.stars_rounded,
-                                      color: Colors.amber.shade600,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'Balance Actual',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  '$walletBalance pt.',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.amber.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Divider(height: 1),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Ajustar puntos manualmente',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.grey.shade300,
-                                      ),
-                                    ),
-                                    child: TextField(
-                                      controller: _pointsCtrl,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly,
-                                      ],
-                                      decoration: const InputDecoration(
-                                        hintText: 'Cantidad...',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
-                                        border: InputBorder.none,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 48,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.danger,
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      onPressed:
-                                          state.isSaving
-                                              ? null
-                                              : () {
-                                                final input =
-                                                    _pointsCtrl.text.trim();
-                                                if (input.isEmpty) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'Ingresa un monto válido',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                final amount =
-                                                    int.tryParse(input) ?? 0;
-                                                if (amount <= 0) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'El monto a descontar debe ser mayor a 0',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                if (amount >
-                                                    state.user.walletBalance) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'No puedes restar más de los puntos actuales (${state.user.walletBalance} pt.)',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                context
-                                                    .read<UserDetailCubit>()
-                                                    .adjustPoints(-amount);
-                                              },
-                                      child: const Icon(Icons.remove_rounded),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 1,
-                                  child: SizedBox(
-                                    height: 48,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.success,
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                      onPressed:
-                                          state.isSaving
-                                              ? null
-                                              : () {
-                                                final input =
-                                                    _pointsCtrl.text.trim();
-                                                if (input.isEmpty) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'Ingresa un monto válido',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                final amount =
-                                                    int.tryParse(input) ?? 0;
-                                                if (amount <= 0) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'El monto a sumar debe ser mayor a 0',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                if (amount > 100000) {
-                                                  AppSnackbar.show(
-                                                    context,
-                                                    message:
-                                                        'Por seguridad, el límite por ajuste manual es de 100,000 pt.',
-                                                    type: SnackbarType.warning,
-                                                  );
-                                                  return;
-                                                }
-                                                context
-                                                    .read<UserDetailCubit>()
-                                                    .adjustPoints(amount);
-                                              },
-                                      child: const Icon(Icons.add_rounded),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-                      if (state.recentMovements.isNotEmpty) ...[
-                        const Text(
-                          'Últimos movimientos de fidelidad',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ...state.recentMovements.map((mov) {
-                          final isPositive = (mov['points'] ?? 0) >= 0;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  isPositive
-                                      ? Icons.add_circle_outline_rounded
-                                      : Icons.remove_circle_outline_rounded,
-                                  color: isPositive ? Colors.green : Colors.red,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        mov['description'] ?? 'Movimiento',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _formatDate(mov['created_at']),
-                                        style: TextStyle(
-                                          color: Colors.grey.shade500,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '${isPositive ? '+' : ''}${mov['points']}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    color:
-                                        isPositive
-                                            ? Colors.green.shade700
-                                            : Colors.red.shade700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ],
-                    const SizedBox(height: 24),
-
-                    if (widget.onToggleStatus != null)
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          await widget.onToggleStatus!(state.user);
-                          widget.onUserUpdated();
-                          if (context.mounted) Navigator.of(context).pop();
-                        },
-                        icon: Icon(
-                          state.user.isActive
-                              ? Icons.block_rounded
-                              : Icons.check_circle_outline_rounded,
-                        ),
-                        label: Text(
-                          state.user.isActive
-                              ? 'Desactivar cuenta'
-                              : 'Reactivar cuenta',
-                        ),
-                      ),
-
-                    // ─── ZONA DE PELIGRO (DANGER ZONE) ────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF1F2),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFFECDD3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber_rounded,
-                                size: 18,
-                                color: Color(0xFFE11D48),
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Zona de Peligro',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFBE123C),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'La eliminación de este usuario es definitiva e irreversible. Se revocarán todas sus sesiones, credenciales y asignaciones comerciales.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade700,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.error,
-                                side: const BorderSide(
-                                  color: Color(0xFFFDA4AF),
-                                ),
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radiusSm,
-                                  ),
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.delete_forever_rounded,
-                                size: 18,
-                              ),
-                              label: const Text(
-                                'Eliminar Usuario Definitivamente',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              onPressed:
-                                  () => _confirmDeleteUser(context, state.user),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+        return DetailSheetFrame(
+          title: user.fullName.isNotEmpty ? user.fullName : _title,
+          fillMobileHeight: true,
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: avatarBg, shape: BoxShape.circle),
+            child: Center(
+              child: Text(
+                initial,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: avatarFg,
                 ),
               ),
             ),
-          ],
+          ),
+          subtitle: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final r in roles) _roleBadge(r),
+              _statusBadge(user.isActive),
+            ],
+          ),
+          bodyPadding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildContactCard(context, user),
+              if (isLoyaltyEnabled) ...[
+                const SizedBox(height: 14),
+                _buildLoyaltyCard(context, state),
+                if (state.recentMovements.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _buildMovementsCard(state),
+                ],
+              ],
+              const SizedBox(height: 14),
+              _buildDangerZone(context, user),
+            ],
+          ),
+          footer: Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _openEditForm(context, user),
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text(
+                    'Editar usuario',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              if (widget.onToggleStatus != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await widget.onToggleStatus!(user);
+                      widget.onUserUpdated();
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+                    icon: Icon(
+                      user.isActive
+                          ? Icons.block_rounded
+                          : Icons.check_circle_outline_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      user.isActive ? 'Desactivar' : 'Reactivar',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildInfoRow(
-    BuildContext context, {
+  // ── Secciones ──────────────────────────────────────────────────────────
+
+  Widget _buildContactCard(BuildContext context, UserEntity user) {
+    final email = user.email;
+    final phone = user.phone;
+    final doc = user.documentNumber;
+
+    final rows = <Widget>[
+      if (email != null && email.isNotEmpty)
+        _buildInfoRow(
+          icon: Icons.email_outlined,
+          label: 'Correo Electrónico',
+          value: email,
+          onCopy: () => _copy(context, email, 'Correo'),
+        ),
+      if (phone != null && phone.isNotEmpty)
+        _buildInfoRow(
+          icon: Icons.phone_outlined,
+          label: 'Teléfono',
+          value: phone,
+          onCopy: () => _copy(context, phone, 'Teléfono'),
+        ),
+      if (doc != null && doc.isNotEmpty)
+        _buildInfoRow(
+          icon: Icons.badge_outlined,
+          label: 'Documento (${user.documentType})',
+          value: doc,
+          onCopy: () => _copy(context, doc, 'Documento'),
+        ),
+      _buildInfoRow(
+        icon: Icons.calendar_today_outlined,
+        label: 'Fecha de registro',
+        value: _formatDate(user.createdAt?.toIso8601String()),
+      ),
+    ];
+
+    return DetailSectionCard(
+      title: 'Información de contacto',
+      icon: Icons.contact_page_outlined,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1),
+              ),
+            rows[i],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoyaltyCard(BuildContext context, UserDetailLoaded state) {
+    return DetailSectionCard(
+      title: 'Programa de Fidelidad',
+      icon: Icons.stars_rounded,
+      backgroundColor: Colors.amber.shade50,
+      borderColor: Colors.amber.shade200,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Balance Actual',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                '${state.user.walletBalance} pt.',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+          const Text(
+            'Ajustar puntos manualmente',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: TextField(
+                    controller: _pointsCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      hintText: 'Cantidad...',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _pointsButton(
+                color: AppColors.danger,
+                icon: Icons.remove_rounded,
+                onPressed:
+                    state.isSaving
+                        ? null
+                        : () => _adjustPoints(context, state, add: false),
+              ),
+              const SizedBox(width: 8),
+              _pointsButton(
+                color: AppColors.success,
+                icon: Icons.add_rounded,
+                onPressed:
+                    state.isSaving
+                        ? null
+                        : () => _adjustPoints(context, state, add: true),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pointsButton({
+    required Color color,
+    required IconData icon,
+    required VoidCallback? onPressed,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 48,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: onPressed,
+          child: Icon(icon),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMovementsCard(UserDetailLoaded state) {
+    return DetailSectionCard(
+      title: 'Últimos movimientos de fidelidad',
+      icon: Icons.history_rounded,
+      child: Column(
+        children: [
+          for (final mov in state.recentMovements)
+            Builder(
+              builder: (_) {
+                final isPositive = (mov['points'] ?? 0) >= 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPositive
+                            ? Icons.add_circle_outline_rounded
+                            : Icons.remove_circle_outline_rounded,
+                        color: isPositive ? Colors.green : Colors.red,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              mov['description'] ?? 'Movimiento',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatDate(mov['created_at']),
+                              style: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${isPositive ? '+' : ''}${mov['points']}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color:
+                              isPositive
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDangerZone(BuildContext context, UserEntity user) {
+    return DetailSectionCard(
+      backgroundColor: const Color(0xFFFFF1F2),
+      borderColor: const Color(0xFFFECDD3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 18,
+                color: Color(0xFFE11D48),
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Zona de Peligro',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFBE123C),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'La eliminación de este usuario es definitiva e irreversible. Se revocarán todas sus sesiones, credenciales y asignaciones comerciales.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: Color(0xFFFDA4AF)),
+                backgroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                ),
+              ),
+              icon: const Icon(Icons.delete_forever_rounded, size: 18),
+              label: const Text(
+                'Eliminar Usuario Definitivamente',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+              onPressed: () => _confirmDeleteUser(context, user),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Piezas pequeñas ────────────────────────────────────────────────────
+
+  Widget _statusBadge(bool isActive) {
+    final base = isActive ? Colors.green : Colors.red;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: base.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: base.shade200),
+      ),
+      child: Text(
+        isActive ? 'ACTIVO' : 'INACTIVO',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: base.shade700,
+        ),
+      ),
+    );
+  }
+
+  Widget _roleBadge(String r) {
+    MaterialColor c;
+    String label;
+    switch (r.toLowerCase()) {
+      case 'admin':
+        c = Colors.indigo;
+        label = 'Admin';
+        break;
+      case 'cashier':
+      case 'cajero':
+        c = Colors.teal;
+        label = 'Cajero';
+        break;
+      case 'warehouse_keeper':
+      case 'almacenero':
+        c = Colors.purple;
+        label = 'Almacén';
+        break;
+      case 'employee':
+      case 'empleado':
+        c = Colors.amber;
+        label = 'Empleado';
+        break;
+      case 'customer':
+      case 'cliente':
+        c = Colors.blue;
+        label = 'Cliente';
+        break;
+      default:
+        c = Colors.blueGrey;
+        label = r.toUpperCase();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.shade200, width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: c == Colors.amber ? c.shade800 : c.shade700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
     required IconData icon,
     required String label,
     required String value,

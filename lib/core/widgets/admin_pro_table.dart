@@ -144,6 +144,23 @@ class AdminProTable<T> extends StatefulWidget {
   /// Padding vertical de cada fila de datos y cabecera.
   final double rowVerticalPadding;
 
+  /// Fuerza la vista de tarjetas (grid en desktop/tablet) aunque el ancho no
+  /// sea móvil. Requiere [mobileCardBuilder]. Lo usa el toggle Tabla/Tarjetas.
+  final bool forceCardLayout;
+
+  /// Ancho mínimo de cada tarjeta cuando se muestra el grid de tarjetas.
+  final double cardMinWidth;
+
+  /// Si es true, la tabla/tarjetas hacen scroll vertical por sí mismas y la
+  /// barra flotante de selección queda anclada al viewport. Úsalo cuando el
+  /// padre da una altura acotada (p. ej. dentro de un `Expanded`).
+  final bool verticalScroll;
+  final ScrollController? scrollController;
+
+  /// Dibuja la paginación como una tarjeta independiente debajo de la tabla
+  /// (estilo Salidas de Inventario) en vez de dentro del mismo contenedor.
+  final bool detachedFooter;
+
   const AdminProTable({
     super.key,
     required this.items,
@@ -164,6 +181,11 @@ class AdminProTable<T> extends StatefulWidget {
     this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.mobileCardBuilder,
     this.rowVerticalPadding = 9.0,
+    this.forceCardLayout = false,
+    this.cardMinWidth = 360.0,
+    this.verticalScroll = false,
+    this.scrollController,
+    this.detachedFooter = false,
   });
 
   @override
@@ -325,17 +347,24 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
       );
     }
 
-    // 3. Camaleón Móvil (si se suministra mobileCardBuilder)
-    if (isMobile && widget.mobileCardBuilder != null) {
-      return _buildMobileCardLayout();
+    // 3. Vista de tarjetas (móvil, o forzada por el toggle de vista)
+    final useCards =
+        widget.mobileCardBuilder != null &&
+        (isMobile || widget.forceCardLayout);
+    if (useCards) {
+      final cards = _buildCardLayout(isMobile: isMobile);
+      return widget.verticalScroll ? _wrapVerticalScroll(cards) : cards;
     }
 
     // 4. Modo Desktop & Tablet (Tabla Pro de Alta Densidad con Stack para barra flotante)
-    return Stack(
-      children: [
-        Padding(
-          padding: widget.margin,
-          child: TapRegion(
+    final hasFooter = widget.paginationConfig != null;
+    final tableBlock = Padding(
+      padding: widget.margin,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TapRegion(
             onTapOutside: (_) {
               _tableFocusNode.unfocus();
               if (_hoveredItemId != null || _focusedRowIndex != -1) {
@@ -375,6 +404,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                     onTap: () => _tableFocusNode.requestFocus(),
                     behavior: HitTestBehavior.opaque,
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Cuerpo de la tabla con scroll horizontal + scrollbar visible
@@ -384,8 +414,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
                           rows: _buildTableRows(),
                         ),
 
-                        // Pie de Tabla (Paginación y conteo)
-                        if (widget.paginationConfig != null)
+                        // Pie de Tabla integrado (Paginación y conteo)
+                        if (hasFooter && !widget.detachedFooter)
                           _buildTableFooter(),
                       ],
                     ),
@@ -394,12 +424,36 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               ),
             ),
           ),
-        ),
+
+          // Pie de tabla como tarjeta independiente
+          if (hasFooter && widget.detachedFooter) ...[
+            const SizedBox(height: 10),
+            _buildDetachedFooter(),
+          ],
+        ],
+      ),
+    );
+
+    return Stack(
+      children: [
+        widget.verticalScroll ? _wrapVerticalScroll(tableBlock) : tableBlock,
 
         // Barra Flotante de Acciones en Lote (Floating Bulk Action Bar estilo Linear/Stripe)
         if (_isMultiSelectEnabled && widget.selectedIds.isNotEmpty)
           _buildFloatingBulkActionBar(),
       ],
+    );
+  }
+
+  /// Envuelve el contenido en un scroll vertical dejando aire inferior para
+  /// que la barra flotante de selección no tape la última fila.
+  Widget _wrapVerticalScroll(Widget child) {
+    return SingleChildScrollView(
+      controller: widget.scrollController,
+      padding: EdgeInsets.only(
+        bottom: _isMultiSelectEnabled && widget.selectedIds.isNotEmpty ? 88 : 12,
+      ),
+      child: child,
     );
   }
 
@@ -903,7 +957,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
   }
 
   // ── CAMALEÓN MÓVIL: CARDS VERTICALES TÁCTILES ──────────────────────────────
-  Widget _buildMobileCardLayout() {
+  Widget _buildCardLayout({required bool isMobile}) {
     return Padding(
       padding: widget.margin,
       child: Column(
@@ -941,28 +995,89 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
               ),
             ),
 
-          // Lista de tarjetas
-          for (final item in widget.items) ...[
-            widget.mobileCardBuilder!(
-              context,
-              item,
-              widget.selectedIds.contains(widget.itemId(item)),
-              (val) => _toggleSelectItem(widget.itemId(item), val),
-            ),
-            const SizedBox(height: 10),
-          ],
+          // Lista (móvil) o grid (desktop/tablet) de tarjetas
+          if (isMobile)
+            for (final item in widget.items) ...[
+              _buildCard(item),
+              const SizedBox(height: 10),
+            ]
+          else
+            _buildCardGrid(),
 
-          // Footer paginación móvil
+          // Footer paginación
           if (widget.paginationConfig != null) ...[
             const SizedBox(height: 8),
-            _buildMobileFooter(),
+            _buildMobileFooter(isCompact: isMobile),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildMobileFooter() {
+  Widget _buildCard(T item) {
+    return widget.mobileCardBuilder!(
+      context,
+      item,
+      widget.selectedIds.contains(widget.itemId(item)),
+      (val) => _toggleSelectItem(widget.itemId(item), val),
+    );
+  }
+
+  Widget _buildCardGrid() {
+    const gap = 12.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = (constraints.maxWidth / widget.cardMinWidth)
+            .floor()
+            .clamp(1, 4);
+        final itemWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: 0,
+          children: [
+            for (final item in widget.items)
+              SizedBox(width: itemWidth, child: _buildCard(item)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetachedFooter() {
+    final config = widget.paginationConfig!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+          width: 1.2,
+        ),
+        boxShadow:
+            isDark
+                ? AppColors.darkCardShadow(opacity: 0.15)
+                : AppColors.cardShadow(opacity: 0.04),
+      ),
+      child: AdminPageBlocks(
+        currentPage: config.currentPage - 1,
+        totalPages: config.totalPages,
+        totalItems: config.totalItems,
+        itemsPerPage: config.pageSize,
+        availableItemsPerPage: config.pageSizeOptions,
+        onPageChanged: (zeroBasedPage) {
+          config.onPageChanged(zeroBasedPage + 1);
+        },
+        onItemsPerPageChanged: (newSize) {
+          config.onPageSizeChanged(newSize);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMobileFooter({required bool isCompact}) {
     final config = widget.paginationConfig!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -981,7 +1096,7 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
         totalItems: config.totalItems,
         itemsPerPage: config.pageSize,
         availableItemsPerPage: config.pageSizeOptions,
-        isCompact: true,
+        isCompact: isCompact,
         onPageChanged: (zeroBasedPage) {
           config.onPageChanged(zeroBasedPage + 1);
         },

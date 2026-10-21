@@ -27,6 +27,9 @@ class UsersTab extends StatefulWidget {
   final TabController? tabController;
   final int tabIndex;
 
+  /// true = vista de tabla; false = vista de tarjetas (toggle del toolbar).
+  final bool isTableView;
+
   const UsersTab({
     super.key,
     required this.role,
@@ -35,6 +38,7 @@ class UsersTab extends StatefulWidget {
     this.scrollController,
     this.tabController,
     this.tabIndex = 0,
+    this.isTableView = true,
   });
 
   @override
@@ -51,81 +55,13 @@ class _UsersTabState extends State<UsersTab>
   bool get wantKeepAlive => true;
 
   void _showUserDetail(BuildContext context, String userId) {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
     final cubit = context.read<UsersCubit>();
-
-    if (isDesktop) {
-      // Linear Slide-Over Drawer en Desktop
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Cerrar',
-        barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 250),
-        pageBuilder: (dialogCtx, anim1, anim2) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 480,
-                height: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 20,
-                      offset: Offset(-4, 0),
-                    ),
-                  ],
-                ),
-                child: UserDetailSheet(
-                  userId: userId,
-                  isSideSheet: true,
-                  onUserUpdated: () {
-                    context.read<UsersCubit>().fetchUsers();
-                  },
-                ),
-              ),
-            ),
-          );
-        },
-        transitionBuilder: (dialogCtx, anim, secondaryAnim, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          );
-        },
-      );
-    } else {
-      // Bottom Sheet Apple HIG en Móvil
-      showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetCtx) => Container(
-              height: MediaQuery.of(sheetCtx).size.height * 0.88,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: UserDetailSheet(
-                userId: userId,
-                isSideSheet: false,
-                onUserUpdated: cubit.fetchUsers,
-                onToggleStatus: (u) => cubit.toggleUserStatus(u.id, u.isActive),
-              ),
-            ),
-      );
-    }
+    UserDetailSheet.show(
+      context,
+      userId: userId,
+      onUserUpdated: cubit.fetchUsers,
+      onToggleStatus: (u) => cubit.toggleUserStatus(u.id, u.isActive),
+    );
   }
 
   void _onEditUser(BuildContext context, UserEntity user) {
@@ -202,8 +138,14 @@ class _UsersTabState extends State<UsersTab>
 
     return BlocBuilder<UsersCubit, UsersState>(
       builder: (context, state) {
-        if (state is UsersInitial ||
-            (state is UsersLoading && state.currentUsers.isEmpty)) {
+        final isInitialLoading =
+            state is UsersInitial ||
+            (state is UsersLoading && state.currentUsers.isEmpty);
+        final isMobileWidth = MediaQuery.sizeOf(context).width < 640;
+        final showCards = !widget.isTableView || isMobileWidth;
+
+        // Tarjetas: skeleton de tarjetas. Tabla: shimmer propio de AdminProTable.
+        if (isInitialLoading && showCards) {
           return const UsersSkeleton();
         }
 
@@ -226,7 +168,12 @@ class _UsersTabState extends State<UsersTab>
           items: sortedUsers,
           itemId: (u) => u.id,
           selectedIds: _selectedIds,
-          enableMultiSelect: true,
+          // La selección múltiple solo existe en la vista de tabla.
+          enableMultiSelect: !showCards,
+          forceCardLayout: !widget.isTableView,
+          verticalScroll: true,
+          scrollController: widget.scrollController,
+          detachedFooter: true,
           onSelectionChanged: (ids) {
             setState(() {
               _selectedIds
@@ -245,7 +192,7 @@ class _UsersTabState extends State<UsersTab>
           minTableWidth: 960,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           onRowTap: (user) => _showUserDetail(context, user.id),
-          isLoading: state is UsersLoading && state.currentUsers.isEmpty,
+          isLoading: isInitialLoading,
           emptyState: const AppEmptyState(
             icon: Icons.people_outline_rounded,
             title: 'Sin Colaboradores',
@@ -270,11 +217,6 @@ class _UsersTabState extends State<UsersTab>
                 final names = selected.map((u) => u.fullName).join('\n');
                 _copyToClipboard(context, names, '${selected.length} nombres');
               },
-            ),
-            AdminBulkAction<UserEntity>(
-              label: 'Limpiar Selección',
-              icon: Icons.close_rounded,
-              onPressed: (_) => setState(() => _selectedIds.clear()),
             ),
           ],
           paginationConfig: AdminTablePaginationConfig(

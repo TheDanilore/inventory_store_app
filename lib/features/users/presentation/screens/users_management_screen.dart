@@ -51,6 +51,7 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   bool _onlyActive = false;
+  bool _isTableView = true;
   String _debouncedQuery = '';
   Timer? _debounce;
   bool _isExporting = false;
@@ -315,6 +316,11 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
                       searchOnSubmitOnly: false,
                       isDesktop: isDesktop,
                       margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                      viewToggleConfig: AdminProViewToggleConfig(
+                        isTableView: _isTableView,
+                        onToggleTableView:
+                            (isTable) => setState(() => _isTableView = isTable),
+                      ),
                       filterWidgets: [
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -433,6 +439,7 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
                         role: 'staff',
                         searchQuery: _debouncedQuery,
                         onlyActive: _onlyActive,
+                        isTableView: _isTableView,
                       ),
                     ),
                   ],
