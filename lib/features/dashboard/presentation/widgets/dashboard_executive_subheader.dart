@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/widgets/app_date_range_picker_modal.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -8,7 +9,6 @@ import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
-import 'package:inventory_store_app/features/dashboard/presentation/widgets/app_date_range_picker_modal.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Barra de contexto ejecutiva con título, selector de rango de fechas estilo Shopeers,
