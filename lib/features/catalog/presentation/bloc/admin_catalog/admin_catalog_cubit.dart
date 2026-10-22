@@ -421,16 +421,19 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> exportCatalogPdf({
     required int optionsMode,
     required List<String> selectedIds,
+    String currencySymbol = 'S/',
   }) => exportCatalog(
     format: ExportFormat.pdf,
     optionsMode: optionsMode,
     selectedIds: selectedIds,
+    currencySymbol: currencySymbol,
   );
 
   Future<void> exportCatalog({
     required ExportFormat format,
     required int optionsMode,
     required List<String> selectedIds,
+    String currencySymbol = 'S/',
   }) async {
     if (state.isLoadingAction) return;
     emit(state.copyWith(actionState: ViewState.loading));
@@ -504,6 +507,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         case ExportFormat.pdf:
           final exportResult = await exportCatalogPdfUC(
             products: filteredProducts,
+            currencySymbol: currencySymbol,
           );
           exportResult.fold(
             (failure) {

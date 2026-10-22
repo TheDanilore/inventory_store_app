@@ -294,7 +294,7 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
                 Text(
                   isBase
                       ? 'T.C. Referencial: 1.0000 (Patrón)'
-                      : '1 ${currency.code} = S/ ${currency.exchangeRate.toStringAsFixed(4)} (Sugerido)',
+                      : '1 ${currency.code} = ${context.read<AppConfigCubit>().state.baseCurrency.symbol} ${currency.exchangeRate.toStringAsFixed(4)} (Sugerido)',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -444,9 +444,9 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'T.C. Sugerido (S/)',
-                            style: TextStyle(
+                          Text(
+                            'T.C. Sugerido (${context.read<AppConfigCubit>().state.baseCurrency.symbol})',
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -463,7 +463,8 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
                               ),
                             ],
                             decoration: InputDecoration(
-                              prefixText: 'S/ ',
+                              prefixText:
+                                  '${context.read<AppConfigCubit>().state.baseCurrency.symbol} ',
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 10,

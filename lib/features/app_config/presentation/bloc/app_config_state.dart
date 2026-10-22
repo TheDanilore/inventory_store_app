@@ -38,6 +38,9 @@ class AppConfigState extends Equatable {
         ),
   );
 
+  /// Símbolo de la moneda base del sistema (por defecto 'S/')
+  String get currencySymbol => baseCurrency.symbol;
+
   /// Lista de monedas activas disponibles para compras, ventas y cajas
   List<CurrencyEntity> get activeCurrencies {
     final list = currencies.where((c) => c.isActive).toList();

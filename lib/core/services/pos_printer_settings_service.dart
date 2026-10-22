@@ -81,6 +81,7 @@ class PosPrinterSettingsService {
     required String taxId,
     required String address,
     required String phone,
+    String currencySymbol = 'S/',
   }) async {
     try {
       final is58 = paperWidthNotifier.value == '58mm';
@@ -189,13 +190,13 @@ class PosPrinterSettingsService {
                 _buildTestItem(
                   qty: '1',
                   desc: 'Artículo de Prueba 01',
-                  price: 'S/ 25.00',
+                  price: '$currencySymbol 25.00',
                   is58: is58,
                 ),
                 _buildTestItem(
                   qty: '2',
                   desc: 'Servicio Demo Sistema',
-                  price: 'S/ 30.00',
+                  price: '$currencySymbol 30.00',
                   is58: is58,
                 ),
                 pw.SizedBox(height: 4),
@@ -210,7 +211,7 @@ class PosPrinterSettingsService {
                       style: pw.TextStyle(fontSize: is58 ? 7.5 : 8.5),
                     ),
                     pw.Text(
-                      'S/ 46.61',
+                      '$currencySymbol 46.61',
                       style: pw.TextStyle(fontSize: is58 ? 7.5 : 8.5),
                     ),
                   ],
@@ -223,7 +224,7 @@ class PosPrinterSettingsService {
                       style: pw.TextStyle(fontSize: is58 ? 7.5 : 8.5),
                     ),
                     pw.Text(
-                      'S/ 8.39',
+                      '$currencySymbol 8.39',
                       style: pw.TextStyle(fontSize: is58 ? 7.5 : 8.5),
                     ),
                   ],
@@ -240,7 +241,7 @@ class PosPrinterSettingsService {
                       ),
                     ),
                     pw.Text(
-                      'S/ 55.00',
+                      '$currencySymbol 55.00',
                       style: pw.TextStyle(
                         fontSize: is58 ? 9 : 10.5,
                         fontWeight: pw.FontWeight.bold,

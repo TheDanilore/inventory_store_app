@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
@@ -250,10 +251,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     );
 
     try {
+      String currencySymbol = 'S/';
+      try {
+        currencySymbol = context.read<AppConfigCubit>().state.currencySymbol;
+      } catch (_) {}
+
       await cubit.exportCatalog(
         format: options.format,
         optionsMode: options.mode,
         selectedIds: options.selectedIds.toList(),
+        currencySymbol: currencySymbol,
       );
     } finally {
       if (context.mounted) {

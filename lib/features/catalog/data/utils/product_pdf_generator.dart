@@ -13,6 +13,7 @@ class ProductPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final pdf = pw.Document();
 
@@ -85,7 +86,7 @@ class ProductPdfGenerator {
                       ),
                       pw.SizedBox(height: 8),
                       pw.Text(
-                        'Precio Base: S/ ${(product.displaySalePrice ?? 0).toStringAsFixed(2)}',
+                        'Precio Base: $currencySymbol ${(product.displaySalePrice ?? 0).toStringAsFixed(2)}',
                         style: pw.TextStyle(
                           fontSize: 16,
                           color: PdfColors.teal800,
@@ -240,7 +241,7 @@ class ProductPdfGenerator {
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
-                          'S/ ${price?.toStringAsFixed(2)}',
+                          '$currencySymbol ${price?.toStringAsFixed(2)}',
                           style: const pw.TextStyle(fontSize: 10),
                           textAlign: pw.TextAlign.right,
                         ),
@@ -277,11 +278,13 @@ class ProductPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final bytes = await _buildPdf(
       product,
       variants: variants,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
 
     await Printing.layoutPdf(
@@ -294,11 +297,13 @@ class ProductPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final bytes = await _buildPdf(
       product,
       variants: variants,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
 
     await Printing.sharePdf(
@@ -311,11 +316,13 @@ class ProductPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final bytes = await _buildPdf(
       product,
       variants: variants,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
 
     await FileExportService.save(
@@ -330,11 +337,13 @@ class ProductPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final bytes = await _buildPdf(
       product,
       variants: variants,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
 
     await FileSaver.instance.saveAs(

@@ -15,11 +15,13 @@ class _PdfIsolateArgs {
   final List<ProductEntity> products;
   final Map<String, List<ProductVariantEntity>> variantsByProduct;
   final Map<String, int> stockByVariant;
+  final String currencySymbol;
 
   _PdfIsolateArgs({
     required this.products,
     required this.variantsByProduct,
     required this.stockByVariant,
+    this.currencySymbol = 'S/',
   });
 }
 
@@ -28,17 +30,20 @@ Future<Uint8List> _generatePdfInIsolate(_PdfIsolateArgs args) async {
     products: args.products,
     variantsByProduct: args.variantsByProduct,
     stockByVariant: args.stockByVariant,
+    currencySymbol: args.currencySymbol,
   );
 }
 
 class CatalogPdfGenerator {
-  // Formato de moneda idéntico al que usaba el screen
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'es_PE',
-    symbol: 'S/ ',
-    decimalDigits: 2,
-    customPattern: '¤#,##0.00',
-  );
+  static NumberFormat _getCurrencyFormat([String symbol = 'S/']) {
+    final clean = symbol.trim();
+    return NumberFormat.currency(
+      locale: 'es_PE',
+      symbol: clean.isNotEmpty ? '$clean ' : '',
+      decimalDigits: 2,
+      customPattern: '¤#,##0.00',
+    );
+  }
 
   // ── Build ────────────────────────────────────────────────────────────────
 
@@ -46,6 +51,7 @@ class CatalogPdfGenerator {
     required List<ProductEntity> products,
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     return await compute(
       _generatePdfInIsolate,
@@ -53,6 +59,7 @@ class CatalogPdfGenerator {
         products: products,
         variantsByProduct: variantsByProduct,
         stockByVariant: stockByVariant,
+        currencySymbol: currencySymbol,
       ),
     );
   }
@@ -61,11 +68,13 @@ class CatalogPdfGenerator {
     ProductEntity product, {
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     await ProductPdfGenerator.shareProduct(
       product,
       variants: variants,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
   }
 
@@ -73,6 +82,7 @@ class CatalogPdfGenerator {
     required List<ProductEntity> products,
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     pw.Font baseFont;
     pw.Font boldFont;
@@ -145,6 +155,7 @@ class CatalogPdfGenerator {
                   variants: variantsByProduct[product.id] ?? [],
                   imageBytes: productImages[product.id],
                   stockByVariant: stockByVariant,
+                  currencySymbol: currencySymbol,
                 ),
               ),
             ],
@@ -159,6 +170,7 @@ class CatalogPdfGenerator {
     required List<ProductVariantEntity> variants,
     required Uint8List? imageBytes,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) {
     pw.ImageProvider? imageProvider;
     if (imageBytes != null) {
@@ -254,7 +266,7 @@ class CatalogPdfGenerator {
                     ],
                     // Siempre mostrar resumen de precio y stock por defecto
                     pw.Text(
-                      'Precio base: ${_currencyFormat.format(product.displaySalePrice ?? 0.0)}   |   Stock total: ${product.totalStock}',
+                      'Precio base: ${_getCurrencyFormat(currencySymbol).format(product.displaySalePrice ?? 0.0)}   |   Stock total: ${product.totalStock}',
                       style: pw.TextStyle(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
@@ -322,7 +334,7 @@ class CatalogPdfGenerator {
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(6),
                         child: pw.Text(
-                          _currencyFormat.format(price),
+                          _getCurrencyFormat(currencySymbol).format(price),
                           style: const pw.TextStyle(fontSize: 9),
                         ),
                       ),
@@ -351,11 +363,13 @@ class CatalogPdfGenerator {
     required List<ProductEntity> products,
     required Map<String, List<ProductVariantEntity>> variantsByProduct,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     final bytes = await _buildPdf(
       products: products,
       variantsByProduct: variantsByProduct,
       stockByVariant: stockByVariant,
+      currencySymbol: currencySymbol,
     );
     final fileName =
         'Catalogo_${DateFormat('yyyyMMdd', 'es').format(DateTime.now())}.pdf';

@@ -10,6 +10,7 @@ class ExportCatalogPdfUseCase {
 
   Future<Either<Failure, void>> call({
     required List<ProductEntity> products,
+    String currencySymbol = 'S/',
   }) async {
     try {
       final variantsByProduct = {
@@ -35,6 +36,7 @@ class ExportCatalogPdfUseCase {
         products: products,
         variantsByProduct: variantsByProduct,
         stockByVariant: stockByVariant,
+        currencySymbol: currencySymbol,
       );
       return right(null);
     } catch (e) {

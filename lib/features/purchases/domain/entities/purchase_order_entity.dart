@@ -53,6 +53,19 @@ class PurchaseOrderEntity extends Equatable {
     this.taxAmountBase = 0.0,
   });
 
+  /// Símbolo de la moneda congelada al registrar la orden de compra
+  String get currencySymbol {
+    switch (currencyCode.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'PEN':
+      default:
+        return 'S/';
+    }
+  }
+
   @override
   List<Object?> get props => [
     id,

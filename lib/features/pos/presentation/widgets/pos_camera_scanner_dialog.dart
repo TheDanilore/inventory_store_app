@@ -15,6 +15,19 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/product_ocr_scanner_service.dart';
+import 'package:inventory_store_app/features/pos/presentation/services/variant_disambiguation_helper.dart';
+
+/// Modos de captura disponibles en el visor de cámara del POS
+enum PosScannerMode {
+  /// Escaneo rápido de códigos de barra (1D) y QR tradicionales
+  barcode,
+
+  /// Reconocimiento óptico de caracteres (OCR) para leer etiquetas, marcas y variantes
+  ocrLabel,
+}
+
 /// Modal interactivo de escaneo por cámara de Códigos de Barra y QR.
 ///
 /// Soporta:
@@ -23,6 +36,8 @@ import 'package:inventory_store_app/features/pos/presentation/services/pos_barco
 ///   producto a la lista/carrito en tiempo real sin interrupciones.
 /// - Vista dividida (Split Scanner + Live Cart) estilo retail con HUD reticular.
 /// - Apagado garantizado de la cámara al cerrar el modal (libera hardware/webcam).
+/// - Linterna, cambio de cámara, entrada manual y búsqueda por título.
+/// - Escaneo inteligente OCR de etiquetas y desambiguación automática de variantes.
 /// - Linterna, cambio de cámara, entrada manual y búsqueda por título.
 class PosCameraScannerDialog extends StatefulWidget {
   final String? warehouseId;
@@ -162,6 +177,11 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   DateTime _lastDetectionTime = DateTime.fromMillisecondsSinceEpoch(0);
   String _lastRawCode = '';
 
+  // Estado para Modo OCR y resolución de variantes
+  PosScannerMode _scannerMode = PosScannerMode.barcode;
+  bool _isOcrProcessing = false;
+  ProductOcrMatchResult? _pendingAmbiguousResult;
+
   @override
   void initState() {
     super.initState();
@@ -185,6 +205,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   void dispose() {
     _animController.dispose();
     _feedbackTimer?.cancel();
+    ProductOcrScannerService.dispose();
     try {
       _scannerController.stop();
       _scannerController.dispose();
@@ -342,6 +363,8 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
               controller: _scannerController,
               fit: BoxFit.cover,
               onDetect: (capture) {
+                // Solo procesar códigos de barra cuando estamos en modo barcode
+                if (_scannerMode != PosScannerMode.barcode) return;
                 final barcodes = capture.barcodes;
                 for (final barcode in barcodes) {
                   final rawValue = barcode.rawValue;
@@ -391,10 +414,15 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
             ),
           ),
 
-          // 2. Máscara HUD oscura y Marco de Escaneo Centralizado
-          Positioned.fill(child: _buildCenteredScanHud()),
+          // 2. Máscara HUD adaptativa según modo (Códigos vs Etiqueta OCR)
+          Positioned.fill(
+            child:
+                _scannerMode == PosScannerMode.barcode
+                    ? _buildCenteredScanHud()
+                    : _buildOcrScanHud(isSplit: false),
+          ),
 
-          // 3. Barra Superior Flotante (Glassmorphism)
+          // 3. Barra Superior Flotante con Selector de Modos (Glassmorphism)
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 12,
@@ -405,16 +433,21 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
           // 4. Toast / Banner flotante de detección continua
           if (_lastScannedName != null)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 64,
+              top: MediaQuery.of(context).padding.top + 108,
               left: 16,
               right: 16,
               child: _buildScannedFeedbackBanner(),
             ),
 
-          // 5. Barra Inferior con Entrada Manual y/o Botón "Listo"
-          Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
+          // 5. Barra Inferior con Entrada Manual y/o Botón "Listo" (solo en modo barcode)
+          if (_scannerMode == PosScannerMode.barcode)
+            Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
 
-          // 6. Indicador de carga de resolución
+          // 6. Selector flotante de variantes si el OCR detectó ambigüedad
+          if (_pendingAmbiguousResult != null)
+            _buildAmbiguousVariantsSheet(_pendingAmbiguousResult!),
+
+          // 7. Indicador de carga de resolución de código
           if (_isResolving)
             Positioned.fill(
               child: Container(
@@ -441,6 +474,9 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                 ),
               ),
             ),
+
+          // 8. Indicador de carga de procesamiento OCR inteligente
+          if (_isOcrProcessing) _buildOcrProcessingOverlay(),
         ],
       ),
     );
@@ -450,7 +486,10 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   Widget _buildSplitCartLayout(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     final cameraHeight =
-        isDesktop ? 290.0 : (MediaQuery.of(context).size.height * 0.36);
+        isDesktop
+            ? 310.0
+            : (MediaQuery.of(context).size.height *
+                (_scannerMode == PosScannerMode.ocrLabel ? 0.42 : 0.36));
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -469,6 +508,8 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                     controller: _scannerController,
                     fit: BoxFit.cover,
                     onDetect: (capture) {
+                      // Solo procesar códigos de barra cuando estamos en modo barcode
+                      if (_scannerMode != PosScannerMode.barcode) return;
                       for (final barcode in capture.barcodes) {
                         final rawValue = barcode.rawValue;
                         if (rawValue != null && rawValue.isNotEmpty) {
@@ -514,10 +555,15 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                     },
                   ),
 
-                  // HUD compacto con retícula y esquinas destacadas verde esmeralda
-                  Positioned.fill(child: _buildCompactScanHud()),
+                  // HUD adaptado según modo (Códigos vs Etiqueta OCR)
+                  Positioned.fill(
+                    child:
+                        _scannerMode == PosScannerMode.barcode
+                            ? _buildCompactScanHud()
+                            : _buildOcrScanHud(isSplit: true),
+                  ),
 
-                  // Barra superior flotante de controles
+                  // Barra superior flotante de controles con selector de modos
                   Positioned(
                     top:
                         MediaQuery.of(context).padding.top > 0
@@ -537,6 +583,10 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                       child: _buildScannedFeedbackBanner(),
                     ),
 
+                  // Selector flotante de variantes si el OCR detectó ambigüedad
+                  if (_pendingAmbiguousResult != null)
+                    _buildAmbiguousVariantsSheet(_pendingAmbiguousResult!),
+
                   // Overlay de búsqueda en proceso
                   if (_isResolving)
                     Positioned.fill(
@@ -550,6 +600,9 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                         ),
                       ),
                     ),
+
+                  // Overlay de procesamiento OCR inteligente
+                  if (_isOcrProcessing) _buildOcrProcessingOverlay(),
                 ],
               ),
             ),
@@ -1176,58 +1229,713 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   Widget _buildTopControlBar() {
     final title =
         widget.title ??
-        (widget.continuousMode ? 'Escaneo Continuo' : 'Escanear Código');
+        (_scannerMode == PosScannerMode.ocrLabel
+            ? 'Reconocer Etiqueta (OCR)'
+            : (widget.continuousMode ? 'Escaneo Continuo' : 'Escanear Código'));
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          _buildCircleAction(
-            icon: Icons.close_rounded,
-            tooltip: 'Cerrar escáner',
-            onPressed: () => _safeClose(),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.70),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white12),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13.5,
-                fontWeight: FontWeight.bold,
+          child: Row(
+            children: [
+              _buildCircleAction(
+                icon: Icons.close_rounded,
+                tooltip: 'Cerrar escáner',
+                onPressed: () => _safeClose(),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              _buildCircleAction(
+                icon:
+                    _isTorchOn
+                        ? Icons.flash_on_rounded
+                        : Icons.flash_off_rounded,
+                tooltip: 'Linterna',
+                isActive: _isTorchOn,
+                onPressed: () async {
+                  await _scannerController.toggleTorch();
+                  setState(() => _isTorchOn = !_isTorchOn);
+                },
+              ),
+              const SizedBox(width: 6),
+              _buildCircleAction(
+                icon: Icons.flip_camera_ios_rounded,
+                tooltip: 'Cambiar cámara',
+                onPressed: () async {
+                  await _scannerController.switchCamera();
+                  setState(() {
+                    _cameraFacing =
+                        _cameraFacing == CameraFacing.back
+                            ? CameraFacing.front
+                            : CameraFacing.back;
+                  });
+                },
+              ),
+            ],
           ),
-          _buildCircleAction(
-            icon: _isTorchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
-            tooltip: 'Linterna',
-            isActive: _isTorchOn,
-            onPressed: () async {
-              await _scannerController.toggleTorch();
-              setState(() => _isTorchOn = !_isTorchOn);
-            },
-          ),
-          const SizedBox(width: 6),
-          _buildCircleAction(
-            icon: Icons.flip_camera_ios_rounded,
-            tooltip: 'Cambiar cámara',
-            onPressed: () async {
-              await _scannerController.switchCamera();
-              setState(() {
-                _cameraFacing =
-                    _cameraFacing == CameraFacing.back
-                        ? CameraFacing.front
-                        : CameraFacing.back;
-              });
-            },
+        ),
+        const SizedBox(height: 6),
+        _buildModeSwitcher(),
+      ],
+    );
+  }
+
+  Widget _buildModeSwitcher() {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildModeTab(
+            mode: PosScannerMode.barcode,
+            icon: Icons.qr_code_scanner_rounded,
+            label: 'Código de Barras / QR',
+          ),
+          const SizedBox(width: 4),
+          _buildModeTab(
+            mode: PosScannerMode.ocrLabel,
+            icon: Icons.document_scanner_rounded,
+            label: 'Leer Etiqueta (OCR)',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeTab({
+    required PosScannerMode mode,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _scannerMode == mode;
+    final activeColor =
+        mode == PosScannerMode.ocrLabel
+            ? const Color(0xFFF59E0B)
+            : AppColors.teal;
+
+    return Material(
+      color:
+          isSelected ? activeColor.withValues(alpha: 0.22) : Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () {
+          if (_scannerMode == mode) return;
+          HapticFeedback.selectionClick();
+          setState(() {
+            _scannerMode = mode;
+            _pendingAmbiguousResult = null;
+          });
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border:
+                isSelected
+                    ? Border.all(
+                      color: activeColor.withValues(alpha: 0.8),
+                      width: 1.2,
+                    )
+                    : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? activeColor : Colors.white60,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white60,
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _captureAndScanOcr({bool fromGallery = false}) async {
+    if (_isResolving || _isOcrProcessing || _isClosing) return;
+
+    try {
+      final picker = ImagePicker();
+      final source = fromGallery ? ImageSource.gallery : ImageSource.camera;
+
+      // Pausar temporalmente mobile_scanner para liberar el hardware de cámara nativo
+      try {
+        await _scannerController.stop();
+      } catch (_) {}
+
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 92,
+        maxWidth: 1920,
+      );
+
+      // Reanudar MobileScanner si el widget continúa activo
+      if (mounted && !_isClosing) {
+        try {
+          await _scannerController.start();
+        } catch (_) {}
+      }
+
+      if (pickedFile == null) return;
+
+      setState(() => _isOcrProcessing = true);
+      HapticFeedback.mediumImpact();
+
+      final result = await ProductOcrScannerService.recognizeFromImageFile(
+        pickedFile.path,
+        warehouseId: widget.warehouseId,
+      );
+
+      if (!mounted || _isClosing) return;
+
+      if (result == null) {
+        AppSnackbar.show(
+          context,
+          message:
+              'No se reconoció ningún producto en la etiqueta. Intenta enfocar más de cerca el título.',
+          type: SnackbarType.warning,
+        );
+        return;
+      }
+
+      // Si se resolvió variante única o el producto tiene una sola variante
+      if (result.isDirectMatch && result.variant != null) {
+        HapticFeedback.heavyImpact();
+        SystemSound.play(SystemSoundType.click);
+
+        final scanResult = PosScanResult(
+          product: result.product,
+          variant: result.variant,
+          rawCode:
+              result.variant?.barcode ??
+              result.variant?.sku ??
+              result.product.id,
+        );
+
+        if (widget.cartCubit != null) {
+          final added = await PosBarcodeScannerService.addScanResultToCart(
+            context: context,
+            scanResult: scanResult,
+            cartCubit: widget.cartCubit!,
+            warehouseId: widget.warehouseId,
+          );
+
+          if (added && mounted) {
+            final variantLabel =
+                result.variant?.shortLabel.isNotEmpty == true
+                    ? ' (${result.variant!.shortLabel})'
+                    : '';
+            setState(() {
+              _scannedCount++;
+              _lastScannedName = '${result.product.name}$variantLabel';
+            });
+            _feedbackTimer?.cancel();
+            _feedbackTimer = Timer(const Duration(seconds: 4), () {
+              if (mounted) setState(() => _lastScannedName = null);
+            });
+          }
+        } else if (widget.continuousMode || widget.onContinuousScan != null) {
+          if (widget.onContinuousScan != null) {
+            await widget.onContinuousScan!(scanResult);
+          }
+          if (mounted) {
+            setState(() {
+              _scannedCount++;
+              _lastScannedName = result.product.name;
+            });
+          }
+        } else {
+          await _safeClose(scanResult);
+        }
+      } else {
+        // Ambigüedad en variantes: mostrar selector rápido sobre la cámara
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _pendingAmbiguousResult = result;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al leer etiqueta: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isOcrProcessing = false);
+      }
+    }
+  }
+
+  Widget _buildOcrScanHud({required bool isSplit}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = (constraints.maxWidth * 0.86).clamp(240.0, 420.0);
+        final boxHeight =
+            isSplit
+                ? (constraints.maxHeight * 0.58).clamp(110.0, 170.0)
+                : (constraints.maxHeight * 0.44).clamp(200.0, 310.0);
+        final leftOffset = (constraints.maxWidth - boxWidth) / 2;
+        final topOffset =
+            (constraints.maxHeight - boxHeight) / 2 + (isSplit ? 24 : -10);
+        final scanRect = Rect.fromLTWH(
+          leftOffset,
+          topOffset,
+          boxWidth,
+          boxHeight,
+        );
+
+        return Stack(
+          children: [
+            // 1. Máscara oscura
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ScannerOverlayPainter(
+                  scanWindow: scanRect,
+                  borderRadius: 20,
+                  overlayColor: Colors.black.withValues(alpha: 0.52),
+                ),
+              ),
+            ),
+
+            // 2. Esquinas destacadas ámbar dorado
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _CornerBracketPainter(
+                  scanRect: scanRect,
+                  color: const Color(0xFFF59E0B),
+                  cornerLength: 26,
+                  strokeWidth: 3.5,
+                ),
+              ),
+            ),
+
+            // 3. Indicador de texto instructivo dentro del marco
+            Positioned(
+              top: topOffset + 10,
+              left: leftOffset + 12,
+              right: leftOffset + 12,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.text_fields_rounded,
+                        size: 13,
+                        color: Color(0xFFF59E0B),
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Enfoca el nombre y presentación del producto',
+                        style: TextStyle(
+                          color: Color(0xFFFDE68A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 4. Botón de captura flotante
+            Positioned(
+              bottom: isSplit ? 6 : 80,
+              left: 20,
+              right: 20,
+              child: Center(child: _buildOcrCaptureButton(isSplit: isSplit)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOcrCaptureButton({required bool isSplit}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                blurRadius: 14,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed:
+                _isOcrProcessing
+                    ? null
+                    : () => _captureAndScanOcr(fromGallery: false),
+            icon:
+                _isOcrProcessing
+                    ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.black,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Icon(Icons.camera_alt_rounded, size: 18),
+            label: Text(
+              _isOcrProcessing ? 'Leyendo...' : 'Capturar y Leer Etiqueta',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: const Color(0xFF0F172A),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSplit ? 14 : 20,
+                vertical: isSplit ? 8 : 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28),
+              ),
+              elevation: 4,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Tooltip(
+          message: 'Cargar foto de galería',
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.65),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap:
+                  _isOcrProcessing
+                      ? null
+                      : () => _captureAndScanOcr(fromGallery: true),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(
+                  Icons.photo_library_outlined,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAmbiguousVariantsSheet(ProductOcrMatchResult result) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.7),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        result.product.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        result.detectedPresentation != null
+                            ? 'Detectado: "${result.detectedPresentation}". Elige presentación:'
+                            : 'Selecciona la presentación detectada:',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed:
+                      () => setState(() => _pendingAmbiguousResult = null),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white60,
+                    size: 18,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  result.candidateVariants.map((variant) {
+                    final label =
+                        variant.shortLabel.isNotEmpty
+                            ? variant.shortLabel
+                            : variant.label;
+                    final price =
+                        variant.salePrice != null
+                            ? 'S/ ${variant.salePrice!.toStringAsFixed(2)}'
+                            : '';
+                    final isSuggested =
+                        result.detectedPresentation != null &&
+                        VariantDisambiguationHelper.normalize(label).contains(
+                          VariantDisambiguationHelper.normalize(
+                            result.detectedPresentation!,
+                          ),
+                        );
+
+                    return InkWell(
+                      onTap: () async {
+                        final scanResult = PosScanResult(
+                          product: result.product,
+                          variant: variant,
+                          rawCode:
+                              variant.barcode ??
+                              variant.sku ??
+                              result.product.id,
+                        );
+                        setState(() => _pendingAmbiguousResult = null);
+
+                        if (widget.cartCubit != null) {
+                          await PosBarcodeScannerService.addScanResultToCart(
+                            context: context,
+                            scanResult: scanResult,
+                            cartCubit: widget.cartCubit!,
+                            warehouseId: widget.warehouseId,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _scannedCount++;
+                              _lastScannedName =
+                                  '${result.product.name} ($label)';
+                            });
+                            _feedbackTimer?.cancel();
+                            _feedbackTimer = Timer(
+                              const Duration(seconds: 4),
+                              () {
+                                if (mounted) {
+                                  setState(() => _lastScannedName = null);
+                                }
+                              },
+                            );
+                          }
+                        } else if (widget.continuousMode ||
+                            widget.onContinuousScan != null) {
+                          if (widget.onContinuousScan != null) {
+                            await widget.onContinuousScan!(scanResult);
+                          }
+                          if (mounted) {
+                            setState(() {
+                              _scannedCount++;
+                              _lastScannedName =
+                                  '${result.product.name} ($label)';
+                            });
+                          }
+                        } else {
+                          await _safeClose(scanResult);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSuggested
+                                  ? const Color(
+                                    0xFFF59E0B,
+                                  ).withValues(alpha: 0.25)
+                                  : Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                isSuggested
+                                    ? const Color(0xFFF59E0B)
+                                    : Colors.white24,
+                            width: isSuggested ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isSuggested) ...[
+                              const Icon(
+                                Icons.star_rounded,
+                                color: Color(0xFFF59E0B),
+                                size: 15,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Text(
+                              label,
+                              style: TextStyle(
+                                color:
+                                    isSuggested
+                                        ? const Color(0xFFFDE68A)
+                                        : Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (price.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                price,
+                                style: const TextStyle(
+                                  color: AppColors.teal,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOcrProcessingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black54,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: Color(0xFFF59E0B),
+                strokeWidth: 3.5,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Leyendo texto de etiqueta con IA...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Reconociendo marca, título y variantes',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

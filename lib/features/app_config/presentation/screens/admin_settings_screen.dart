@@ -2664,12 +2664,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                 ? null
                                 : () async {
                                   setState(() => _isPrintingTestTicket = true);
+                                  final currencySymbol =
+                                      this.context
+                                          .read<AppConfigCubit>()
+                                          .state
+                                          .currencySymbol;
                                   final success =
                                       await PosPrinterSettingsService.printTestTicket(
                                         businessName: businessName,
                                         taxId: taxId,
                                         address: address,
                                         phone: phone,
+                                        currencySymbol: currencySymbol,
                                       );
                                   if (!mounted) return;
                                   setState(() => _isPrintingTestTicket = false);

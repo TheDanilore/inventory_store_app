@@ -64,6 +64,7 @@ class AccountStatementExportSheet extends StatefulWidget {
   final double totalPaid;
   final List<StatementItem> items;
   final String? phone;
+  final String? currencySymbol;
 
   const AccountStatementExportSheet({
     super.key,
@@ -74,6 +75,7 @@ class AccountStatementExportSheet extends StatefulWidget {
     required this.totalPaid,
     required this.items,
     this.phone,
+    this.currencySymbol,
   });
 
   static Future<void> show(
@@ -85,6 +87,7 @@ class AccountStatementExportSheet extends StatefulWidget {
     required double totalPaid,
     required List<StatementItem> items,
     String? phone,
+    String? currencySymbol,
   }) {
     return AdaptiveDetailSheet.show<void>(
       context,
@@ -100,6 +103,7 @@ class AccountStatementExportSheet extends StatefulWidget {
             totalPaid: totalPaid,
             items: items,
             phone: phone,
+            currencySymbol: currencySymbol,
           ),
     );
   }
@@ -114,6 +118,18 @@ class _AccountStatementExportSheetState
   bool _isProcessing = false;
   String? _processingLabel;
 
+  String get _currencySymbol {
+    if (widget.currencySymbol != null &&
+        widget.currencySymbol!.trim().isNotEmpty) {
+      return widget.currencySymbol!.trim();
+    }
+    try {
+      return context.read<AppConfigCubit>().state.baseCurrency.symbol;
+    } catch (_) {
+      return 'S/';
+    }
+  }
+
   String get _statementShareText {
     final buffer = StringBuffer();
     final role = widget.isSupplier ? 'PROVEEDOR' : 'CLIENTE';
@@ -124,13 +140,13 @@ class _AccountStatementExportSheetState
     );
     buffer.writeln('--------------------------------');
     buffer.writeln(
-      '💰 *Saldo Actual:* S/ ${widget.currentBalance.toStringAsFixed(2)}',
+      '💰 *Saldo Actual:* $_currencySymbol ${widget.currentBalance.toStringAsFixed(2)}',
     );
     buffer.writeln(
-      '📈 Total Cargos: S/ ${widget.totalCharged.toStringAsFixed(2)}',
+      '📈 Total Cargos: $_currencySymbol ${widget.totalCharged.toStringAsFixed(2)}',
     );
     buffer.writeln(
-      '📉 Total Abonos: S/ ${widget.totalPaid.toStringAsFixed(2)}',
+      '📉 Total Abonos: $_currencySymbol ${widget.totalPaid.toStringAsFixed(2)}',
     );
     buffer.writeln('--------------------------------');
     buffer.writeln('📝 *ÚLTIMOS MOVIMIENTOS:*');
@@ -141,7 +157,7 @@ class _AccountStatementExportSheetState
           it.date != null ? DateFormat('dd/MM/yy', 'es').format(it.date!) : '-';
       final type = it.isCharge ? 'CARGO' : 'ABONO';
       buffer.writeln(
-        '• $date [$type]: S/ ${it.amount.toStringAsFixed(2)} (${it.method ?? "N/A"})',
+        '• $date [$type]: $_currencySymbol ${it.amount.toStringAsFixed(2)} (${it.method ?? "N/A"})',
       );
     }
     if (widget.items.length > 15) {
@@ -283,17 +299,17 @@ class _AccountStatementExportSheetState
                     children: [
                       _buildPdfKpi(
                         'Total Cargos',
-                        'S/ ${widget.totalCharged.toStringAsFixed(2)}',
+                        '$_currencySymbol ${widget.totalCharged.toStringAsFixed(2)}',
                       ),
                       pw.SizedBox(width: 12),
                       _buildPdfKpi(
                         'Total Pagado',
-                        'S/ ${widget.totalPaid.toStringAsFixed(2)}',
+                        '$_currencySymbol ${widget.totalPaid.toStringAsFixed(2)}',
                       ),
                       pw.SizedBox(width: 12),
                       _buildPdfKpi(
                         'Saldo Actual',
-                        'S/ ${widget.currentBalance.toStringAsFixed(2)}',
+                        '$_currencySymbol ${widget.currentBalance.toStringAsFixed(2)}',
                         isHighlight: true,
                       ),
                     ],
@@ -347,7 +363,7 @@ class _AccountStatementExportSheetState
                         align: pw.TextAlign.center,
                       ),
                       _buildPdfCell(
-                        'S/ ${m.amount.toStringAsFixed(2)}',
+                        '$_currencySymbol ${m.amount.toStringAsFixed(2)}',
                         align: pw.TextAlign.right,
                       ),
                       _buildPdfCell(m.method ?? '-'),
@@ -903,16 +919,19 @@ class _AccountStatementExportSheetState
               children: [
                 _kpiCol(
                   'Saldo Actual',
-                  'S/ ${widget.currentBalance.toStringAsFixed(2)}',
+                  '$_currencySymbol ${widget.currentBalance.toStringAsFixed(2)}',
                   isDebt: widget.currentBalance > 0,
                 ),
                 Container(width: 1, height: 32, color: const Color(0xFFCBD5E1)),
                 _kpiCol(
                   'Cargos',
-                  'S/ ${widget.totalCharged.toStringAsFixed(2)}',
+                  '$_currencySymbol ${widget.totalCharged.toStringAsFixed(2)}',
                 ),
                 Container(width: 1, height: 32, color: const Color(0xFFCBD5E1)),
-                _kpiCol('Abonos', 'S/ ${widget.totalPaid.toStringAsFixed(2)}'),
+                _kpiCol(
+                  'Abonos',
+                  '$_currencySymbol ${widget.totalPaid.toStringAsFixed(2)}',
+                ),
               ],
             ),
           ),
@@ -1089,7 +1108,7 @@ class _AccountStatementExportSheetState
                             ),
                           ),
                           Text(
-                            'S/ ${it.amount.toStringAsFixed(2)}',
+                            '$_currencySymbol ${it.amount.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,

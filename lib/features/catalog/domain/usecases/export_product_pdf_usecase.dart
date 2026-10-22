@@ -13,12 +13,14 @@ class ExportProductPdfUseCase {
     required ProductEntity product,
     required List<ProductVariantEntity> variants,
     required Map<String, int> stockByVariant,
+    String currencySymbol = 'S/',
   }) async {
     try {
       await CatalogPdfGenerator.shareProduct(
         product,
         variants: variants,
         stockByVariant: stockByVariant,
+        currencySymbol: currencySymbol,
       );
       return right(null);
     } catch (e) {

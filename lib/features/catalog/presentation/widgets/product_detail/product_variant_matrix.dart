@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
 class ProductVariantMatrix extends StatefulWidget {
@@ -39,6 +41,14 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  String get _currencySymbol {
+    try {
+      return context.read<AppConfigCubit>().state.currencySymbol;
+    } catch (_) {
+      return 'S/';
+    }
   }
 
   List<ProductVariantEntity> get _filteredVariants {
@@ -453,7 +463,7 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                               Expanded(
                                 flex: 3,
                                 child: Text(
-                                  'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                                  '$_currencySymbol ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
                                   textAlign: TextAlign.right,
                                   style: TextStyle(
                                     fontSize: 13,
@@ -471,7 +481,7 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                 flex: 3,
                                 child: Text(
                                   v.wholesalePrice != null
-                                      ? 'S/ ${v.wholesalePrice!.toStringAsFixed(2)}'
+                                      ? '$_currencySymbol ${v.wholesalePrice!.toStringAsFixed(2)}'
                                       : '—',
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(
@@ -669,7 +679,7 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                               Row(
                                 children: [
                                   Text(
-                                    'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                                    '$_currencySymbol ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,

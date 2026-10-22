@@ -266,8 +266,8 @@ class PurchaseOrderPdfGenerator {
                     desc,
                     item.quantityOrdered.toStringAsFixed(0),
                     item.quantityReceived.toStringAsFixed(0),
-                    'S/ ${item.unitCost.toStringAsFixed(2)}',
-                    'S/ ${item.subtotal.toStringAsFixed(2)}',
+                    '${po.currencySymbol} ${item.unitCost.toStringAsFixed(2)}',
+                    '${po.currencySymbol} ${item.subtotal.toStringAsFixed(2)}',
                   ];
                 }),
               ),
@@ -324,20 +324,20 @@ class PurchaseOrderPdfGenerator {
                       children: [
                         _buildTotalRow(
                           'Subtotal:',
-                          'S/ ${(po.totalAmount + po.discountAmount - po.taxAmount).toStringAsFixed(2)}',
+                          '${po.currencySymbol} ${(po.totalAmount + po.discountAmount - po.taxAmount).toStringAsFixed(2)}',
                         ),
                         if (po.discountAmount > 0) ...[
                           pw.SizedBox(height: 3),
                           _buildTotalRow(
                             'Descuento:',
-                            '- S/ ${po.discountAmount.toStringAsFixed(2)}',
+                            '- ${po.currencySymbol} ${po.discountAmount.toStringAsFixed(2)}',
                           ),
                         ],
                         if (po.taxAmount > 0) ...[
                           pw.SizedBox(height: 3),
                           _buildTotalRow(
                             'Impuestos:',
-                            'S/ ${po.taxAmount.toStringAsFixed(2)}',
+                            '${po.currencySymbol} ${po.taxAmount.toStringAsFixed(2)}',
                           ),
                         ],
                         pw.SizedBox(height: 5),
@@ -345,20 +345,20 @@ class PurchaseOrderPdfGenerator {
                         pw.SizedBox(height: 3),
                         _buildTotalRow(
                           'TOTAL ORDEN:',
-                          'S/ ${po.totalAmount.toStringAsFixed(2)}',
+                          '${po.currencySymbol} ${po.totalAmount.toStringAsFixed(2)}',
                           isBold: true,
                           fontSize: 11,
                         ),
                         pw.SizedBox(height: 3),
                         _buildTotalRow(
                           'Monto Pagado:',
-                          'S/ ${po.amountPaid.toStringAsFixed(2)}',
+                          '${po.currencySymbol} ${po.amountPaid.toStringAsFixed(2)}',
                         ),
                         if (po.totalAmount - po.amountPaid > 0) ...[
                           pw.SizedBox(height: 3),
                           _buildTotalRow(
                             'Saldo Pendiente:',
-                            'S/ ${(po.totalAmount - po.amountPaid).toStringAsFixed(2)}',
+                            '${po.currencySymbol} ${(po.totalAmount - po.amountPaid).toStringAsFixed(2)}',
                             color: PdfColor.fromInt(0xFFDC2626),
                             isBold: true,
                           ),
@@ -539,18 +539,24 @@ class PurchaseOrderPdfGenerator {
       for (final item in items) {
         final name = item.productName ?? 'Item';
         final qty = item.quantityOrdered.toStringAsFixed(0);
-        final cost = 'S/ ${item.unitCost.toStringAsFixed(2)}';
-        final sub = 'S/ ${item.subtotal.toStringAsFixed(2)}';
+        final cost = '${po.currencySymbol} ${item.unitCost.toStringAsFixed(2)}';
+        final sub = '${po.currencySymbol} ${item.subtotal.toStringAsFixed(2)}';
         buffer.writeln(' • $qty x $name a $cost = $sub');
       }
       buffer.writeln('─────────────────');
     }
 
-    buffer.writeln('💰 *TOTAL ORDEN:* S/ ${po.totalAmount.toStringAsFixed(2)}');
-    buffer.writeln('💵 *Pagado:* S/ ${po.amountPaid.toStringAsFixed(2)}');
+    buffer.writeln(
+      '💰 *TOTAL ORDEN:* ${po.currencySymbol} ${po.totalAmount.toStringAsFixed(2)}',
+    );
+    buffer.writeln(
+      '💵 *Pagado:* ${po.currencySymbol} ${po.amountPaid.toStringAsFixed(2)}',
+    );
     final pending = po.totalAmount - po.amountPaid;
     if (pending > 0) {
-      buffer.writeln('⚠️ *Saldo Pendiente:* S/ ${pending.toStringAsFixed(2)}');
+      buffer.writeln(
+        '⚠️ *Saldo Pendiente:* ${po.currencySymbol} ${pending.toStringAsFixed(2)}',
+      );
     }
     buffer.writeln('─────────────────');
     buffer.writeln('Favor confirmar recepción de la presente orden.');

@@ -54,6 +54,7 @@ class OrderPdfGenerator {
 
     final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
     final dateStr = DateFormat('dd/MM/yyyy HH:mm', 'es').format(peruTime);
+    final currencySymbol = order.currencySymbol;
 
     // 2. Construir el diseño del PDF (Formato Ticket/Rollo)
     pdf.addPage(
@@ -172,7 +173,7 @@ class OrderPdfGenerator {
               pw.SizedBox(height: 4),
 
               // --- LISTA DE ITEMS ---
-              ..._buildItemList(items),
+              ..._buildItemList(items, currencySymbol: currencySymbol),
 
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
               pw.SizedBox(height: 4),
@@ -187,7 +188,7 @@ class OrderPdfGenerator {
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                   pw.Text(
-                    'S/ ${(order.subtotalAmount > 0 ? order.subtotalAmount : double.parse((order.totalAmount / 1.18).toStringAsFixed(2))).toStringAsFixed(2)}',
+                    '$currencySymbol ${(order.subtotalAmount > 0 ? order.subtotalAmount : double.parse((order.totalAmount / 1.18).toStringAsFixed(2))).toStringAsFixed(2)}',
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                 ],
@@ -201,7 +202,7 @@ class OrderPdfGenerator {
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                   pw.Text(
-                    'S/ ${(order.taxAmount > 0 ? order.taxAmount : double.parse((order.totalAmount - (order.totalAmount / 1.18)).toStringAsFixed(2))).toStringAsFixed(2)}',
+                    '$currencySymbol ${(order.taxAmount > 0 ? order.taxAmount : double.parse((order.totalAmount - (order.totalAmount / 1.18)).toStringAsFixed(2))).toStringAsFixed(2)}',
                     style: const pw.TextStyle(fontSize: 10),
                   ),
                 ],
@@ -217,7 +218,7 @@ class OrderPdfGenerator {
                       style: const pw.TextStyle(fontSize: 11),
                     ),
                     pw.Text(
-                      '- S/ ${order.discountAmount.toStringAsFixed(2)}',
+                      '- $currencySymbol ${order.discountAmount.toStringAsFixed(2)}',
                       style: const pw.TextStyle(fontSize: 11),
                     ),
                   ],
@@ -254,7 +255,7 @@ class OrderPdfGenerator {
                     ),
                   ),
                   pw.Text(
-                    'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                    '$currencySymbol ${order.totalAmount.toStringAsFixed(2)}',
                     style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold,
                       fontSize: 13,
@@ -519,11 +520,11 @@ class OrderPdfGenerator {
                         ),
                         _buildA4Cell(displayName),
                         _buildA4Cell(
-                          'S/ ${item.appliedPrice.toStringAsFixed(2)}',
+                          '${order.currencySymbol} ${item.appliedPrice.toStringAsFixed(2)}',
                           align: pw.TextAlign.right,
                         ),
                         _buildA4Cell(
-                          'S/ ${item.subtotal.toStringAsFixed(2)}',
+                          '${order.currencySymbol} ${item.subtotal.toStringAsFixed(2)}',
                           align: pw.TextAlign.right,
                         ),
                       ],
@@ -549,7 +550,7 @@ class OrderPdfGenerator {
                               style: const pw.TextStyle(fontSize: 10),
                             ),
                             pw.Text(
-                              'S/ ${items.fold<double>(0, (s, i) => s + i.subtotal).toStringAsFixed(2)}',
+                              '${order.currencySymbol} ${items.fold<double>(0, (s, i) => s + i.subtotal).toStringAsFixed(2)}',
                               style: const pw.TextStyle(fontSize: 10),
                             ),
                           ],
@@ -565,7 +566,7 @@ class OrderPdfGenerator {
                                 style: const pw.TextStyle(fontSize: 10),
                               ),
                               pw.Text(
-                                '- S/ ${order.discountAmount.toStringAsFixed(2)}',
+                                '- ${order.currencySymbol} ${order.discountAmount.toStringAsFixed(2)}',
                                 style: const pw.TextStyle(fontSize: 10),
                               ),
                             ],
@@ -604,7 +605,7 @@ class OrderPdfGenerator {
                               ),
                             ),
                             pw.Text(
-                              'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                              '${order.currencySymbol} ${order.totalAmount.toStringAsFixed(2)}',
                               style: pw.TextStyle(
                                 fontSize: 12,
                                 fontWeight: pw.FontWeight.bold,
@@ -667,16 +668,18 @@ class OrderPdfGenerator {
         name += ' (${item.variantLabel})';
       }
       buffer.writeln(
-        '• ${item.quantity}x $name - S/ ${item.subtotal.toStringAsFixed(2)}',
+        '• ${item.quantity}x $name - ${order.currencySymbol} ${item.subtotal.toStringAsFixed(2)}',
       );
     }
     buffer.writeln('--------------------------------');
     if (order.discountAmount > 0) {
       buffer.writeln(
-        '📉 Descuento: - S/ ${order.discountAmount.toStringAsFixed(2)}',
+        '📉 Descuento: - ${order.currencySymbol} ${order.discountAmount.toStringAsFixed(2)}',
       );
     }
-    buffer.writeln('💰 *TOTAL: S/ ${order.totalAmount.toStringAsFixed(2)}*');
+    buffer.writeln(
+      '💰 *TOTAL: ${order.currencySymbol} ${order.totalAmount.toStringAsFixed(2)}*',
+    );
     buffer.writeln('--------------------------------');
     buffer.writeln('¡Muchas gracias por su preferencia! ✨');
     return buffer.toString();
@@ -849,7 +852,10 @@ class OrderPdfGenerator {
     );
   }
 
-  static List<pw.Widget> _buildItemList(List<OrderItemEntity> items) {
+  static List<pw.Widget> _buildItemList(
+    List<OrderItemEntity> items, {
+    String currencySymbol = 'S/',
+  }) {
     List<pw.Widget> widgets = [];
     for (final item in items) {
       String displayName = item.productName ?? 'Producto';
@@ -883,7 +889,7 @@ class OrderPdfGenerator {
               pw.Expanded(
                 flex: 1,
                 child: pw.Text(
-                  'S/ ${item.subtotal.toStringAsFixed(2)}',
+                  '$currencySymbol ${item.subtotal.toStringAsFixed(2)}',
                   textAlign: pw.TextAlign.right,
                   style: const pw.TextStyle(fontSize: 10),
                 ),

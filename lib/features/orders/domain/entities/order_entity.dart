@@ -83,6 +83,19 @@ class OrderEntity extends Equatable {
     this.taxAmountBase = 0.00,
   });
 
+  /// Símbolo de la moneda congelada al momento de registrar la venta
+  String get currencySymbol {
+    switch (currencyCode.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'PEN':
+      default:
+        return 'S/';
+    }
+  }
+
   String get displayCustomerName {
     if (profileFullName != null && profileFullName!.trim().isNotEmpty) {
       return profileFullName!;

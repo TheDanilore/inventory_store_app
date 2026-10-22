@@ -63,7 +63,7 @@ class _ProductExportSheetState extends State<ProductExportSheet> {
     }
 
     final price = widget.product.displaySalePrice ?? 0.0;
-    buffer.writeln('💰 Precio: S/ ${price.toStringAsFixed(2)}');
+    buffer.writeln('💰 Precio: $_currencySymbol ${price.toStringAsFixed(2)}');
     buffer.writeln('📊 Stock Total: ${widget.product.totalStock} unidades');
 
     if (widget.product.description != null &&
@@ -80,11 +80,21 @@ class _ProductExportSheetState extends State<ProductExportSheet> {
         final st = widget.stockByVariant[v.id] ?? 0;
         final p = v.salePrice ?? price;
         final vLabel = v.label.isNotEmpty ? v.label : (v.sku ?? 'Estándar');
-        buffer.writeln('• $vLabel: S/ ${p.toStringAsFixed(2)} ($st en stock)');
+        buffer.writeln(
+          '• $vLabel: $_currencySymbol ${p.toStringAsFixed(2)} ($st en stock)',
+        );
       }
     }
 
     return buffer.toString();
+  }
+
+  String get _currencySymbol {
+    try {
+      return context.read<AppConfigCubit>().state.baseCurrency.symbol;
+    } catch (_) {
+      return 'S/';
+    }
   }
 
   Future<void> _handlePrint() async {
@@ -99,6 +109,7 @@ class _ProductExportSheetState extends State<ProductExportSheet> {
         widget.product,
         variants: widget.variants,
         stockByVariant: widget.stockByVariant,
+        currencySymbol: _currencySymbol,
       );
     } catch (e) {
       if (mounted) {
@@ -184,6 +195,7 @@ class _ProductExportSheetState extends State<ProductExportSheet> {
         widget.product,
         variants: widget.variants,
         stockByVariant: widget.stockByVariant,
+        currencySymbol: _currencySymbol,
       );
       if (mounted) {
         AppSnackbar.show(
@@ -548,7 +560,7 @@ class _ProductExportSheetState extends State<ProductExportSheet> {
                   border: Border.all(color: const Color(0xFFBBF7D0)),
                 ),
                 child: Text(
-                  'S/ ${price.toStringAsFixed(2)}',
+                  '$_currencySymbol ${price.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,

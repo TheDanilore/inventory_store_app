@@ -10,6 +10,7 @@ import 'package:inventory_store_app/core/widgets/dialogs/adaptive_destructive_di
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -250,10 +251,16 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       state.products.length,
     );
     if (res != null && mounted) {
+      String currencySymbol = 'S/';
+      try {
+        currencySymbol = context.read<AppConfigCubit>().state.currencySymbol;
+      } catch (_) {}
+
       await cubit.exportCatalog(
         format: res.format,
         optionsMode: res.mode,
         selectedIds: res.selectedIds.toList(),
+        currencySymbol: currencySymbol,
       );
     }
   }

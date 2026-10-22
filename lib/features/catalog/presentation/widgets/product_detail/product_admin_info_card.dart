@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
 
 class ProductAdminInfoCard extends StatelessWidget {
@@ -14,6 +14,12 @@ class ProductAdminInfoCard extends StatelessWidget {
     final state = context.watch<ProductDetailCubit>().state;
     final cubit = context.read<ProductDetailCubit>();
     if (!cubit.isAdmin) return const SizedBox.shrink();
+
+    String currencySymbol = 'S/';
+    try {
+      currencySymbol =
+          context.watch<AppConfigCubit>().state.baseCurrency.symbol;
+    } catch (_) {}
 
     final product = cubit.product!;
     final cost = state.effectiveCost;
@@ -102,14 +108,14 @@ class ProductAdminInfoCard extends StatelessWidget {
                     Icons.receipt_long_rounded,
                     const Color(0xFFF59E0B),
                     'Costo unitario',
-                    'S/ ${cost.toStringAsFixed(2)}',
+                    '$currencySymbol ${cost.toStringAsFixed(2)}',
                   ),
                   const SizedBox(height: 8),
                   _AdminRow(
                     Icons.trending_up_rounded,
                     AppColors.success,
                     'G. Minorista (und)',
-                    'S/ ${retailProfitUnit.toStringAsFixed(2)}',
+                    '$currencySymbol ${retailProfitUnit.toStringAsFixed(2)}',
                     badge: '${retailMargin.toStringAsFixed(1)}%',
                     valueColor: AppColors.success,
                   ),
@@ -119,7 +125,7 @@ class ProductAdminInfoCard extends StatelessWidget {
                       Icons.people_rounded,
                       AppColors.primary,
                       'G. Mayorista (und)',
-                      'S/ ${wholesaleProfitUnit.toStringAsFixed(2)}',
+                      '$currencySymbol ${wholesaleProfitUnit.toStringAsFixed(2)}',
                       badge: '${wholesaleMargin.toStringAsFixed(1)}%',
                       valueColor: AppColors.primary,
                     ),
@@ -142,7 +148,7 @@ class ProductAdminInfoCard extends StatelessWidget {
                     Icons.bar_chart_rounded,
                     AppColors.teal,
                     'Proy. Minorista',
-                    'S/ ${projectedRetail.toStringAsFixed(2)}',
+                    '$currencySymbol ${projectedRetail.toStringAsFixed(2)}',
                     badge: 'Todo el stock',
                   ),
                   if (wPrice != null) ...[
@@ -151,7 +157,7 @@ class ProductAdminInfoCard extends StatelessWidget {
                       Icons.bar_chart_rounded,
                       Colors.blue,
                       'Proy. Mayorista',
-                      'S/ ${projectedWholesale.toStringAsFixed(2)}',
+                      '$currencySymbol ${projectedWholesale.toStringAsFixed(2)}',
                       badge: 'Todo el stock',
                     ),
                   ],

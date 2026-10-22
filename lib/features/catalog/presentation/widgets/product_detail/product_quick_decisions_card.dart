@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart';
 
 class ProductQuickDecisionsCard extends StatelessWidget {
   const ProductQuickDecisionsCard({super.key});
@@ -21,6 +22,11 @@ class ProductQuickDecisionsCard extends StatelessWidget {
 
     final hasData = totalSold > 0 || inventoryValue > 0;
     if (!hasData) return const SizedBox.shrink();
+
+    String currencySymbol = 'S/';
+    try {
+      currencySymbol = context.watch<AppConfigCubit>().state.currencySymbol;
+    } catch (_) {}
 
     final double realizedProfit = totalRevenue - reinvestmentNeeded;
     final double totalCapital = inventoryValue + totalRevenue;
@@ -121,14 +127,15 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                 children: [
                   _TotalHighlight(
                     label: 'En inventario',
-                    value: 'S/ ${inventoryValue.toStringAsFixed(2)}',
+                    value:
+                        '$currencySymbol ${inventoryValue.toStringAsFixed(2)}',
                     icon: Icons.inventory_2_rounded,
                     color: AppColors.primary,
                   ),
                   const SizedBox(width: 8),
                   _TotalHighlight(
                     label: 'Ingresos ventas',
-                    value: 'S/ ${totalRevenue.toStringAsFixed(2)}',
+                    value: '$currencySymbol ${totalRevenue.toStringAsFixed(2)}',
                     icon: Icons.trending_up_rounded,
                     color: const Color(0xFF059669),
                   ),
@@ -202,7 +209,10 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                       final isLast = i == variantSummaries.length - 1;
                       return Column(
                         children: [
-                          _VariantRow(summary: s),
+                          _VariantRow(
+                            summary: s,
+                            currencySymbol: currencySymbol,
+                          ),
                           if (!isLast)
                             const Divider(
                               height: 1,
@@ -235,13 +245,13 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                             bold: true,
                           ),
                           _ColValue(
-                            'S/${inventoryValue.toStringAsFixed(2)}',
+                            '$currencySymbol ${inventoryValue.toStringAsFixed(2)}',
                             bold: true,
                             color: AppColors.primary,
                           ),
                           _ColValue('$totalSold', bold: true),
                           _ColValue(
-                            'S/${totalRevenue.toStringAsFixed(2)}',
+                            '$currencySymbol ${totalRevenue.toStringAsFixed(2)}',
                             bold: true,
                             color: const Color(0xFF059669),
                           ),
@@ -272,7 +282,8 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                       icon: Icons.inventory_2_outlined,
                       color: AppColors.amberDark,
                       label: 'Fondo de reposición',
-                      value: 'S/ ${reinvestmentNeeded.toStringAsFixed(2)}',
+                      value:
+                          '$currencySymbol ${reinvestmentNeeded.toStringAsFixed(2)}',
                       subtitle: 'Para reponer el stock vendido al costo.',
                     ),
                     Padding(
@@ -294,7 +305,7 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                             : AppColors.danger,
                     label: 'Ganancia realizada',
                     value:
-                        '${realizedProfit >= 0 ? '+' : ''}S/ ${realizedProfit.toStringAsFixed(2)}',
+                        '${realizedProfit >= 0 ? '+' : ''}$currencySymbol ${realizedProfit.toStringAsFixed(2)}',
                     subtitle: 'Ingresos totales menos costo de lo vendido.',
                   ),
                   const Padding(
@@ -305,7 +316,7 @@ class ProductQuickDecisionsCard extends StatelessWidget {
                     icon: Icons.account_balance_rounded,
                     color: const Color(0xFF166534),
                     label: 'Capital total generado',
-                    value: 'S/ ${totalCapital.toStringAsFixed(2)}',
+                    value: '$currencySymbol ${totalCapital.toStringAsFixed(2)}',
                     subtitle: 'Inventario actual + ingresos acumulados.',
                     isBold: true,
                   ),
@@ -322,7 +333,9 @@ class ProductQuickDecisionsCard extends StatelessWidget {
 // ── Fila por variante en la tabla ─────────────────────────────────────────────
 class _VariantRow extends StatelessWidget {
   final VariantFinancialSummaryEntity summary;
-  const _VariantRow({required this.summary});
+  final String currencySymbol;
+
+  const _VariantRow({required this.summary, this.currencySymbol = 'S/'});
 
   @override
   Widget build(BuildContext context) {
@@ -348,7 +361,7 @@ class _VariantRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'C: S/${s.unitCost.toStringAsFixed(2)}',
+                  'C: $currencySymbol ${s.unitCost.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 9,
                     color: AppColors.textMuted,
@@ -359,12 +372,12 @@ class _VariantRow extends StatelessWidget {
           ),
           _ColValue('${s.stockQuantity}'),
           _ColValue(
-            'S/${s.inventoryValue.toStringAsFixed(2)}',
+            '$currencySymbol ${s.inventoryValue.toStringAsFixed(2)}',
             color: s.inventoryValue > 0 ? AppColors.primary : null,
           ),
           _ColValue('${s.soldQuantity}'),
           _ColValue(
-            'S/${s.soldRevenue.toStringAsFixed(2)}',
+            '$currencySymbol ${s.soldRevenue.toStringAsFixed(2)}',
             color: s.soldRevenue > 0 ? const Color(0xFF059669) : null,
           ),
         ],

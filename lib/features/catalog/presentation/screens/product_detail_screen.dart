@@ -8,6 +8,7 @@ import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
@@ -142,6 +143,14 @@ class _ProductDetailScreenContentState
   double get _cost => state.effectiveCost;
   String? get _selectedVariantImageUrl => state.selectedVariantImageUrl;
   List<ProductImageEntity> get _galleryImages => state.images;
+
+  String get _currencySymbol {
+    try {
+      return context.read<AppConfigCubit>().state.baseCurrency.symbol;
+    } catch (_) {
+      return 'S/';
+    }
+  }
 
   String? _variantImageUrl(ProductVariantEntity variant) =>
       state.variantImageUrl(variant);
@@ -412,7 +421,7 @@ class _ProductDetailScreenContentState
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'S/ ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
+                            '$_currencySymbol ${(v.salePrice ?? 0.0).toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
@@ -421,7 +430,7 @@ class _ProductDetailScreenContentState
                           ),
                           if (v.wholesalePrice != null)
                             Text(
-                              'Mayoreo: S/ ${v.wholesalePrice!.toStringAsFixed(2)}',
+                              'Mayoreo: $_currencySymbol ${v.wholesalePrice!.toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textSecondary,
@@ -958,10 +967,11 @@ class _ProductDetailScreenContentState
                 Expanded(
                   child: _buildMetricItem(
                     label: 'PRECIO VENTA',
-                    value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
+                    value:
+                        '$_currencySymbol ${_effectivePrice.toStringAsFixed(2)}',
                     subValue:
                         _baseWholesalePrice != null
-                            ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)}'
+                            ? 'Mayorista: $_currencySymbol ${_baseWholesalePrice!.toStringAsFixed(2)}'
                             : null,
                     valueColor: AppColors.primary,
                   ),
@@ -996,8 +1006,8 @@ class _ProductDetailScreenContentState
                     label: 'COSTO ERP',
                     value:
                         _cost > 0
-                            ? 'S/ ${_cost.toStringAsFixed(2)}'
-                            : 'S/ 0.00',
+                            ? '$_currencySymbol ${_cost.toStringAsFixed(2)}'
+                            : '$_currencySymbol 0.00',
                     subValue:
                         '${retailMargin.toStringAsFixed(1)}% margen bruto',
                     valueColor:
@@ -1016,7 +1026,8 @@ class _ProductDetailScreenContentState
                 Expanded(
                   child: _buildMetricItem(
                     label: 'VALOR INVENTARIO',
-                    value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
+                    value:
+                        '$_currencySymbol ${(_effectiveStock * _cost).toStringAsFixed(2)}',
                     subValue:
                         reorderPoint > 0
                             ? 'Mínimo: $reorderPoint u.'
@@ -1060,10 +1071,10 @@ class _ProductDetailScreenContentState
             flex: 3,
             child: _buildMetricItem(
               label: 'PRECIO DE VENTA',
-              value: 'S/ ${_effectivePrice.toStringAsFixed(2)}',
+              value: '$_currencySymbol ${_effectivePrice.toStringAsFixed(2)}',
               subValue:
                   _baseWholesalePrice != null
-                      ? 'Mayorista: S/ ${_baseWholesalePrice!.toStringAsFixed(2)} (Min ${_baseWholesaleMinQty}u)'
+                      ? 'Mayorista: $_currencySymbol ${_baseWholesalePrice!.toStringAsFixed(2)} (Min ${_baseWholesaleMinQty}u)'
                       : null,
               valueColor: AppColors.primary,
             ),
@@ -1079,9 +1090,12 @@ class _ProductDetailScreenContentState
             flex: 3,
             child: _buildMetricItem(
               label: 'COSTO & RENTABILIDAD',
-              value: _cost > 0 ? 'S/ ${_cost.toStringAsFixed(2)}' : 'S/ 0.00',
+              value:
+                  _cost > 0
+                      ? '$_currencySymbol ${_cost.toStringAsFixed(2)}'
+                      : '$_currencySymbol 0.00',
               subValue:
-                  '${retailMargin.toStringAsFixed(1)}% margen bruto (S/ ${retailProfit.toStringAsFixed(2)})',
+                  '${retailMargin.toStringAsFixed(1)}% margen bruto ($_currencySymbol ${retailProfit.toStringAsFixed(2)})',
               valueColor:
                   isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
               badgeColor:
@@ -1119,7 +1133,8 @@ class _ProductDetailScreenContentState
             flex: 2,
             child: _buildMetricItem(
               label: 'VALORIZACIÓN TOTAL',
-              value: 'S/ ${(_effectiveStock * _cost).toStringAsFixed(2)}',
+              value:
+                  '$_currencySymbol ${(_effectiveStock * _cost).toStringAsFixed(2)}',
               subValue:
                   reorderPoint > 0 ? 'Mínimo: $reorderPoint u.' : 'Sin reorden',
               valueColor:
