@@ -21,6 +21,11 @@ class InventoryEntryModel {
   final String? paymentMode;
   final String? status;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+  final double totalAmountBase;
+
   InventoryEntryModel({
     required this.id,
     required this.warehouseId,
@@ -39,6 +44,9 @@ class InventoryEntryModel {
     this.totalQuantity = 0.0,
     this.paymentMode,
     this.status,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.totalAmountBase = 0.0,
   });
 
   /// Factory para mapear los datos JSON de la Base de Datos a la clase de Flutter
@@ -54,13 +62,18 @@ class InventoryEntryModel {
         ) ??
         ((json['total_quantity'] as num?)?.toDouble() ?? 0.0);
 
+    final total = (json['total_amount'] as num?)?.toDouble() ?? 0.0;
+    final rate = (json['exchange_rate'] as num?)?.toDouble() ?? 1.0;
+    final totalBase =
+        (json['total_amount_base'] as num?)?.toDouble() ?? (total * rate);
+
     return InventoryEntryModel(
       id: json['id'] as String,
       warehouseId: json['warehouse_id'] as String? ?? '',
       supplierId: json['supplier_id'] as String?,
       purchaseOrderId: json['purchase_order_id'] as String?,
       notes: json['notes'] as String?,
-      totalAmount: (json['total_amount'] as num?)?.toDouble() ?? 0.0,
+      totalAmount: total,
       documentType: json['document_type'] as String? ?? 'NINGUNO',
       documentNumber: json['document_number'] as String?,
       documentDate:
@@ -78,6 +91,9 @@ class InventoryEntryModel {
       totalQuantity: totalQty,
       paymentMode: json['payment_mode'] as String?,
       status: json['status'] as String?,
+      currencyCode: (json['currency_code'] as String? ?? 'PEN').toUpperCase(),
+      exchangeRate: rate,
+      totalAmountBase: totalBase,
     );
   }
 
@@ -98,6 +114,9 @@ class InventoryEntryModel {
       if (status != null) 'status': status,
       'created_by': createdBy,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      'currency_code': currencyCode,
+      'exchange_rate': exchangeRate,
+      'total_amount_base': totalAmountBase,
     };
   }
 
@@ -120,6 +139,9 @@ class InventoryEntryModel {
     double? totalQuantity,
     String? paymentMode,
     String? status,
+    String? currencyCode,
+    double? exchangeRate,
+    double? totalAmountBase,
   }) {
     return InventoryEntryModel(
       id: id ?? this.id,
@@ -139,6 +161,9 @@ class InventoryEntryModel {
       totalQuantity: totalQuantity ?? this.totalQuantity,
       paymentMode: paymentMode ?? this.paymentMode,
       status: status ?? this.status,
+      currencyCode: currencyCode ?? this.currencyCode,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
+      totalAmountBase: totalAmountBase ?? this.totalAmountBase,
     );
   }
 
@@ -161,6 +186,9 @@ class InventoryEntryModel {
       totalQuantity: entity.totalQuantity,
       paymentMode: entity.paymentMode,
       status: entity.status,
+      currencyCode: entity.currencyCode,
+      exchangeRate: entity.exchangeRate,
+      totalAmountBase: entity.totalAmountBase,
     );
   }
 
@@ -183,6 +211,9 @@ class InventoryEntryModel {
       totalQuantity: totalQuantity,
       paymentMode: paymentMode,
       status: status,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
+      totalAmountBase: totalAmountBase,
     );
   }
 }

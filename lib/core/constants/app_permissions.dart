@@ -11,6 +11,9 @@ class AppPermissions {
   static const String posCashShiftOpen = 'pos.cash_shift.open';
   static const String posCashShiftClose = 'pos.cash_shift.close';
 
+  // ─── MÓDULO ALMACENES ─────────────────────────────────────────────────────
+  static const String warehousesViewAll = 'warehouses.view_all';
+
   // ─── MÓDULO INVENTARIO ────────────────────────────────────────────────────
   static const String inventoryView = 'inventory.view';
   static const String inventoryAdjust = 'inventory.adjust';
@@ -50,6 +53,7 @@ class AppPermissions {
 
   /// Lista con todos los permisos del sistema
   static const List<String> all = [
+    warehousesViewAll,
     posView,
     posSale,
     posDiscount,
@@ -89,6 +93,8 @@ class AppPermissions {
   /// Nombres legibles para la interfaz
   static String getLabel(String code) {
     switch (code) {
+      case warehousesViewAll:
+        return 'Ver todos los almacenes';
       case posView:
         return 'Acceder al POS';
       case posSale:
@@ -164,6 +170,7 @@ class AppPermissions {
 
   /// Módulo de pertenencia para agrupar en la interfaz
   static String getModule(String code) {
+    if (code.startsWith('warehouses.')) return 'Almacenes';
     if (code.startsWith('pos.')) return 'Punto de Venta (POS)';
     if (code.startsWith('inventory.')) return 'Inventario y Almacén';
     if (code.startsWith('products.')) return 'Catálogo y Productos';

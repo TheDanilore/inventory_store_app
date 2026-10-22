@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/orders/data/models/order_model.dart
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/pos/data/models/document_series_model.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 
@@ -90,7 +91,17 @@ class PosRepositoryImpl implements PosRepository {
 
       final accData = List<Map<String, dynamic>>.from(accRes);
 
-      return right(PosInitData(warehouses: warehouses, accounts: accData));
+      // Cargar series de comprobantes
+      final seriesRes = await fetchDocumentSeries();
+      final seriesData = seriesRes.getOrElse((_) => _defaultDocumentSeries);
+
+      return right(
+        PosInitData(
+          warehouses: warehouses,
+          accounts: accData,
+          documentSeries: seriesData,
+        ),
+      );
     } on PostgrestException catch (e, stack) {
       LoggerService.e(
         'PostgrestException en loadInitialData',
@@ -107,6 +118,73 @@ class PosRepositoryImpl implements PosRepository {
         stackTrace: stack,
       );
       return left(Failure.from(e));
+    }
+  }
+
+  static const List<DocumentSeriesModel> _defaultDocumentSeries = [
+    DocumentSeriesModel(
+      id: 'default-nv',
+      documentType: 'NOTA_VENTA',
+      series: 'NV01',
+      currentCorrelative: 0,
+      correlativePadding: 8,
+      isDefault: true,
+      isActive: true,
+    ),
+    DocumentSeriesModel(
+      id: 'default-b',
+      documentType: 'BOLETA',
+      series: 'B001',
+      currentCorrelative: 0,
+      correlativePadding: 8,
+      isDefault: true,
+      isActive: true,
+    ),
+    DocumentSeriesModel(
+      id: 'default-f',
+      documentType: 'FACTURA',
+      series: 'F001',
+      currentCorrelative: 0,
+      correlativePadding: 8,
+      isDefault: true,
+      isActive: true,
+    ),
+  ];
+
+  @override
+  Future<Either<Failure, List<DocumentSeriesModel>>> fetchDocumentSeries({
+    String? warehouseId,
+  }) async {
+    try {
+      var query = _supabase
+          .from('document_series')
+          .select()
+          .eq('is_active', true);
+
+      if (warehouseId != null) {
+        query = query.or('warehouse_id.eq.$warehouseId,warehouse_id.is.null');
+      }
+
+      final res = await query.order('document_type').order('series');
+      final list =
+          (res as List)
+              .map(
+                (e) => DocumentSeriesModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList();
+
+      if (list.isEmpty) {
+        return right(_defaultDocumentSeries);
+      }
+      return right(list);
+    } catch (e) {
+      LoggerService.w(
+        'Tabla document_series no disponible o vacía, usando series por defecto: $e',
+        tag: 'PosRepositoryImpl',
+      );
+      return right(_defaultDocumentSeries);
     }
   }
 
@@ -250,6 +328,21 @@ class PosRepositoryImpl implements PosRepository {
         'activeShiftId':
             null, // The backend RPC must validate and fetch the active shift
         'createdBy': null,
+        // Dimensiones fiscales y de comprobante
+        'documentType': sale.documentType,
+        'documentSeries': sale.documentSeries,
+        'taxAmount': sale.taxAmount,
+        'subtotalAmount': sale.subtotalAmount,
+        'paymentReference': sale.paymentReference,
+        'customerDocumentType': sale.customerDocumentType,
+        'customerDocumentNumber': sale.customerDocumentNumber,
+        'customerAddress': sale.customerAddress,
+        // Multimoneda
+        'currencyCode': sale.currencyCode,
+        'exchangeRate': sale.exchangeRate,
+        'totalAmountBase': sale.totalAmountBase,
+        'subtotalAmountBase': sale.subtotalAmountBase,
+        'taxAmountBase': sale.taxAmountBase,
         'items':
             sale.items
                 .map(
@@ -334,7 +427,7 @@ class PosRepositoryImpl implements PosRepository {
           await _supabase
               .from('orders')
               .select(
-                'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
+                'id, customer_name, customer_id, total_amount, total_profit, discount_amount, payment_method, payment_status, amount_paid, status, points_used, points_earned, created_at, warehouse_id, document_type, document_series, document_number, document_date, tax_amount, subtotal_amount, payment_reference, customer_document_type, customer_document_number, customer_address, currency_code, exchange_rate, total_amount_base, subtotal_amount_base, tax_amount_base, profiles!orders_customer_id_fkey(full_name, phone), warehouses(name)',
               )
               .eq('id', orderId)
               .single();
@@ -380,7 +473,7 @@ class PosRepositoryImpl implements PosRepository {
       var query = _supabase
           .from('orders')
           .select(
-            'id, total_amount, created_at, customer_name, status, payment_method, payment_status',
+            'id, total_amount, created_at, customer_name, status, payment_method, payment_status, document_type, document_series, document_number',
           );
 
       if (_cachedRole != 'admin' && _cachedProfileId != null) {
@@ -389,7 +482,9 @@ class PosRepositoryImpl implements PosRepository {
 
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {
         final clean = searchQuery.trim();
-        query = query.or('customer_name.ilike.%$clean%,id.ilike.%$clean%');
+        query = query.or(
+          'customer_name.ilike.%$clean%,id.ilike.%$clean%,document_number.ilike.%$clean%',
+        );
       }
 
       final res = await query

@@ -20,6 +20,11 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
     super.documentNumber,
     super.notes,
     required super.itemCount,
+    super.currencyCode = 'PEN',
+    super.exchangeRate = 1.0,
+    super.totalAmountBase = 0.0,
+    super.subtotalAmountBase = 0.0,
+    super.taxAmountBase = 0.0,
   });
 
   factory PurchaseOrderModel.fromMap(Map<String, dynamic> m) {
@@ -43,6 +48,11 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       count = (m['purchase_order_items']['count'] as num).toInt();
     }
 
+    final total = (m['total_amount'] as num?)?.toDouble() ?? 0.0;
+    final rate = (m['exchange_rate'] as num?)?.toDouble() ?? 1.0;
+    final totalBase =
+        (m['total_amount_base'] as num?)?.toDouble() ?? (total * rate);
+
     return PurchaseOrderModel(
       id: m['id'] as String,
       createdAt: DateTime.parse(m['created_at'] as String),
@@ -54,7 +64,7 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       warehouseId: m['warehouse_id'] as String?,
       warehouseName: wh?['name'] as String?,
       status: m['status'] as String? ?? 'PENDING',
-      totalAmount: (m['total_amount'] as num?)?.toDouble() ?? 0,
+      totalAmount: total,
       paymentMethod: m['payment_method'] as String? ?? 'EFECTIVO',
       paymentStatus: m['payment_status'] as String? ?? 'PAID',
       amountPaid: (m['amount_paid'] as num?)?.toDouble() ?? 0,
@@ -68,6 +78,12 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       documentNumber: m['document_number'] as String?,
       notes: m['notes'] as String?,
       itemCount: count,
+      currencyCode: (m['currency_code'] as String? ?? 'PEN').toUpperCase(),
+      exchangeRate: rate,
+      totalAmountBase: totalBase,
+      subtotalAmountBase:
+          (m['subtotal_amount_base'] as num?)?.toDouble() ?? 0.0,
+      taxAmountBase: (m['tax_amount_base'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -93,6 +109,11 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
     String? documentNumber,
     String? notes,
     int? itemCount,
+    String? currencyCode,
+    double? exchangeRate,
+    double? totalAmountBase,
+    double? subtotalAmountBase,
+    double? taxAmountBase,
   }) {
     return PurchaseOrderModel(
       id: id ?? this.id,
@@ -113,6 +134,11 @@ class PurchaseOrderModel extends PurchaseOrderEntity {
       documentNumber: documentNumber ?? this.documentNumber,
       notes: notes ?? this.notes,
       itemCount: itemCount ?? this.itemCount,
+      currencyCode: currencyCode ?? this.currencyCode,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
+      totalAmountBase: totalAmountBase ?? this.totalAmountBase,
+      subtotalAmountBase: subtotalAmountBase ?? this.subtotalAmountBase,
+      taxAmountBase: taxAmountBase ?? this.taxAmountBase,
     );
   }
 }

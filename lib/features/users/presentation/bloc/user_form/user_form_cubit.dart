@@ -23,6 +23,7 @@ class UserFormCubit extends Cubit<UserFormState> {
     required String documentType,
     String? documentNumber,
     required bool isActive,
+    String? warehouseId,
   }) async {
     if (state is UserFormLoading) return;
     emit(const UserFormLoading());
@@ -38,6 +39,7 @@ class UserFormCubit extends Cubit<UserFormState> {
         phone: phone,
         documentType: documentType,
         documentNumber: documentNumber,
+        warehouseId: warehouseId,
       );
 
       res.fold(
@@ -56,6 +58,7 @@ class UserFormCubit extends Cubit<UserFormState> {
         documentNumber: documentNumber,
         isActive: isActive,
         newPassword: password, // if not empty, it is handled inside repo
+        warehouseId: warehouseId,
       );
 
       res.fold(

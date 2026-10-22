@@ -5,6 +5,7 @@ class InventoryEntryItemModel {
   final String variantId;
   final double quantity;
   final double unitCost;
+  final double? unitCostBase;
   final String batchNumber; // 'DEFAULT' por defecto
   final DateTime? expiryDate;
   final DateTime? createdAt;
@@ -16,6 +17,7 @@ class InventoryEntryItemModel {
   final String? imageUrl;
 
   double get subtotal => quantity * unitCost;
+  double get subtotalBase => quantity * (unitCostBase ?? unitCost);
 
   InventoryEntryItemModel({
     required this.id,
@@ -24,6 +26,7 @@ class InventoryEntryItemModel {
     required this.variantId,
     required this.quantity,
     required this.unitCost,
+    this.unitCostBase,
     this.batchNumber = 'DEFAULT',
     this.expiryDate,
     this.createdAt,
@@ -43,6 +46,7 @@ class InventoryEntryItemModel {
       // Conversión segura de campos numéricos (numeric de SQL a double de Dart)
       quantity: (json['quantity'] as num).toDouble(),
       unitCost: (json['unit_cost'] as num).toDouble(),
+      unitCostBase: (json['unit_cost_base'] as num?)?.toDouble(),
       batchNumber: json['batch_number'] as String? ?? 'DEFAULT',
       expiryDate:
           json['expiry_date'] != null
@@ -68,6 +72,7 @@ class InventoryEntryItemModel {
       'variant_id': variantId,
       'quantity': quantity,
       'unit_cost': unitCost,
+      if (unitCostBase != null) 'unit_cost_base': unitCostBase,
       'batch_number': batchNumber,
       // Formato YYYY-MM-DD para la columna DATE de PostgreSQL
       'expiry_date': expiryDate?.toIso8601String().split('T').first,
@@ -83,6 +88,7 @@ class InventoryEntryItemModel {
     String? variantId,
     double? quantity,
     double? unitCost,
+    double? unitCostBase,
     String? batchNumber,
     DateTime? expiryDate,
     DateTime? createdAt,
@@ -98,6 +104,7 @@ class InventoryEntryItemModel {
       variantId: variantId ?? this.variantId,
       quantity: quantity ?? this.quantity,
       unitCost: unitCost ?? this.unitCost,
+      unitCostBase: unitCostBase ?? this.unitCostBase,
       batchNumber: batchNumber ?? this.batchNumber,
       expiryDate: expiryDate ?? this.expiryDate,
       createdAt: createdAt ?? this.createdAt,

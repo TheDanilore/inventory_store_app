@@ -12,15 +12,27 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
 
   @override
   Future<List<WarehouseEntity>> getActiveWarehouses() async {
-    final response = await _supabase
-        .from('warehouses')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+    try {
+      final response = await _supabase.rpc('get_my_warehouses');
+      return (response as List<dynamic>)
+          .map(
+            (e) =>
+                WarehouseModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ).toEntity(),
+          )
+          .toList();
+    } catch (_) {
+      final response = await _supabase
+          .from('warehouses')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
 
-    return (response as List<dynamic>)
-        .map((e) => WarehouseModel.fromJson(e).toEntity())
-        .toList();
+      return (response as List<dynamic>)
+          .map((e) => WarehouseModel.fromJson(e).toEntity())
+          .toList();
+    }
   }
 
   @override

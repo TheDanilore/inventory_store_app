@@ -397,6 +397,13 @@ class _UserDetailContentState extends State<_UserDetailContent> {
           value: doc,
           onCopy: () => _copy(context, doc, 'Documento'),
         ),
+      if (user.warehouseName != null && user.warehouseName!.isNotEmpty)
+        _buildInfoRow(
+          icon: Icons.storefront_outlined,
+          label: 'Almacén Asignado',
+          value: user.warehouseName!,
+          onCopy: () => _copy(context, user.warehouseName!, 'Almacén'),
+        ),
       _buildInfoRow(
         icon: Icons.calendar_today_outlined,
         label: 'Fecha de registro',

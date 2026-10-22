@@ -7,6 +7,7 @@ class FinancialAccountEntity {
   final double balance;
   final bool isActive;
   final DateTime createdAt;
+  final String currencyCode;
 
   const FinancialAccountEntity({
     required this.id,
@@ -15,7 +16,28 @@ class FinancialAccountEntity {
     required this.balance,
     required this.isActive,
     required this.createdAt,
+    this.currencyCode = 'PEN',
   });
+
+  FinancialAccountEntity copyWith({
+    String? id,
+    String? name,
+    String? type,
+    double? balance,
+    bool? isActive,
+    DateTime? createdAt,
+    String? currencyCode,
+  }) {
+    return FinancialAccountEntity(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      balance: balance ?? this.balance,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+      currencyCode: currencyCode ?? this.currencyCode,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -29,5 +51,5 @@ class FinancialAccountEntity {
 
   @override
   String toString() =>
-      'FinancialAccountEntity(id: $id, name: $name, type: $type, balance: $balance)';
+      'FinancialAccountEntity(id: $id, name: $name, type: $type, balance: $balance, currency: $currencyCode)';
 }

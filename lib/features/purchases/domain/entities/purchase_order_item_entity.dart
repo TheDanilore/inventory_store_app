@@ -9,6 +9,7 @@ class PurchaseOrderItemEntity extends Equatable {
   final double quantityOrdered;
   final double quantityReceived;
   final double unitCost;
+  final double? unitCostBase;
   final String batchNumber;
   final DateTime? expiryDate;
   final bool usesBatches;
@@ -23,6 +24,7 @@ class PurchaseOrderItemEntity extends Equatable {
     required this.quantityOrdered,
     required this.quantityReceived,
     required this.unitCost,
+    this.unitCostBase,
     required this.batchNumber,
     this.expiryDate,
     required this.usesBatches,
@@ -30,6 +32,7 @@ class PurchaseOrderItemEntity extends Equatable {
   });
 
   double get subtotal => quantityOrdered * unitCost;
+  double get subtotalBase => quantityOrdered * (unitCostBase ?? unitCost);
   bool get fullyReceived => quantityReceived >= quantityOrdered;
 
   @override
@@ -42,6 +45,7 @@ class PurchaseOrderItemEntity extends Equatable {
     quantityOrdered,
     quantityReceived,
     unitCost,
+    unitCostBase,
     batchNumber,
     expiryDate,
     usesBatches,

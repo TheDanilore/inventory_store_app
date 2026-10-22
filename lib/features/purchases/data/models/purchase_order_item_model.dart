@@ -10,6 +10,7 @@ class PurchaseOrderItemModel extends PurchaseOrderItemEntity {
     required super.quantityOrdered,
     required super.quantityReceived,
     required super.unitCost,
+    super.unitCostBase,
     required super.batchNumber,
     super.expiryDate,
     required super.usesBatches,

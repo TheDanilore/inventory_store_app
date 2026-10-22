@@ -44,10 +44,19 @@ class AuthRepositoryImpl implements AuthRepository {
         fallbackRole: 'customer',
       );
 
+      final (warehouseId, warehouseName) = await _fetchUserWarehouse(
+        profileId: profileId,
+      );
+
       final primaryRole = userRoles.isNotEmpty ? userRoles.first : 'customer';
 
       final model = AuthUserModel.fromMap(
-        {...data, 'role': primaryRole},
+        {
+          ...data,
+          'role': primaryRole,
+          'warehouse_id': warehouseId,
+          'warehouse_name': warehouseName,
+        },
         session.user.email ?? '',
         userRoles: userRoles,
         userPermissions: userPermissions,
@@ -510,5 +519,35 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     return (roles.toList(), permissions);
+  }
+
+  /// Consulta el almacén asignado por defecto al usuario en `user_warehouses`.
+  Future<(String?, String?)> _fetchUserWarehouse({
+    required String profileId,
+  }) async {
+    if (profileId.isEmpty) return (null, null);
+    try {
+      final uw =
+          await _supabase
+              .from('user_warehouses')
+              .select('warehouse_id, warehouses(name)')
+              .eq('profile_id', profileId)
+              .order('is_default', ascending: false)
+              .limit(1)
+              .maybeSingle();
+
+      if (uw != null) {
+        final whId = uw['warehouse_id']?.toString();
+        final whMap = uw['warehouses'] as Map<String, dynamic>?;
+        final whName = whMap?['name']?.toString();
+        return (whId, whName);
+      }
+    } catch (e) {
+      LoggerService.w(
+        'Aviso: no se pudo consultar user_warehouses ($e).',
+        tag: 'AuthRepositoryImpl',
+      );
+    }
+    return (null, null);
   }
 }

@@ -103,9 +103,10 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       // [QA CRITICAL FIX] Inicializar POS (almacenes, cuentas y turno activo) en el ciclo de vida raíz.
       // Previene que en mobile la cabecera quede sin almacenes ni turno al no montarse DesktopPosPanel.
       final posCubit = context.read<PosCubit>();
+      final authUser = context.read<AuthCubit>().state.currentUser;
       if (posCubit.state.warehouses.isEmpty ||
           posCubit.state.accounts.isEmpty) {
-        posCubit.initPosData();
+        posCubit.initPosData(preferredWarehouseId: authUser?.warehouseId);
       }
 
       // Asegurar que la configuración global de negocio (fidelidad, etc.) esté cargada

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_cubit.dart';
@@ -13,13 +15,41 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/c
 
 class MovementFormSheet extends StatefulWidget {
   final bool isSlideOver;
+  final String? initialType;
+  final String? preselectedAccountId;
 
-  const MovementFormSheet({super.key, this.isSlideOver = false});
+  const MovementFormSheet({
+    super.key,
+    this.isSlideOver = false,
+    this.initialType,
+    this.preselectedAccountId,
+  });
 
-  static Future<bool?> show(BuildContext context) {
-    final accCubit = context.read<FinancialAccountsCubit>();
-    final movCubit = context.read<AccountMovementsCubit>();
-    final shiftCubit = context.read<CashShiftsCubit>();
+  static Future<bool?> show(
+    BuildContext context, {
+    String? initialType,
+    String? preselectedAccountId,
+  }) {
+    FinancialAccountsCubit accCubit;
+    try {
+      accCubit = context.read<FinancialAccountsCubit>();
+    } catch (_) {
+      accCubit = sl<FinancialAccountsCubit>()..fetchAccounts();
+    }
+
+    AccountMovementsCubit movCubit;
+    try {
+      movCubit = context.read<AccountMovementsCubit>();
+    } catch (_) {
+      movCubit = sl<AccountMovementsCubit>();
+    }
+
+    CashShiftsCubit shiftCubit;
+    try {
+      shiftCubit = context.read<CashShiftsCubit>();
+    } catch (_) {
+      shiftCubit = sl<CashShiftsCubit>();
+    }
 
     return AdaptiveDetailSheet.show<bool>(
       context,
@@ -33,6 +63,8 @@ class MovementFormSheet extends StatefulWidget {
             ],
             child: MovementFormSheet(
               isSlideOver: AdaptiveDetailSheet.isSideSheet(dialogCtx),
+              initialType: initialType,
+              preselectedAccountId: preselectedAccountId,
             ),
           ),
     );
@@ -47,7 +79,7 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
-  String _type = 'INCOME';
+  late String _type;
   String? _sourceAccountId;
   String? _destAccountId;
 
@@ -57,6 +89,9 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
   @override
   void initState() {
     super.initState();
+    _type = widget.initialType ?? 'INCOME';
+    _sourceAccountId = widget.preselectedAccountId;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final accState = context.read<FinancialAccountsCubit>().state;
       final accounts =
@@ -66,9 +101,18 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
       setState(() {
         _accounts = accounts;
         if (_accounts.isNotEmpty) {
-          _sourceAccountId = _accounts.first.id;
+          if (_sourceAccountId == null ||
+              !_accounts.any((a) => a.id == _sourceAccountId)) {
+            _sourceAccountId = _accounts.first.id;
+          }
           if (_accounts.length > 1) {
-            _destAccountId = _accounts[1].id;
+            _destAccountId =
+                _accounts
+                    .firstWhere(
+                      (a) => a.id != _sourceAccountId,
+                      orElse: () => _accounts.first,
+                    )
+                    .id;
           } else {
             _destAccountId = _accounts.first.id;
           }
@@ -175,10 +219,11 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
         _accounts.where((a) => a.id == _sourceAccountId).firstOrNull;
     if (sourceAccount != null && (_type == 'EXPENSE' || _type == 'TRANSFER')) {
       if (amount > sourceAccount.balance) {
+        final symbol = _getCurrencySymbol(sourceAccount.currencyCode);
         AppSnackbar.show(
           context,
           message:
-              'Saldo insuficiente en "${sourceAccount.name}". Saldo disponible: S/ ${sourceAccount.balance.toStringAsFixed(2)}',
+              'Saldo insuficiente en "${sourceAccount.name}". Saldo disponible: $symbol ${sourceAccount.balance.toStringAsFixed(2)}',
           type: SnackbarType.warning,
         );
         return;
@@ -441,17 +486,7 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 16)),
             Row(
               children: [
                 const Expanded(
@@ -522,7 +557,25 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     );
   }
 
+  String _getCurrencySymbol(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'USD':
+        return '\$';
+      case 'EUR':
+        return '€';
+      case 'PEN':
+      default:
+        return 'S/';
+    }
+  }
+
   Widget _buildFormFields() {
+    final currentSource =
+        _accounts.where((a) => a.id == _sourceAccountId).firstOrNull;
+    final currencySymbol = _getCurrencySymbol(
+      currentSource?.currencyCode ?? 'PEN',
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -603,7 +656,7 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
           const SizedBox(height: 14),
         ],
 
-        _fieldLabel('Monto (S/) *'),
+        _fieldLabel('Monto ($currencySymbol) *'),
         TextFormField(
           controller: _amountCtrl,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -611,11 +664,11 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
           ],
           decoration: _inputDeco('0.00').copyWith(
-            prefixIcon: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Text(
-                'S/ ',
-                style: TextStyle(
+                '$currencySymbol ',
+                style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                   fontSize: 15,
@@ -884,7 +937,7 @@ class _AccountSelector extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'S/ ${a.balance.toStringAsFixed(2)}',
+                        '${a.currencyCode == 'USD' ? '\$' : (a.currencyCode == 'EUR' ? '€' : 'S/')} ${a.balance.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5,

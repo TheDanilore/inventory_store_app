@@ -23,6 +23,23 @@ class SaleEntity {
   final bool isCredit;
   final CashShiftEntity? activeShift;
 
+  // ── Dimensiones Fiscales y de Comprobante ─────────────────────────────────
+  final String documentType; // 'NOTA_VENTA', 'BOLETA', 'FACTURA'
+  final String? documentSeries; // 'NV01', 'B001', 'F001'
+  final double taxAmount; // IGV 18%
+  final double subtotalAmount; // Base imponible
+  final String? paymentReference; // Nº Op / Ref (Yape, Plin, Tarjeta)
+  final String? customerDocumentType; // 'DNI', 'RUC', 'CE'
+  final String? customerDocumentNumber; // '10723456789'
+  final String? customerAddress; // Dirección fiscal para Facturas
+
+  // ── Multimoneda ──────────────────────────────────────────────────────────
+  final String currencyCode;
+  final double exchangeRate;
+  final double totalAmountBase;
+  final double subtotalAmountBase;
+  final double taxAmountBase;
+
   const SaleEntity({
     required this.items,
     required this.warehouseId,
@@ -40,6 +57,19 @@ class SaleEntity {
     this.isDraft = false,
     this.isCredit = false,
     this.activeShift,
+    this.documentType = 'NOTA_VENTA',
+    this.documentSeries,
+    this.taxAmount = 0,
+    this.subtotalAmount = 0,
+    this.paymentReference,
+    this.customerDocumentType,
+    this.customerDocumentNumber,
+    this.customerAddress,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.totalAmountBase = 0.0,
+    this.subtotalAmountBase = 0.0,
+    this.taxAmountBase = 0.0,
   });
 
   // ── Lógica de negocio ─────────────────────────────────────────────────────

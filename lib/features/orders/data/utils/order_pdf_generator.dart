@@ -96,28 +96,44 @@ class OrderPdfGenerator {
               pw.SizedBox(height: 8),
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
 
-              // --- INFO DEL PEDIDO ---
+              // --- INFO DEL COMPROBANTE ---
               pw.Text(
-                'TICKET: #${order.id.substring(0, 8).toUpperCase()}',
-                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                '${order.documentType == "FACTURA" ? "FACTURA ELECTRÓNICA" : (order.documentType == "BOLETA" ? "BOLETA ELECTRÓNICA" : "NOTA DE VENTA")}: ${order.displayReceiptNumber}',
+                style: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 10.5,
+                ),
               ),
               pw.Text(
                 'FECHA: $dateStr',
                 style: const pw.TextStyle(fontSize: 10),
               ),
               pw.Text(
-                'ESTADO: ${_translateStatus(order.status)}',
-                style: const pw.TextStyle(fontSize: 10),
-              ),
-              pw.SizedBox(height: 4),
-              pw.Text(
                 'CLIENTE: ${(order.customerName).isNotEmpty ? (order.customerName) : 'Cliente Mostrador'}',
                 style: const pw.TextStyle(fontSize: 10),
               ),
+              if (order.customerDocumentNumber != null &&
+                  order.customerDocumentNumber!.isNotEmpty)
+                pw.Text(
+                  '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              if (order.customerAddress != null &&
+                  order.customerAddress!.isNotEmpty)
+                pw.Text(
+                  'DIRECCIÓN: ${order.customerAddress}',
+                  style: const pw.TextStyle(fontSize: 9.5),
+                ),
               pw.Text(
                 'PAGO: ${order.paymentMethod}',
                 style: const pw.TextStyle(fontSize: 10),
               ),
+              if (order.paymentReference != null &&
+                  order.paymentReference!.isNotEmpty)
+                pw.Text(
+                  'REF. OPERACIÓN: ${order.paymentReference}',
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
               pw.Text(
                 'ESTADO PAGO: ${_translatePaymentStatus(order.paymentStatus)}',
                 style: const pw.TextStyle(fontSize: 10),
@@ -166,10 +182,27 @@ class OrderPdfGenerator {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('SUBTOTAL:', style: const pw.TextStyle(fontSize: 11)),
                   pw.Text(
-                    'S/ ${items.fold<double>(0, (s, i) => s + i.subtotal).toStringAsFixed(2)}',
-                    style: const pw.TextStyle(fontSize: 11),
+                    'OP. GRAVADA:',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.Text(
+                    'S/ ${(order.subtotalAmount > 0 ? order.subtotalAmount : double.parse((order.totalAmount / 1.18).toStringAsFixed(2))).toStringAsFixed(2)}',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 2),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'I.G.V. (18%):',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.Text(
+                    'S/ ${(order.taxAmount > 0 ? order.taxAmount : double.parse((order.totalAmount - (order.totalAmount / 1.18)).toStringAsFixed(2))).toStringAsFixed(2)}',
+                    style: const pw.TextStyle(fontSize: 10),
                   ),
                 ],
               ),

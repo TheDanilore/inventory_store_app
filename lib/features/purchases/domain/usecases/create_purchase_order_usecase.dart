@@ -24,6 +24,8 @@ class CreatePurchaseOrderUseCase {
     required String documentType,
     required String? documentNumber,
     required String? notes,
+    String currencyCode = 'PEN',
+    double exchangeRate = 1.0,
   }) {
     return repository.createPurchaseOrder(
       supplierId: supplierId,
@@ -40,6 +42,8 @@ class CreatePurchaseOrderUseCase {
       documentType: documentType,
       documentNumber: documentNumber,
       notes: notes,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
     );
   }
 }

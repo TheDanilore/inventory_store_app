@@ -27,6 +27,21 @@ class OrderModel extends OrderEntity {
     super.discountAmount,
     super.profileFullName,
     super.profilePhone,
+    super.documentType = 'NINGUNO',
+    super.documentSeries,
+    super.documentNumber,
+    super.documentDate,
+    super.taxAmount = 0.00,
+    super.subtotalAmount = 0.00,
+    super.paymentReference,
+    super.customerDocumentType,
+    super.customerDocumentNumber,
+    super.customerAddress,
+    super.currencyCode = 'PEN',
+    super.exchangeRate = 1.0,
+    super.totalAmountBase = 0.00,
+    super.subtotalAmountBase = 0.00,
+    super.taxAmountBase = 0.00,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -36,10 +51,15 @@ class OrderModel extends OrderEntity {
             ? Map<String, dynamic>.from(json['profiles'])
             : null;
 
+    final total = (json['total_amount'] as num? ?? 0.00).toDouble();
+    final rate = (json['exchange_rate'] as num? ?? 1.0).toDouble();
+    final totalBase =
+        (json['total_amount_base'] as num?)?.toDouble() ?? (total * rate);
+
     return OrderModel(
       id: json['id'] as String,
       customerId: json['customer_id'] as String?,
-      totalAmount: (json['total_amount'] as num? ?? 0.00).toDouble(),
+      totalAmount: total,
       totalProfit: (json['total_profit'] as num? ?? 0.00).toDouble(),
       paymentMethod: json['payment_method'] as String? ?? 'EFECTIVO',
       status: json['status'] as String? ?? 'COMPLETED',
@@ -74,6 +94,32 @@ class OrderModel extends OrderEntity {
       // Mapeamos los campos del perfil
       profileFullName: profilesData?['full_name'] as String?,
       profilePhone: profilesData?['phone'] as String?,
+
+      // Mapeamos los campos de comprobante y fiscalidad
+      documentType: json['document_type'] as String? ?? 'NINGUNO',
+      documentSeries: json['document_series'] as String?,
+      documentNumber: json['document_number'] as String?,
+      documentDate:
+          json['document_date'] != null
+              ? DateTime.parse(json['document_date'] as String)
+              : null,
+      taxAmount: (json['tax_amount'] as num? ?? 0.00).toDouble(),
+      subtotalAmount: (json['subtotal_amount'] as num? ?? 0.00).toDouble(),
+      paymentReference: json['payment_reference'] as String?,
+      customerDocumentType: json['customer_document_type'] as String?,
+      customerDocumentNumber: json['customer_document_number'] as String?,
+      customerAddress: json['customer_address'] as String?,
+
+      // Multimoneda
+      currencyCode: (json['currency_code'] as String? ?? 'PEN').toUpperCase(),
+      exchangeRate: rate,
+      totalAmountBase: totalBase,
+      subtotalAmountBase:
+          (json['subtotal_amount_base'] as num? ?? (totalBase / 1.18))
+              .toDouble(),
+      taxAmountBase:
+          (json['tax_amount_base'] as num? ?? (totalBase - (totalBase / 1.18)))
+              .toDouble(),
     );
   }
 
@@ -97,6 +143,22 @@ class OrderModel extends OrderEntity {
       'updated_by': updatedBy,
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       'discount_amount': discountAmount,
+      'document_type': documentType,
+      'document_series': documentSeries,
+      'document_number': documentNumber,
+      if (documentDate != null)
+        'document_date': documentDate!.toIso8601String(),
+      'tax_amount': taxAmount,
+      'subtotal_amount': subtotalAmount,
+      'payment_reference': paymentReference,
+      'customer_document_type': customerDocumentType,
+      'customer_document_number': customerDocumentNumber,
+      'customer_address': customerAddress,
+      'currency_code': currencyCode,
+      'exchange_rate': exchangeRate,
+      'total_amount_base': totalAmountBase,
+      'subtotal_amount_base': subtotalAmountBase,
+      'tax_amount_base': taxAmountBase,
     };
   }
 
@@ -143,6 +205,21 @@ class OrderModel extends OrderEntity {
     double? discountAmount,
     String? profileFullName,
     String? profilePhone,
+    String? documentType,
+    String? documentSeries,
+    String? documentNumber,
+    DateTime? documentDate,
+    double? taxAmount,
+    double? subtotalAmount,
+    String? paymentReference,
+    String? customerDocumentType,
+    String? customerDocumentNumber,
+    String? customerAddress,
+    String? currencyCode,
+    double? exchangeRate,
+    double? totalAmountBase,
+    double? subtotalAmountBase,
+    double? taxAmountBase,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -167,6 +244,22 @@ class OrderModel extends OrderEntity {
       discountAmount: discountAmount ?? this.discountAmount,
       profileFullName: profileFullName ?? this.profileFullName,
       profilePhone: profilePhone ?? this.profilePhone,
+      documentType: documentType ?? this.documentType,
+      documentSeries: documentSeries ?? this.documentSeries,
+      documentNumber: documentNumber ?? this.documentNumber,
+      documentDate: documentDate ?? this.documentDate,
+      taxAmount: taxAmount ?? this.taxAmount,
+      subtotalAmount: subtotalAmount ?? this.subtotalAmount,
+      paymentReference: paymentReference ?? this.paymentReference,
+      customerDocumentType: customerDocumentType ?? this.customerDocumentType,
+      customerDocumentNumber:
+          customerDocumentNumber ?? this.customerDocumentNumber,
+      customerAddress: customerAddress ?? this.customerAddress,
+      currencyCode: currencyCode ?? this.currencyCode,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
+      totalAmountBase: totalAmountBase ?? this.totalAmountBase,
+      subtotalAmountBase: subtotalAmountBase ?? this.subtotalAmountBase,
+      taxAmountBase: taxAmountBase ?? this.taxAmountBase,
     );
   }
 }

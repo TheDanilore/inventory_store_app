@@ -11,6 +11,11 @@ class AccountMovementEntity {
   final DateTime createdAt;
   final String? shiftId;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+  final double amountBase;
+
   // Datos desnormalizados de relaciones (read-only, no son FK de escritura)
   final String? accountName;
   final String? accountType;
@@ -26,6 +31,9 @@ class AccountMovementEntity {
     this.referenceId,
     required this.createdAt,
     this.shiftId,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.amountBase = 0.0,
     this.accountName,
     this.accountType,
     this.createdByName,
@@ -43,5 +51,5 @@ class AccountMovementEntity {
 
   @override
   String toString() =>
-      'AccountMovementEntity(id: $id, movementType: $movementType, amount: $amount)';
+      'AccountMovementEntity(id: $id, movementType: $movementType, amount: $amount $currencyCode)';
 }

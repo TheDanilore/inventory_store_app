@@ -19,6 +19,7 @@ class UpdateUserUseCase {
     String? documentNumber,
     required bool isActive,
     String? newPassword,
+    String? warehouseId,
   }) async {
     return await repository.updateUser(
       id: id,
@@ -30,6 +31,7 @@ class UpdateUserUseCase {
       documentNumber: documentNumber,
       isActive: isActive,
       newPassword: newPassword,
+      warehouseId: warehouseId,
     );
   }
 }

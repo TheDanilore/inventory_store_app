@@ -23,6 +23,12 @@ class UserEntity extends Equatable {
   /// Conjunto de códigos de permisos efectivos asignados al usuario
   final Set<String> permissions;
 
+  /// ID del almacén o sucursal por defecto asignado al usuario
+  final String? warehouseId;
+
+  /// Nombre del almacén asignado al usuario
+  final String? warehouseName;
+
   const UserEntity({
     required this.id,
     required this.authUserId,
@@ -36,13 +42,17 @@ class UserEntity extends Equatable {
     required this.isActive,
     this.roles = const [],
     this.permissions = const {},
+    this.warehouseId,
+    this.warehouseName,
   });
 
   /// Verifica si el usuario cuenta con un permiso específico.
-  /// Los administradores (`admin`) tienen acceso total automático (Superuser).
+  /// Se evalúan primero los permisos explícitos asignados; si es superusuario admin,
+  /// tiene acceso total garantizado.
   bool hasPermission(String permissionCode) {
+    if (permissions.contains(permissionCode)) return true;
     if (isAdmin) return true;
-    return permissions.contains(permissionCode);
+    return false;
   }
 
   /// Verifica si el usuario cuenta con al menos uno de los permisos indicados.
@@ -99,6 +109,8 @@ class UserEntity extends Equatable {
     isActive,
     roles,
     permissions,
+    warehouseId,
+    warehouseName,
   ];
 
   UserEntity copyWith({
@@ -114,6 +126,8 @@ class UserEntity extends Equatable {
     bool? isActive,
     List<String>? roles,
     Set<String>? permissions,
+    String? warehouseId,
+    String? warehouseName,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -128,6 +142,8 @@ class UserEntity extends Equatable {
       isActive: isActive ?? this.isActive,
       roles: roles ?? this.roles,
       permissions: permissions ?? this.permissions,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
     );
   }
 }

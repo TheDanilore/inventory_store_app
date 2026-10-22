@@ -1,9 +1,8 @@
+import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
@@ -13,6 +12,7 @@ import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generat
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum ReceiptFormat { ticket, a4 }
 
@@ -750,6 +750,19 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
     required String address,
     required String phone,
   }) {
+    final opGravada =
+        widget.order.subtotalAmount > 0
+            ? widget.order.subtotalAmount
+            : double.parse(
+              (widget.order.totalAmount / 1.18).toStringAsFixed(2),
+            );
+    final igvAmount =
+        widget.order.taxAmount > 0
+            ? widget.order.taxAmount
+            : double.parse(
+              (widget.order.totalAmount - opGravada).toStringAsFixed(2),
+            );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -802,7 +815,11 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         // Meta del Ticket
         Center(
           child: Text(
-            'BOLETA DE VENTA ELECTRÓNICA',
+            widget.order.documentType == 'FACTURA'
+                ? 'FACTURA ELECTRÓNICA'
+                : (widget.order.documentType == 'BOLETA'
+                    ? 'BOLETA DE VENTA ELECTRÓNICA'
+                    : 'NOTA DE VENTA'),
             style: const TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
@@ -812,7 +829,7 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         ),
         Center(
           child: Text(
-            'B001-$_shortId',
+            widget.order.displayReceiptNumber,
             style: const TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
@@ -828,7 +845,19 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
           DateFormat('dd/MM/yyyy HH:mm', 'es').format(_orderTime),
         ),
         _ticketRow('CLIENTE:', widget.order.displayCustomerName),
+        if (widget.order.customerDocumentNumber != null &&
+            widget.order.customerDocumentNumber!.isNotEmpty)
+          _ticketRow(
+            '${widget.order.customerDocumentType ?? "DOC"}:',
+            widget.order.customerDocumentNumber!,
+          ),
+        if (widget.order.customerAddress != null &&
+            widget.order.customerAddress!.isNotEmpty)
+          _ticketRow('DIRECCIÓN:', widget.order.customerAddress!),
         _ticketRow('PAGO:', widget.order.paymentMethod),
+        if (widget.order.paymentReference != null &&
+            widget.order.paymentReference!.isNotEmpty)
+          _ticketRow('REF. OPERACIÓN:', widget.order.paymentReference!),
         _ticketRow(
           'ESTADO:',
           '${widget.order.status} (${widget.order.paymentStatus})',
@@ -902,10 +931,8 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         const SizedBox(height: 8),
 
         // Totales
-        _ticketRow(
-          'SUBTOTAL:',
-          'S/ ${_items.fold<double>(0, (s, i) => s + i.subtotal).toStringAsFixed(2)}',
-        ),
+        _ticketRow('OP. GRAVADA:', 'S/ ${opGravada.toStringAsFixed(2)}'),
+        _ticketRow('I.G.V. (18%):', 'S/ ${igvAmount.toStringAsFixed(2)}'),
         if (widget.order.discountAmount > 0)
           _ticketRow(
             'DESCUENTO:',
@@ -987,6 +1014,19 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
     required String address,
     required String phone,
   }) {
+    final a4OpGravada =
+        widget.order.subtotalAmount > 0
+            ? widget.order.subtotalAmount
+            : double.parse(
+              (widget.order.totalAmount / 1.18).toStringAsFixed(2),
+            );
+    final a4IgvAmount =
+        widget.order.taxAmount > 0
+            ? widget.order.taxAmount
+            : double.parse(
+              (widget.order.totalAmount - a4OpGravada).toStringAsFixed(2),
+            );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1050,15 +1090,19 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  const Text(
-                    'BOLETA ELECTRÓNICA',
-                    style: TextStyle(
+                  Text(
+                    widget.order.documentType == 'FACTURA'
+                        ? 'FACTURA ELECTRÓNICA'
+                        : (widget.order.documentType == 'BOLETA'
+                            ? 'BOLETA ELECTRÓNICA'
+                            : 'NOTA DE VENTA'),
+                    style: const TextStyle(
                       fontSize: 8.5,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    'B001-$_shortId',
+                    widget.order.displayReceiptNumber,
                     style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w900,
@@ -1091,6 +1135,24 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              if (widget.order.customerDocumentNumber != null &&
+                  widget.order.customerDocumentNumber!.isNotEmpty)
+                Text(
+                  '${widget.order.customerDocumentType ?? "Documento"}: ${widget.order.customerDocumentNumber}',
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              if (widget.order.customerAddress != null &&
+                  widget.order.customerAddress!.isNotEmpty)
+                Text(
+                  'Dirección: ${widget.order.customerAddress}',
+                  style: const TextStyle(
+                    fontSize: 8.5,
+                    color: Color(0xFF475569),
+                  ),
+                ),
               const SizedBox(height: 2),
               Text(
                 'Fecha: ${DateFormat('dd/MM/yyyy HH:mm', 'es').format(_orderTime)}  |  Pago: ${widget.order.paymentMethod}',
@@ -1197,27 +1259,65 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         Align(
           alignment: Alignment.centerRight,
           child: Container(
-            width: 160,
+            width: 190,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                const Text(
-                  'TOTAL:',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('OP. GRAVADA:', style: TextStyle(fontSize: 8.5)),
+                    Text(
+                      'S/ ${a4OpGravada.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                  ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'I.G.V. (18%):',
+                      style: TextStyle(fontSize: 8.5),
+                    ),
+                    Text(
+                      'S/ ${a4IgvAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 6, color: Color(0xFFE2E8F0)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TOTAL:',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

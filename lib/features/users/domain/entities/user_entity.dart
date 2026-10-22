@@ -12,6 +12,8 @@ class UserEntity extends Equatable {
   final DateTime? createdAt;
   final int walletBalance;
   final List<String> roles;
+  final String? warehouseId;
+  final String? warehouseName;
 
   const UserEntity({
     required this.id,
@@ -25,6 +27,8 @@ class UserEntity extends Equatable {
     this.createdAt,
     this.walletBalance = 0,
     this.roles = const [],
+    this.warehouseId,
+    this.warehouseName,
   });
 
   /// Lista de todos los roles asignados, incluyendo el rol primario
@@ -50,6 +54,8 @@ class UserEntity extends Equatable {
     createdAt,
     walletBalance,
     roles,
+    warehouseId,
+    warehouseName,
   ];
 
   UserEntity copyWith({
@@ -64,6 +70,8 @@ class UserEntity extends Equatable {
     DateTime? createdAt,
     int? walletBalance,
     List<String>? roles,
+    String? warehouseId,
+    String? warehouseName,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -77,6 +85,8 @@ class UserEntity extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       walletBalance: walletBalance ?? this.walletBalance,
       roles: roles ?? this.roles,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
     );
   }
 }

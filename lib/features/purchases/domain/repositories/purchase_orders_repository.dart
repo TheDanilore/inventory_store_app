@@ -39,6 +39,8 @@ abstract class PurchaseOrdersRepository {
     required String documentType,
     required String? documentNumber,
     required String? notes,
+    String currencyCode = 'PEN',
+    double exchangeRate = 1.0,
   });
 
   Future<Either<Failure, void>> updatePurchaseOrder({

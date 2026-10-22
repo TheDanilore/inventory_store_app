@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_sheet.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -251,19 +252,17 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     }
 
     if (!isDraft) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => PosConfirmationDialog(
-              totalFinal: totalFinal,
-              clienteName:
-                  posCubit.state.selectedClientId != null
-                      ? posCubit.state.selectedClientName
-                      : _clienteCtrl.text.trim().isNotEmpty
-                      ? _clienteCtrl.text.trim()
-                      : null,
-              paymentMethod: posCubit.state.paymentMethod,
-            ),
+      final confirmed = await PosPaymentSheet.show(
+        context,
+        totalFinal: totalFinal,
+        pointsToSolesRatio: pointsToSolesRatio,
+        earningRate: earningRate,
+        initialCustomerName:
+            posCubit.state.selectedClientId != null
+                ? posCubit.state.selectedClientName
+                : _clienteCtrl.text.trim().isNotEmpty
+                ? _clienteCtrl.text.trim()
+                : null,
       );
       if (confirmed != true) return;
     }

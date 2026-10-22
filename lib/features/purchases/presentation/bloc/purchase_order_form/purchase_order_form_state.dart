@@ -42,6 +42,10 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
   final String documentNumber;
   final String notes;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+
   // Helpers
   final bool isSaving;
   final String? errorMessage;
@@ -67,6 +71,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     this.selectedAccountId,
     this.documentNumber = '',
     this.notes = '',
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
     this.isSaving = false,
     this.errorMessage,
     this.isDraftRestored = false,
@@ -79,6 +85,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       (sum, item) => sum + (item.unitCost * item.quantity),
     );
   }
+
+  double get totalAmountBase => totalAmount * exchangeRate;
 
   String? get creditWarningMessage {
     if (selectedSupplierId == null) return null;
@@ -144,6 +152,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     String? selectedAccountId,
     String? documentNumber,
     String? notes,
+    String? currencyCode,
+    double? exchangeRate,
     bool? isSaving,
     String? errorMessage,
     bool? isDraftRestored,
@@ -168,6 +178,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       selectedAccountId: selectedAccountId ?? this.selectedAccountId,
       documentNumber: documentNumber ?? this.documentNumber,
       notes: notes ?? this.notes,
+      currencyCode: currencyCode ?? this.currencyCode,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
       isSaving: isSaving ?? this.isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored ?? this.isDraftRestored,
@@ -193,6 +205,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       selectedAccountId: selectedAccountId,
       documentNumber: documentNumber,
       notes: notes,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
       isSaving: isSaving,
       errorMessage: null,
       isDraftRestored: isDraftRestored,
@@ -218,6 +232,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       selectedAccountId: selectedAccountId,
       documentNumber: documentNumber,
       notes: notes,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
       isSaving: isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
@@ -243,6 +259,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       selectedAccountId: selectedAccountId,
       documentNumber: documentNumber,
       notes: notes,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
       isSaving: isSaving,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
@@ -268,6 +286,8 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     selectedAccountId,
     documentNumber,
     notes,
+    currencyCode,
+    exchangeRate,
     isSaving,
     errorMessage,
     isDraftRestored,

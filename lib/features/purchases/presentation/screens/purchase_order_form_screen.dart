@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_entries/add_entry_product_sheet.dart';
@@ -1018,7 +1019,11 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                     ? const SizedBox.shrink()
                     : Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: POFormSummaryCard(items: viewModel.items),
+                      child: POFormSummaryCard(
+                        items: viewModel.items,
+                        currencyCode: viewModel.currencyCode,
+                        exchangeRate: viewModel.exchangeRate,
+                      ),
                     ),
           ),
         ],
@@ -1041,6 +1046,129 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
             title: 'Condiciones de Pago',
           ),
           const SizedBox(height: 16),
+
+          // Selector de Moneda de Compra
+          Builder(
+            builder: (context) {
+              final appConfig = context.watch<AppConfigCubit>();
+              final activeCurrencies = appConfig.activeCurrencies;
+              if (activeCurrencies.length <= 1) return const SizedBox.shrink();
+
+              final isForeign = viewModel.currencyCode != 'PEN';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.currency_exchange_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Moneda de la Compra',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (isForeign)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.amber.shade300),
+                            ),
+                            child: Text(
+                              'T.C: ${viewModel.exchangeRate.toStringAsFixed(4)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children:
+                          activeCurrencies.map((c) {
+                            final isSel = viewModel.currencyCode == c.code;
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: InkWell(
+                                  onTap: () {
+                                    viewModel.setCurrency(
+                                      c.code,
+                                      c.exchangeRateToTarget,
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSel
+                                              ? AppColors.primary
+                                              : Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color:
+                                            isSel
+                                                ? AppColors.primary
+                                                : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${c.symbol} ${c.code}',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                          color:
+                                              isSel
+                                                  ? Colors.white
+                                                  : AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
           DropdownButtonFormField<String>(
             key: ValueKey('mode_${viewModel.paymentMode}'),
             initialValue: viewModel.paymentMode,
@@ -1747,6 +1875,23 @@ class _PurchaseOrderFormViewModel {
     }
     return 0.0;
   }
+
+  String get currencyCode {
+    if (state is PurchaseOrderFormLoaded) {
+      return (state as PurchaseOrderFormLoaded).currencyCode;
+    }
+    return 'PEN';
+  }
+
+  double get exchangeRate {
+    if (state is PurchaseOrderFormLoaded) {
+      return (state as PurchaseOrderFormLoaded).exchangeRate;
+    }
+    return 1.0;
+  }
+
+  void setCurrency(String code, double rate) => cubit.setCurrency(code, rate);
+  void setExchangeRate(double rate) => cubit.setExchangeRate(rate);
 
   void setSupplier(String? v) => cubit.updateField(supplierId: v);
   void setWarehouse(String? v) => cubit.updateField(warehouseId: v);

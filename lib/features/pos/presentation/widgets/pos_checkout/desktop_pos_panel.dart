@@ -19,6 +19,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
@@ -195,19 +196,17 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     }
 
     if (!isDraft) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder:
-            (context) => PosConfirmationDialog(
-              totalFinal: totalFinal,
-              clienteName:
-                  posCubit.state.selectedClientId != null
-                      ? posCubit.state.selectedClientName
-                      : _clienteCtrl.text.trim().isNotEmpty
-                      ? _clienteCtrl.text.trim()
-                      : null,
-              paymentMethod: posCubit.state.paymentMethod,
-            ),
+      final confirmed = await PosPaymentSheet.show(
+        context,
+        totalFinal: totalFinal,
+        pointsToSolesRatio: pointsToSolesRatio,
+        earningRate: earningRate,
+        initialCustomerName:
+            posCubit.state.selectedClientId != null
+                ? posCubit.state.selectedClientName
+                : _clienteCtrl.text.trim().isNotEmpty
+                ? _clienteCtrl.text.trim()
+                : null,
       );
 
       if (confirmed != true) return;

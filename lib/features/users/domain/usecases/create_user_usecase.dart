@@ -18,6 +18,7 @@ class CreateUserUseCase {
     String? phone,
     required String documentType,
     String? documentNumber,
+    String? warehouseId,
   }) async {
     return await repository.createUser(
       email: email,
@@ -28,6 +29,7 @@ class CreateUserUseCase {
       phone: phone,
       documentType: documentType,
       documentNumber: documentNumber,
+      warehouseId: warehouseId,
     );
   }
 }

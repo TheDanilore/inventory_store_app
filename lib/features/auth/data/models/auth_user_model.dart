@@ -18,6 +18,9 @@ class AuthUserModel {
   final List<String> roles;
   final Set<String> permissions;
 
+  final String? warehouseId;
+  final String? warehouseName;
+
   const AuthUserModel({
     required this.id,
     required this.authUserId,
@@ -31,6 +34,8 @@ class AuthUserModel {
     required this.isActive,
     this.roles = const [],
     this.permissions = const {},
+    this.warehouseId,
+    this.warehouseName,
   });
 
   factory AuthUserModel.fromMap(
@@ -79,6 +84,8 @@ class AuthUserModel {
       isActive: map['is_active'] as bool? ?? true,
       roles: parsedRoles,
       permissions: parsedPermissions,
+      warehouseId: map['warehouse_id']?.toString(),
+      warehouseName: map['warehouse_name']?.toString(),
     );
   }
 
@@ -96,6 +103,8 @@ class AuthUserModel {
       isActive: entity.isActive,
       roles: entity.roles,
       permissions: entity.permissions,
+      warehouseId: entity.warehouseId,
+      warehouseName: entity.warehouseName,
     );
   }
 
@@ -113,6 +122,8 @@ class AuthUserModel {
       isActive: isActive,
       roles: roles,
       permissions: permissions,
+      warehouseId: warehouseId,
+      warehouseName: warehouseName,
     );
   }
 }
@@ -125,6 +136,8 @@ extension AuthUserModelCopyWith on AuthUserModel {
     String? documentNumber,
     List<String>? roles,
     Set<String>? permissions,
+    String? warehouseId,
+    String? warehouseName,
   }) {
     return AuthUserModel(
       id: id,
@@ -139,6 +152,8 @@ extension AuthUserModelCopyWith on AuthUserModel {
       isActive: isActive,
       roles: roles ?? this.roles,
       permissions: permissions ?? this.permissions,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
     );
   }
 }

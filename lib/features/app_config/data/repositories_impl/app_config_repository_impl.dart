@@ -10,6 +10,8 @@ import 'package:inventory_store_app/features/app_config/domain/entities/business
 import 'package:inventory_store_app/features/app_config/data/models/business_info_model.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
 import 'package:inventory_store_app/features/app_config/data/models/app_setting_model.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/currency_entity.dart';
+import 'package:inventory_store_app/features/app_config/data/models/currency_model.dart';
 
 import 'package:inventory_store_app/features/app_config/domain/repositories/app_config_repository.dart';
 
@@ -384,6 +386,102 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
         stackTrace: st,
       );
       return null;
+    }
+  }
+
+  // --- Currencies ---
+
+  @override
+  Future<List<CurrencyEntity>> fetchCurrencies() async {
+    try {
+      final response = await _supabase
+          .from('currencies')
+          .select()
+          .order('is_base', ascending: false)
+          .order('code', ascending: true);
+
+      return (response as List<dynamic>)
+          .map(
+            (json) =>
+                CurrencyModel.fromJson(json as Map<String, dynamic>).toEntity(),
+          )
+          .toList();
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error Postgrest al obtener currencies: ${e.message}',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.message, originalError: e);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al obtener currencies',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.toString(), originalError: e);
+    }
+  }
+
+  @override
+  Future<void> updateCurrency(CurrencyEntity currency) async {
+    try {
+      final payload = {
+        'exchange_rate': currency.exchangeRate,
+        'name': currency.name,
+        'symbol': currency.symbol,
+        'is_active': currency.isActive,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      await _supabase.from('currencies').update(payload).eq('id', currency.id);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error Postgrest al actualizar currency: ${e.message}',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.message, originalError: e);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al actualizar currency',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.toString(), originalError: e);
+    }
+  }
+
+  @override
+  Future<void> toggleCurrencyActive(String currencyId, bool isActive) async {
+    try {
+      await _supabase
+          .from('currencies')
+          .update({
+            'is_active': isActive,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', currencyId);
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error Postgrest al alternar estado de moneda: ${e.message}',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.message, originalError: e);
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado al alternar estado de moneda',
+        tag: 'AppConfigRepository',
+        error: e,
+        stackTrace: st,
+      );
+      throw AppException(message: e.toString(), originalError: e);
     }
   }
 }

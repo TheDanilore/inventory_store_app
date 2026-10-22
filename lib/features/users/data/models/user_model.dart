@@ -13,6 +13,8 @@ class UserModel extends UserEntity {
     super.createdAt,
     super.walletBalance,
     super.roles,
+    super.warehouseId,
+    super.warehouseName,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -61,6 +63,8 @@ class UserModel extends UserEntity {
               : null,
       walletBalance: json['wallet_balance'] as int? ?? 0,
       roles: parsedRoles,
+      warehouseId: json['warehouse_id'] as String?,
+      warehouseName: json['warehouse_name'] as String?,
     );
   }
 
@@ -77,6 +81,8 @@ class UserModel extends UserEntity {
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       'wallet_balance': walletBalance,
       'roles': roles,
+      if (warehouseId != null) 'warehouse_id': warehouseId,
+      if (warehouseName != null) 'warehouse_name': warehouseName,
     };
   }
 
@@ -93,6 +99,8 @@ class UserModel extends UserEntity {
       createdAt: entity.createdAt,
       walletBalance: entity.walletBalance,
       roles: entity.roles,
+      warehouseId: entity.warehouseId,
+      warehouseName: entity.warehouseName,
     );
   }
 }

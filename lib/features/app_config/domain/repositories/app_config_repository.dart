@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/app_setting_entity.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/currency_entity.dart';
 
 /// Contrato del repositorio de configuración de la app.
 abstract class AppConfigRepository {
@@ -39,4 +40,13 @@ abstract class AppConfigRepository {
 
   /// Restaura la conexión por defecto.
   Future<void> restoreDefaultConnection();
+
+  /// Obtiene las monedas configuradas en el ERP.
+  Future<List<CurrencyEntity>> fetchCurrencies();
+
+  /// Actualiza datos o tipo de cambio sugerido de una moneda.
+  Future<void> updateCurrency(CurrencyEntity currency);
+
+  /// Habilita o deshabilita una moneda para transacciones.
+  Future<void> toggleCurrencyActive(String currencyId, bool isActive);
 }

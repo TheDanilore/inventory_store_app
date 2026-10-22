@@ -75,6 +75,57 @@ class UsersRepositoryImpl implements UsersRepository {
     }
   }
 
+  Future<void> _syncUserWarehouse(String profileId, String? warehouseId) async {
+    try {
+      await _supabase
+          .from('user_warehouses')
+          .delete()
+          .eq('profile_id', profileId);
+      if (warehouseId != null && warehouseId.isNotEmpty) {
+        await _supabase.from('user_warehouses').insert({
+          'profile_id': profileId,
+          'warehouse_id': warehouseId,
+          'is_default': true,
+        });
+      }
+    } catch (e) {
+      developer.log(
+        'Aviso: error sincronizando user_warehouses: $e',
+        name: 'UsersRepositoryImpl',
+      );
+    }
+  }
+
+  Future<Map<String, ({String id, String name})>> _fetchUserWarehouses(
+    List<String> profileIds,
+  ) async {
+    if (profileIds.isEmpty) return {};
+    try {
+      final res = await _supabase
+          .from('user_warehouses')
+          .select('profile_id, warehouse_id, warehouses(name)')
+          .filter('profile_id', 'in', '(${profileIds.join(',')})');
+
+      final result = <String, ({String id, String name})>{};
+      for (final item in res as List) {
+        final pId = item['profile_id']?.toString();
+        final whId = item['warehouse_id']?.toString();
+        final whMap = item['warehouses'] as Map<String, dynamic>?;
+        final whName = whMap?['name']?.toString() ?? '';
+        if (pId != null && whId != null) {
+          result[pId] = (id: whId, name: whName);
+        }
+      }
+      return result;
+    } catch (e) {
+      developer.log(
+        'Aviso: error obteniendo user_warehouses: $e',
+        name: 'UsersRepositoryImpl',
+      );
+      return {};
+    }
+  }
+
   @override
   Future<Either<Failure, Map<String, dynamic>>> getUsers({
     required String role,
@@ -123,14 +174,17 @@ class UsersRepositoryImpl implements UsersRepository {
 
       final ids = rawUsers.map((u) => u.id).toList();
       final rolesMap = await _fetchUserRoles(ids);
+      final warehousesMap = await _fetchUserWarehouses(ids);
 
       final List<UserEntity> users =
           rawUsers.map((u) {
             final assignedRoles = rolesMap[u.id];
-            if (assignedRoles != null && assignedRoles.isNotEmpty) {
-              return u.copyWith(roles: assignedRoles);
-            }
-            return u;
+            final assignedWh = warehousesMap[u.id];
+            return u.copyWith(
+              roles: assignedRoles ?? u.roles,
+              warehouseId: assignedWh?.id,
+              warehouseName: assignedWh?.name,
+            );
           }).toList();
 
       return Right({'data': users, 'count': response.count});
@@ -200,14 +254,17 @@ class UsersRepositoryImpl implements UsersRepository {
 
       final ids = rawUsers.map((u) => u.id).toList();
       final rolesMap = await _fetchUserRoles(ids);
+      final warehousesMap = await _fetchUserWarehouses(ids);
 
       final List<UserEntity> users =
           rawUsers.map((u) {
             final assignedRoles = rolesMap[u.id];
-            if (assignedRoles != null && assignedRoles.isNotEmpty) {
-              return u.copyWith(roles: assignedRoles);
-            }
-            return u;
+            final assignedWh = warehousesMap[u.id];
+            return u.copyWith(
+              roles: assignedRoles ?? u.roles,
+              warehouseId: assignedWh?.id,
+              warehouseName: assignedWh?.name,
+            );
           }).toList();
 
       return Right(users);
@@ -285,12 +342,17 @@ class UsersRepositoryImpl implements UsersRepository {
 
       final user = UserModel.fromJson(response);
       final rolesMap = await _fetchUserRoles([id]);
+      final warehousesMap = await _fetchUserWarehouses([id]);
       final assignedRoles = rolesMap[id];
-      if (assignedRoles != null && assignedRoles.isNotEmpty) {
-        return Right(user.copyWith(roles: assignedRoles));
-      }
+      final assignedWh = warehousesMap[id];
 
-      return Right(user);
+      return Right(
+        user.copyWith(
+          roles: assignedRoles ?? user.roles,
+          warehouseId: assignedWh?.id,
+          warehouseName: assignedWh?.name,
+        ),
+      );
     } on PostgrestException catch (e, st) {
       developer.log(
         '🔴 [UsersRepo] PostgrestException en getUserById (id=$id): $e',
@@ -324,6 +386,7 @@ class UsersRepositoryImpl implements UsersRepository {
     String? phone,
     required String documentType,
     String? documentNumber,
+    String? warehouseId,
   }) async {
     try {
       final primaryRole =
@@ -348,8 +411,9 @@ class UsersRepositoryImpl implements UsersRepository {
         );
       }
 
-      // Sincronizar roles en user_roles si se especificaron
-      if (roles != null && roles.isNotEmpty) {
+      // Sincronizar roles y almacén en perfiles si se especificaron
+      if ((roles != null && roles.isNotEmpty) ||
+          (warehouseId != null && warehouseId.isNotEmpty)) {
         try {
           final profileData =
               await _supabase
@@ -360,10 +424,15 @@ class UsersRepositoryImpl implements UsersRepository {
 
           final profileId = profileData?['id']?.toString();
           if (profileId != null) {
-            await _syncUserRoles(profileId, roles);
+            if (roles != null && roles.isNotEmpty) {
+              await _syncUserRoles(profileId, roles);
+            }
+            if (warehouseId != null && warehouseId.isNotEmpty) {
+              await _syncUserWarehouse(profileId, warehouseId);
+            }
           }
         } catch (e) {
-          developer.log('Aviso al asociar roles a nuevo usuario: $e');
+          developer.log('Aviso al asociar roles/almacén a nuevo usuario: $e');
         }
       }
 
@@ -407,6 +476,7 @@ class UsersRepositoryImpl implements UsersRepository {
     String? documentNumber,
     required bool isActive,
     String? newPassword,
+    String? warehouseId,
   }) async {
     try {
       final updateData = <String, dynamic>{
@@ -431,6 +501,11 @@ class UsersRepositoryImpl implements UsersRepository {
       // Sincronizar roles en tabla relacional user_roles (fuente de verdad multi-rol)
       if (roles != null) {
         await _syncUserRoles(id, roles);
+      }
+
+      // Sincronizar almacén en user_warehouses
+      if (warehouseId != null) {
+        await _syncUserWarehouse(id, warehouseId);
       }
 
       if (newPassword != null && newPassword.trim().isNotEmpty) {

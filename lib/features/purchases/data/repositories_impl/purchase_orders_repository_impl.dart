@@ -106,6 +106,7 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
             status, total_amount, payment_method, payment_status,
             amount_paid, due_date, discount_amount, tax_amount,
             document_date, document_type, document_number, notes,
+            currency_code, exchange_rate, total_amount_base, subtotal_amount_base, tax_amount_base,
             suppliers!left(name),
             warehouses!left(name),
             purchase_order_items(count)
@@ -344,6 +345,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required String documentType,
     required String? documentNumber,
     required String? notes,
+    String currencyCode = 'PEN',
+    double exchangeRate = 1.0,
   }) async {
     try {
       final currentUser = _supabase.auth.currentUser;
@@ -391,6 +394,8 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
           'p_notes': notes,
           'p_profile_id': profileId,
           'p_items': itemsJson,
+          'p_currency_code': currencyCode,
+          'p_exchange_rate': exchangeRate,
         },
       );
 

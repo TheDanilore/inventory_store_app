@@ -4,8 +4,15 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class POFormSummaryCard extends StatelessWidget {
   final List<InventoryEntryItemEntity> items;
+  final String currencyCode;
+  final double exchangeRate;
 
-  const POFormSummaryCard({super.key, required this.items});
+  const POFormSummaryCard({
+    super.key,
+    required this.items,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +22,9 @@ class POFormSummaryCard extends StatelessWidget {
       (sum, item) => sum + item.quantity.toInt(),
     );
     final int totalVariants = items.length;
+    final isForeign = currencyCode != 'PEN';
+    final symbol =
+        currencyCode == 'USD' ? '\$ ' : (currencyCode == 'EUR' ? '€ ' : 'S/ ');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -45,9 +55,9 @@ class POFormSummaryCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                'S/ ',
-                style: TextStyle(
+              Text(
+                symbol,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -63,8 +73,33 @@ class POFormSummaryCard extends StatelessWidget {
                   letterSpacing: -1,
                 ),
               ),
+              if (isForeign) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    currencyCode,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
+          if (isForeign) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Equivalente: S/ ${(totalCost * exchangeRate).toStringAsFixed(2)} (T.C. ${exchangeRate.toStringAsFixed(4)})',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

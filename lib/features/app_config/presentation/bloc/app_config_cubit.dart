@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/app_config/domain/usecases/get_conn
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/currency_entity.dart';
 
 @injectable
 class AppConfigCubit extends Cubit<AppConfigState> {
@@ -56,6 +57,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   String get businessAddress => state.businessInfo?.address ?? '';
   String get businessPhone => state.businessInfo?.phone ?? '';
   String get businessLogoUrl => state.businessInfo?.logoUrl ?? '';
+
+  List<CurrencyEntity> get currencies => state.currencies;
+  List<CurrencyEntity> get activeCurrencies => state.activeCurrencies;
+  CurrencyEntity? get baseCurrency => state.baseCurrency;
 
   ViewState get settingsState => state.status;
   ViewState get businessInfoState => state.status;
@@ -164,6 +169,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     await Future.wait([
       fetchSettings(force: force),
       loadBusinessInfo(force: force),
+      loadCurrencies(force: force),
     ]);
   }
 
@@ -429,5 +435,65 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       ),
       (_) => emit(state.copyWith(connectionStatus: ViewState.success)),
     );
+  }
+
+  // --- Monedas y Multimoneda ---
+
+  Future<void> loadCurrencies({bool force = false}) async {
+    if (state.currencies.isNotEmpty && !force) return;
+
+    try {
+      final list = await _appConfigRepository.fetchCurrencies();
+      emit(state.copyWith(currencies: list));
+    } catch (e, st) {
+      LoggerService.e(
+        'AppConfigCubit.loadCurrencies falló',
+        tag: 'AppConfigCubit',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
+  Future<bool> updateCurrency(CurrencyEntity currency) async {
+    emit(
+      state.copyWith(saveStatus: ViewState.loading, clearErrorMessage: true),
+    );
+    try {
+      await _appConfigRepository.updateCurrency(currency);
+      await loadCurrencies(force: true);
+      emit(state.copyWith(saveStatus: ViewState.success));
+      return true;
+    } catch (e, st) {
+      LoggerService.e(
+        'AppConfigCubit.updateCurrency falló',
+        tag: 'AppConfigCubit',
+        error: e,
+        stackTrace: st,
+      );
+      emit(
+        state.copyWith(
+          saveStatus: ViewState.error,
+          errorMessage: 'Error al actualizar moneda: ${e.toString()}',
+        ),
+      );
+      return false;
+    }
+  }
+
+  Future<bool> toggleCurrencyActive(String currencyId, bool isActive) async {
+    try {
+      await _appConfigRepository.toggleCurrencyActive(currencyId, isActive);
+      await loadCurrencies(force: true);
+      return true;
+    } catch (e, st) {
+      LoggerService.e(
+        'AppConfigCubit.toggleCurrencyActive falló',
+        tag: 'AppConfigCubit',
+        error: e,
+        stackTrace: st,
+      );
+      return false;
+    }
   }
 }

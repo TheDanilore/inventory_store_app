@@ -546,6 +546,25 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
     _scheduleDraftSave();
   }
 
+  void setCurrency(String currencyCode, double suggestedRate) {
+    final currentState = state;
+    if (currentState is! PurchaseOrderFormLoaded) return;
+    emit(
+      currentState.copyWith(
+        currencyCode: currencyCode.toUpperCase(),
+        exchangeRate: suggestedRate > 0 ? suggestedRate : 1.0,
+      ),
+    );
+    _scheduleDraftSave();
+  }
+
+  void setExchangeRate(double rate) {
+    final currentState = state;
+    if (currentState is! PurchaseOrderFormLoaded) return;
+    emit(currentState.copyWith(exchangeRate: rate > 0 ? rate : 1.0));
+    _scheduleDraftSave();
+  }
+
   Future<void> submitOrder() async {
     final currentState = state;
     if (currentState is! PurchaseOrderFormLoaded ||
@@ -622,6 +641,8 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
         documentType: loadingState.documentType,
         documentNumber: loadingState.documentNumber.trim(),
         notes: loadingState.notes.trim(),
+        currencyCode: loadingState.currencyCode,
+        exchangeRate: loadingState.exchangeRate,
       );
 
       await result.fold(

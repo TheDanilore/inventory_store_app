@@ -19,6 +19,11 @@ class InventoryEntryEntity extends Equatable {
   final String? paymentMode;
   final String? status;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+  final double totalAmountBase;
+
   const InventoryEntryEntity({
     required this.id,
     required this.warehouseId,
@@ -37,6 +42,9 @@ class InventoryEntryEntity extends Equatable {
     this.totalQuantity = 0.0,
     this.paymentMode,
     this.status,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.totalAmountBase = 0.0,
   });
 
   @override
@@ -58,5 +66,8 @@ class InventoryEntryEntity extends Equatable {
     totalQuantity,
     paymentMode,
     status,
+    currencyCode,
+    exchangeRate,
+    totalAmountBase,
   ];
 }

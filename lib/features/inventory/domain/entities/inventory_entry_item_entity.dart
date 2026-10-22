@@ -9,6 +9,7 @@ class InventoryEntryItemEntity extends Equatable {
   final bool usesBatches;
   final double quantity;
   final double unitCost;
+  final double? unitCostBase;
   final String batchNumber;
   final DateTime? expiryDate;
 
@@ -21,11 +22,13 @@ class InventoryEntryItemEntity extends Equatable {
     required this.usesBatches,
     required this.quantity,
     required this.unitCost,
+    this.unitCostBase,
     required this.batchNumber,
     this.expiryDate,
   });
 
   double get subtotal => quantity * unitCost;
+  double get subtotalBase => quantity * (unitCostBase ?? unitCost);
 
   InventoryEntryItemEntity copyWith({
     String? productId,
@@ -36,6 +39,7 @@ class InventoryEntryItemEntity extends Equatable {
     bool? usesBatches,
     double? quantity,
     double? unitCost,
+    double? unitCostBase,
     String? batchNumber,
     DateTime? expiryDate,
     bool clearExpiryDate = false,
@@ -49,6 +53,7 @@ class InventoryEntryItemEntity extends Equatable {
       usesBatches: usesBatches ?? this.usesBatches,
       quantity: quantity ?? this.quantity,
       unitCost: unitCost ?? this.unitCost,
+      unitCostBase: unitCostBase ?? this.unitCostBase,
       batchNumber: batchNumber ?? this.batchNumber,
       expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
     );
@@ -64,6 +69,7 @@ class InventoryEntryItemEntity extends Equatable {
     usesBatches,
     quantity,
     unitCost,
+    unitCostBase,
     batchNumber,
     expiryDate,
   ];

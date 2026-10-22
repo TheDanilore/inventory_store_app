@@ -8,6 +8,8 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/scanner_settings_hub_tab.dart';
 
+import 'package:inventory_store_app/features/app_config/presentation/widgets/currencies_settings_tab.dart';
+
 /// Pantalla completa de Configuración del ERP (Linear / Apple HIG Style)
 class AdminSettingsScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -31,6 +33,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
       title: 'Empresa',
       subtitle: 'Datos comerciales',
       icon: Icons.storefront_rounded,
+    ),
+    _TabSpec(
+      title: 'Monedas',
+      subtitle: 'Divisas y tipo de cambio',
+      icon: Icons.currency_exchange_rounded,
     ),
     _TabSpec(
       title: 'Apariencia',
@@ -127,6 +134,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         controller: _tabController,
                         children: [
                           _buildBusinessView(context, isDark),
+                          CurrenciesSettingsTab(isDark: isDark),
                           _buildAppearanceView(context, isDark),
                           _buildFinancialAccountsView(context, isDark),
                           _buildLoyaltyPointsView(context, isDark),

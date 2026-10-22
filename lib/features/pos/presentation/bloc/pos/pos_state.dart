@@ -4,6 +4,8 @@ import 'package:inventory_store_app/features/inventory/data/models/warehouse_mod
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 
+import 'package:inventory_store_app/features/pos/data/models/document_series_model.dart';
+
 enum PosStatus { initial, loading, success, error }
 
 class PosState extends Equatable {
@@ -21,6 +23,7 @@ class PosState extends Equatable {
 
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
+  final List<DocumentSeriesModel> documentSeries;
 
   final PosStatus status;
   final CashShiftEntity? activeShift;
@@ -28,6 +31,14 @@ class PosState extends Equatable {
   final String? lastOrderId;
   final Map<String, dynamic>? creditInfo;
   final String? selectedAccountId;
+
+  // ── Dimensiones Fiscales y Facturación ─────────────────────────────────────
+  final String documentType; // 'NOTA_VENTA', 'BOLETA', 'FACTURA'
+  final String? selectedSeries; // 'NV01', 'B001', 'F001'
+  final String? paymentReference; // Nº Op / Ref (Yape, Plin, Tarjeta)
+  final String? customerDocumentType; // 'DNI', 'RUC'
+  final String? customerDocumentNumber; // '10723456789'
+  final String? customerAddress; // Dirección fiscal para Facturas
 
   final List<OrderModel> recentOrders;
   final bool isLoadingRecentOrders;
@@ -42,6 +53,10 @@ class PosState extends Equatable {
   final String discountText;
   final bool isDiscountPercentage;
 
+  // ── Multimoneda ──────────────────────────────────────────────────────────
+  final String currencyCode;
+  final double exchangeRate;
+
   const PosState({
     this.isLoading = false,
     this.errorMessage = '',
@@ -54,12 +69,19 @@ class PosState extends Equatable {
     this.batchOverrides = const {},
     this.warehouses = const [],
     this.accounts = const [],
+    this.documentSeries = const [],
     this.status = PosStatus.initial,
     this.activeShift,
     this.clientMatches = const [],
     this.lastOrderId,
     this.creditInfo,
     this.selectedAccountId,
+    this.documentType = 'NOTA_VENTA',
+    this.selectedSeries,
+    this.paymentReference,
+    this.customerDocumentType,
+    this.customerDocumentNumber,
+    this.customerAddress,
     this.recentOrders = const [],
     this.isLoadingRecentOrders = false,
     this.isLoadingMoreOrders = false,
@@ -71,6 +93,8 @@ class PosState extends Equatable {
     this.salesSearchQuery = '',
     this.discountText = '',
     this.isDiscountPercentage = false,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
   });
 
   PosState copyWith({
@@ -85,12 +109,19 @@ class PosState extends Equatable {
     Map<String, List<BatchAssignmentModel>>? batchOverrides,
     List<WarehouseModel>? warehouses,
     List<Map<String, dynamic>>? accounts,
+    List<DocumentSeriesModel>? documentSeries,
     PosStatus? status,
     CashShiftEntity? activeShift,
     List<Map<String, dynamic>>? clientMatches,
     String? lastOrderId,
     Map<String, dynamic>? creditInfo,
     String? selectedAccountId,
+    String? documentType,
+    String? selectedSeries,
+    String? paymentReference,
+    String? customerDocumentType,
+    String? customerDocumentNumber,
+    String? customerAddress,
     List<OrderModel>? recentOrders,
     bool? isLoadingRecentOrders,
     bool? isLoadingMoreOrders,
@@ -102,6 +133,8 @@ class PosState extends Equatable {
     String? salesSearchQuery,
     String? discountText,
     bool? isDiscountPercentage,
+    String? currencyCode,
+    double? exchangeRate,
     bool clearClient = false,
     bool clearActiveShift = false,
   }) {
@@ -120,12 +153,26 @@ class PosState extends Equatable {
       batchOverrides: batchOverrides ?? this.batchOverrides,
       warehouses: warehouses ?? this.warehouses,
       accounts: accounts ?? this.accounts,
+      documentSeries: documentSeries ?? this.documentSeries,
       status: status ?? this.status,
       activeShift: clearActiveShift ? null : (activeShift ?? this.activeShift),
       clientMatches: clientMatches ?? this.clientMatches,
       lastOrderId: lastOrderId ?? this.lastOrderId,
       creditInfo: clearClient ? null : (creditInfo ?? this.creditInfo),
       selectedAccountId: selectedAccountId ?? this.selectedAccountId,
+      documentType: documentType ?? this.documentType,
+      selectedSeries: selectedSeries ?? this.selectedSeries,
+      paymentReference: paymentReference ?? this.paymentReference,
+      customerDocumentType:
+          clearClient
+              ? null
+              : (customerDocumentType ?? this.customerDocumentType),
+      customerDocumentNumber:
+          clearClient
+              ? null
+              : (customerDocumentNumber ?? this.customerDocumentNumber),
+      customerAddress:
+          clearClient ? null : (customerAddress ?? this.customerAddress),
       recentOrders: recentOrders ?? this.recentOrders,
       isLoadingRecentOrders:
           isLoadingRecentOrders ?? this.isLoadingRecentOrders,
@@ -139,7 +186,33 @@ class PosState extends Equatable {
       salesSearchQuery: salesSearchQuery ?? this.salesSearchQuery,
       discountText: discountText ?? this.discountText,
       isDiscountPercentage: isDiscountPercentage ?? this.isDiscountPercentage,
+      currencyCode: currencyCode ?? this.currencyCode,
+      exchangeRate: exchangeRate ?? this.exchangeRate,
     );
+  }
+
+  /// Lista de series activas compatibles con el tipo de comprobante seleccionado
+  List<DocumentSeriesModel> get activeSeriesList =>
+      documentSeries
+          .where((s) => s.documentType == documentType && s.isActive)
+          .toList();
+
+  /// Serie efectiva a usar: la elegida explícitamente o la predeterminada del tipo
+  String get effectiveSeries {
+    if (selectedSeries != null && selectedSeries!.isNotEmpty) {
+      return selectedSeries!;
+    }
+    final matching = activeSeriesList;
+    if (matching.isNotEmpty) {
+      final def = matching.firstWhere(
+        (s) => s.isDefault,
+        orElse: () => matching.first,
+      );
+      return def.series;
+    }
+    return documentType == 'FACTURA'
+        ? 'F001'
+        : (documentType == 'BOLETA' ? 'B001' : 'NV01');
   }
 
   @override
@@ -155,12 +228,19 @@ class PosState extends Equatable {
     batchOverrides,
     warehouses,
     accounts,
+    documentSeries,
     status,
     activeShift,
     clientMatches,
     lastOrderId,
     creditInfo,
     selectedAccountId,
+    documentType,
+    selectedSeries,
+    paymentReference,
+    customerDocumentType,
+    customerDocumentNumber,
+    customerAddress,
     recentOrders,
     isLoadingRecentOrders,
     isLoadingMoreOrders,
@@ -172,5 +252,7 @@ class PosState extends Equatable {
     salesSearchQuery,
     discountText,
     isDiscountPercentage,
+    currencyCode,
+    exchangeRate,
   ];
 }

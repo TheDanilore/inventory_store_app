@@ -9,6 +9,8 @@ import 'package:inventory_store_app/features/users/presentation/bloc/user_form/u
 import 'package:inventory_store_app/features/users/presentation/bloc/user_form/user_form_state.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
@@ -58,6 +60,9 @@ class _UserFormContentState extends State<_UserFormContent> {
   late Set<String> _selectedRoles;
   bool _isActive = true;
   bool _obscurePassword = true;
+  String? _selectedWarehouseId;
+  List<WarehouseEntity> _warehouses = [];
+  bool _isLoadingWarehouses = false;
 
   // Detección de cambios sin guardar
   bool _dirty = false;
@@ -68,6 +73,7 @@ class _UserFormContentState extends State<_UserFormContent> {
   late final String _initDocType;
   late final bool _initActive;
   late final Set<String> _initRoles;
+  String? _initWarehouseId;
 
   bool get _isEditing => widget.existingUser != null;
 
@@ -127,6 +133,10 @@ class _UserFormContentState extends State<_UserFormContent> {
     }
     _selectedRoles = initialRoles;
 
+    _selectedWarehouseId = widget.existingUser?.warehouseId;
+    _initWarehouseId = _selectedWarehouseId;
+    _loadWarehouses();
+
     // Snapshot inicial para saber si hay cambios sin guardar.
     _initName = _nameCtrl.text;
     _initEmail = _emailCtrl.text;
@@ -144,6 +154,23 @@ class _UserFormContentState extends State<_UserFormContent> {
       _docCtrl,
     ]) {
       c.addListener(_syncDirty);
+    }
+  }
+
+  Future<void> _loadWarehouses() async {
+    setState(() => _isLoadingWarehouses = true);
+    try {
+      final whs = await sl<WarehousesRepository>().getActiveWarehouses();
+      if (mounted) {
+        setState(() {
+          _warehouses = whs;
+          _isLoadingWarehouses = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingWarehouses = false);
+      }
     }
   }
 
@@ -167,6 +194,7 @@ class _UserFormContentState extends State<_UserFormContent> {
         _passwordCtrl.text.isNotEmpty ||
         _docType != _initDocType ||
         _isActive != _initActive ||
+        _selectedWarehouseId != _initWarehouseId ||
         _selectedRoles.length != _initRoles.length ||
         !_selectedRoles.containsAll(_initRoles);
   }
@@ -342,6 +370,7 @@ class _UserFormContentState extends State<_UserFormContent> {
       documentType: _docType,
       documentNumber: _docCtrl.text.trim(),
       isActive: _isActive,
+      warehouseId: _selectedWarehouseId,
     );
   }
 
@@ -440,6 +469,7 @@ class _UserFormContentState extends State<_UserFormContent> {
                   ];
                   final asideSections = <Widget>[
                     _buildRolesSection(),
+                    _buildWarehouseSection(),
                     if (_isEditing) _buildStatusSection(),
                   ];
 
@@ -803,6 +833,69 @@ class _UserFormContentState extends State<_UserFormContent> {
               ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildWarehouseSection() {
+    return _SectionCard(
+      title: 'Almacén asignado',
+      subtitle: 'Almacén o sucursal por defecto para este colaborador.',
+      icon: Icons.storefront_outlined,
+      children: [
+        if (_isLoadingWarehouses)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else
+          DropdownButtonFormField<String?>(
+            initialValue:
+                _warehouses.any((w) => w.id == _selectedWarehouseId)
+                    ? _selectedWarehouseId
+                    : null,
+            decoration: InputDecoration(
+              labelText: 'Seleccionar almacén',
+              hintText: 'Sin almacén asignado',
+              prefixIcon: const Icon(Icons.warehouse_outlined, size: 20),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+            ),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Ninguno / Sin asignar'),
+              ),
+              ..._warehouses.map(
+                (w) =>
+                    DropdownMenuItem<String?>(value: w.id, child: Text(w.name)),
+              ),
+            ],
+            onChanged: (val) {
+              setState(() {
+                _selectedWarehouseId = val;
+                _dirty = _computeDirty();
+              });
+            },
+          ),
       ],
     );
   }

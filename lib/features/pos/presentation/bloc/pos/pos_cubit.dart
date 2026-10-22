@@ -59,7 +59,10 @@ class PosCubit extends Cubit<PosState> {
     );
   }
 
-  Future<void> initPosData({bool forceRefresh = false}) async {
+  Future<void> initPosData({
+    bool forceRefresh = false,
+    String? preferredWarehouseId,
+  }) async {
     if (state.isLoading) return; // Evitar llamadas concurrentes duplicadas
     if (!forceRefresh &&
         state.warehouses.isNotEmpty &&
@@ -92,7 +95,15 @@ class PosCubit extends Cubit<PosState> {
         String? initialWarehouseId;
 
         if (data.warehouses.isNotEmpty) {
-          initialWarehouseId = data.warehouses.first.id;
+          if (preferredWarehouseId != null &&
+              data.warehouses.any((w) => w.id == preferredWarehouseId)) {
+            initialWarehouseId = preferredWarehouseId;
+          } else if (state.selectedWarehouseId != null &&
+              data.warehouses.any((w) => w.id == state.selectedWarehouseId)) {
+            initialWarehouseId = state.selectedWarehouseId;
+          } else {
+            initialWarehouseId = data.warehouses.first.id;
+          }
         }
 
         if (data.accounts.isNotEmpty) {
@@ -111,6 +122,7 @@ class PosCubit extends Cubit<PosState> {
             isLoading: false,
             warehouses: data.warehouses,
             accounts: data.accounts,
+            documentSeries: data.documentSeries,
             selectedWarehouseId:
                 initialWarehouseId ?? state.selectedWarehouseId,
             selectedAccountId: initialAccountId,
@@ -135,12 +147,30 @@ class PosCubit extends Cubit<PosState> {
     );
   }
 
-  void setClient(String id, String name, int saldo) {
+  void setClient(
+    String id,
+    String name,
+    int saldo, {
+    String? docNumber,
+    String? docType,
+    String? address,
+  }) {
+    final inferredType =
+        docType ??
+        (docNumber != null && docNumber.trim().isNotEmpty
+            ? (docNumber.trim().length == 11
+                ? 'RUC'
+                : (docNumber.trim().length == 8 ? 'DNI' : 'OTRO'))
+            : null);
+
     emit(
       state.copyWith(
         selectedClientId: id,
         selectedClientName: name,
         saldoActualCliente: saldo,
+        customerDocumentType: inferredType,
+        customerDocumentNumber: docNumber,
+        customerAddress: address,
         clientMatches: const [],
       ),
     );
@@ -148,6 +178,63 @@ class PosCubit extends Cubit<PosState> {
 
   void removeClient() {
     emit(state.copyWith(clearClient: true));
+  }
+
+  void setDocumentType(String type) {
+    final seriesForType =
+        state.documentSeries
+            .where((s) => s.documentType == type && s.isActive)
+            .toList();
+    final defaultSeries =
+        seriesForType.isNotEmpty
+            ? seriesForType
+                .firstWhere(
+                  (s) => s.isDefault,
+                  orElse: () => seriesForType.first,
+                )
+                .series
+            : (type == 'FACTURA'
+                ? 'F001'
+                : (type == 'BOLETA' ? 'B001' : 'NV01'));
+
+    emit(state.copyWith(documentType: type, selectedSeries: defaultSeries));
+  }
+
+  void setDocumentSeries(String series) {
+    emit(state.copyWith(selectedSeries: series));
+  }
+
+  void setCurrency(String currencyCode, double exchangeRate) {
+    emit(
+      state.copyWith(currencyCode: currencyCode, exchangeRate: exchangeRate),
+    );
+  }
+
+  void setExchangeRate(double exchangeRate) {
+    emit(state.copyWith(exchangeRate: exchangeRate));
+  }
+
+  void setPaymentReference(String? reference) {
+    emit(state.copyWith(paymentReference: reference));
+  }
+
+  void setCustomerFiscalData({
+    String? customerId,
+    String? customerName,
+    String? customerDocType,
+    String? customerDocNumber,
+    String? customerAddress,
+  }) {
+    emit(
+      state.copyWith(
+        selectedClientId: customerId ?? state.selectedClientId,
+        selectedClientName: customerName ?? state.selectedClientName,
+        customerDocumentType: customerDocType ?? state.customerDocumentType,
+        customerDocumentNumber:
+            customerDocNumber ?? state.customerDocumentNumber,
+        customerAddress: customerAddress ?? state.customerAddress,
+      ),
+    );
   }
 
   void setPuntosAUsar(int puntos) {
@@ -547,11 +634,33 @@ class PosCubit extends Cubit<PosState> {
             );
           }).toList();
 
+      final rate = state.exchangeRate > 0 ? state.exchangeRate : 1.0;
+      final isForeignCurrency = state.currencyCode != 'PEN';
+
+      // Montos en la moneda de la transacción
+      final effectiveTotal =
+          isForeignCurrency
+              ? double.parse((totalFinal / rate).toStringAsFixed(2))
+              : totalFinal;
+      final effectiveSubtotal = double.parse(
+        (effectiveTotal / 1.18).toStringAsFixed(2),
+      );
+      final effectiveTax = double.parse(
+        (effectiveTotal - effectiveSubtotal).toStringAsFixed(2),
+      );
+
+      // Montos en Moneda Base (PEN - Soles)
+      final totalBase = totalFinal;
+      final subtotalBase = double.parse((totalFinal / 1.18).toStringAsFixed(2));
+      final taxBase = double.parse(
+        (totalFinal - subtotalBase).toStringAsFixed(2),
+      );
+
       final sale = SaleEntity(
         items: saleItems,
         warehouseId: state.selectedWarehouseId!,
         paymentMethod: state.paymentMethod,
-        totalAmount: totalFinal,
+        totalAmount: effectiveTotal,
         totalProfit: totalProfit,
         customerId: state.selectedClientId,
         customerName: state.selectedClientName ?? customClientName,
@@ -563,7 +672,7 @@ class PosCubit extends Cubit<PosState> {
                     ? SalePaymentStatus.pending
                     : SalePaymentStatus.paid),
         discountAmount: descuentoExtra,
-        amountPaid: (isDraft || isCredito) ? 0.0 : totalFinal,
+        amountPaid: (isDraft || isCredito) ? 0.0 : effectiveTotal,
         pointsUsed: isDraft ? 0 : puntosUsados,
         pointsEarned:
             isDraft
@@ -575,6 +684,21 @@ class PosCubit extends Cubit<PosState> {
         isDraft: isDraft,
         isCredit: isCredito,
         activeShift: isDraft ? null : activeShift,
+        // Dimensiones fiscales y de comprobante
+        documentType: state.documentType,
+        documentSeries: state.effectiveSeries,
+        taxAmount: effectiveTax,
+        subtotalAmount: effectiveSubtotal,
+        paymentReference: state.paymentReference,
+        customerDocumentType: state.customerDocumentType,
+        customerDocumentNumber: state.customerDocumentNumber,
+        customerAddress: state.customerAddress,
+        // Multimoneda
+        currencyCode: state.currencyCode,
+        exchangeRate: rate,
+        totalAmountBase: totalBase,
+        subtotalAmountBase: subtotalBase,
+        taxAmountBase: taxBase,
       );
 
       final result = await _posRepository.processSale(sale);

@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/pos/data/models/document_series_model.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
@@ -10,15 +11,25 @@ import 'package:inventory_store_app/features/orders/data/models/order_item_model
 class PosInitData {
   final List<WarehouseModel> warehouses;
   final List<Map<String, dynamic>> accounts;
+  final List<DocumentSeriesModel> documentSeries;
 
-  const PosInitData({required this.warehouses, required this.accounts});
+  const PosInitData({
+    required this.warehouses,
+    required this.accounts,
+    this.documentSeries = const [],
+  });
 }
 
 /// Contrato del repositorio para el módulo POS.
 abstract class PosRepository {
-  /// Carga los datos iniciales necesarios para el POS (almacenes, cuentas).
+  /// Carga los datos iniciales necesarios para el POS (almacenes, cuentas, series).
   Future<Either<Failure, PosInitData>> loadInitialData({
     bool forceRefresh = false,
+  });
+
+  /// Obtiene las series de comprobantes configuradas (filtrado opcional por almacén).
+  Future<Either<Failure, List<DocumentSeriesModel>>> fetchDocumentSeries({
+    String? warehouseId,
   });
 
   /// Refresca únicamente las cuentas financieras para minimizar Data Egress.

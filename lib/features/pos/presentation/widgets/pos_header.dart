@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/movement_form_sheet.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
@@ -58,7 +64,7 @@ class PosHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Barra Superior: Título, Estado de Caja y Almacén Activo ────────
+        // ── Barra Superior: Título, Movimiento, Turno, Almacén y Perfil ────────
         Row(
           children: [
             Container(
@@ -85,12 +91,20 @@ class PosHeader extends StatelessWidget {
             ),
             const Spacer(),
 
+            // ── Botón Registrar Movimiento (Ingreso / Egreso) ───────
+            _buildCashMovementButton(context, posState),
+            const SizedBox(width: 10),
+
             // ── Indicador / Control de Turno de Caja ──────────────
             _buildShiftIndicator(context, posState, isShiftOpen),
             const SizedBox(width: 10),
 
-            // ── Selector de Almacén (Global para POS) ──────────────
+            // ── Selector / Indicador de Almacén (Permiso: warehouses.view_all) ─
             _buildWarehouseSelector(context, posState),
+            const SizedBox(width: 10),
+
+            // ── Chip Usuario: Avatar - Nombre - Rol ─────────────────
+            _buildUserProfileChip(context),
           ],
         ),
         const SizedBox(height: 12),
@@ -101,6 +115,21 @@ class PosHeader extends StatelessWidget {
   }
 
   Widget _buildMobileHeader(BuildContext context, PosState posState) {
+    final authState = context.watch<AuthCubit>().state;
+    final user = authState.currentUser;
+    final fullName =
+        user?.fullName.trim().isNotEmpty == true
+            ? user!.fullName.trim()
+            : 'Usuario';
+    final avatarUrl = user?.avatarUrl;
+    final names = fullName.split(' ').where((s) => s.isNotEmpty).toList();
+    final initials =
+        names.isNotEmpty
+            ? (names.length >= 2
+                ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+                : names[0][0].toUpperCase())
+            : 'U';
+
     return SafeArea(
       bottom: false,
       child: Column(
@@ -148,6 +177,30 @@ class PosHeader extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              // Avatar con tap a opciones
+              GestureDetector(
+                onTap: () => _showMobileOptionsSheet(context, posState),
+                child: CircleAvatar(
+                  radius: 17,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  backgroundImage:
+                      avatarUrl != null && avatarUrl.isNotEmpty
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                  child:
+                      avatarUrl == null || avatarUrl.isEmpty
+                          ? Text(
+                            initials,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          )
+                          : null,
+                ),
+              ),
+              const SizedBox(width: 8),
               IconButton(
                 onPressed: () => _showMobileOptionsSheet(context, posState),
                 icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
@@ -173,6 +226,7 @@ class PosHeader extends StatelessWidget {
     final posCubit = context.read<PosCubit>();
     final cashShiftsCubit = context.read<CashShiftsCubit>();
     final cartCubit = context.read<CartCubit>();
+    final authCubit = context.read<AuthCubit>();
 
     showModalBottomSheet(
       context: context,
@@ -185,6 +239,7 @@ class PosHeader extends StatelessWidget {
             BlocProvider.value(value: posCubit),
             BlocProvider.value(value: cashShiftsCubit),
             BlocProvider.value(value: cartCubit),
+            BlocProvider.value(value: authCubit),
           ],
           child: BlocBuilder<PosCubit, PosState>(
             buildWhen:
@@ -196,6 +251,22 @@ class PosHeader extends StatelessWidget {
             builder: (ctx, state) {
               final activeShift = state.activeShift;
               final isShiftOpen = activeShift != null && activeShift.isOpen;
+              final user = authCubit.state.currentUser;
+              final fullName =
+                  user?.fullName.trim().isNotEmpty == true
+                      ? user!.fullName.trim()
+                      : 'Usuario';
+              final roleName = user?.role ?? 'cajero';
+              final roleLabel = AppRoles.getLabel(roleName);
+              final avatarUrl = user?.avatarUrl;
+              final names =
+                  fullName.split(' ').where((s) => s.isNotEmpty).toList();
+              final initials =
+                  names.isNotEmpty
+                      ? (names.length >= 2
+                          ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+                          : names[0][0].toUpperCase())
+                      : 'U';
 
               return Container(
                 decoration: BoxDecoration(
@@ -204,47 +275,176 @@ class PosHeader extends StatelessWidget {
                     top: Radius.circular(24),
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 24),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+                    const AppSheetDragHandle(
+                      padding: EdgeInsets.only(bottom: 16),
+                    ),
+
+                    // ── Card de Identidad de Usuario ─────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.15,
+                            ),
+                            backgroundImage:
+                                avatarUrl != null && avatarUrl.isNotEmpty
+                                    ? NetworkImage(avatarUrl)
+                                    : null,
+                            child:
+                                avatarUrl == null || avatarUrl.isEmpty
+                                    ? Text(
+                                      initials,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                    : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fullName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  roleLabel,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 18),
+
+                    // ── Movimientos de Dinero (Ingreso / Egreso) ─────────
                     const Text(
-                      'Opciones de Caja',
+                      'Movimientos de Dinero',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.tealDark,
+                              backgroundColor: AppColors.teal.withValues(
+                                alpha: 0.08,
+                              ),
+                              side: BorderSide(
+                                color: AppColors.teal.withValues(alpha: 0.3),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _openCashMovement(
+                                context,
+                                state,
+                                initialType: 'INCOME',
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.arrow_downward_rounded,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Ingreso',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                              backgroundColor: AppColors.danger.withValues(
+                                alpha: 0.08,
+                              ),
+                              side: BorderSide(
+                                color: AppColors.danger.withValues(alpha: 0.3),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _openCashMovement(
+                                context,
+                                state,
+                                initialType: 'EXPENSE',
+                              );
+                            },
+                            icon: const Icon(
+                              Icons.arrow_upward_rounded,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              'Egreso',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
                     const Text(
                       'Turno de Caja',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     _buildShiftIndicator(ctx, state, isShiftOpen),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
+
                     const Text(
                       'Almacén Activo',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -453,11 +653,11 @@ class PosHeader extends StatelessWidget {
 
     if (posState.warehouses.isEmpty) {
       return Container(
-        height: 44,
+        height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: AppColors.error.withValues(alpha: 0.25),
             width: 1,
@@ -500,6 +700,69 @@ class PosHeader extends StatelessWidget {
       );
     }
 
+    final canViewAll = context.hasPermission(AppPermissions.warehousesViewAll);
+    final currentWh = posState.warehouses.firstWhere(
+      (w) => w.id == posState.selectedWarehouseId,
+      orElse: () => posState.warehouses.first,
+    );
+
+    // Si el usuario no cuenta con el permiso warehouses.view_all o solo hay un almacén:
+    // Mostrar pill fijo con candado de asignación
+    if (!canViewAll || posState.warehouses.length == 1) {
+      return Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.store_mall_directory_rounded,
+              size: 17,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                currentWh.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (!canViewAll) ...[
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Almacén asignado exclusivamente a tu usuario.',
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Icon(
+                    Icons.lock_rounded,
+                    size: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    // Usuario con permiso warehouses.view_all: Dropdown interactivo para alternar
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -510,9 +773,7 @@ class PosHeader extends StatelessWidget {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          isExpanded:
-              MediaQuery.of(context).size.width <
-              800, // Expand in mobile bottom sheet
+          isExpanded: MediaQuery.of(context).size.width < 800,
           value:
               posState.selectedWarehouseId ??
               (posState.warehouses.isNotEmpty
@@ -568,6 +829,258 @@ class PosHeader extends StatelessWidget {
             }
           },
         ),
+      ),
+    );
+  }
+
+  // ── Botón Registrar Movimiento (Ingreso / Egreso) ───────────────────────────
+  Widget _buildCashMovementButton(BuildContext context, PosState posState) {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: PopupMenuButton<String>(
+        tooltip: 'Registrar movimiento de dinero (Ingreso / Egreso)',
+        offset: const Offset(0, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        onSelected:
+            (type) => _openCashMovement(
+              context,
+              posState,
+              initialType: type == 'ANY' ? 'INCOME' : type,
+            ),
+        itemBuilder:
+            (context) => [
+              const PopupMenuItem(
+                value: 'INCOME',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.arrow_downward_rounded,
+                      color: AppColors.tealDark,
+                      size: 18,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Registrar Ingreso',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'EXPENSE',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.arrow_upward_rounded,
+                      color: AppColors.danger,
+                      size: 18,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Registrar Egreso',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'ANY',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Nuevo Movimiento / Transferencia',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.payments_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Movimiento',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCashMovement(
+    BuildContext context,
+    PosState posState, {
+    String? initialType,
+  }) async {
+    String? cashAccountId = posState.activeShift?.accountId;
+    if (cashAccountId == null) {
+      final cashAcc = posState.accounts.firstWhere(
+        (a) => PosCalculatorUtils.accountRequiresShift(a),
+        orElse:
+            () =>
+                posState.accounts.isNotEmpty
+                    ? posState.accounts.first
+                    : <String, dynamic>{},
+      );
+      cashAccountId = cashAcc['id'] as String?;
+    }
+
+    final saved = await MovementFormSheet.show(
+      context,
+      initialType: initialType ?? 'INCOME',
+      preselectedAccountId: cashAccountId,
+    );
+
+    if (saved == true && context.mounted) {
+      context.read<PosCubit>().initPosData(forceRefresh: true);
+      if (cashAccountId != null) {
+        context.read<PosCubit>().checkActiveShift(cashAccountId);
+      }
+      AppSnackbar.show(
+        context,
+        message: 'Movimiento de dinero registrado exitosamente.',
+        type: SnackbarType.success,
+      );
+    }
+  }
+
+  // ── Chip Usuario: Avatar - Nombre - Rol ────────────────────────────────────
+  Widget _buildUserProfileChip(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    final user = authState.currentUser;
+    final fullName =
+        user?.fullName.trim().isNotEmpty == true
+            ? user!.fullName.trim()
+            : 'Usuario';
+    final avatarUrl = user?.avatarUrl;
+    final roleName = user?.role ?? 'cajero';
+    final roleDisplay = AppRoles.getLabel(roleName);
+
+    final names = fullName.split(' ').where((s) => s.isNotEmpty).toList();
+    final initials =
+        names.isNotEmpty
+            ? (names.length >= 2
+                ? '${names[0][0]}${names[1][0]}'.toUpperCase()
+                : names[0][0].toUpperCase())
+            : 'U';
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+            backgroundImage:
+                avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
+            child:
+                avatarUrl == null || avatarUrl.isEmpty
+                    ? Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    )
+                    : null,
+          ),
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 130),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fullName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    height: 1.15,
+                  ),
+                ),
+                Text(
+                  roleDisplay,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

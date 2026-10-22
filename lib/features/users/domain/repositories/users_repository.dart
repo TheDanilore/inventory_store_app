@@ -30,6 +30,7 @@ abstract class UsersRepository {
     String? phone,
     required String documentType,
     String? documentNumber,
+    String? warehouseId,
   });
 
   Future<Either<Failure, void>> updateUser({
@@ -42,6 +43,7 @@ abstract class UsersRepository {
     String? documentNumber,
     required bool isActive,
     String? newPassword, // Opcional, si se quiere cambiar la contraseña
+    String? warehouseId,
   });
 
   Future<Either<Failure, void>> deleteUser(String id);

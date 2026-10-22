@@ -20,6 +20,13 @@ class PurchaseOrderEntity extends Equatable {
   final String? notes;
   final int itemCount;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+  final double totalAmountBase;
+  final double subtotalAmountBase;
+  final double taxAmountBase;
+
   const PurchaseOrderEntity({
     required this.id,
     required this.createdAt,
@@ -39,6 +46,11 @@ class PurchaseOrderEntity extends Equatable {
     this.documentNumber,
     this.notes,
     required this.itemCount,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.totalAmountBase = 0.0,
+    this.subtotalAmountBase = 0.0,
+    this.taxAmountBase = 0.0,
   });
 
   @override
@@ -61,5 +73,10 @@ class PurchaseOrderEntity extends Equatable {
     documentNumber,
     notes,
     itemCount,
+    currencyCode,
+    exchangeRate,
+    totalAmountBase,
+    subtotalAmountBase,
+    taxAmountBase,
   ];
 }

@@ -12,6 +12,11 @@ class AccountMovementModel {
   final DateTime createdAt;
   final String? shiftId;
 
+  // Multimoneda
+  final String currencyCode;
+  final double exchangeRate;
+  final double amountBase;
+
   // 1. Agrega estas dos propiedades para capturar los datos anidados
   final Map<String, dynamic>? financialAccount;
   final Map<String, dynamic>? profile;
@@ -26,6 +31,9 @@ class AccountMovementModel {
     this.referenceId,
     required this.createdAt,
     this.shiftId,
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
+    this.amountBase = 0.0,
     this.financialAccount,
     this.profile,
   });
@@ -53,6 +61,12 @@ class AccountMovementModel {
               ? DateTime.parse(map['created_at'] as String)
               : DateTime.now(),
       shiftId: map['shift_id'] as String?,
+      currencyCode: (map['currency_code'] as String? ?? 'PEN').toUpperCase(),
+      exchangeRate: (map['exchange_rate'] as num?)?.toDouble() ?? 1.0,
+      amountBase:
+          (map['amount_base'] as num?)?.toDouble() ??
+          (map['amount'] as num?)?.toDouble() ??
+          0.0,
 
       // Mapeo seguro de los objetos anidados
       financialAccount: map['financial_accounts'] as Map<String, dynamic>?,
@@ -71,6 +85,9 @@ class AccountMovementModel {
       'reference_id': referenceId,
       'created_at': createdAt.toIso8601String(),
       'shift_id': shiftId,
+      'currency_code': currencyCode,
+      'exchange_rate': exchangeRate,
+      'amount_base': amountBase,
       'financial_accounts': financialAccount,
       'profiles': profile,
     };
@@ -88,6 +105,9 @@ class AccountMovementModel {
       referenceId: referenceId,
       createdAt: createdAt,
       shiftId: shiftId,
+      currencyCode: currencyCode,
+      exchangeRate: exchangeRate,
+      amountBase: amountBase,
       accountName: accountName,
       accountType: accountType,
       createdByName: createdByName,
