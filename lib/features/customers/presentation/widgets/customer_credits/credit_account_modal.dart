@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
@@ -27,54 +28,19 @@ class CreditAccountModal extends StatelessWidget {
     BuildContext context, {
     CustomerCreditEntity? accountToEdit,
     required VoidCallback onSaved,
-  }) async {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-    if (isDesktop) {
-      return showDialog<bool>(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogCtx) {
-          return Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 520,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 32,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: CreditAccountModal(
-                  accountToEdit: accountToEdit,
-                  onSaved: onSaved,
-                  isDialog: true,
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      return showModalBottomSheet<bool>(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetCtx) => CreditAccountModal(
-              accountToEdit: accountToEdit,
-              onSaved: onSaved,
-              isDialog: false,
-            ),
-      );
-    }
+  }) {
+    return AdaptiveDetailSheet.show<bool>(
+      context,
+      desktopWidth: 520,
+      breakpoint: 900,
+      barrierLabel: 'Cerrar cuenta de crédito',
+      builder:
+          (sheetCtx) => CreditAccountModal(
+            accountToEdit: accountToEdit,
+            onSaved: onSaved,
+            isDialog: AdaptiveDetailSheet.isSideSheet(sheetCtx),
+          ),
+    );
   }
 
   @override

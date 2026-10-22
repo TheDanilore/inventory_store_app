@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -21,46 +22,17 @@ class CustomerFormSheet extends StatelessWidget {
     CustomerEntity? customer,
     VoidCallback? onSaved,
   }) async {
-    final isDesktop = MediaQuery.of(context).size.width >= 900;
-    bool? saved;
-    if (isDesktop) {
-      saved = await showDialog<bool>(
-        context: context,
-        barrierDismissible: true,
-        builder: (dialogCtx) {
-          return Center(
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 580,
-                height: MediaQuery.of(context).size.height * 0.88,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 32,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: CustomerFormSheet(customer: customer, isDialog: true),
-              ),
-            ),
-          );
-        },
-      );
-    } else {
-      saved = await showModalBottomSheet<bool>(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => CustomerFormSheet(customer: customer),
-      );
-    }
+    final saved = await AdaptiveDetailSheet.show<bool>(
+      context,
+      desktopWidth: 580,
+      breakpoint: 900,
+      barrierLabel: 'Cerrar formulario de cliente',
+      builder:
+          (sheetCtx) => CustomerFormSheet(
+            customer: customer,
+            isDialog: AdaptiveDetailSheet.isSideSheet(sheetCtx),
+          ),
+    );
     if (saved == true) onSaved?.call();
     return saved;
   }

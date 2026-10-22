@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
@@ -20,67 +21,21 @@ class BrandFormSheet extends StatefulWidget {
     BuildContext context, {
     BrandEntity? brand,
   }) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
     final cubit = context.read<BrandsCubit>();
-
-    if (screenWidth >= 720) {
-      return showGeneralDialog<bool>(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Cerrar',
-        barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (dialogContext, anim1, anim2) {
-          return BlocProvider.value(
+    return AdaptiveDetailSheet.show<bool>(
+      context,
+      desktopWidth: 460,
+      breakpoint: 720,
+      barrierLabel: 'Cerrar formulario de marca',
+      builder:
+          (sheetContext) => BlocProvider.value(
             value: cubit,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: 460,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.16),
-                        blurRadius: 32,
-                        offset: const Offset(-8, 0),
-                      ),
-                    ],
-                  ),
-                  child: BrandFormSheet(brand: brand, isSlideOver: true),
-                ),
-              ),
+            child: BrandFormSheet(
+              brand: brand,
+              isSlideOver: AdaptiveDetailSheet.isSideSheet(sheetContext),
             ),
-          );
-        },
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          );
-        },
-      );
-    } else {
-      return showModalBottomSheet<bool>(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetContext) => BlocProvider.value(
-              value: cubit,
-              child: BrandFormSheet(brand: brand, isSlideOver: false),
-            ),
-      );
-    }
+          ),
+    );
   }
 
   @override

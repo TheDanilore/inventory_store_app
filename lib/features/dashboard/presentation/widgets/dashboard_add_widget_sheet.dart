@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 /// Descriptor para los widgets modulares disponibles en el Dashboard
@@ -45,63 +46,18 @@ class DashboardAddWidgetSheet extends StatefulWidget {
     required void Function(String id, bool isVisible) onToggleWidget,
     required VoidCallback onResetDefaults,
   }) {
-    final isDesktop = MediaQuery.of(context).size.width >= 720;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (isDesktop) {
-      return showGeneralDialog(
-        context: context,
-        useRootNavigator: true,
-        barrierDismissible: true,
-        barrierLabel: 'Add Widget',
-        barrierColor: Colors.black.withValues(alpha: 0.12),
-        transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (ctx, anim1, anim2) {
-          return Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
-              child: SizedBox(
-                width: 440,
-                height: double.infinity,
-                child: DashboardAddWidgetSheet(
-                  visibleWidgetIds: visibleWidgetIds,
-                  onToggleWidget: onToggleWidget,
-                  onResetDefaults: onResetDefaults,
-                ),
-              ),
-            ),
-          );
-        },
-        transitionBuilder: (ctx, anim1, anim2, child) {
-          final offsetAnim = Tween<Offset>(
-            begin: const Offset(1.0, 0.0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic));
-          return SlideTransition(position: offsetAnim, child: child);
-        },
-      );
-    } else {
-      return showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (ctx) {
-          return FractionallySizedBox(
-            heightFactor: 0.88,
-            child: DashboardAddWidgetSheet(
-              visibleWidgetIds: visibleWidgetIds,
-              onToggleWidget: onToggleWidget,
-              onResetDefaults: onResetDefaults,
-            ),
-          );
-        },
-      );
-    }
+    return AdaptiveDetailSheet.show<void>(
+      context,
+      desktopWidth: 440,
+      breakpoint: 720,
+      barrierLabel: 'Añadir Widgets al Dashboard',
+      builder:
+          (sheetContext) => DashboardAddWidgetSheet(
+            visibleWidgetIds: visibleWidgetIds,
+            onToggleWidget: onToggleWidget,
+            onResetDefaults: onResetDefaults,
+          ),
+    );
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_cubit.dart';
@@ -25,73 +26,21 @@ class AttributeFormSheet extends StatefulWidget {
     BuildContext context, {
     AttributeEntity? attribute,
   }) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
     final cubit = context.read<AttributesCubit>();
-
-    if (screenWidth >= 720) {
-      return showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: 'Cerrar',
-        barrierColor: Colors.black.withValues(alpha: 0.35),
-        transitionDuration: const Duration(milliseconds: 260),
-        pageBuilder: (dialogContext, anim1, anim2) {
-          return BlocProvider.value(
+    return AdaptiveDetailSheet.show<void>(
+      context,
+      desktopWidth: 440,
+      breakpoint: 720,
+      barrierLabel: 'Cerrar formulario de atributo',
+      builder:
+          (sheetContext) => BlocProvider.value(
             value: cubit,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: 440,
-                  height: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.16),
-                        blurRadius: 32,
-                        offset: const Offset(-8, 0),
-                      ),
-                    ],
-                  ),
-                  child: AttributeFormSheet(
-                    attribute: attribute,
-                    isSlideOver: true,
-                  ),
-                ),
-              ),
+            child: AttributeFormSheet(
+              attribute: attribute,
+              isSlideOver: AdaptiveDetailSheet.isSideSheet(sheetContext),
             ),
-          );
-        },
-        transitionBuilder: (context, anim1, anim2, child) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(1, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
-            ),
-            child: child,
-          );
-        },
-      );
-    } else {
-      return showModalBottomSheet(
-        context: context,
-        useRootNavigator: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder:
-            (sheetContext) => BlocProvider.value(
-              value: cubit,
-              child: AttributeFormSheet(
-                attribute: attribute,
-                isSlideOver: false,
-              ),
-            ),
-      );
-    }
+          ),
+    );
   }
 
   @override
