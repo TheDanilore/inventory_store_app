@@ -197,6 +197,24 @@ class PosCalculatorUtils {
       }
     }
 
+    // ── Validaciones Fiscales de Comprobante ──
+    if (!isDraft) {
+      if (posState.documentType == 'FACTURA') {
+        if (posState.selectedClientId == null) {
+          return 'Para emitir Factura es obligatorio seleccionar un cliente con RUC.';
+        }
+        final docNum = posState.customerDocumentNumber?.trim() ?? '';
+        if (docNum.length != 11) {
+          return 'La Factura requiere un cliente con RUC válido de 11 dígitos.';
+        }
+      } else if (posState.documentType == 'BOLETA' && totalFinal >= 700.0) {
+        final docNum = posState.customerDocumentNumber?.trim() ?? '';
+        if (posState.selectedClientId == null || docNum.isEmpty) {
+          return 'SUNAT: Boletas iguales o mayores a S/ 700 requieren registrar cliente con DNI o RUC.';
+        }
+      }
+    }
+
     return null; // Validación exitosa
   }
 

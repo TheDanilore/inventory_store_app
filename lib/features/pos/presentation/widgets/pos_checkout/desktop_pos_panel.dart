@@ -19,7 +19,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_document_and_currency_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
@@ -195,22 +195,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       return;
     }
 
-    if (!isDraft) {
-      final confirmed = await PosPaymentSheet.show(
-        context,
-        totalFinal: totalFinal,
-        pointsToSolesRatio: pointsToSolesRatio,
-        earningRate: earningRate,
-        initialCustomerName:
-            posCubit.state.selectedClientId != null
-                ? posCubit.state.selectedClientName
-                : _clienteCtrl.text.trim().isNotEmpty
-                ? _clienteCtrl.text.trim()
-                : null,
-      );
 
-      if (confirmed != true) return;
-    }
 
     _lastSaleWasDraft = isDraft;
     _lastSoldQuantities = {
@@ -640,8 +625,30 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
             );
           },
         ),
+        const SizedBox(height: 16),
+        BlocBuilder<PosCubit, PosState>(
+          buildWhen: (prev, curr) =>
+              prev.discountText != curr.discountText ||
+              prev.isDiscountPercentage != curr.isDiscountPercentage ||
+              prev.puntosAUsar != curr.puntosAUsar,
+          builder: (context, posState) {
+            return BlocBuilder<CartCubit, CartState>(
+              buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
+              builder: (context, cartState) {
+                final currentTotal = PosCalculatorUtils.calcularTotalFinal(
+                  discountText: posState.discountText,
+                  isDiscountPercentage: posState.isDiscountPercentage,
+                  pos: posState,
+                  cart: cartState,
+                  ratio: ratio,
+                );
+                return PosDocumentAndCurrencyCard(totalFinal: currentTotal);
+              },
+            );
+          },
+        ),
         const SizedBox(height: 20),
-        const _SectionTitle('Configuración de venta'),
+        const _SectionTitle('Método de pago y almacén'),
         BlocBuilder<PosCubit, PosState>(
           buildWhen:
               (prev, curr) =>
