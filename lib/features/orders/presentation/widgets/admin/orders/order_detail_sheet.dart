@@ -9,7 +9,7 @@ import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_state.dart';
@@ -765,13 +765,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                               )
                                               : null,
                                       onShare:
-                                          () => OrderPdfGenerator.shareTicket(
-                                            state.order!,
-                                            items: state.items,
-                                            businessName: config.businessName,
-                                            taxId: config.businessTaxId,
-                                            address: config.businessAddress,
-                                            phone: config.businessPhone,
+                                          () => OrderReceiptExportSheet.show(
+                                            context,
+                                            order: state.order!,
+                                            initialItems: state.items,
                                           ),
                                     );
                                   },

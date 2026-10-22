@@ -149,6 +149,7 @@ class OrderDetailCustomerSection extends StatelessWidget {
     final cubit = context.read<OrderDetailCubit>();
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:

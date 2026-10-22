@@ -19,6 +19,7 @@ class CloseShiftSheet {
     if (isDesktop) {
       return showDialog<bool>(
         context: context,
+        useRootNavigator: true,
         barrierColor: Colors.black54,
         builder:
             (_) => BlocProvider.value(
@@ -42,6 +43,7 @@ class CloseShiftSheet {
     }
     return showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:

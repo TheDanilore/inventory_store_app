@@ -138,6 +138,7 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
   void _openMobileClientPickerSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(

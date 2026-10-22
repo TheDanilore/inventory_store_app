@@ -20,6 +20,7 @@ class QuickCreateCustomerDialog extends StatefulWidget {
     if (isMobile) {
       return showModalBottomSheet<CustomerEntity>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

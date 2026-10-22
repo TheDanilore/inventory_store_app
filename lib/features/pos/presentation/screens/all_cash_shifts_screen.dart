@@ -122,6 +122,7 @@ class _AllCashShiftsBodyState extends State<_AllCashShiftsBody> {
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => ShiftDetailSheet(shift: shift, onCloseShift: onClose),

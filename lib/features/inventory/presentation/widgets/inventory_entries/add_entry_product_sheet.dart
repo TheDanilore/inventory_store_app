@@ -63,6 +63,7 @@ class AddEntryProductSheet extends StatefulWidget {
     if (isWide) {
       return showDialog<InventoryEntryItemEntity>(
         context: context,
+        useRootNavigator: true,
         barrierColor: Colors.black54,
         builder:
             (_) => AddEntryProductSheet(
@@ -77,6 +78,7 @@ class AddEntryProductSheet extends StatefulWidget {
     }
     return showModalBottomSheet<InventoryEntryItemEntity>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
@@ -499,15 +499,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                           }
                         },
                         (details) async {
-                          final config = context.read<AppConfigCubit>();
-                          await OrderPdfGenerator.shareTicket(
-                            details.order,
-                            items: details.items,
-                            businessName: config.businessName,
-                            taxId: config.businessTaxId,
-                            address: config.businessAddress,
-                            phone: config.businessPhone,
-                          );
+                          if (dialogContext.mounted) {
+                            await OrderReceiptExportSheet.show(
+                              dialogContext,
+                              order: details.order,
+                              initialItems: details.items,
+                              isSaleSuccess: true,
+                            );
+                          }
                         },
                       );
                     } catch (e, st) {

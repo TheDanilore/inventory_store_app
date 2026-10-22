@@ -46,6 +46,7 @@ class _SupplierCreditMovementsScreenState
   ) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

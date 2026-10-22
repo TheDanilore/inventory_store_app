@@ -168,6 +168,7 @@ class _WarehousesManagementScreenState
     if (isDesktop) {
       showDialog(
         context: context,
+        useRootNavigator: true,
         builder:
             (_) => Dialog(
               backgroundColor: Colors.transparent,
@@ -184,6 +185,7 @@ class _WarehousesManagementScreenState
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => modal,

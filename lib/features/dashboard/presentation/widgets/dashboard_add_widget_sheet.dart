@@ -50,6 +50,7 @@ class DashboardAddWidgetSheet extends StatefulWidget {
     if (isDesktop) {
       return showGeneralDialog(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: true,
         barrierLabel: 'Add Widget',
         barrierColor: Colors.black.withValues(alpha: 0.12),
@@ -82,6 +83,7 @@ class DashboardAddWidgetSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
         shape: const RoundedRectangleBorder(

@@ -28,6 +28,7 @@ class ProductPreviewModal extends StatefulWidget {
     if (isDesktop) {
       return showDialog(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: true,
         builder:
             (_) => Dialog(
@@ -43,6 +44,7 @@ class ProductPreviewModal extends StatefulWidget {
     } else {
       return showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

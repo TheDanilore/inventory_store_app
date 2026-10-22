@@ -70,6 +70,7 @@ class _MovementsTabState extends State<MovementsTab> {
     }
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) {

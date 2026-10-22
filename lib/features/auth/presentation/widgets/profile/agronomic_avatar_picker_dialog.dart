@@ -128,6 +128,7 @@ class AgronomicAvatarPickerDialog extends StatefulWidget {
     } else {
       return showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(

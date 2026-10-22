@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
@@ -404,15 +404,14 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                           }
                         },
                         (result) async {
-                          final config = context.read<AppConfigCubit>();
-                          await OrderPdfGenerator.shareTicket(
-                            result.order,
-                            items: result.items,
-                            businessName: config.businessName,
-                            taxId: config.businessTaxId,
-                            address: config.businessAddress,
-                            phone: config.businessPhone,
-                          );
+                          if (dialogContext.mounted) {
+                            await OrderReceiptExportSheet.show(
+                              dialogContext,
+                              order: result.order,
+                              initialItems: result.items,
+                              isSaleSuccess: true,
+                            );
+                          }
                         },
                       );
                     } catch (e, stackTrace) {

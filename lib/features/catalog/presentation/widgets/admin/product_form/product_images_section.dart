@@ -1071,6 +1071,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
     if (isMobile) {
       await showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (ctx) {

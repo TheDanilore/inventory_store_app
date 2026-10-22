@@ -48,6 +48,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     if (isDesktop) {
       result = await showDialog<PosScanResult>(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: true,
         builder:
             (_) => Dialog(
@@ -78,6 +79,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     } else {
       result = await showModalBottomSheet<PosScanResult>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

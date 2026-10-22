@@ -6,12 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
-import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 import 'package:intl/intl.dart';
 
 /// Vista de Ventas POS embebida en el layout principal de Caja.
@@ -111,7 +110,6 @@ class _PosSalesViewState extends State<PosSalesView> {
 
     try {
       final posCubit = context.read<PosCubit>();
-      final config = context.read<AppConfigCubit>();
 
       final detailsRes = await posCubit.fetchOrderDetailsForTicket(orderId);
 
@@ -126,14 +124,13 @@ class _PosSalesViewState extends State<PosSalesView> {
           }
         },
         (result) async {
-          await OrderPdfGenerator.printTicket(
-            result.order,
-            items: result.items,
-            businessName: config.businessName,
-            taxId: config.businessTaxId,
-            address: config.businessAddress,
-            phone: config.businessPhone,
-          );
+          if (mounted) {
+            await OrderReceiptExportSheet.show(
+              context,
+              order: result.order,
+              initialItems: result.items,
+            );
+          }
         },
       );
     } catch (e, st) {
@@ -199,6 +196,7 @@ class _PosSalesViewState extends State<PosSalesView> {
     // Móvil: Apple HIG Draggable Modal BottomSheet con esquinas de 24px
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,

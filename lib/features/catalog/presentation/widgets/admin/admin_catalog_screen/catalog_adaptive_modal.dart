@@ -17,6 +17,7 @@ class CatalogAdaptiveModal {
     if (isMobile) {
       return showModalBottomSheet<T>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
         isDismissible: isDismissible,
@@ -51,6 +52,7 @@ class CatalogAdaptiveModal {
 
     return showDialog<T>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: isDismissible,
       barrierColor: barrierColor ?? Colors.black.withValues(alpha: 0.4),
       builder:

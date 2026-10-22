@@ -859,6 +859,7 @@ class _WarehousePickerBottomSheet extends StatelessWidget {
     FocusManager.instance.primaryFocus?.unfocus();
     return showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder:

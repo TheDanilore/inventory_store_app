@@ -94,6 +94,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
       final cubit = context.read<IngredientsCubit>();
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
@@ -940,6 +941,7 @@ class _SlideOverIngredientDrawer extends StatefulWidget {
     final cubit = context.read<IngredientsCubit>();
     return showGeneralDialog<bool>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: true,
       barrierLabel: 'Cerrar panel',
       barrierColor: Colors.black.withValues(alpha: 0.35),

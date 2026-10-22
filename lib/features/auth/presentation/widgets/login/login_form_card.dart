@@ -86,6 +86,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
       if (isMobile) {
         await showModalBottomSheet(
           context: context,
+          useRootNavigator: true,
           isScrollControlled: true,
           backgroundColor: AppColors.surface,
           shape: const RoundedRectangleBorder(

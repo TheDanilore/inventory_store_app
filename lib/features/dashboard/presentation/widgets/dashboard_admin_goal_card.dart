@@ -18,6 +18,7 @@ class AdminGoalHelper {
     if (isDesktop) {
       showDialog(
         context: context,
+        useRootNavigator: true,
         builder: (context) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           return Dialog(
@@ -39,6 +40,7 @@ class AdminGoalHelper {
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) {

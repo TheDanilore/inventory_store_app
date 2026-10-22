@@ -1083,6 +1083,7 @@ class _SearchableItemPicker extends StatefulWidget {
     if (isMobile) {
       await showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
@@ -1098,6 +1099,7 @@ class _SearchableItemPicker extends StatefulWidget {
     } else {
       await showDialog(
         context: context,
+        useRootNavigator: true,
         builder:
             (ctx) => Dialog(
               backgroundColor:

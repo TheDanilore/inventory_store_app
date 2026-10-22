@@ -48,6 +48,7 @@ class PosAddToCartSheet extends StatefulWidget {
     if (isDesktop) {
       await showDialog<void>(
         context: context,
+        useRootNavigator: true,
         builder:
             (ctx) => MultiBlocProvider(
               providers: [
@@ -84,6 +85,7 @@ class PosAddToCartSheet extends StatefulWidget {
     } else {
       await showModalBottomSheet<void>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

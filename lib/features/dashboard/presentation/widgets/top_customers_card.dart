@@ -557,6 +557,7 @@ class TopCustomersCard extends StatelessWidget {
     if (isDesktop) {
       showDialog(
         context: context,
+        useRootNavigator: true,
         builder:
             (ctx) => Dialog(
               backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
@@ -572,6 +573,7 @@ class TopCustomersCard extends StatelessWidget {
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

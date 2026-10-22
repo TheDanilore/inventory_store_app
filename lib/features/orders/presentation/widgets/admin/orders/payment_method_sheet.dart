@@ -28,6 +28,7 @@ class PaymentMethodSheet extends StatelessWidget {
 
     return showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:

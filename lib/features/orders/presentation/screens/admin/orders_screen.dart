@@ -30,6 +30,7 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_confirm_dialog.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_table_view.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 
 class OrdersScreen extends StatefulWidget {
   final String? customTitle;
@@ -334,14 +335,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      final config = context.read<AppConfigCubit>();
-      await context.read<OrdersCubit>().generatePdfTicket(
-        order,
-        businessName: config.businessName,
-        taxId: config.businessTaxId,
-        address: config.businessAddress,
-        phone: config.businessPhone,
-      );
+      await OrderReceiptExportSheet.show(context, order: order);
     } catch (e, st) {
       LoggerService.e(
         'Error al generar ticket para pedido ${order.id}',

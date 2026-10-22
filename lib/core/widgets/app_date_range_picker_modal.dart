@@ -40,6 +40,7 @@ class AppDateRangePickerModal extends StatefulWidget {
     if (isDesktop) {
       return showDialog<DateTimeRange>(
         context: context,
+        useRootNavigator: true,
         builder: (context) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           return Dialog(
@@ -70,6 +71,7 @@ class AppDateRangePickerModal extends StatefulWidget {
     } else {
       return showModalBottomSheet<DateTimeRange>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) {

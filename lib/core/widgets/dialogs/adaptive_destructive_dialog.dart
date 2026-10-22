@@ -42,6 +42,7 @@ class AdaptiveDestructiveDialog extends StatefulWidget {
     if (isDesktop) {
       return showDialog<bool>(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.45),
         builder:
@@ -57,6 +58,7 @@ class AdaptiveDestructiveDialog extends StatefulWidget {
     } else {
       return showModalBottomSheet<bool>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

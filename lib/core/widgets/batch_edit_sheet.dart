@@ -40,6 +40,7 @@ class BatchEditSheet extends StatefulWidget {
     if (isDesktop) {
       return showDialog<List<BatchAssignmentModel>>(
         context: context,
+        useRootNavigator: true,
         barrierColor: Colors.black.withValues(alpha: 0.45),
         builder:
             (ctx) => Dialog(
@@ -67,6 +68,7 @@ class BatchEditSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet<List<BatchAssignmentModel>>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

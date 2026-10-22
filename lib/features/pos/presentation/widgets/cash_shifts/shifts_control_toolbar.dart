@@ -558,6 +558,7 @@ class _UserFilterButton extends StatelessWidget {
     } else {
       showModalBottomSheet(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:

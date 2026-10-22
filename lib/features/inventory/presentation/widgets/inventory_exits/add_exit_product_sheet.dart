@@ -72,6 +72,7 @@ class AddExitProductSheet extends StatefulWidget {
     if (isWide) {
       return showDialog<ExitItemUI>(
         context: context,
+        useRootNavigator: true,
         barrierColor: Colors.black54,
         builder:
             (_) => AddExitProductSheet(
@@ -86,6 +87,7 @@ class AddExitProductSheet extends StatefulWidget {
     }
     return showModalBottomSheet<ExitItemUI>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
