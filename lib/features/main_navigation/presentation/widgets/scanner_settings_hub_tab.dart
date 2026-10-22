@@ -769,21 +769,19 @@ class _ScannerSettingsHubTabState extends State<ScannerSettingsHubTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Flexible(
-                      child: Text(
-                        dev.name,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      dev.name,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (dev.isDefault) ...[
-                      const SizedBox(width: 8),
+                    if (dev.isDefault)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -802,11 +800,13 @@ class _ScannerSettingsHubTabState extends State<ScannerSettingsHubTab> {
                           ),
                         ),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 3),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       '${dev.connectionType}${dev.brandOrModel != null ? ' · ${dev.brandOrModel}' : ''}',
@@ -815,12 +815,10 @@ class _ScannerSettingsHubTabState extends State<ScannerSettingsHubTab> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(width: 8),
                     const Text(
                       '·',
                       style: TextStyle(color: AppColors.textMuted),
                     ),
-                    const SizedBox(width: 8),
                     Text(
                       timeStr,
                       style: const TextStyle(

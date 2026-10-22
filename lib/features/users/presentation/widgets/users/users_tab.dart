@@ -377,7 +377,58 @@ class _UsersTabState extends State<UsersTab>
               },
             ),
 
-            // 4. ROLES
+            // 4. ALMACÉN ASIGNADO
+            AdminTableColumn<UserEntity>(
+              id: 'warehouse',
+              label: 'ALMACÉN',
+              flex: 2,
+              cellBuilder: (context, user) {
+                final hasWarehouse =
+                    user.warehouseName != null &&
+                    user.warehouseName!.isNotEmpty;
+                if (!hasWarehouse) {
+                  return Text(
+                    '—',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                  );
+                }
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.blueGrey.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.storefront_outlined,
+                        size: 13,
+                        color: Colors.blueGrey.shade700,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          user.warehouseName!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blueGrey.shade800,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // 5. ROLES
             AdminTableColumn<UserEntity>(
               id: 'roles',
               label: 'ROLES',

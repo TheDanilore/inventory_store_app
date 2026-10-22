@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/roles/domain/entities/role_with_permissions.dart';
 
@@ -67,12 +68,19 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 600;
+    final isSystemRole = _isEditing && widget.existingRole!.isSystemRole;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? 40 : 16,
+        vertical: 24,
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isDesktop ? 24 : 18),
           child: Form(
             key: _formKey,
             child: Column(
@@ -80,25 +88,45 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      _isEditing ? 'Editar Rol' : 'Nuevo Rol Personalizado',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _isEditing
+                            ? Icons.edit_note_rounded
+                            : Icons.add_moderator_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _isEditing
+                            ? 'Editar Rol: ${AppRoles.getLabel(widget.existingRole!.name)}'
+                            : 'Nuevo Rol Personalizado',
+                        style: const TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close_rounded, size: 20),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 const Divider(height: 1),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
                 // Campo Nombre del Rol
                 const Text(
@@ -108,7 +136,7 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
                 const SizedBox(height: 6),
                 TextFormField(
                   controller: _nameCtrl,
-                  readOnly: _isEditing && widget.existingRole!.isSystemRole,
+                  readOnly: isSystemRole,
                   decoration: InputDecoration(
                     hintText: 'Ej: supervisor_tienda o auditor',
                     hintStyle: TextStyle(
@@ -117,7 +145,10 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
                     ),
                     prefixIcon: const Icon(Icons.badge_outlined, size: 18),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor:
+                        isSystemRole
+                            ? Colors.grey.shade100
+                            : Colors.grey.shade50,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
@@ -130,6 +161,14 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(color: Colors.grey.shade200),
                     ),
+                    helperText:
+                        isSystemRole
+                            ? 'Los roles nativos del sistema tienen identificadores fijos.'
+                            : null,
+                    helperStyle: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
@@ -141,7 +180,7 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
                 // Campo Descripción
                 const Text(
@@ -175,42 +214,107 @@ class _RoleFormDialogState extends State<RoleFormDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Acciones
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed:
-                          _isSaving ? null : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey.shade700,
-                        side: BorderSide(color: Colors.grey.shade300),
+                if (!isDesktop)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed:
+                              _isSaving
+                                  ? null
+                                  : () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey.shade700,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Cancelar'),
+                        ),
                       ),
-                      child: const Text('Cancelar'),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton.icon(
-                      onPressed: _isSaving ? null : _submit,
-                      icon:
-                          _isSaving
-                              ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Icon(Icons.check_rounded, size: 16),
-                      label: Text(_isEditing ? 'Guardar' : 'Crear Rol'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton.icon(
+                          onPressed: _isSaving ? null : _submit,
+                          icon:
+                              _isSaving
+                                  ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                  : const Icon(Icons.check_rounded, size: 16),
+                          label: Text(_isEditing ? 'Guardar' : 'Crear Rol'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  )
+                else
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed:
+                            _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 11,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton.icon(
+                        onPressed: _isSaving ? null : _submit,
+                        icon:
+                            _isSaving
+                                ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(Icons.check_rounded, size: 16),
+                        label: Text(_isEditing ? 'Guardar' : 'Crear Rol'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 11,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),

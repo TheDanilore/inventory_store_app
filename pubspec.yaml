@@ -31,7 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-    # AGREGA ESTAS DOS LÍNEAS AQUÍ ABAJO:
   flutter_localizations:
     sdk: flutter
 

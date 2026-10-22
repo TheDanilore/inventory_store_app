@@ -294,6 +294,8 @@ class _UserDetailContentState extends State<_UserDetailContent> {
             children: [
               for (final r in roles) _roleBadge(r),
               _statusBadge(user.isActive),
+              if (user.warehouseName != null && user.warehouseName!.isNotEmpty)
+                _warehouseBadge(user.warehouseName!),
             ],
           ),
           bodyPadding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -743,6 +745,36 @@ class _UserDetailContentState extends State<_UserDetailContent> {
           fontWeight: FontWeight.w700,
           color: c == Colors.amber ? c.shade800 : c.shade700,
         ),
+      ),
+    );
+  }
+
+  Widget _warehouseBadge(String warehouseName) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.blueGrey.shade200, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.storefront_outlined,
+            size: 11,
+            color: Colors.blueGrey.shade700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            warehouseName,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Colors.blueGrey.shade800,
+            ),
+          ),
+        ],
       ),
     );
   }

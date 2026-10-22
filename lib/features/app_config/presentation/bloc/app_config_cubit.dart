@@ -318,6 +318,34 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     );
   }
 
+  /// Actualiza rápidamente la activación global y visibilidad del módulo de puntos
+  Future<bool> updateLoyaltySettings({
+    required bool loyaltyGlobalEnabled,
+    required bool loyaltyCustomerVisible,
+  }) async {
+    final currentInfo =
+        state.businessInfo ??
+        const BusinessInfoEntity(
+          businessName: 'DANILORE ONE ERP',
+          taxId: '10751565149',
+          address: 'Virtual',
+          phone: '',
+          logoUrl: '',
+          loyaltyGlobalEnabled: false,
+          loyaltyCustomerVisible: false,
+        );
+
+    return saveBusinessInfo(
+      businessName: currentInfo.businessName,
+      taxId: currentInfo.taxId,
+      address: currentInfo.address,
+      phone: currentInfo.phone,
+      logoUrl: currentInfo.logoUrl,
+      loyaltyGlobalEnabled: loyaltyGlobalEnabled,
+      loyaltyCustomerVisible: loyaltyCustomerVisible,
+    );
+  }
+
   Future<bool> saveLogoAndInfo({
     required Uint8List logoBytes,
     required String businessName,

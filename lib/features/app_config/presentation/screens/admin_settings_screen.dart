@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
+import 'package:inventory_store_app/core/services/pos_printer_settings_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
+import 'package:inventory_store_app/features/app_config/presentation/widgets/currencies_settings_tab.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/scanner_settings_hub_tab.dart';
 
-import 'package:inventory_store_app/features/app_config/presentation/widgets/currencies_settings_tab.dart';
-
 /// Pantalla completa de Configuración del ERP (Linear / Apple HIG Style)
+/// Totalmente configurable e interactiva (Vibración, Sonido, Impresora POS, Puntos, Monedas, Empresa).
 class AdminSettingsScreen extends StatefulWidget {
   final int initialTabIndex;
 
@@ -27,6 +30,9 @@ class AdminSettingsScreen extends StatefulWidget {
 class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _printerFooterCtrl = TextEditingController();
+  bool _isPrintingTestTicket = false;
+  bool _isSavingLoyalty = false;
 
   static const _tabs = [
     _TabSpec(
@@ -41,7 +47,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     ),
     _TabSpec(
       title: 'Apariencia',
-      subtitle: 'Tema y visuales',
+      subtitle: 'Tema e interacción',
       icon: Icons.palette_outlined,
     ),
     _TabSpec(
@@ -80,6 +86,15 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
       }
     });
 
+    // Inicializar servicios de hardware y preferencias
+    BarcodeScannerHardwareService.init();
+    PosPrinterSettingsService.init().then((_) {
+      if (mounted) {
+        _printerFooterCtrl.text =
+            PosPrinterSettingsService.footerMessageNotifier.value;
+      }
+    });
+
     final cubit = context.read<AppConfigCubit>();
     if (cubit.state.businessInfo == null) {
       cubit.loadBusinessInfo();
@@ -100,6 +115,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _printerFooterCtrl.dispose();
     super.dispose();
   }
 
@@ -340,6 +356,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         final ruc = info?.taxId ?? '10751565149';
         final address = info?.address ?? 'Virtual';
         final phone = info?.phone ?? '936081881';
+        final logoUrl = info?.logoUrl;
 
         return ListView(
           padding: const EdgeInsets.all(20),
@@ -367,13 +384,73 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                 ),
               ),
               children: [
+                if (logoUrl != null && logoUrl.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? AppColors.darkBorderSubtle
+                                : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            logoUrl,
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (c, e, s) => const Icon(
+                                  Icons.business_rounded,
+                                  size: 32,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Logotipo Oficial Activo',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Visible en tickets, comprobantes y reportes',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 _buildInfoTile(
                   context,
                   isDark: isDark,
                   icon: Icons.badge_outlined,
                   title: 'Nombre Comercial',
                   value: name,
-                  badge: 'Moneda: PEN (S/)',
+                  badge: 'Moneda Base: PEN (S/)',
                 ),
                 const SizedBox(height: 10),
                 _buildInfoTile(
@@ -420,11 +497,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     );
   }
 
-  // ── Tab 1: Apariencia & Interfaz ──────────────────────────────────────────
+  // ── Tab 2: Apariencia & Interacción ───────────────────────────────────────
   Widget _buildAppearanceView(BuildContext context, bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        // ── Tema visual ──
         _buildSectionCard(
           context,
           isDark: isDark,
@@ -587,30 +665,106 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
           ],
         ),
         const SizedBox(height: 16),
+
+        // ── Preferencias de Interacción (Vibración y Sonido interactivos) ──
         _buildSectionCard(
           context,
           isDark: isDark,
           icon: Icons.tune_rounded,
-          title: 'Preferencias de Interacción',
-          subtitle: 'Comportamiento del teclado y respuesta háptica táctil',
+          title: 'Preferencias de Interacción y Hardware',
+          subtitle:
+              'Configura y prueba la vibración, sonidos de confirmación y atajos de teclado',
           children: [
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.vibration_rounded,
-              title: 'Feedback Háptico',
-              value: 'Respuesta táctil y vibración en escaneos y cobros',
-              badge: 'Activado',
+            // Switch 1: Vibración / Feedback Háptico
+            ValueListenableBuilder<bool>(
+              valueListenable: BarcodeScannerHardwareService.hapticNotifier,
+              builder: (context, isHapticEnabled, _) {
+                return _buildInteractiveSwitchTile(
+                  context,
+                  isDark: isDark,
+                  icon: Icons.vibration_rounded,
+                  title: 'Feedback Háptico (Vibración)',
+                  subtitle:
+                      'Vibración táctil al escanear productos, presionar botones clave y cobrar.',
+                  value: isHapticEnabled,
+                  onChanged: (val) async {
+                    await BarcodeScannerHardwareService.setHapticFeedback(val);
+                    if (val) {
+                      HapticFeedback.mediumImpact();
+                    }
+                  },
+                  trailingAction:
+                      isHapticEnabled
+                          ? TextButton.icon(
+                            icon: const Icon(Icons.touch_app_rounded, size: 14),
+                            label: const Text(
+                              'Probar',
+                              style: TextStyle(fontSize: 11.5),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFF2563EB),
+                            ),
+                            onPressed: () => HapticFeedback.heavyImpact(),
+                          )
+                          : null,
+                );
+              },
             ),
             const SizedBox(height: 10),
-            _buildInfoTile(
+
+            // Switch 2: Sonido / Bip de Escaneo y Ventas
+            ValueListenableBuilder<bool>(
+              valueListenable: BarcodeScannerHardwareService.soundBeepNotifier,
+              builder: (context, isSoundEnabled, _) {
+                return _buildInteractiveSwitchTile(
+                  context,
+                  isDark: isDark,
+                  icon: Icons.volume_up_rounded,
+                  title: 'Sonido y Bip de Confirmación',
+                  subtitle:
+                      'Emite un sonido auditivo al leer códigos de barras o registrar ventas con éxito.',
+                  value: isSoundEnabled,
+                  onChanged: (val) async {
+                    await BarcodeScannerHardwareService.setSoundBeep(val);
+                    if (val) {
+                      SystemSound.play(SystemSoundType.click);
+                    }
+                  },
+                  trailingAction:
+                      isSoundEnabled
+                          ? TextButton.icon(
+                            icon: const Icon(
+                              Icons.play_arrow_rounded,
+                              size: 14,
+                            ),
+                            label: const Text(
+                              'Probar Sonido',
+                              style: TextStyle(fontSize: 11.5),
+                            ),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFF10B981),
+                            ),
+                            onPressed:
+                                () => SystemSound.play(SystemSoundType.click),
+                          )
+                          : null,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+
+            // Item 3: Atajos de Teclado con Modal Informativo
+            _buildInteractiveActionTile(
               context,
               isDark: isDark,
               icon: Icons.keyboard_rounded,
               title: 'Atajos Globales de Teclado',
-              value:
-                  '⌘K / Ctrl+K búsqueda instantánea · F2 Cobrar · Alt+B Borrador',
-              badge: 'Habilitados',
+              subtitle:
+                  '⌘K / Ctrl+K búsqueda rápida · F2 Cobro POS · Alt+B Guardar borrador',
+              actionLabel: 'Ver todos los atajos',
+              onActionPressed: () => _showKeyboardShortcutsDialog(context),
             ),
           ],
         ),
@@ -618,7 +772,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     );
   }
 
-  // ── Tab 2: Cuentas Financieras ────────────────────────────────────────────
+  // ── Tab 3: Cuentas Financieras ────────────────────────────────────────────
   Widget _buildFinancialAccountsView(BuildContext context, bool isDark) {
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -668,86 +822,673 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     );
   }
 
-  // ── Tab 3: Puntos & Fidelización ──────────────────────────────────────────
+  // ── Tab 4: Puntos & Fidelización (Totalmente Configurable) ─────────────────
   Widget _buildLoyaltyPointsView(BuildContext context, bool isDark) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _buildSectionCard(
-          context,
-          isDark: isDark,
-          icon: Icons.card_giftcard_rounded,
-          title: 'Programa de Fidelización y Puntos',
-          subtitle:
-              'Premios por compras recurrentes y saldo en billetera para clientes',
-          action: FilledButton.icon(
-            onPressed: () => context.go('/points-settings'),
-            icon: const Icon(Icons.stars_rounded, size: 16),
-            label: const Text('Gestionar Puntos'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+    return BlocBuilder<AppConfigCubit, AppConfigState>(
+      builder: (blocCtx, state) {
+        final isGlobalEnabled =
+            state.businessInfo?.loyaltyGlobalEnabled ?? false;
+        final isCustomerVisible =
+            state.businessInfo?.loyaltyCustomerVisible ?? false;
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            _buildSectionCard(
+              context,
+              isDark: isDark,
+              icon: Icons.card_giftcard_rounded,
+              title: 'Programa de Fidelización y Puntos',
+              subtitle:
+                  'Activa o desactiva la acumulación de puntos por compras y su visualización para clientes',
+              action: FilledButton.icon(
+                onPressed: () => context.go('/points-settings'),
+                icon: const Icon(Icons.stars_rounded, size: 16),
+                label: const Text('Reglas Avanzadas de Puntos'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              children: [
+                // Switch 1: Habilitar Globalmente
+                _buildInteractiveSwitchTile(
+                  context,
+                  isDark: isDark,
+                  icon: Icons.power_settings_new_rounded,
+                  title: 'Habilitar Sistema de Puntos Globalmente',
+                  subtitle:
+                      'Permite acumular y canjear puntos en ventas del POS. Si se apaga, desaparece de toda la app.',
+                  value: isGlobalEnabled,
+                  isLoading: _isSavingLoyalty,
+                  badgeText: isGlobalEnabled ? 'ACTIVO' : 'DESACTIVADO',
+                  badgeColor:
+                      isGlobalEnabled
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF64748B),
+                  onChanged: (val) async {
+                    setState(() => _isSavingLoyalty = true);
+                    final success = await context
+                        .read<AppConfigCubit>()
+                        .updateLoyaltySettings(
+                          loyaltyGlobalEnabled: val,
+                          loyaltyCustomerVisible:
+                              val ? isCustomerVisible : false,
+                        );
+                    if (!mounted) return;
+                    setState(() => _isSavingLoyalty = false);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? (val
+                                  ? 'Módulo de Puntos activado con éxito'
+                                  : 'Módulo de Puntos desactivado globalmente')
+                              : 'Error al actualizar el estado de puntos',
+                        ),
+                        backgroundColor:
+                            success
+                                ? const Color(0xFF10B981)
+                                : AppColors.danger,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Switch 2: Visibilidad para Clientes
+                _buildInteractiveSwitchTile(
+                  context,
+                  isDark: isDark,
+                  icon: Icons.visibility_outlined,
+                  title: 'Visible para Clientes en el Catálogo Web/Móvil',
+                  subtitle:
+                      'Muestra a los clientes su saldo de puntos y equivalencia en soles en su perfil y catálogo.',
+                  value: isCustomerVisible,
+                  isEnabled: isGlobalEnabled,
+                  badgeText: isCustomerVisible ? 'VISIBLE' : 'OCULTO',
+                  badgeColor:
+                      isCustomerVisible
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF64748B),
+                  onChanged: (val) async {
+                    if (!isGlobalEnabled) return;
+                    setState(() => _isSavingLoyalty = true);
+                    final success = await context
+                        .read<AppConfigCubit>()
+                        .updateLoyaltySettings(
+                          loyaltyGlobalEnabled: true,
+                          loyaltyCustomerVisible: val,
+                        );
+                    if (!mounted) return;
+                    setState(() => _isSavingLoyalty = false);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success
+                              ? (val
+                                  ? 'Saldo de puntos ahora visible para clientes'
+                                  : 'Saldo de puntos oculto para clientes')
+                              : 'Error al guardar la visibilidad de puntos',
+                        ),
+                        backgroundColor:
+                            success
+                                ? const Color(0xFF10B981)
+                                : AppColors.danger,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Resumen de Regla
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? AppColors.darkBorderSubtle
+                              : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF3B82F6),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          isGlobalEnabled
+                              ? 'El sistema está otorgando 1 Punto por cada S/ 10 de compra. 100 Puntos equivalen a S/ 1.00 de descuento en caja.'
+                              : 'El módulo está actualmente apagado. No se generan ni descuentan puntos durante las operaciones de venta.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                isDark
+                                    ? AppColors.darkTextSecondary
+                                    : const Color(0xFF475569),
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ── Tab 5: Impresora POS (Totalmente Configurable) ─────────────────────────
+  Widget _buildPrinterView(BuildContext context, bool isDark) {
+    return BlocBuilder<AppConfigCubit, AppConfigState>(
+      builder: (context, state) {
+        final info = state.businessInfo;
+        final businessName = info?.businessName ?? 'DANILORE ONE ERP';
+        final taxId = info?.taxId ?? '10751565149';
+        final address = info?.address ?? 'Virtual';
+        final phone = info?.phone ?? '';
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            _buildSectionCard(
+              context,
+              isDark: isDark,
+              icon: Icons.print_rounded,
+              title: 'Configuración de Impresión Térmica POS',
+              subtitle:
+                  'Ajusta el ancho de papel, disparo automático de tickets y realiza pruebas de corte y texto',
+              children: [
+                // 1. Selector de Ancho de Papel
+                ValueListenableBuilder<String>(
+                  valueListenable: PosPrinterSettingsService.paperWidthNotifier,
+                  builder: (context, currentWidth, _) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.receipt_long_rounded,
+                                color: Color(0xFF2563EB),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Ancho del Rollo de Papel Térmico',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF2563EB,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  currentWidth,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPaperWidthOption(
+                                  width: '80mm',
+                                  label: '80 mm (Estándar POS)',
+                                  desc:
+                                      'Ticketeras fijas USB/Red (Epson, Bixolon, Xprinter)',
+                                  isSelected: currentWidth == '80mm',
+                                  isDark: isDark,
+                                  onTap:
+                                      () =>
+                                          PosPrinterSettingsService.setPaperWidth(
+                                            '80mm',
+                                          ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _buildPaperWidthOption(
+                                  width: '58mm',
+                                  label: '58 mm (Compacto)',
+                                  desc:
+                                      'Ticketeras móviles Bluetooth y terminales portátiles',
+                                  isSelected: currentWidth == '58mm',
+                                  isDark: isDark,
+                                  onTap:
+                                      () =>
+                                          PosPrinterSettingsService.setPaperWidth(
+                                            '58mm',
+                                          ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // 2. Impresión Automática al Cobrar
+                ValueListenableBuilder<bool>(
+                  valueListenable: PosPrinterSettingsService.autoPrintNotifier,
+                  builder: (context, autoPrint, _) {
+                    return _buildInteractiveSwitchTile(
+                      context,
+                      isDark: isDark,
+                      icon: Icons.auto_mode_rounded,
+                      title: 'Impresión Automática al Cobrar',
+                      subtitle:
+                          'Abre el cuadro de diálogo de impresión automáticamente al completar una venta en el POS.',
+                      value: autoPrint,
+                      onChanged: (val) {
+                        PosPrinterSettingsService.setAutoPrint(val);
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // 3. Cantidad de Copias
+                ValueListenableBuilder<int>(
+                  valueListenable: PosPrinterSettingsService.copiesNotifier,
+                  builder: (context, copies, _) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.copy_rounded,
+                            color: Color(0xFF64748B),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Copias del Comprobante',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '1 copia para el cliente, o 2 para control interno de almacén/cocina',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SegmentedButton<int>(
+                            segments: const [
+                              ButtonSegment(value: 1, label: Text('1 Copia')),
+                              ButtonSegment(value: 2, label: Text('2 Copias')),
+                            ],
+                            selected: {copies},
+                            onSelectionChanged: (set) {
+                              if (set.isNotEmpty) {
+                                PosPrinterSettingsService.setCopies(set.first);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // 4. Mensaje del Pie de Página del Ticket
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? AppColors.darkBorderSubtle
+                              : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.short_text_rounded,
+                            color: Color(0xFF2563EB),
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Mensaje al Pie del Ticket',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _printerFooterCtrl,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          hintText:
+                              'Ej: ¡Gracias por su compra! Conserve su ticket para cualquier garantía.',
+                          hintStyle: const TextStyle(fontSize: 12),
+                          filled: true,
+                          fillColor:
+                              isDark ? const Color(0xFF0F172A) : Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFCBD5E1),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.save_rounded, size: 16),
+                          label: const Text('Guardar Mensaje'),
+                          onPressed: () async {
+                            await PosPrinterSettingsService.setFooterMessage(
+                              _printerFooterCtrl.text.trim(),
+                            );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Pie de ticket actualizado correctamente',
+                                  ),
+                                  backgroundColor: Color(0xFF10B981),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 5. Laboratorio de Calibración / Impresión de Prueba
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.print_outlined,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Laboratorio de Calibración Térmica',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Envía un ticket de prueba para validar alineación, corte y nitidez.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton.icon(
+                        icon:
+                            _isPrintingTestTicket
+                                ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(Icons.send_rounded, size: 16),
+                        label: Text(
+                          _isPrintingTestTicket
+                              ? 'Enviando...'
+                              : 'Imprimir Prueba',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed:
+                            _isPrintingTestTicket
+                                ? null
+                                : () async {
+                                  setState(() => _isPrintingTestTicket = true);
+                                  final success =
+                                      await PosPrinterSettingsService.printTestTicket(
+                                        businessName: businessName,
+                                        taxId: taxId,
+                                        address: address,
+                                        phone: phone,
+                                      );
+                                  if (!mounted) return;
+                                  setState(() => _isPrintingTestTicket = false);
+                                  ScaffoldMessenger.of(
+                                    this.context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        success
+                                            ? 'Ticket de prueba enviado a la cola de impresión'
+                                            : 'No se pudo generar el ticket de prueba',
+                                      ),
+                                      backgroundColor:
+                                          success
+                                              ? const Color(0xFF10B981)
+                                              : AppColors.danger,
+                                    ),
+                                  );
+                                },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPaperWidthOption({
+    required String width,
+    required String label,
+    required String desc,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? const Color(0xFF2563EB).withValues(alpha: 0.1)
+                  : (isDark ? const Color(0xFF0F172A) : Colors.white),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                isSelected
+                    ? const Color(0xFF2563EB)
+                    : (isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1)),
+            width: isSelected ? 1.8 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+                  color:
+                      isSelected
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF94A3B8),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12.5,
+                    color:
+                        isSelected
+                            ? const Color(0xFF2563EB)
+                            : (isDark
+                                ? AppColors.darkTextPrimary
+                                : const Color(0xFF0F172A)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              desc,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
               ),
             ),
-          ),
-          children: [
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.loyalty_rounded,
-              title: 'Módulo de Puntos Activo',
-              value:
-                  'Acumulación y canje automático en el Punto de Venta (POS)',
-              badge: 'Activo',
-              badgeColor: const Color(0xFF10B981),
-            ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  // ── Tab 4: Impresora POS ──────────────────────────────────────────────────
-  Widget _buildPrinterView(BuildContext context, bool isDark) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _buildSectionCard(
-          context,
-          isDark: isDark,
-          icon: Icons.print_rounded,
-          title: 'Configuración de Impresión de Tickets POS',
-          subtitle:
-              'Parámetros para ticketeras térmicas conectadas por USB, Red o Bluetooth',
-          children: [
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.receipt_long_rounded,
-              title: 'Ancho de Papel Térmico',
-              value:
-                  '80 mm (Estándar para boletas, facturas y tickets rápidos)',
-              badge: '80 mm Predeterminado',
-            ),
-            const SizedBox(height: 10),
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.auto_mode_rounded,
-              title: 'Impresión Automática',
-              value:
-                  'Preguntar o disparar impresión al confirmar cobro en caja',
-              badge: 'Opcional en Cobro',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ── Helper Widgets ────────────────────────────────────────────────────────
+  // ── Helper Widgets Responsive ─────────────────────────────────────────────
   Widget _buildSectionCard(
     BuildContext context, {
     required bool isDark,
@@ -757,79 +1498,339 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     Widget? action,
     required List<Widget> children,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: const Color(0xFF3B82F6), size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+              if (!isNarrow) ...[
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF0F172A),
-                        letterSpacing: -0.2,
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: const Color(0xFF3B82F6),
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (action != null) ...[const SizedBox(width: 12), action],
+                  ],
+                ),
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: const Color(0xFF3B82F6),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+                if (action != null) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(width: double.infinity, child: action),
+                ],
+              ],
+              const SizedBox(height: 16),
+              Divider(
+                height: 1,
+                color:
+                    isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFF1F5F9),
               ),
-              if (action != null) action,
+              const SizedBox(height: 16),
+              ...children,
             ],
           ),
-          const SizedBox(height: 16),
-          Divider(
-            height: 1,
+        );
+      },
+    );
+  }
+
+  Widget _buildInteractiveSwitchTile(
+    BuildContext context, {
+    required bool isDark,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool isEnabled = true,
+    bool isLoading = false,
+    String? badgeText,
+    Color? badgeColor,
+    Widget? trailingAction,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
             color:
-                isDark ? AppColors.darkBorderSubtle : const Color(0xFFF1F5F9),
+                value && isEnabled
+                    ? const Color(0xFF2563EB)
+                    : (isDark
+                        ? AppColors.darkTextSecondary
+                        : const Color(0xFF64748B)),
+            size: 20,
           ),
-          const SizedBox(height: 16),
-          ...children,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isEnabled
+                                  ? (isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A))
+                                  : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                    if (badgeText != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (badgeColor ?? const Color(0xFF2563EB))
+                              .withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor ?? const Color(0xFF2563EB),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color:
+                        isEnabled
+                            ? (isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B))
+                            : AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (trailingAction != null) ...[
+            trailingAction,
+            const SizedBox(width: 8),
+          ],
+          if (isLoading)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            )
+          else
+            Switch.adaptive(
+              value: value,
+              activeTrackColor: const Color(0xFF2563EB),
+              onChanged: isEnabled ? onChanged : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInteractiveActionTile(
+    BuildContext context, {
+    required bool isDark,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String actionLabel,
+    required VoidCallback onActionPressed,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color:
+                isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+            size: 20,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: onActionPressed,
+            style: OutlinedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(actionLabel, style: const TextStyle(fontSize: 12)),
+          ),
         ],
       ),
     );
@@ -911,6 +1912,94 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                 color: effectiveBadgeColor,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showKeyboardShortcutsDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor:
+                isDark ? AppColors.darkSurfaceElevated : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.keyboard_rounded, color: Color(0xFF2563EB)),
+                SizedBox(width: 10),
+                Text(
+                  'Atajos Globales de Teclado',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildShortcutRow('⌘K / Ctrl+K', 'Búsqueda instantánea ERP'),
+                  _buildShortcutRow(
+                    'F2',
+                    'Abrir cobro de venta en el POS (Checkout)',
+                  ),
+                  _buildShortcutRow(
+                    'Alt + B',
+                    'Guardar venta actual como borrador',
+                  ),
+                  _buildShortcutRow('⌘P / Ctrl+P', 'Reimprimir último ticket'),
+                  _buildShortcutRow(
+                    'F4',
+                    'Enfocar buscador de productos con código de barras',
+                  ),
+                  _buildShortcutRow('Esc', 'Cerrar modales o cancelar diálogo'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Entendido'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildShortcutRow(String keys, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Text(
+              keys,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(description, style: const TextStyle(fontSize: 12.5)),
           ),
         ],
       ),

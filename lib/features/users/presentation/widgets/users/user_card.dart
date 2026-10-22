@@ -145,6 +145,32 @@ class _UserCardState extends State<UserCard> {
                                 .toList(),
                       ),
                     ],
+                    if (widget.user.warehouseName != null &&
+                        widget.user.warehouseName!.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.storefront_outlined,
+                            size: 13,
+                            color: Colors.blueGrey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.user.warehouseName!,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blueGrey.shade700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (isLoyaltyEnabled) ...[
                       const SizedBox(height: 6),
                       // Monedas

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/permission_entity.dart';
 import 'package:inventory_store_app/features/roles/domain/entities/role_with_permissions.dart';
@@ -106,16 +107,22 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
     final groups = _groupedPermissions;
+    final roleTitle = AppRoles.getLabel(widget.role.name);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isDesktop ? 40 : 12,
+        vertical: isDesktop ? 24 : 16,
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 820,
-          maxHeight: MediaQuery.of(context).size.height * 0.88,
+          maxHeight:
+              MediaQuery.of(context).size.height * (isDesktop ? 0.88 : 0.94),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isDesktop ? 24 : 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -132,25 +139,27 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                     child: const Icon(
                       Icons.security_rounded,
                       color: AppColors.primary,
-                      size: 26,
+                      size: 24,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             Text(
-                              'Permisos del Rol: ${widget.role.name.toUpperCase()}',
-                              style: const TextStyle(
-                                fontSize: 18,
+                              'Permisos: $roleTitle',
+                              style: TextStyle(
+                                fontSize: isDesktop ? 18 : 16,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(width: 10),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -175,8 +184,10 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                         Text(
                           widget.role.description ??
                               'Configura las acciones y accesos autorizados para este rol.',
+                          maxLines: isDesktop ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12.5,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -186,22 +197,103 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // ── Buscador y acciones masivas ────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
+              if (isDesktop)
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: TextField(
+                          onChanged:
+                              (v) => setState(() => _searchQuery = v.trim()),
+                          decoration: InputDecoration(
+                            hintText: 'Buscar permiso por nombre o código...',
+                            hintStyle: TextStyle(
+                              fontSize: 12.5,
+                              color: Colors.grey.shade400,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              size: 18,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _selectedPermissions.addAll(
+                            widget.allPermissions.map((p) => p.code),
+                          );
+                        });
+                      },
+                      icon: const Icon(Icons.select_all_rounded, size: 16),
+                      label: const Text('Marcar Todos'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() => _selectedPermissions.clear());
+                      },
+                      icon: const Icon(Icons.deselect_rounded, size: 16),
+                      label: const Text('Desmarcar Todos'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    SizedBox(
+                      height: 38,
                       child: TextField(
                         onChanged:
                             (v) => setState(() => _searchQuery = v.trim()),
                         decoration: InputDecoration(
-                          hintText: 'Buscar permiso por nombre o código...',
+                          hintText: 'Buscar permiso...',
                           hintStyle: TextStyle(
                             fontSize: 12.5,
                             color: Colors.grey.shade400,
@@ -227,46 +319,65 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _selectedPermissions.addAll(
-                          widget.allPermissions.map((p) => p.code),
-                        );
-                      });
-                    },
-                    icon: const Icon(Icons.select_all_rounded, size: 16),
-                    label: Text(isDesktop ? 'Marcar Todos' : 'Todos'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${_selectedPermissions.length} de ${widget.allPermissions.length} seleccionados',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedPermissions.addAll(
+                                    widget.allPermissions.map((p) => p.code),
+                                  );
+                                });
+                              },
+                              icon: const Icon(
+                                Icons.select_all_rounded,
+                                size: 14,
+                              ),
+                              label: const Text('Todos'),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() => _selectedPermissions.clear());
+                              },
+                              icon: const Icon(
+                                Icons.deselect_rounded,
+                                size: 14,
+                              ),
+                              label: const Text('Limpiar'),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: Colors.grey.shade700,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      setState(() => _selectedPermissions.clear());
-                    },
-                    icon: const Icon(Icons.deselect_rounded, size: 16),
-                    label: Text(isDesktop ? 'Desmarcar Todos' : 'Limpiar'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  ],
+                ),
+              const SizedBox(height: 12),
               const Divider(height: 1),
 
               // ── Lista de Módulos y Permisos con Scroll ─────────────────────
@@ -282,41 +393,37 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                             ),
                           ),
                         )
-                        : ListView.builder(
-                          itemCount: groups.keys.length,
+                        : ListView.separated(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          itemBuilder: (context, idx) {
-                            final moduleName = groups.keys.elementAt(idx);
-                            final modulePerms = groups[moduleName]!;
-                            final allModuleSelected = modulePerms.every(
+                          itemCount: groups.keys.length,
+                          separatorBuilder:
+                              (_, _) => const SizedBox(height: 14),
+                          itemBuilder: (context, index) {
+                            final module = groups.keys.elementAt(index);
+                            final perms = groups[module]!;
+                            final allSelected = perms.every(
                               (p) => _selectedPermissions.contains(p.code),
                             );
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 16),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.grey.shade200),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Cabecera del módulo
+                                  // Encabezado de módulo
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
+                                      horizontal: 14,
                                       vertical: 10,
                                     ),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
                                       borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(13),
-                                      ),
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          color: Colors.grey.shade200,
-                                        ),
+                                        top: Radius.circular(12),
                                       ),
                                     ),
                                     child: Row(
@@ -324,102 +431,76 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          moduleName.toUpperCase(),
+                                          module.toUpperCase(),
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: 11.5,
                                             fontWeight: FontWeight.w800,
                                             color: Colors.grey.shade700,
                                             letterSpacing: 0.5,
                                           ),
                                         ),
-                                        InkWell(
-                                          onTap:
+                                        TextButton(
+                                          onPressed:
                                               () => _toggleModule(
-                                                modulePerms,
-                                                !allModuleSelected,
+                                                perms,
+                                                !allSelected,
                                               ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
+                                          style: TextButton.styleFrom(
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            foregroundColor:
+                                                allSelected
+                                                    ? Colors.grey.shade700
+                                                    : AppColors.primary,
+                                            textStyle: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
                                             ),
-                                            child: Text(
-                                              allModuleSelected
-                                                  ? 'Desmarcar grupo'
-                                                  : 'Marcar grupo',
-                                              style: const TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
+                                          ),
+                                          child: Text(
+                                            allSelected
+                                                ? 'Desmarcar grupo'
+                                                : 'Marcar grupo',
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
+                                  const Divider(height: 1),
 
-                                  // Lista de checkboxes de permisos
-                                  ...modulePerms.map((perm) {
-                                    final isChecked = _selectedPermissions
-                                        .contains(perm.code);
-
-                                    return InkWell(
-                                      onTap: () => _togglePermission(perm.code),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 10,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Checkbox(
-                                              value: isChecked,
-                                              activeColor: AppColors.primary,
-                                              onChanged:
-                                                  (_) => _togglePermission(
-                                                    perm.code,
-                                                  ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    perm.name,
-                                                    style: TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          isChecked
-                                                              ? FontWeight.w700
-                                                              : FontWeight.w500,
-                                                      color:
-                                                          isChecked
-                                                              ? Colors.black87
-                                                              : Colors
-                                                                  .grey
-                                                                  .shade700,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    perm.code,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontFamily: 'monospace',
-                                                      color:
-                                                          Colors.grey.shade400,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                  // Lista de permisos de este módulo
+                                  for (final p in perms)
+                                    CheckboxListTile(
+                                      value: _selectedPermissions.contains(
+                                        p.code,
+                                      ),
+                                      activeColor: AppColors.primary,
+                                      dense: true,
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                          ),
+                                      onChanged:
+                                          (_) => _togglePermission(p.code),
+                                      title: Text(
+                                        p.name,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
                                         ),
                                       ),
-                                    );
-                                  }),
+                                      subtitle: Text(
+                                        p.code,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontFamily: 'monospace',
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             );
@@ -427,54 +508,113 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                         ),
               ),
 
+              const SizedBox(height: 12),
               const Divider(height: 1),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // ── Botones de Guardado ─────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed:
-                        _isSaving ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey.shade700,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
+              // ── Botones de Guardado adaptativos ─────────────────────────────
+              if (!isDesktop)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
                       ),
                     ),
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _isSaving ? null : _handleSave,
-                    icon:
-                        _isSaving
-                            ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                            : const Icon(Icons.check_rounded, size: 18),
-                    label: Text(
-                      _isSaving ? 'Guardando...' : 'Guardar Permisos',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 12,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: _isSaving ? null : _handleSave,
+                        icon:
+                            _isSaving
+                                ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(Icons.check_rounded, size: 16),
+                        label: Text(
+                          _isSaving ? 'Guardando...' : 'Guardar Permisos',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed:
+                          _isSaving ? null : () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      onPressed: _isSaving ? null : _handleSave,
+                      icon:
+                          _isSaving
+                              ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(Icons.check_rounded, size: 18),
+                      label: Text(
+                        _isSaving ? 'Guardando...' : 'Guardar Permisos',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
