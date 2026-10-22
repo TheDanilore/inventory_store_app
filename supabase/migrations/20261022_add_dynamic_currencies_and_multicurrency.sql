@@ -3,7 +3,29 @@
 -- Ámbitos: Configuración, Compras, Entradas/Salidas, Kárdex, Finanzas y POS
 -- ==============================================================================
 
--- 1. TABLA DINÁMICA DE MONEDAS (Configurable por usuarios con permiso settings.edit)
+-- 0. FUNCIÓN DE PERMISOS GRANULARES (Soporte nativo para Admin con todos los permisos)
+CREATE OR REPLACE FUNCTION public.user_has_permission(p_permission_code text) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles pr
+    JOIN public.user_roles ur ON ur.profile_id = pr.id
+    JOIN public.roles r ON r.id = ur.role_id
+    LEFT JOIN public.role_permissions rp ON rp.role_id = r.id
+    LEFT JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE pr.auth_user_id = auth.uid()
+      AND (
+        LOWER(r.name) IN ('admin', 'administrador')
+        OR p.code = p_permission_code
+      )
+  );
+$$;
+
+GRANT ALL ON FUNCTION public.user_has_permission(text) TO anon, authenticated, service_role;
+
+-- 1. TABLA DINÁMICA DE MONEDAS (Configurable por usuarios con permiso settings.edit o administradores)
 CREATE TABLE IF NOT EXISTS public.currencies (
     code text PRIMARY KEY,                       -- 'PEN', 'USD', 'EUR', etc.
     name text NOT NULL,                          -- 'Soles Peruanos', 'Dólares Americanos'
@@ -74,9 +96,10 @@ ALTER TABLE public.purchase_orders
     ADD COLUMN IF NOT EXISTS subtotal_amount_base numeric DEFAULT 0.00 NOT NULL,
     ADD COLUMN IF NOT EXISTS tax_amount_base numeric DEFAULT 0.00 NOT NULL;
 
+-- Backfill seguro usando total_amount y tax_amount existentes en purchase_orders
 UPDATE public.purchase_orders 
 SET total_amount_base = total_amount,
-    subtotal_amount_base = COALESCE(subtotal_amount, total_amount),
+    subtotal_amount_base = (total_amount - COALESCE(tax_amount, 0.00)),
     tax_amount_base = COALESCE(tax_amount, 0.00)
 WHERE total_amount_base = 0.00 AND total_amount > 0;
 
@@ -117,6 +140,8 @@ ALTER TABLE public.kardex_movements
 -- 6. VENTAS Y FACTURACIÓN POS (orders y order_items)
 -- ==============================================================================
 ALTER TABLE public.orders 
+    ADD COLUMN IF NOT EXISTS subtotal_amount numeric DEFAULT 0.00 NOT NULL,
+    ADD COLUMN IF NOT EXISTS tax_amount numeric DEFAULT 0.00 NOT NULL,
     ADD COLUMN IF NOT EXISTS currency_code text DEFAULT 'PEN' REFERENCES public.currencies(code),
     ADD COLUMN IF NOT EXISTS exchange_rate numeric(12,4) DEFAULT 1.0000 NOT NULL,
     ADD COLUMN IF NOT EXISTS total_amount_base numeric DEFAULT 0.00 NOT NULL,
@@ -125,8 +150,8 @@ ALTER TABLE public.orders
 
 UPDATE public.orders 
 SET total_amount_base = total_amount,
-    subtotal_amount_base = subtotal_amount,
-    tax_amount_base = tax_amount
+    subtotal_amount_base = COALESCE(subtotal_amount, total_amount),
+    tax_amount_base = COALESCE(tax_amount, 0.00)
 WHERE total_amount_base = 0.00 AND total_amount > 0;
 
 ALTER TABLE public.order_items 
@@ -181,7 +206,7 @@ DECLARE
     v_total_base NUMERIC;
     v_deduct_amount NUMERIC;
 BEGIN
-    -- 0. Verificación de permisos granulares (requiere purchases.create)
+    -- 0. Verificación de permisos granulares (requiere purchases.create o rol admin)
     IF NOT public.user_has_permission('purchases.create') THEN
         RETURN jsonb_build_object('success', false, 'error', 'No cuenta con el permiso requerido para registrar órdenes de compra (purchases.create).');
     END IF;
@@ -353,7 +378,7 @@ BEGIN
         );
     END IF;
 
-    -- 6. Actualización de Deuda en Línea de Crédito
+    -- 6. Actualización de Deuda en Línea de Crédito Proveedor
     IF p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING' THEN
         IF v_credit_id IS NOT NULL THEN
             UPDATE public.supplier_credits
@@ -362,13 +387,17 @@ BEGIN
             WHERE id = v_credit_id;
 
             INSERT INTO public.supplier_credit_movements (
-                credit_id, movement_type, amount, reference_id, notes, created_by
+                supplier_credit_id, movement_type, amount, purchase_order_id, notes, created_by
             ) VALUES (
-                v_credit_id, 'DEUDA', v_total_base, v_po_id, 'Generación de deuda por OC #' || left(v_po_id::text, 8), p_profile_id
+                v_credit_id, 'CHARGE', v_total_base, v_po_id, 'Generación de deuda por OC #' || left(v_po_id::text, 8), p_profile_id
             );
         END IF;
     END IF;
 
-    RETURN jsonb_build_object('success', true, 'id', v_po_id);
+    RETURN jsonb_build_object('success', true, 'id', v_po_id, 'purchase_order_id', v_po_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
 END;
 $$;
+
+GRANT ALL ON FUNCTION public.create_purchase_order_rpc(uuid, text, uuid, numeric, text, text, uuid, uuid, date, date, text, text, text, uuid, jsonb, text, numeric) TO anon, authenticated, service_role;

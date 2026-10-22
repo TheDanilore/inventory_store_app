@@ -2,12 +2,34 @@
 -- MIGRACIÓN: Comprobantes de Pago POS (Nota de Venta, Boleta, Factura), Series y Correlativos
 -- ==============================================================================
 
+-- 0. FUNCIÓN DE PERMISOS GRANULARES (Soporte nativo para Admin con todos los permisos)
+CREATE OR REPLACE FUNCTION public.user_has_permission(p_permission_code text) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles pr
+    JOIN public.user_roles ur ON ur.profile_id = pr.id
+    JOIN public.roles r ON r.id = ur.role_id
+    LEFT JOIN public.role_permissions rp ON rp.role_id = r.id
+    LEFT JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE pr.auth_user_id = auth.uid()
+      AND (
+        LOWER(r.name) IN ('admin', 'administrador')
+        OR p.code = p_permission_code
+      )
+  );
+$$;
+
+GRANT ALL ON FUNCTION public.user_has_permission(text) TO anon, authenticated, service_role;
+
 -- 1. Actualizar check constraint de tipo de comprobante en orders
 ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_document_type_check;
 ALTER TABLE public.orders ADD CONSTRAINT orders_document_type_check 
     CHECK (document_type = ANY (ARRAY['NOTA_VENTA'::text, 'BOLETA'::text, 'FACTURA'::text, 'TICKET'::text, 'NINGUNO'::text]));
 
--- 2. Agregar columnas fiscales y de comprobante a la tabla orders
+-- 2. Asegurar columnas de comprobante, fiscales y multimoneda en orders
 ALTER TABLE public.orders 
     ADD COLUMN IF NOT EXISTS document_series text,
     ADD COLUMN IF NOT EXISTS tax_amount numeric DEFAULT 0.00 NOT NULL,
@@ -15,7 +37,22 @@ ALTER TABLE public.orders
     ADD COLUMN IF NOT EXISTS customer_document_type text,   -- 'DNI', 'RUC', 'CE'
     ADD COLUMN IF NOT EXISTS customer_document_number text, -- '10723456789'
     ADD COLUMN IF NOT EXISTS customer_address text,         -- Dirección fiscal para facturas
-    ADD COLUMN IF NOT EXISTS payment_reference text;        -- Nº Op / Ref (Yape, Plin, Tarjeta)
+    ADD COLUMN IF NOT EXISTS payment_reference text,        -- Nº Op / Ref (Yape, Plin, Tarjeta)
+    ADD COLUMN IF NOT EXISTS currency_code text DEFAULT 'PEN',
+    ADD COLUMN IF NOT EXISTS exchange_rate numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    ADD COLUMN IF NOT EXISTS total_amount_base numeric DEFAULT 0.00 NOT NULL,
+    ADD COLUMN IF NOT EXISTS subtotal_amount_base numeric DEFAULT 0.00 NOT NULL,
+    ADD COLUMN IF NOT EXISTS tax_amount_base numeric DEFAULT 0.00 NOT NULL;
+
+-- 2.1 Asegurar columnas en order_items y account_movements
+ALTER TABLE public.order_items 
+    ADD COLUMN IF NOT EXISTS applied_price_base numeric DEFAULT 0.00 NOT NULL,
+    ADD COLUMN IF NOT EXISTS unit_cost_base numeric DEFAULT 0.00 NOT NULL;
+
+ALTER TABLE public.account_movements 
+    ADD COLUMN IF NOT EXISTS currency_code text DEFAULT 'PEN',
+    ADD COLUMN IF NOT EXISTS exchange_rate numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    ADD COLUMN IF NOT EXISTS amount_base numeric DEFAULT 0.00 NOT NULL;
 
 -- 3. Crear tabla de Series y Correlativos de Comprobantes
 CREATE TABLE IF NOT EXISTS public.document_series (
@@ -29,15 +66,25 @@ CREATE TABLE IF NOT EXISTS public.document_series (
     warehouse_id uuid REFERENCES public.warehouses(id) ON DELETE SET NULL,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
-    CONSTRAINT document_series_type_check CHECK (document_type = ANY (ARRAY['NOTA_VENTA'::text, 'BOLETA'::text, 'FACTURA'::text])),
-    CONSTRAINT document_series_unique UNIQUE (warehouse_id, document_type, series)
+    CONSTRAINT document_series_type_check CHECK (document_type = ANY (ARRAY['NOTA_VENTA'::text, 'BOLETA'::text, 'FACTURA'::text]))
 );
+
+-- Índices únicos para series globales y por almacén (compatibles con NULL)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_document_series_global_unique 
+    ON public.document_series (document_type, series) 
+    WHERE warehouse_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_document_series_warehouse_unique 
+    ON public.document_series (warehouse_id, document_type, series) 
+    WHERE warehouse_id IS NOT NULL;
 
 -- RLS para document_series basado estrictamente en permisos
 ALTER TABLE public.document_series ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Series legibles por usuarios autenticados" ON public.document_series;
+DROP POLICY IF EXISTS "Series legibles por personal con acceso" ON public.document_series;
 DROP POLICY IF EXISTS "Series administrables por personal autorizado" ON public.document_series;
+DROP POLICY IF EXISTS "Series administrables por personal con permiso de configuración" ON public.document_series;
 
 CREATE POLICY "Series legibles por personal con acceso"
     ON public.document_series FOR SELECT
@@ -60,12 +107,17 @@ CREATE POLICY "Series administrables por personal con permiso de configuración"
     );
 
 -- 4. Insertar series por defecto si no existen
-INSERT INTO public.document_series (document_type, series, current_correlative, is_default, is_active)
-VALUES 
-    ('NOTA_VENTA', 'NV01', 0, true, true),
-    ('BOLETA',     'B001', 0, true, true),
-    ('FACTURA',    'F001', 0, true, true)
-ON CONFLICT DO NOTHING;
+INSERT INTO public.document_series (document_type, series, current_correlative, is_default, is_active, warehouse_id)
+SELECT 'NOTA_VENTA', 'NV01', 0, true, true, NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.document_series WHERE document_type = 'NOTA_VENTA' AND series = 'NV01' AND warehouse_id IS NULL);
+
+INSERT INTO public.document_series (document_type, series, current_correlative, is_default, is_active, warehouse_id)
+SELECT 'BOLETA', 'B001', 0, true, true, NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.document_series WHERE document_type = 'BOLETA' AND series = 'B001' AND warehouse_id IS NULL);
+
+INSERT INTO public.document_series (document_type, series, current_correlative, is_default, is_active, warehouse_id)
+SELECT 'FACTURA', 'F001', 0, true, true, NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.document_series WHERE document_type = 'FACTURA' AND series = 'F001' AND warehouse_id IS NULL);
 
 -- 5. Función RPC optimizada para procesar venta con comprobante y correlativo atómico
 CREATE OR REPLACE FUNCTION "public"."process_pos_sale"("payload" "jsonb") RETURNS "uuid"
@@ -139,7 +191,7 @@ BEGIN
     RAISE EXCEPTION 'Usuario autenticado no posee un perfil válido en el sistema.';
   END IF;
 
-  -- 1.1 Verificación de permisos granulares: requiere permiso pos.sale
+  -- 1.1 Verificación de permisos granulares: requiere permiso pos.sale o rol admin
   IF NOT public.user_has_permission('pos.sale') THEN
     RAISE EXCEPTION 'No cuenta con el permiso requerido para registrar ventas en el POS (pos.sale).' USING ERRCODE = '42501';
   END IF;
@@ -227,7 +279,7 @@ BEGIN
   v_total_profit := v_total_amount - v_total_cost;
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
-  -- 2. INSERTAR ORDEN PRINCIPAL CON COMPROBANTE
+  -- 2. INSERTAR ORDEN PRINCIPAL CON COMPROBANTE Y MULTIMONEDA
   INSERT INTO orders (
     customer_id,
     customer_name,
@@ -299,10 +351,12 @@ BEGIN
     v_applied_price := (item->>'appliedPrice')::numeric;
 
     INSERT INTO order_items (
-      order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit
+      order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit,
+      applied_price_base, unit_cost_base
     ) VALUES (
       v_order_id, (item->>'productId')::uuid, v_variant_id, v_quantity,
-      v_unit_cost, v_applied_price, (v_applied_price - v_unit_cost) * v_quantity
+      v_unit_cost, v_applied_price, (v_applied_price - v_unit_cost) * v_quantity,
+      (v_applied_price * v_exchange_rate), (v_unit_cost * v_exchange_rate)
     );
 
     IF NOT v_is_draft THEN
