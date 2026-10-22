@@ -39,13 +39,20 @@ class ProductQuickViewVariantCard extends StatelessWidget {
     if (isSingleVariant) return productStock;
 
     // Varias variantes: solo podemos calcularlo si hay lotes.
-    if (batches != null && batches!.isNotEmpty) {
-      return batches!
-          .where((b) => b.variantId == variant.id)
-          .fold<double>(0, (s, b) => s + b.availableQuantity)
-          .toInt();
-    }
-    return null;
+    final list = batches;
+    if (list == null || list.isEmpty) return null;
+
+    // Si los lotes no traen `variant_id` no podemos atribuirlos a una
+    // variante concreta (p.ej. listados que solo cargan la cantidad).
+    // En ese caso devolvemos null (desconocido) y NO 0, para no marcar
+    // "Agotado" una variante que en realidad sí tiene existencias.
+    final hasVariantInfo = list.any((b) => b.variantId.isNotEmpty);
+    if (!hasVariantInfo) return null;
+
+    return list
+        .where((b) => b.variantId == variant.id)
+        .fold<double>(0, (s, b) => s + b.availableQuantity)
+        .toInt();
   }
 
   @override

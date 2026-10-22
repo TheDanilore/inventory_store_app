@@ -109,10 +109,18 @@ class ProductsRepositoryImpl implements ProductsRepository {
               ? 'product_variants(id, product_id, sku, sale_price, is_active)'
               : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active)';
       final bool isInStockFilter = stockFilter == CatalogStockFilter.inStock;
+      // OJO: se deben traer TODAS las columnas del lote, no solo
+      // available_quantity. El stock por variante se calcula en la UI
+      // filtrando los lotes por `variant_id`; si esa columna no viene en el
+      // select, el modelo la deja vacía ('') y todas las variantes terminaban
+      // marcadas como "Agotado" aunque el total global del producto fuera
+      // correcto.
+      const String batchesColumns =
+          'id, variant_id, warehouse_id, product_id, batch_number, expiry_date, available_quantity';
       final String batchesJoin =
           isInStockFilter
-              ? 'warehouse_stock_batches!inner(available_quantity)'
-              : 'warehouse_stock_batches(available_quantity)';
+              ? 'warehouse_stock_batches!inner($batchesColumns)'
+              : 'warehouse_stock_batches($batchesColumns)';
 
       String selectString =
           'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), $batchesJoin, $variantSelect';
