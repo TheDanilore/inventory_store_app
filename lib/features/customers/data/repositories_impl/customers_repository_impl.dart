@@ -22,9 +22,9 @@ class CustomersRepositoryImpl implements CustomersRepository {
   }) async {
     try {
       dynamic queryBuilder = _supabase
-          .from('profiles')
+          .from('profiles_with_email')
           .select(
-            'id, full_name, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_profile_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
+            'id, full_name, email, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_profile_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
           );
 
       queryBuilder = queryBuilder.eq('role', 'customer');
@@ -108,7 +108,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
     } catch (e, stack) {
       LoggerService.e('Error en getCustomers', error: e, stackTrace: stack);
       throw AppException(
-        message: 'Error al cargar la lista de clientes',
+        message: 'Error al cargar la lista de clientes: $e',
         originalError: e,
       );
     }
@@ -119,7 +119,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res =
           await _supabase
-              .from('profiles')
+              .from('profiles_with_email')
               .select()
               .eq('id', customerId)
               .single();
@@ -231,7 +231,6 @@ class CustomersRepositoryImpl implements CustomersRepository {
       // 2. Fallback directo
       final Map<String, dynamic> data = {
         'full_name': cleanName,
-        'role': 'customer',
         'is_active': true,
       };
       if (cleanPhone != null) data['phone'] = cleanPhone;
@@ -465,7 +464,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         final inserted =
             await _supabase
                 .from('profiles')
-                .insert({...profileData, 'role': 'customer'})
+                .insert(profileData)
                 .select('id')
                 .single();
         finalProfileId = inserted['id'] as String;
@@ -625,7 +624,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
     try {
       final profilesRes = await _supabase
-          .from('profiles')
+          .from('profiles_with_email')
           .select('is_active')
           .eq('role', 'customer');
 
@@ -747,7 +746,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
       if (topIds.isEmpty) return [];
 
       final topProfilesRes = await _supabase
-          .from('profiles')
+          .from('profiles_with_email')
           .select()
           .inFilter('id', topIds);
 

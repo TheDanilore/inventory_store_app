@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/errors/app_exception.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_state.dart';
@@ -62,7 +63,9 @@ class CustomersCubit extends Cubit<CustomersState> {
         ),
       );
     } catch (e) {
-      emit(CustomersError('Error al cargar clientes: $e'));
+      final msg =
+          e is AppException ? e.message : 'Error al cargar clientes: $e';
+      emit(CustomersError(msg));
     }
   }
 

@@ -990,8 +990,11 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               ),
               const SizedBox(height: 12),
               Text(
-                'Error al cargar clientes: ${state.message}',
+                state.message.startsWith('Error al cargar clientes')
+                    ? state.message
+                    : 'Error al cargar clientes: ${state.message}',
                 style: const TextStyle(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               ElevatedButton(
