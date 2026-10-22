@@ -44,6 +44,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
   String _type = 'CAJA';
+  String _currencyCode = 'PEN';
   bool _isActive = true;
   bool _saving = false;
 
@@ -75,6 +76,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _nameCtrl.text = widget.account!.name;
       _type = widget.account!.type;
       _isActive = widget.account!.isActive;
+      _currencyCode = widget.account!.currencyCode;
     }
   }
 
@@ -340,9 +342,58 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   }
 
   Widget _buildFormFields() {
+    final currSymbol = _currencyCode == 'USD' ? '\$ ' : 'S/ ';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (!_isEditing) ...[
+          _fieldLabel('Plantillas rápidas sugeridas'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _presetChip(
+                label: 'Yape',
+                type: 'DIGITAL',
+                icon: Icons.qr_code_2_rounded,
+                color: const Color(0xFF742284),
+              ),
+              _presetChip(
+                label: 'Plin',
+                type: 'DIGITAL',
+                icon: Icons.send_to_mobile_rounded,
+                color: const Color(0xFF00B4D8),
+              ),
+              _presetChip(
+                label: 'BCP Soles',
+                type: 'BANCO',
+                icon: Icons.account_balance_rounded,
+                color: const Color(0xFF002A8F),
+              ),
+              _presetChip(
+                label: 'BBVA',
+                type: 'BANCO',
+                icon: Icons.account_balance_rounded,
+                color: const Color(0xFF004481),
+              ),
+              _presetChip(
+                label: 'Interbank',
+                type: 'BANCO',
+                icon: Icons.account_balance_rounded,
+                color: const Color(0xFF009B3A),
+              ),
+              _presetChip(
+                label: 'Caja Chica',
+                type: 'CAJA',
+                icon: Icons.point_of_sale_rounded,
+                color: AppColors.teal,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
+
         _fieldLabel('Nombre de la cuenta *'),
         TextFormField(
           controller: _nameCtrl,
@@ -360,6 +411,32 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             }
             return null;
           },
+        ),
+        const SizedBox(height: 16),
+
+        _fieldLabel('Moneda de la cuenta *'),
+        Row(
+          children: [
+            Expanded(
+              child: _currencyCard(
+                code: 'PEN',
+                symbol: 'S/',
+                name: 'Soles peruanos',
+                isSelected: _currencyCode == 'PEN',
+                onTap: () => setState(() => _currencyCode = 'PEN'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _currencyCard(
+                code: 'USD',
+                symbol: '\$',
+                name: 'Dólares americanos',
+                isSelected: _currencyCode == 'USD',
+                onTap: () => setState(() => _currencyCode = 'USD'),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
 
@@ -437,15 +514,18 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         const SizedBox(height: 18),
 
         if (!_isEditing) ...[
-          _fieldLabel('Balance inicial (S/)'),
+          _fieldLabel('Balance inicial ($currSymbol)'),
           TextFormField(
             controller: _balanceCtrl,
             decoration: _inputDeco('0.00').copyWith(
-              prefixIcon: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 child: Text(
-                  'S/ ',
-                  style: TextStyle(
+                  currSymbol,
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                     fontSize: 15,
@@ -563,4 +643,119 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
     ),
   );
+
+  Widget _presetChip({
+    required String label,
+    required String type,
+    required IconData icon,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _type = type;
+          _nameCtrl.text = label;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _currencyCard({
+    required String code,
+    required String symbol,
+    required String name,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.teal.withValues(alpha: 0.08)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.teal : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                symbol.trim(),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    code,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color:
+                          isSelected
+                              ? AppColors.tealDark
+                              : AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

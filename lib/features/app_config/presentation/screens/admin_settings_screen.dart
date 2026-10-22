@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
 import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
@@ -13,6 +15,11 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_state.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/currencies_settings_tab.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/domain/utils/financial_brand_helper.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
+import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/scanner_settings_hub_tab.dart';
 
@@ -1360,52 +1367,585 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
   }
 
   // ── Tab 3: Cuentas Financieras ────────────────────────────────────────────
+  // ── Tab 3: Cuentas Financieras (Conectada a Datos Reales) ────────────────
   Widget _buildFinancialAccountsView(BuildContext context, bool isDark) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        _buildSectionCard(
-          context,
-          isDark: isDark,
-          icon: Icons.account_balance_wallet_rounded,
-          title: 'Cuentas Financieras & Cajas',
-          subtitle:
-              'Administra cuentas bancarias, billeteras digitales y cajas receptoras',
-          action: FilledButton.icon(
-            onPressed: () => context.go('/financial-accounts'),
-            icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('Administrar Cuentas'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+    return BlocProvider(
+      create: (_) => sl<FinancialAccountsCubit>()..fetchAccounts(),
+      child: Builder(
+        builder: (fContext) {
+          return BlocConsumer<FinancialAccountsCubit, FinancialAccountsState>(
+            listener: (context, state) {
+              if (state is FinancialAccountSaveError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: AppColors.danger,
+                  ),
+                );
+              } else if (state is FinancialAccountSaved) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cuenta financiera guardada correctamente.'),
+                    backgroundColor: Color(0xFF10B981),
+                  ),
+                );
+              }
+            },
+            builder: (context, state) {
+              List<FinancialAccountEntity> accounts = [];
+              bool isLoading = state is FinancialAccountsLoading;
+
+              if (state is FinancialAccountsLoaded) {
+                accounts = state.accounts;
+              } else if (state is FinancialAccountSaving) {
+                accounts = state.previousAccounts;
+              } else if (state is FinancialAccountSaved) {
+                accounts = state.accounts;
+              } else if (state is FinancialAccountSaveError) {
+                accounts = state.previousAccounts;
+              }
+
+              final activeAccounts = accounts.where((a) => a.isActive).toList();
+              final totalPenBalance = activeAccounts
+                  .where((a) => a.currencyCode.toUpperCase() == 'PEN')
+                  .fold<double>(0.0, (sum, a) => sum + a.balance);
+              final totalUsdBalance = activeAccounts
+                  .where((a) => a.currencyCode.toUpperCase() == 'USD')
+                  .fold<double>(0.0, (sum, a) => sum + a.balance);
+
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // ── Sección 1: Cuentas y Cajas Registradas ────────────────
+                  _buildSectionCard(
+                    context,
+                    isDark: isDark,
+                    icon: Icons.account_balance_wallet_rounded,
+                    title: 'Cuentas Financieras & Cajas Receptoras',
+                    subtitle:
+                        'Administra las cuentas bancarias, billeteras móviles y cajas de cobro para el POS y compras',
+                    action: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => context.go('/financial-accounts'),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                          label: const Text('Ver Tesorería'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF334155),
+                            side: BorderSide(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFCBD5E1),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 9,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () async {
+                            final saved = await AccountFormSheet.show(context);
+                            if (saved == true && context.mounted) {
+                              context
+                                  .read<FinancialAccountsCubit>()
+                                  .fetchAccounts();
+                            }
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 17),
+                          label: const Text('Nueva Cuenta'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    children: [
+                      // Bento KPIs de Tesorería
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBentoKpiCard(
+                              context,
+                              isDark: isDark,
+                              label: 'Cuentas Activas',
+                              value:
+                                  '${activeAccounts.length} / ${accounts.length}',
+                              icon: Icons.account_balance_rounded,
+                              color: const Color(0xFF2563EB),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildBentoKpiCard(
+                              context,
+                              isDark: isDark,
+                              label: 'Saldo Total Soles',
+                              value:
+                                  'S/ ${NumberFormat('#,##0.00', 'es_PE').format(totalPenBalance)}',
+                              icon: Icons.monetization_on_rounded,
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                          if (totalUsdBalance > 0) ...[
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildBentoKpiCard(
+                                context,
+                                isDark: isDark,
+                                label: 'Saldo Total Dólares',
+                                value:
+                                    '\$ ${NumberFormat('#,##0.00', 'en_US').format(totalUsdBalance)}',
+                                icon: Icons.currency_exchange_rounded,
+                                color: const Color(0xFF8B5CF6),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Lista de Cuentas Reales
+                      if (isLoading && accounts.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        )
+                      else if (accounts.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 32,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorderSubtle
+                                      : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.account_balance_wallet_outlined,
+                                  size: 40,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextSecondary
+                                          : const Color(0xFF94A3B8),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No hay cuentas financieras configuradas',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Crea tu primera caja física, cuenta bancaria (BCP, BBVA) o billetera móvil (Yape/Plin).',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextSecondary
+                                            : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton.icon(
+                                  onPressed: () async {
+                                    final saved = await AccountFormSheet.show(
+                                      context,
+                                    );
+                                    if (saved == true && context.mounted) {
+                                      context
+                                          .read<FinancialAccountsCubit>()
+                                          .fetchAccounts();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.add_rounded, size: 16),
+                                  label: const Text('Crear Primera Cuenta'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Column(
+                          children: [
+                            for (int i = 0; i < accounts.length; i++) ...[
+                              if (i > 0) const SizedBox(height: 10),
+                              _buildFinancialAccountRowItem(
+                                context,
+                                account: accounts[i],
+                                isDark: isDark,
+                                onEdit: () async {
+                                  final saved = await AccountFormSheet.show(
+                                    context,
+                                    account: accounts[i],
+                                  );
+                                  if (saved == true && context.mounted) {
+                                    context
+                                        .read<FinancialAccountsCubit>()
+                                        .fetchAccounts();
+                                  }
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Sección 2: Configuración de Moneda y Parámetros Contables ─
+                  _buildSectionCard(
+                    context,
+                    isDark: isDark,
+                    icon: Icons.currency_exchange_rounded,
+                    title: 'Parámetros Operacionales & Métodos de Pago',
+                    subtitle:
+                        'Directrices de cobro para el Punto de Venta (POS) y conciliación contable',
+                    children: [
+                      _buildInfoTile(
+                        context,
+                        isDark: isDark,
+                        icon: Icons.payments_rounded,
+                        title: 'Métodos de Pago Habilitados en Caja',
+                        value:
+                            accounts.isEmpty
+                                ? 'Pendiente de registrar cuentas'
+                                : accounts
+                                        .map((a) => a.name)
+                                        .take(5)
+                                        .join(' · ') +
+                                    (accounts.length > 5 ? ' y más...' : ''),
+                        badge: '${accounts.length} Cuentas',
+                        badgeColor: const Color(0xFF10B981),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildInfoTile(
+                        context,
+                        isDark: isDark,
+                        icon: Icons.monetization_on_outlined,
+                        title: 'Moneda Base Predeterminada',
+                        value:
+                            'Soles Peruanos (PEN - S/) con soporte Multimoneda',
+                        badge: 'PEN',
+                        badgeColor: const Color(0xFF2563EB),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildInfoTile(
+                        context,
+                        isDark: isDark,
+                        icon: Icons.point_of_sale_rounded,
+                        title: 'Control de Turnos de Caja (Shifts)',
+                        value:
+                            'Apertura con saldo inicial, registro de ingresos/egresos y arqueo ciego al cierre.',
+                        badge: 'Activo',
+                        badgeColor: const Color(0xFF10B981),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFinancialAccountRowItem(
+    BuildContext context, {
+    required FinancialAccountEntity account,
+    required bool isDark,
+    required VoidCallback onEdit,
+  }) {
+    final currencySymbol = FinancialBrandHelper.formatCurrencySymbol(
+      account.currencyCode,
+    );
+    final isPen = account.currencyCode.toUpperCase() == 'PEN';
+    final formattedBalance =
+        '$currencySymbol ${NumberFormat('#,##0.00', isPen ? 'es_PE' : 'en_US').format(account.balance)}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Logo / Avatar de la marca financiera
+          FinancialBrandHelper.buildBrandBadge(
+            name: account.name,
+            type: account.type,
+            size: 38,
+          ),
+          const SizedBox(width: 14),
+
+          // Detalles de la cuenta
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        account.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        account.type.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Text(
+                      'Moneda: ${account.currencyCode}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('·', style: TextStyle(color: Colors.grey.shade400)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            account.isActive
+                                ? const Color(
+                                  0xFF10B981,
+                                ).withValues(alpha: 0.12)
+                                : const Color(
+                                  0xFF64748B,
+                                ).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        account.isActive ? 'ACTIVA' : 'INACTIVA',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color:
+                              account.isActive
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          children: [
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.payments_outlined,
-              title: 'Métodos de Pago Activos',
-              value:
-                  'Efectivo en Caja Principal, Yape, Plin, BCP, BBVA, Crédito',
-              badge: 'Configurado',
-              badgeColor: const Color(0xFF10B981),
-            ),
-            const SizedBox(height: 10),
-            _buildInfoTile(
-              context,
-              isDark: isDark,
-              icon: Icons.currency_exchange_rounded,
-              title: 'Moneda del Sistema',
-              value: 'Soles Peruanos (PEN - S/)',
-              badge: 'Predeterminada',
-            ),
-          ],
+          const SizedBox(width: 12),
+
+          // Saldo de la Cuenta
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formattedBalance,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                'Saldo Contable',
+                style: TextStyle(
+                  fontSize: 10,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF94A3B8),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+
+          // Botón Editar
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            tooltip: 'Editar cuenta',
+            color:
+                isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+            onPressed: onEdit,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBentoKpiCard(
+    BuildContext context, {
+    required bool isDark,
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorderSubtle : const Color(0xFFE2E8F0),
         ),
-      ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1429,11 +1969,28 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
               subtitle:
                   'Activa o desactiva la acumulación de puntos por compras y su visualización para clientes',
               action: FilledButton.icon(
-                onPressed: () => context.go('/points-settings'),
+                onPressed:
+                    isGlobalEnabled
+                        ? () => context.go('/points-settings')
+                        : null,
                 icon: const Icon(Icons.stars_rounded, size: 16),
                 label: const Text('Reglas Avanzadas de Puntos'),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor:
+                      isGlobalEnabled
+                          ? const Color(0xFF2563EB)
+                          : (isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFCBD5E1)),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFE2E8F0),
+                  disabledForegroundColor:
+                      isDark
+                          ? const Color(0xFF64748B)
+                          : const Color(0xFF94A3B8),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
@@ -1444,6 +2001,147 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                 ),
               ),
               children: [
+                // Callout Banner de Estado de Puntos
+                if (!isGlobalEnabled)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF2D2010)
+                              : const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF78350F)
+                                : const Color(0xFFFDE68A),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.lock_outline_rounded,
+                          color: Color(0xFFD97706),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Módulo de Puntos Desactivado',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFFDE68A)
+                                          : const Color(0xFF92400E),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Para acceder a la vista de reglas avanzadas, acumulación y juegos interactivos, primero debes activar el interruptor principal abajo.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFFCD34D)
+                                          : const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF062A1B)
+                              : const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF047857)
+                                : const Color(0xFFA7F3D0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: Color(0xFF10B981),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Módulo de Fidelización Activo en ERP y POS',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFA7F3D0)
+                                          : const Color(0xFF065F46),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'La vista de reglas avanzadas está habilitada para configurar tasas de canje, acumulación por compras y juegos.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF6EE7B7)
+                                          : const Color(0xFF047857),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed: () => context.go('/points-settings'),
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.15),
+                            foregroundColor: const Color(0xFF047857),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Abrir Reglas',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_rounded, size: 14),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 14),
+
                 // Switch 1: Habilitar Globalmente
                 _buildInteractiveSwitchTile(
                   context,
@@ -1451,7 +2149,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   icon: Icons.power_settings_new_rounded,
                   title: 'Habilitar Sistema de Puntos Globalmente',
                   subtitle:
-                      'Permite acumular y canjear puntos en ventas del POS. Si se apaga, desaparece de toda la app.',
+                      'Permite acumular y canjear puntos en ventas del POS. Si se apaga, desaparece de toda la app y se desactiva el acceso a las reglas de puntos.',
                   value: isGlobalEnabled,
                   isLoading: _isSavingLoyalty,
                   badgeText: isGlobalEnabled ? 'ACTIVO' : 'DESACTIVADO',
@@ -1475,8 +2173,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         content: Text(
                           success
                               ? (val
-                                  ? 'Módulo de Puntos activado con éxito'
-                                  : 'Módulo de Puntos desactivado globalmente')
+                                  ? 'Módulo de Puntos activado. Ya puedes acceder a las reglas avanzadas.'
+                                  : 'Módulo de Puntos desactivado globalmente.')
                               : 'Error al actualizar el estado de puntos',
                         ),
                         backgroundColor:
@@ -1562,7 +2260,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         child: Text(
                           isGlobalEnabled
                               ? 'El sistema está otorgando 1 Punto por cada S/ 10 de compra. 100 Puntos equivalen a S/ 1.00 de descuento en caja.'
-                              : 'El módulo está actualmente apagado. No se generan ni descuentan puntos durante las operaciones de venta.',
+                              : 'El módulo está actualmente apagado. No se generan ni descuentan puntos durante las operaciones de venta, y la vista de reglas se encuentra bloqueada.',
                           style: TextStyle(
                             fontSize: 12,
                             color:

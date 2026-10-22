@@ -1038,7 +1038,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               onToggleIngredientSearch:
                   context.read<AdminCatalogCubit>().toggleSearchByIngredient,
               onScanBarcode: _openCameraScanner,
-              onBack: _onExitPos,
+              onBack: _isCashierOnly ? null : _onExitPos,
             );
           },
         ),

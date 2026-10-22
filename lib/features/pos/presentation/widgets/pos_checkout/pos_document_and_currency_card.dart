@@ -42,9 +42,37 @@ class _PosDocumentAndCurrencyCardState
     super.dispose();
   }
 
-  bool _isDigitalOrBank(String method) {
-    final m = method.toUpperCase();
-    return !m.contains('EFECTIVO') && !m.contains('CRÉDITO');
+  bool _shouldShowReference(PosState posState) {
+    if (posState.paymentMethod == 'CRÉDITO') return false;
+
+    // 1. Si hay cuenta financiera seleccionada, verificar su tipo formal
+    if (posState.selectedAccountId != null) {
+      final acc = posState.accounts.firstWhere(
+        (a) => a['id'] == posState.selectedAccountId,
+        orElse: () => <String, dynamic>{},
+      );
+      final accType = (acc['type'] as String? ?? '').toUpperCase();
+      if (accType == 'CAJA') return false;
+      if (accType == 'DIGITAL' || accType == 'BANCO') return true;
+    }
+
+    // 2. Fallback por nombre del método de pago
+    final m = posState.paymentMethod.toUpperCase();
+    if (m.contains('CAJA') || m.contains('EFECTIVO') || m.contains('CRÉDITO')) {
+      return false;
+    }
+    return m.contains('YAPE') ||
+        m.contains('PLIN') ||
+        m.contains('BCP') ||
+        m.contains('BBVA') ||
+        m.contains('INTERBANK') ||
+        m.contains('SCOTIA') ||
+        m.contains('BANCO') ||
+        m.contains('TRANSFER') ||
+        m.contains('TARJETA') ||
+        m.contains('IZIPAY') ||
+        m.contains('NIUBIZ') ||
+        m.contains('DIGITAL');
   }
 
   @override
@@ -59,6 +87,7 @@ class _PosDocumentAndCurrencyCardState
               prev.currencyCode != curr.currencyCode ||
               prev.exchangeRate != curr.exchangeRate ||
               prev.paymentMethod != curr.paymentMethod ||
+              prev.selectedAccountId != curr.selectedAccountId ||
               prev.selectedClientId != curr.selectedClientId ||
               prev.customerDocumentNumber != curr.customerDocumentNumber ||
               prev.documentSeries != curr.documentSeries,
@@ -66,7 +95,7 @@ class _PosDocumentAndCurrencyCardState
         final docType = posState.documentType;
         final isFactura = docType == 'FACTURA';
         final isBoleta = docType == 'BOLETA';
-        final showRef = _isDigitalOrBank(posState.paymentMethod);
+        final showRef = _shouldShowReference(posState);
 
         // Series disponibles para el tipo actual
         final seriesList =
@@ -406,6 +435,12 @@ class _PosDocumentAndCurrencyCardState
                   decoration: InputDecoration(
                     labelText: 'Nº Operación / Voucher (Opcional)',
                     hintText: 'Ej: 987456, Yape #, Lote...',
+                    helperText:
+                        'Nº de constancia de Yape, Plin o voucher para cuadre de caja',
+                    helperStyle: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.textSecondary,
+                    ),
                     labelStyle: const TextStyle(fontSize: 12),
                     hintStyle: const TextStyle(fontSize: 11),
                     contentPadding: const EdgeInsets.symmetric(

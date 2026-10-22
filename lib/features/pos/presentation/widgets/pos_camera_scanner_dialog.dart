@@ -1,11 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/camera_stream_stopper.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 
 /// Modal interactivo de escaneo por cámara de Códigos de Barra y QR.
@@ -14,15 +21,16 @@ import 'package:inventory_store_app/features/pos/presentation/services/pos_barco
 /// - Modo Individual: escanea un producto, lo retorna y se cierra.
 /// - Modo Continuo (Ráfaga): mantiene la cámara encendida y añade producto tras
 ///   producto a la lista/carrito en tiempo real sin interrupciones.
+/// - Vista dividida (Split Scanner + Live Cart) estilo retail con HUD reticular.
 /// - Apagado garantizado de la cámara al cerrar el modal (libera hardware/webcam).
-/// - Visor HUD centrado con esquinas iluminadas, máscara translúcida y haz láser.
-/// - Linterna, cambio de cámara y entrada manual integrada.
+/// - Linterna, cambio de cámara, entrada manual y búsqueda por título.
 class PosCameraScannerDialog extends StatefulWidget {
   final String? warehouseId;
   final String? title;
   final bool continuousMode;
   final FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan;
   final bool returnRawCode;
+  final CartCubit? cartCubit;
 
   const PosCameraScannerDialog({
     super.key,
@@ -31,6 +39,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     this.continuousMode = false,
     this.onContinuousScan,
     this.returnRawCode = false,
+    this.cartCubit,
   });
 
   /// Abre el modal de escaneo adaptado a la plataforma y garantiza
@@ -42,6 +51,7 @@ class PosCameraScannerDialog extends StatefulWidget {
     bool continuousMode = false,
     FutureOr<dynamic> Function(PosScanResult result)? onContinuousScan,
     bool returnRawCode = false,
+    CartCubit? cartCubit,
   }) async {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
     PosScanResult? result;
@@ -62,9 +72,9 @@ class PosCameraScannerDialog extends StatefulWidget {
                 vertical: 24,
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 520,
-                  maxHeight: 680,
+                constraints: BoxConstraints(
+                  maxWidth: cartCubit != null ? 580 : 520,
+                  maxHeight: cartCubit != null ? 760 : 680,
                 ),
                 child: PosCameraScannerDialog(
                   warehouseId: warehouseId,
@@ -72,6 +82,7 @@ class PosCameraScannerDialog extends StatefulWidget {
                   continuousMode: continuousMode,
                   onContinuousScan: onContinuousScan,
                   returnRawCode: returnRawCode,
+                  cartCubit: cartCubit,
                 ),
               ),
             ),
@@ -88,7 +99,9 @@ class PosCameraScannerDialog extends StatefulWidget {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Container(
-                height: MediaQuery.of(context).size.height * 0.85,
+                height:
+                    MediaQuery.of(context).size.height *
+                    (cartCubit != null ? 0.94 : 0.85),
                 decoration: const BoxDecoration(
                   color: Colors.black,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -100,6 +113,7 @@ class PosCameraScannerDialog extends StatefulWidget {
                   continuousMode: continuousMode,
                   onContinuousScan: onContinuousScan,
                   returnRawCode: returnRawCode,
+                  cartCubit: cartCubit,
                 ),
               ),
             ),
@@ -303,125 +317,859 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        // Asegura apagar el stream de cámara en Web/Móvil si se cierra por back o tap exterior
         try {
           _scannerController.stop();
         } catch (_) {}
         stopAllWebCameraStreams();
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 1. Visor de la cámara con tamaño expansivo
-            Positioned.fill(
-              child: MobileScanner(
-                controller: _scannerController,
-                fit: BoxFit.cover,
-                onDetect: (capture) {
-                  final barcodes = capture.barcodes;
-                  for (final barcode in barcodes) {
-                    final rawValue = barcode.rawValue;
-                    if (rawValue != null && rawValue.isNotEmpty) {
-                      _handleBarcodeDetected(rawValue);
-                      break;
-                    }
+      child:
+          widget.cartCubit != null
+              ? _buildSplitCartLayout(context)
+              : _buildStandardScannerLayout(context),
+    );
+  }
+
+  /// Vista estándar de pantalla completa cuando solo se requiere escanear un producto
+  Widget _buildStandardScannerLayout(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Visor de la cámara con tamaño expansivo
+          Positioned.fill(
+            child: MobileScanner(
+              controller: _scannerController,
+              fit: BoxFit.cover,
+              onDetect: (capture) {
+                final barcodes = capture.barcodes;
+                for (final barcode in barcodes) {
+                  final rawValue = barcode.rawValue;
+                  if (rawValue != null && rawValue.isNotEmpty) {
+                    _handleBarcodeDetected(rawValue);
+                    break;
                   }
-                },
-                errorBuilder: (context, error) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.videocam_off_rounded,
-                            color: Colors.white70,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Cámara no disponible o sin permisos',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            error.errorDetails?.message ??
-                                'Puedes ingresar el código manualmente abajo.',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // 2. Máscara HUD oscura y Marco de Escaneo Centralizado
-            Positioned.fill(child: _buildCenteredScanHud()),
-
-            // 3. Barra Superior Flotante (Glassmorphism)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 12,
-              right: 12,
-              child: _buildTopControlBar(),
-            ),
-
-            // 4. Toast / Banner flotante de detección continua
-            if (_lastScannedName != null)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 64,
-                left: 16,
-                right: 16,
-                child: _buildScannedFeedbackBanner(),
-              ),
-
-            // 5. Barra Inferior con Entrada Manual y/o Botón "Listo"
-            Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
-
-            // 6. Indicador de carga de resolución
-            if (_isResolving)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black45,
-                  child: const Center(
+                }
+              },
+              errorBuilder: (context, error) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(
-                          color: AppColors.teal,
-                          strokeWidth: 3,
+                        const Icon(
+                          Icons.videocam_off_rounded,
+                          color: Colors.white70,
+                          size: 48,
                         ),
-                        SizedBox(height: 14),
-                        Text(
-                          'Buscando código...',
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Cámara no disponible o sin permisos',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                           ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          error.errorDetails?.message ??
+                              'Puedes ingresar el código manualmente abajo.',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
+                );
+              },
+            ),
+          ),
+
+          // 2. Máscara HUD oscura y Marco de Escaneo Centralizado
+          Positioned.fill(child: _buildCenteredScanHud()),
+
+          // 3. Barra Superior Flotante (Glassmorphism)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 12,
+            right: 12,
+            child: _buildTopControlBar(),
+          ),
+
+          // 4. Toast / Banner flotante de detección continua
+          if (_lastScannedName != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 64,
+              left: 16,
+              right: 16,
+              child: _buildScannedFeedbackBanner(),
+            ),
+
+          // 5. Barra Inferior con Entrada Manual y/o Botón "Listo"
+          Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomBar()),
+
+          // 6. Indicador de carga de resolución
+          if (_isResolving)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black45,
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        color: AppColors.teal,
+                        strokeWidth: 3,
+                      ),
+                      SizedBox(height: 14),
+                      Text(
+                        'Buscando código...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Vista dividida: Cámara interactiva arriba (~38%) + Carrito en tiempo real abajo
+  Widget _buildSplitCartLayout(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 700;
+    final cameraHeight =
+        isDesktop ? 290.0 : (MediaQuery.of(context).size.height * 0.36);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          children: [
+            // 1. Visor de Cámara Superior
+            SizedBox(
+              height: cameraHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  MobileScanner(
+                    controller: _scannerController,
+                    fit: BoxFit.cover,
+                    onDetect: (capture) {
+                      for (final barcode in capture.barcodes) {
+                        final rawValue = barcode.rawValue;
+                        if (rawValue != null && rawValue.isNotEmpty) {
+                          _handleBarcodeDetected(rawValue);
+                          break;
+                        }
+                      }
+                    },
+                    errorBuilder: (context, error) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.videocam_off_rounded,
+                                color: Colors.white70,
+                                size: 36,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Cámara no disponible',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                error.errorDetails?.message ??
+                                    'Usa el buscador por nombre abajo.',
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 11,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // HUD compacto con retícula y esquinas destacadas verde esmeralda
+                  Positioned.fill(child: _buildCompactScanHud()),
+
+                  // Barra superior flotante de controles
+                  Positioned(
+                    top:
+                        MediaQuery.of(context).padding.top > 0
+                            ? MediaQuery.of(context).padding.top + 6
+                            : 10,
+                    left: 12,
+                    right: 12,
+                    child: _buildTopControlBar(),
+                  ),
+
+                  // Pill Banner Toast flotante ("✔ Fideo... agregado (+1)")
+                  if (_lastScannedName != null)
+                    Positioned(
+                      bottom: 10,
+                      left: 16,
+                      right: 16,
+                      child: _buildScannedFeedbackBanner(),
+                    ),
+
+                  // Overlay de búsqueda en proceso
+                  if (_isResolving)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black45,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.teal,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // 2. Panel Interactivo del Carrito en Vivo
+            Expanded(child: _buildLiveCartSheet(context)),
           ],
         ),
       ),
+    );
+  }
+
+  /// Retícula compacta con esquinas verde esmeralda (#10B981) y animación láser
+  Widget _buildCompactScanHud() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = (constraints.maxWidth * 0.78).clamp(190.0, 320.0);
+        final boxHeight = (constraints.maxHeight * 0.60).clamp(100.0, 160.0);
+        final leftOffset = (constraints.maxWidth - boxWidth) / 2;
+        final topOffset = (constraints.maxHeight - boxHeight) / 2 + 12;
+        final scanRect = Rect.fromLTWH(
+          leftOffset,
+          topOffset,
+          boxWidth,
+          boxHeight,
+        );
+
+        return Stack(
+          children: [
+            // 1. Máscara oscura
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ScannerOverlayPainter(
+                  scanWindow: scanRect,
+                  borderRadius: 16,
+                  overlayColor: Colors.black.withValues(alpha: 0.52),
+                ),
+              ),
+            ),
+
+            // 2. Retícula con 4 esquinas destacadas verde esmeralda (#10B981)
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _CornerBracketPainter(
+                  scanRect: scanRect,
+                  color: const Color(0xFF10B981),
+                  cornerLength: 22,
+                  strokeWidth: 3.5,
+                ),
+              ),
+            ),
+
+            // 3. Línea láser animada dentro del marco
+            AnimatedBuilder(
+              animation: _scanAnimation,
+              builder: (context, child) {
+                return Positioned(
+                  top: topOffset + (_scanAnimation.value * (boxHeight - 4)),
+                  left: leftOffset + 6,
+                  width: boxWidth - 12,
+                  height: 2.5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.8),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // 4. Etiqueta instructiva compacta
+            Positioned(
+              bottom: 6,
+              left: 20,
+              right: 20,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.qr_code_scanner_rounded,
+                        size: 13,
+                        color: Color(0xFF10B981),
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Apunta al código de barras o QR',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Panel inferior del carrito con lista de productos, steppers y botón Cobrar
+  Widget _buildLiveCartSheet(BuildContext context) {
+    return BlocBuilder<CartCubit, CartState>(
+      bloc: widget.cartCubit,
+      builder: (context, cartState) {
+        final items = cartState.sortedItems;
+        final totalAmount = cartState.totalAmount;
+        final itemCount = cartState.itemCount;
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F172A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Cabecera del Carrito
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: AppColors.teal.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: AppColors.teal,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Carrito ($itemCount)',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: () => _openQuickTitleSearchModal(context),
+                      icon: const Icon(Icons.search_rounded, size: 16),
+                      label: const Text('Buscar por nombre'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.teal,
+                        side: BorderSide(
+                          color: AppColors.teal.withValues(alpha: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(color: Colors.white12, height: 1),
+
+              // Lista de productos o Estado Vacío
+              Expanded(
+                child:
+                    items.isEmpty
+                        ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.05),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.qr_code_scanner_rounded,
+                                    color: Colors.white38,
+                                    size: 38,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Apunta la cámara al producto',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Se agregará automáticamente al carrito.\nTambién puedes buscarlo por su nombre o ingresar su SKU.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                        : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          itemCount: items.length,
+                          separatorBuilder:
+                              (context, index) => const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return _buildCartItemTile(item);
+                          },
+                        ),
+              ),
+
+              // Barra de entrada manual compacta
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 38,
+                        child: TextField(
+                          controller: _manualInputCtrl,
+                          focusNode: _manualFocusNode,
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _onManualSubmit(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFF1E293B),
+                            hintText: 'Ingresar código de barras o SKU...',
+                            hintStyle: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.keyboard_alt_outlined,
+                              size: 16,
+                              color: AppColors.teal,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 38,
+                      child: FilledButton(
+                        onPressed: _onManualSubmit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.teal,
+                          foregroundColor: const Color(0xFF0F172A),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        child: const Text('Agregar'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Pie con Totales y Botón "Cobrar"
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E293B),
+                  border: Border(top: BorderSide(color: Colors.white12)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total a Cobrar ($itemCount ${itemCount == 1 ? 'producto' : 'productos'}):',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'S/ ${totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Color(0xFF34D399),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton(
+                            onPressed:
+                                items.isEmpty
+                                    ? null
+                                    : () async {
+                                      await _safeClose();
+                                      if (context.mounted) {
+                                        context.push('/pos-checkout');
+                                      }
+                                    },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.white12,
+                              disabledForegroundColor: Colors.white38,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.point_of_sale_rounded,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Cobrar S/ ${totalAmount.toStringAsFixed(2)}',
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Fila de producto individual en la lista del carrito con stepper
+  Widget _buildCartItemTile(CartItemEntity item) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          // Imagen / Miniatura del producto
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child:
+                item.imageUrl != null && item.imageUrl!.isNotEmpty
+                    ? Image.network(
+                      item.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) => const Icon(
+                            Icons.inventory_2_outlined,
+                            color: Colors.white38,
+                            size: 20,
+                          ),
+                    )
+                    : const Icon(
+                      Icons.inventory_2_outlined,
+                      color: Colors.white38,
+                      size: 20,
+                    ),
+          ),
+          const SizedBox(width: 10),
+
+          // Título y Precio unitario
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.productName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      'S/ ${item.unitPrice.toStringAsFixed(2)} c/u',
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (item.variantLabel != null &&
+                        item.variantLabel!.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '(${item.variantLabel})',
+                        style: const TextStyle(
+                          color: AppColors.teal,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Stepper de Cantidad [-] QTY [+]
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    widget.cartCubit?.updateQuantity(
+                      item.cartKey,
+                      item.quantity - 1,
+                    );
+                  },
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(8),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    child: Icon(
+                      Icons.remove_rounded,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    '${item.quantity}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    widget.cartCubit?.updateQuantity(
+                      item.cartKey,
+                      item.quantity + 1,
+                    );
+                  },
+                  borderRadius: const BorderRadius.horizontal(
+                    right: Radius.circular(8),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: AppColors.teal,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Subtotal del ítem
+          SizedBox(
+            width: 58,
+            child: Text(
+              'S/ ${item.subtotal.toStringAsFixed(2)}',
+              style: const TextStyle(
+                color: Color(0xFF34D399),
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Despliega modal de búsqueda en vivo por título o nombre de producto
+  Future<void> _openQuickTitleSearchModal(BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (modalCtx) => _QuickProductSearchModal(
+            warehouseId: widget.warehouseId,
+            onProductSelected: (product) async {
+              Navigator.of(modalCtx).pop();
+              if (widget.cartCubit != null) {
+                await PosBarcodeScannerService.addScanResultToCart(
+                  context: context,
+                  scanResult: PosScanResult(
+                    product: product,
+                    variant: product.defaultVariant,
+                    rawCode: product.id,
+                  ),
+                  cartCubit: widget.cartCubit!,
+                  warehouseId: widget.warehouseId,
+                );
+                if (mounted) {
+                  setState(() {
+                    _lastScannedName = product.name;
+                  });
+                  _feedbackTimer?.cancel();
+                  _feedbackTimer = Timer(const Duration(seconds: 3), () {
+                    if (mounted) {
+                      setState(() => _lastScannedName = null);
+                    }
+                  });
+                }
+              }
+            },
+          ),
     );
   }
 
@@ -901,5 +1649,379 @@ class _ScannerOverlayPainter extends CustomPainter {
     return oldDelegate.scanWindow != scanWindow ||
         oldDelegate.borderRadius != borderRadius ||
         oldDelegate.overlayColor != overlayColor;
+  }
+}
+
+/// Dibuja 4 esquinas destacadas (corner brackets) alrededor del rectángulo de escaneo.
+class _CornerBracketPainter extends CustomPainter {
+  final Rect scanRect;
+  final Color color;
+  final double cornerLength;
+  final double strokeWidth;
+
+  const _CornerBracketPainter({
+    required this.scanRect,
+    this.color = const Color(0xFF10B981),
+    this.cornerLength = 24.0,
+    this.strokeWidth = 3.5,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = color
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke;
+
+    final l = scanRect.left;
+    final t = scanRect.top;
+    final r = scanRect.right;
+    final b = scanRect.bottom;
+    final cl = cornerLength;
+
+    final path =
+        Path()
+          // Top-left
+          ..moveTo(l, t + cl)
+          ..lineTo(l, t)
+          ..lineTo(l + cl, t)
+          // Top-right
+          ..moveTo(r - cl, t)
+          ..lineTo(r, t)
+          ..lineTo(r, t + cl)
+          // Bottom-right
+          ..moveTo(r, b - cl)
+          ..lineTo(r, b)
+          ..lineTo(r - cl, b)
+          // Bottom-left
+          ..moveTo(l + cl, b)
+          ..lineTo(l, b)
+          ..lineTo(l, b - cl);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CornerBracketPainter oldDelegate) {
+    return oldDelegate.scanRect != scanRect ||
+        oldDelegate.color != color ||
+        oldDelegate.cornerLength != cornerLength ||
+        oldDelegate.strokeWidth != strokeWidth;
+  }
+}
+
+/// Modal rápido para buscar productos por nombre o SKU e insertarlos al carrito.
+class _QuickProductSearchModal extends StatefulWidget {
+  final String? warehouseId;
+  final ValueChanged<ProductEntity> onProductSelected;
+
+  const _QuickProductSearchModal({
+    required this.warehouseId,
+    required this.onProductSelected,
+  });
+
+  @override
+  State<_QuickProductSearchModal> createState() =>
+      _QuickProductSearchModalState();
+}
+
+class _QuickProductSearchModalState extends State<_QuickProductSearchModal> {
+  final _searchCtrl = TextEditingController();
+  List<ProductEntity> _products = [];
+  bool _isLoading = false;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _performSearch('');
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    setState(() => _isLoading = true);
+    try {
+      final repo = sl<ProductsRepository>();
+      final res = await repo.getProducts(
+        searchQuery: query.trim().isEmpty ? null : query.trim(),
+        limit: 25,
+        isActive: true,
+      );
+      if (!mounted) return;
+      res.fold(
+        (failure) => setState(() => _products = []),
+        (data) => setState(() => _products = data.products),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _products = []);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.78,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.manage_search_rounded,
+                  color: AppColors.teal,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Buscar Producto por Nombre o SKU',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: TextField(
+              controller: _searchCtrl,
+              autofocus: true,
+              onChanged: _onChanged,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF1E293B),
+                hintText: 'Escribe ej: Arroz, Fideo, Aceite, Leche...',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: AppColors.teal,
+                  size: 20,
+                ),
+                suffixIcon:
+                    _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(
+                            Icons.cancel_rounded,
+                            color: Color(0xFF94A3B8),
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            _performSearch('');
+                          },
+                        )
+                        : null,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          Expanded(
+            child:
+                _isLoading
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.teal,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                    : _products.isEmpty
+                    ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          _searchCtrl.text.isEmpty
+                              ? 'No hay productos disponibles.'
+                              : 'No se encontraron productos para "${_searchCtrl.text}".',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                    : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _products.length,
+                      separatorBuilder:
+                          (context, index) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final product = _products[index];
+                        final price = product.displaySalePrice ?? 0.0;
+                        return InkWell(
+                          onTap: () => widget.onProductSelected(product),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.06),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child:
+                                      product.primaryImageUrl != null
+                                          ? Image.network(
+                                            product.primaryImageUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    const Icon(
+                                                      Icons
+                                                          .inventory_2_outlined,
+                                                      color: Colors.white38,
+                                                      size: 20,
+                                                    ),
+                                          )
+                                          : const Icon(
+                                            Icons.inventory_2_outlined,
+                                            color: Colors.white38,
+                                            size: 20,
+                                          ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13.5,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'S/ ${price.toStringAsFixed(2)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF34D399),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          if (product.brandName != null &&
+                                              product
+                                                  .brandName!
+                                                  .isNotEmpty) ...[
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              product.brandName!,
+                                              style: const TextStyle(
+                                                color: Color(0xFF94A3B8),
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                FilledButton(
+                                  onPressed:
+                                      () => widget.onProductSelected(product),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.teal,
+                                    foregroundColor: const Color(0xFF0F172A),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    visualDensity: VisualDensity.compact,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  child: const Text('+ Agregar'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+          ),
+        ],
+      ),
+    );
   }
 }

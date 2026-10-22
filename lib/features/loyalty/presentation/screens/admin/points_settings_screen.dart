@@ -258,6 +258,9 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
 
   void _loadData() {
     final config = context.read<AppConfigCubit>();
+    if (config.state.businessInfo == null) {
+      config.loadBusinessInfo();
+    }
     if (config.settingsState == ViewState.success) {
       _fillControllers(config);
       setState(() => _isInitialized = true);
@@ -327,6 +330,17 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
             state.status == ViewState.loading;
         final hasError = state.status == ViewState.error;
 
+        final isLoyaltyEnabled =
+            state.businessInfo?.loyaltyGlobalEnabled ?? true;
+
+        if (state.businessInfo != null && !isLoyaltyEnabled) {
+          return AdminLayout(
+            title: 'Reglas de Puntos y Juegos',
+            showBackButton: true,
+            body: _buildDisabledLoyaltyState(context),
+          );
+        }
+
         return AdminLayout(
           title: 'Configuración de Juegos',
           showBackButton: true,
@@ -340,6 +354,116 @@ class _PointsSettingsScreenState extends State<PointsSettingsScreen>
                   : _buildContent(state, isSaving),
         );
       },
+    );
+  }
+
+  Widget _buildDisabledLoyaltyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF2D2010)
+                          : const Color(0xFFFEF3C7),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.stars_rounded,
+                  size: 40,
+                  color: Color(0xFFD97706),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Módulo de Puntos Desactivado',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : const Color(0xFF0F172A),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'El programa de fidelización y puntos está actualmente desactivado en la configuración general del ERP. Para definir las reglas de acumulación, canjes y juegos, primero debes habilitarlo en los Ajustes del Sistema.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => context.go('/settings?tab=4'),
+                icon: const Icon(Icons.settings_rounded, size: 18),
+                label: const Text('Ir a Ajustes para Habilitar'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/dashboard');
+                  }
+                },
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: const Text('Volver'),
+                style: TextButton.styleFrom(
+                  foregroundColor:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

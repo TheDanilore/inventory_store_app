@@ -376,12 +376,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             title: 'Almacenes',
                             routePath: '/warehouses',
                           ),
-                        if (can(AppPermissions.settingsEdit))
-                          const AdminSidebarItem(
-                            icon: Icons.storefront_outlined,
-                            title: 'Negocio',
-                            routePath: '/business-info',
-                          ),
                         if (loyaltyEnabled && can(AppPermissions.settingsEdit))
                           const AdminSidebarItem(
                             icon: Icons.stars_rounded,

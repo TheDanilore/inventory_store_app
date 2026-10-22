@@ -8,9 +8,10 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/financi
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/financial/domain/utils/financial_brand_helper.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 
 class AccountsTab extends StatefulWidget {
   final bool showFab;
@@ -421,17 +422,18 @@ class _AccountCardState extends State<_AccountCard> {
   Widget build(BuildContext context) {
     final account = widget.account;
     final isSelected = widget.isSelected;
-    final isBank = account.type == 'BANCO';
-    final isDigital = account.type == 'DIGITAL';
-    final iconColor =
-        account.isActive
-            ? (isBank
-                ? const Color(0xFF0288D1)
-                : isDigital
-                ? const Color(0xFF8E24AA)
-                : AppColors.teal)
-            : AppColors.textSecondary;
-    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
+    final brand = FinancialBrandHelper.getBrand(
+      name: account.name,
+      type: account.type,
+    );
+    final currSymbol = FinancialBrandHelper.formatCurrencySymbol(
+      account.currencyCode,
+    );
+    final isUsd = account.currencyCode == 'USD';
+    final currencyFmt = NumberFormat.currency(
+      locale: isUsd ? 'en_US' : 'es_PE',
+      symbol: '$currSymbol ',
+    );
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -450,9 +452,9 @@ class _AccountCardState extends State<_AccountCard> {
           border: Border.all(
             color:
                 isSelected
-                    ? AppColors.teal
+                    ? brand.primaryColor
                     : _isHovered
-                    ? AppColors.teal.withValues(alpha: 0.35)
+                    ? brand.primaryColor.withValues(alpha: 0.4)
                     : (account.isActive
                         ? const Color(0xFFE2E8F0)
                         : AppColors.border),
@@ -462,7 +464,7 @@ class _AccountCardState extends State<_AccountCard> {
             BoxShadow(
               color:
                   isSelected
-                      ? AppColors.teal.withValues(alpha: 0.1)
+                      ? brand.primaryColor.withValues(alpha: 0.1)
                       : Colors.black.withValues(
                         alpha: _isHovered ? 0.06 : 0.025,
                       ),
@@ -486,9 +488,9 @@ class _AccountCardState extends State<_AccountCard> {
                     bottom: 0,
                     child: Container(
                       width: 3.5,
-                      decoration: const BoxDecoration(
-                        color: AppColors.teal,
-                        borderRadius: BorderRadius.horizontal(
+                      decoration: BoxDecoration(
+                        color: brand.primaryColor,
+                        borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(14),
                         ),
                       ),
@@ -501,20 +503,10 @@ class _AccountCardState extends State<_AccountCard> {
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color:
-                              account.isActive
-                                  ? iconColor.withValues(alpha: 0.1)
-                                  : AppColors.surfaceDark,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          _getIcon(account.type),
-                          color: iconColor,
-                          size: 20,
-                        ),
+                      FinancialBrandHelper.buildBrandBadge(
+                        name: account.name,
+                        type: account.type,
+                        size: 38,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -558,14 +550,49 @@ class _AccountCardState extends State<_AccountCard> {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 5),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        account.currencyCode == 'USD'
+                                            ? Colors.amber.shade50
+                                            : AppColors.teal.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color:
+                                          account.currencyCode == 'USD'
+                                              ? Colors.amber.shade300
+                                              : AppColors.teal.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    account.currencyCode,
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          account.currencyCode == 'USD'
+                                              ? Colors.amber.shade900
+                                              : AppColors.tealDark,
+                                    ),
+                                  ),
+                                ),
                                 if (isSelected) ...[
                                   const SizedBox(width: 6),
-                                  const Text(
+                                  Text(
                                     '• Filtrando',
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.tealDark,
+                                      color: brand.primaryColor,
                                     ),
                                   ),
                                 ],
@@ -646,13 +673,6 @@ class _AccountCardState extends State<_AccountCard> {
         ),
       ),
     );
-  }
-
-  IconData _getIcon(String type) {
-    if (type == 'CAJA') return Icons.point_of_sale_rounded;
-    if (type == 'BANCO') return Icons.account_balance_rounded;
-    if (type == 'DIGITAL') return Icons.phone_android_rounded;
-    return Icons.savings_rounded;
   }
 }
 

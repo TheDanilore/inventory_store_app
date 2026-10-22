@@ -460,16 +460,6 @@ class _AppDrawerState extends State<AppDrawer> {
                               context.go('/warehouses');
                             },
                           ),
-                        if (can(AppPermissions.settingsEdit))
-                          _DrawerSubItem(
-                            icon: Icons.storefront_outlined,
-                            title: 'Negocio',
-                            routePath: '/business-info',
-                            onTap: () {
-                              Navigator.pop(context);
-                              context.go('/business-info');
-                            },
-                          ),
                         if (loyaltyEnabled && can(AppPermissions.settingsEdit))
                           _DrawerSubItem(
                             icon: Icons.stars_rounded,

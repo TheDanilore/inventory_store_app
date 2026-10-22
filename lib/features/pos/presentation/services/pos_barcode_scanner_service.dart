@@ -309,6 +309,7 @@ class PosBarcodeScannerService {
       warehouseId: warehouseId,
       title: 'POS: Escaneo Rápido de Productos',
       continuousMode: true,
+      cartCubit: cartCubit,
       onContinuousScan: (scanResult) async {
         if (!context.mounted) return false;
         return await addScanResultToCart(

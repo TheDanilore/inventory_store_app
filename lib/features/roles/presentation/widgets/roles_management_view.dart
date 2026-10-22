@@ -182,7 +182,7 @@ class _RolesManagementViewState extends State<RolesManagementView> {
         }
       },
       builder: (context, state) {
-        if (state.isLoading) {
+        if (state.isLoading || state.status == RolesStatus.initial) {
           return const Center(child: CircularProgressIndicator());
         }
 

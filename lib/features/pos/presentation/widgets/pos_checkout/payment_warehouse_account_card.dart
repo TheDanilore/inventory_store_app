@@ -1,8 +1,9 @@
 // ─── PAYMENT & WAREHOUSE & ACCOUNT CARD ──────────────────────────────────────
 
 import 'package:flutter/material.dart';
-import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
+import 'package:inventory_store_app/features/financial/domain/utils/financial_brand_helper.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
 
@@ -17,20 +18,6 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
   final ValueChanged<String?> onWarehouseChanged;
   final ValueChanged<String?> onAccountChanged;
   final ValueChanged<bool> onCreditoToggle;
-
-  static const Map<String, IconData> _typeIcons = {
-    'CAJA': Icons.payments_rounded,
-    'BANCO': Icons.account_balance_rounded,
-    'DIGITAL': Icons.smartphone_rounded,
-    'OTRO': Icons.wallet_rounded,
-  };
-
-  static const Map<String, Color> _typeColors = {
-    'CAJA': AppColors.teal,
-    'BANCO': Colors.indigo,
-    'DIGITAL': Colors.purple,
-    'OTRO': AppColors.textSecondary,
-  };
 
   const PaymentWarehouseAccountCard({
     super.key,
@@ -121,10 +108,17 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   ...sortedAccounts.map((acc) {
+                    final accName = acc['name'] as String? ?? '';
                     final type = acc['type'] as String? ?? 'OTRO';
-                    final chipColor =
-                        _typeColors[type] ?? AppColors.textSecondary;
-                    final chipIcon = _typeIcons[type] ?? Icons.wallet_rounded;
+                    final brand = FinancialBrandHelper.getBrand(
+                      name: accName,
+                      type: type,
+                    );
+                    final chipColor = brand.primaryColor;
+                    final currencySymbol =
+                        FinancialBrandHelper.formatCurrencySymbol(
+                          acc['currency_code'] as String?,
+                        );
                     final isSelected =
                         !isCredito && acc['id'] == selectedAccountId;
                     final balance =
@@ -160,24 +154,10 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isSelected
-                                            ? chipColor.withValues(alpha: 0.15)
-                                            : Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    chipIcon,
-                                    size: 15,
-                                    color:
-                                        isSelected
-                                            ? chipColor
-                                            : AppColors.textSecondary,
-                                  ),
+                                FinancialBrandHelper.buildBrandBadge(
+                                  name: accName,
+                                  type: type,
+                                  size: 28,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -187,7 +167,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        acc['name'] as String,
+                                        accName,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -200,7 +180,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        'S/ $balance',
+                                        '$currencySymbol $balance',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
