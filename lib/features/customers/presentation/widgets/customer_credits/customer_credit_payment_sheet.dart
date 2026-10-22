@@ -11,7 +11,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/registe
 import 'package:inventory_store_app/features/customers/presentation/bloc/register_payment/register_payment_state.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 
-class CustomerCreditPaymentModal extends StatelessWidget {
+class CustomerCreditPaymentSheet extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity account;
   final Future<void> Function(
@@ -23,7 +23,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
   )
   onSavePayment;
 
-  const CustomerCreditPaymentModal({
+  const CustomerCreditPaymentSheet({
     super.key,
     required this.onSaved,
     required this.account,
@@ -52,7 +52,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder:
-            (_) => CustomerCreditPaymentModal(
+            (_) => CustomerCreditPaymentSheet(
               account: account,
               onSaved: onSaved,
               onSavePayment: onSavePayment,
@@ -62,7 +62,7 @@ class CustomerCreditPaymentModal extends StatelessWidget {
       return showDialog<bool>(
         context: context,
         builder:
-            (_) => CustomerCreditPaymentModal(
+            (_) => CustomerCreditPaymentSheet(
               account: account,
               onSaved: onSaved,
               onSavePayment: onSavePayment,

@@ -5,12 +5,12 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 
-class ProductPreviewModal extends StatefulWidget {
+class ProductPreviewSheet extends StatefulWidget {
   final ProductFormState state;
   final String productName;
   final String productDesc;
 
-  const ProductPreviewModal({
+  const ProductPreviewSheet({
     super.key,
     required this.state,
     required this.productName,
@@ -34,7 +34,7 @@ class ProductPreviewModal extends StatefulWidget {
             (_) => Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.all(24),
-              child: ProductPreviewModal(
+              child: ProductPreviewSheet(
                 state: state,
                 productName: productName,
                 productDesc: productDesc,
@@ -50,7 +50,7 @@ class ProductPreviewModal extends StatefulWidget {
         builder:
             (_) => FractionallySizedBox(
               heightFactor: 0.92,
-              child: ProductPreviewModal(
+              child: ProductPreviewSheet(
                 state: state,
                 productName: productName,
                 productDesc: productDesc,
@@ -61,10 +61,10 @@ class ProductPreviewModal extends StatefulWidget {
   }
 
   @override
-  State<ProductPreviewModal> createState() => _ProductPreviewModalState();
+  State<ProductPreviewSheet> createState() => _ProductPreviewSheetState();
 }
 
-class _ProductPreviewModalState extends State<ProductPreviewModal> {
+class _ProductPreviewSheetState extends State<ProductPreviewSheet> {
   int _selectedImageIndex = 0;
   int _selectedVariantIndex = 0;
   int _quantity = 1;

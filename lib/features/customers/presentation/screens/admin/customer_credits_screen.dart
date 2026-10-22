@@ -18,8 +18,8 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/global_stats_bar.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_modal.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_modal.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/credit_account_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credits_table.dart';
 
 class CustomerCreditsScreen extends StatelessWidget {
@@ -84,7 +84,7 @@ class _CustomerCreditsScreenContentState
   }
 
   void _openCreateAccountModal({CustomerCreditEntity? accountToEdit}) {
-    CreditAccountModal.show(
+    CreditAccountSheet.show(
       context,
       accountToEdit: accountToEdit,
       onSaved: () {
@@ -96,7 +96,7 @@ class _CustomerCreditsScreenContentState
   void _openPaymentModal(CustomerCreditEntity account) {
     if (!account.isActive || account.currentDebt <= 0) return;
     final cubit = context.read<CustomerCreditListCubit>();
-    CustomerCreditPaymentModal.show(
+    CustomerCreditPaymentSheet.show(
       context,
       account: account,
       onSaved: () => cubit.loadData(),

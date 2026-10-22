@@ -29,7 +29,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_changelog_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_seo_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_variants_table_view.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_preview_modal.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_preview_sheet.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? productToEdit;
@@ -219,7 +219,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
 
   void _openPreview() {
     final cubit = context.read<ProductFormCubit>();
-    ProductPreviewModal.show(
+    ProductPreviewSheet.show(
       context,
       state: cubit.state,
       productName: _nombreCtrl.text,

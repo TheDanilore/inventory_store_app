@@ -13,7 +13,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/warehouse
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_card.dart';
-import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_modal.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_skeleton.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_table_view.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -156,7 +156,7 @@ class _WarehousesManagementScreenState
 
     final modal = BlocProvider.value(
       value: cubit,
-      child: WarehouseFormModal(
+      child: WarehouseFormSheet(
         warehouseToEdit: warehouse,
         isDialog: isDesktop,
         onSaved: () {

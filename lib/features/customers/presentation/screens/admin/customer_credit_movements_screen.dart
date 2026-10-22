@@ -15,7 +15,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/credit_
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/date_divider.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movement_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movements_summary_header.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_modal.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
@@ -94,7 +94,7 @@ class _CustomerCreditMovementsScreenContentState
       isActive: true,
     );
 
-    CustomerCreditPaymentModal.show(
+    CustomerCreditPaymentSheet.show(
       context,
       account: creditEntity,
       onSaved: () => cubit.loadData(),

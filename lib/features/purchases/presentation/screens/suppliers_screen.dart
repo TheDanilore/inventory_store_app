@@ -13,7 +13,7 @@ import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/suppliers_table_view.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_form_modal.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/suppliers/supplier_form_sheet.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
@@ -189,7 +189,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
       builder:
           (ctx) => BlocProvider.value(
             value: cubit,
-            child: SupplierFormModal(
+            child: SupplierFormSheet(
               supplierToEdit: supplier,
               isDialog: AdaptiveDetailSheet.isSideSheet(ctx),
               onSaved: () {},

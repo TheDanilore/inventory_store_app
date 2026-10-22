@@ -12,12 +12,12 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_state.dart';
 
-class CreditAccountModal extends StatelessWidget {
+class CreditAccountSheet extends StatelessWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
   final bool isDialog;
 
-  const CreditAccountModal({
+  const CreditAccountSheet({
     super.key,
     required this.onSaved,
     this.accountToEdit,
@@ -35,7 +35,7 @@ class CreditAccountModal extends StatelessWidget {
       breakpoint: 900,
       barrierLabel: 'Cerrar cuenta de crédito',
       builder:
-          (sheetCtx) => CreditAccountModal(
+          (sheetCtx) => CreditAccountSheet(
             accountToEdit: accountToEdit,
             onSaved: onSaved,
             isDialog: AdaptiveDetailSheet.isSideSheet(sheetCtx),
@@ -47,7 +47,7 @@ class CreditAccountModal extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => sl<CustomersCubit>(),
-      child: _CreditAccountModalView(
+      child: _CreditAccountSheetView(
         onSaved: onSaved,
         accountToEdit: accountToEdit,
         isDialog: isDialog,
@@ -56,23 +56,23 @@ class CreditAccountModal extends StatelessWidget {
   }
 }
 
-class _CreditAccountModalView extends StatefulWidget {
+class _CreditAccountSheetView extends StatefulWidget {
   final VoidCallback onSaved;
   final CustomerCreditEntity? accountToEdit;
   final bool isDialog;
 
-  const _CreditAccountModalView({
+  const _CreditAccountSheetView({
     required this.onSaved,
     this.accountToEdit,
     this.isDialog = false,
   });
 
   @override
-  State<_CreditAccountModalView> createState() =>
-      _CreditAccountModalViewState();
+  State<_CreditAccountSheetView> createState() =>
+      _CreditAccountSheetViewState();
 }
 
-class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
+class _CreditAccountSheetViewState extends State<_CreditAccountSheetView> {
   final _searchCtrl = TextEditingController();
   final _limitCtrl = TextEditingController();
   Timer? _debounce;

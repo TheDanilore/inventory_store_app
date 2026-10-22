@@ -7,12 +7,12 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
-class SupplierFormModal extends StatefulWidget {
+class SupplierFormSheet extends StatefulWidget {
   final SupplierEntity? supplierToEdit;
   final VoidCallback onSaved;
   final bool isDialog;
 
-  const SupplierFormModal({
+  const SupplierFormSheet({
     super.key,
     this.supplierToEdit,
     required this.onSaved,
@@ -20,10 +20,10 @@ class SupplierFormModal extends StatefulWidget {
   });
 
   @override
-  State<SupplierFormModal> createState() => _SupplierFormModalState();
+  State<SupplierFormSheet> createState() => _SupplierFormSheetState();
 }
 
-class _SupplierFormModalState extends State<SupplierFormModal> {
+class _SupplierFormSheetState extends State<SupplierFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
