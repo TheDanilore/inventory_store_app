@@ -129,116 +129,135 @@ class _OrderRow extends StatelessWidget {
             ? order.id.substring(0, 8).toUpperCase()
             : order.id.toUpperCase();
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => context.push('/orders?selectedId=${order.id}'),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color:
-                          _isCancelled
-                              ? AppColors.dangerLight
-                              : AppColors.background,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isCancelled
-                          ? Icons.remove_shopping_cart_rounded
-                          : Icons.shopping_bag_outlined,
-                      size: 16,
-                      color:
-                          _isCancelled ? AppColors.danger : AppColors.primary,
-                    ),
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/orders?selectedId=${order.id}'),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color:
+                        _isCancelled
+                            ? AppColors.dangerLight
+                            : AppColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '#$shortId ',
-                                style: TextStyle(
-                                  color:
-                                      _isCancelled
-                                          ? AppColors.textMuted
-                                          : AppColors.primary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              TextSpan(
-                                text:
-                                    '• ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
-                              ),
-                            ],
+                  child: Icon(
+                    _isCancelled
+                        ? Icons.remove_shopping_cart_rounded
+                        : Icons.receipt_long_rounded,
+                    size: 18,
+                    color: _isCancelled ? AppColors.danger : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            '#$shortId',
+                            style: TextStyle(
+                              color:
+                                  _isCancelled
+                                      ? AppColors.textMuted
+                                      : AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              fontFamily: 'monospace',
+                              decoration:
+                                  _isCancelled
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                            ),
                           ),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            decoration:
-                                _isCancelled
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                            color:
-                                _isCancelled
-                                    ? AppColors.textMuted
-                                    : AppColors.textPrimary,
+                          const SizedBox(width: 6),
+                          Text(
+                            '· ${DateFormat('d MMM yyyy', 'es').format(order.createdAt)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Row(
-                          children: [
-                            Text(
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(
                               _methodLabel(order.paymentMethod),
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          if (!_isCancelled && order.pointsEarned > 0) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '+${order.pointsEarned} pts',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.amber,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                          if (!_isCancelled && order.pointsUsed > 0) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              '-${order.pointsUsed} pts',
+                              style: const TextStyle(
+                                fontSize: 11,
                                 color: AppColors.textMuted,
                               ),
                             ),
-                            if (!_isCancelled && order.pointsEarned > 0) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                '+${order.pointsEarned}pts',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.amber,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                            if (!_isCancelled && order.pointsUsed > 0) ...[
-                              const SizedBox(width: 4),
-                              Text(
-                                '-${order.pointsUsed}pts',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                        if (hasDiscount && !_isCancelled)
-                          Text(
-                            'Descuento: S/ ${order.discountAmount.toStringAsFixed(2)}',
+                        ],
+                      ),
+                      if (hasDiscount && !_isCancelled)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'Descuento aplicado: S/ ${order.discountAmount.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.success,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        if (hasPending && order.dueDate != null)
-                          Text(
+                        ),
+                      if (hasPending && order.dueDate != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
                             'Vence: ${DateFormat('d MMM yyyy', 'es').format(order.dueDate!)}',
                             style: TextStyle(
                               fontSize: 11,
@@ -246,67 +265,67 @@ class _OrderRow extends StatelessWidget {
                                   order.dueDate!.isBefore(DateTime.now())
                                       ? AppColors.danger
                                       : Colors.orange,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'S/ ${order.totalAmount.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          decoration:
-                              _isCancelled ? TextDecoration.lineThrough : null,
-                          color:
-                              _isCancelled
-                                  ? AppColors.textMuted
-                                  : AppColors.textPrimary,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _statusColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          _statusLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (hasPending)
-                        Text(
-                          'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'S/ ${order.totalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14.5,
+                        letterSpacing: -0.2,
+                        decoration:
+                            _isCancelled ? TextDecoration.lineThrough : null,
+                        color:
+                            _isCancelled
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _statusLabel,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: _statusColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (hasPending) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Debe S/ ${order.pendingAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
-          if (!isLast)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Divider(height: 1, color: AppColors.border),
-            ),
-        ],
+        ),
       ),
     );
   }

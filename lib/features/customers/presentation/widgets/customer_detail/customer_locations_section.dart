@@ -173,6 +173,8 @@ class CustomerLocationsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width > 600;
+
     return CustomerSectionCard(
       title: 'Ubicaciones',
       icon: Icons.map_rounded,
@@ -183,30 +185,46 @@ class CustomerLocationsSection extends StatelessWidget {
             FilledButton.tonalIcon(
               onPressed: () => _openAllMap(context),
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.info.withValues(alpha: 0.1),
+                backgroundColor: AppColors.infoLight,
                 foregroundColor: AppColors.info,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 0,
+                  vertical: 6,
                 ),
-                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 elevation: 0,
               ),
-              icon: const Icon(Icons.map_outlined, size: 16),
+              icon: const Icon(Icons.map_rounded, size: 15),
               label: const Text(
                 'Ver mapa',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
               ),
             ),
           const SizedBox(width: 8),
-          IconButton.filledTonal(
+          FilledButton.tonalIcon(
             onPressed: () => _addLocation(context),
-            style: IconButton.styleFrom(
+            style: FilledButton.styleFrom(
               backgroundColor: AppColors.tealLight,
               foregroundColor: AppColors.teal,
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 12 : 8,
+                vertical: 6,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
             ),
-            icon: const Icon(Icons.add_rounded, size: 20),
-            tooltip: 'Añadir ubicación',
+            icon: const Icon(Icons.add_location_alt_rounded, size: 16),
+            label: Text(
+              isDesktop ? 'Nueva' : '+',
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 12.5,
+              ),
+            ),
           ),
         ],
       ),
@@ -215,13 +233,9 @@ class CustomerLocationsSection extends StatelessWidget {
               ? _EmptyLocations(onAdd: () => _addLocation(context))
               : LayoutBuilder(
                 builder: (context, constraints) {
-                  // Adaptive layout: Wrap para comportarse como Bento Grid
-                  // En móvil ocupará el 100%, en PC ocupará el 50% (2 columnas) o 33% (3 columnas)
                   final double width = constraints.maxWidth;
                   int crossAxisCount = 1;
                   if (width > 800) {
-                    crossAxisCount = 3;
-                  } else if (width > 500) {
                     crossAxisCount = 2;
                   }
 
@@ -261,16 +275,17 @@ class _EmptyLocations extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: AppColors.background,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             children: [
               Container(
                 padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.tealLight,
                   shape: BoxShape.circle,
                 ),
@@ -280,18 +295,18 @@ class _EmptyLocations extends StatelessWidget {
                   size: 28,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               const Text(
                 'Sin ubicaciones registradas',
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
                   color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Agrega chacras, fundos, casas\ny otros puntos de entrega',
+                'Agrega chacras, fundos, almacenes o casas\npara entregas y referencias logísticas',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
@@ -301,20 +316,20 @@ class _EmptyLocations extends StatelessWidget {
         const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
+          child: FilledButton.tonalIcon(
             onPressed: onAdd,
-            style: OutlinedButton.styleFrom(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.tealLight,
               foregroundColor: AppColors.teal,
-              side: BorderSide(color: AppColors.teal.withValues(alpha: 0.4)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            icon: const Icon(Icons.add_location_alt_rounded, size: 16),
+            icon: const Icon(Icons.add_location_alt_rounded, size: 18),
             label: const Text(
               'Agregar primera ubicación',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             ),
           ),
         ),
@@ -343,22 +358,22 @@ class _LocationItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
         border: Border.all(
           color:
               location.isDefault
-                  ? typeColor.withValues(alpha: 0.4)
-                  : AppColors.border.withValues(alpha: 0.5),
+                  ? typeColor.withValues(alpha: 0.5)
+                  : AppColors.border,
+          width: location.isDefault ? 1.5 : 1,
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -367,151 +382,271 @@ class _LocationItem extends StatelessWidget {
         child: InkWell(
           onTap: onView,
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Ícono tipo
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: typeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(typeIcon, size: 20, color: typeColor),
-                ),
-                const SizedBox(width: 14),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Ícono de tipo
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(typeIcon, size: 20, color: typeColor),
+                    ),
+                    const SizedBox(width: 12),
+                    // Título y Tipo
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Flexible(
-                            child: Text(
-                              location.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  location.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14.5,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              if (location.isDefault) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.star_rounded,
+                                        size: 11,
+                                        color: AppColors.success,
+                                      ),
+                                      SizedBox(width: 2),
+                                      Text(
+                                        'Principal',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.success,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            CustomerLocationEntity.typeLabel(
+                              location.locationType,
+                            ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: typeColor,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          if (location.isDefault) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                        ],
+                      ),
+                    ),
+                    // Menú de opciones
+                    PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert_rounded,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      position: PopupMenuPosition.under,
+                      onSelected: (val) {
+                        if (val == 'map') onView();
+                        if (val == 'edit') onEdit();
+                        if (val == 'delete') onDelete();
+                      },
+                      itemBuilder:
+                          (context) => [
+                            const PopupMenuItem(
+                              value: 'map',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.map_rounded,
+                                    size: 17,
+                                    color: AppColors.info,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text('Ver en mapa'),
+                                ],
                               ),
-                              decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
+                            ),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit_rounded,
+                                    size: 17,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text('Editar'),
+                                ],
                               ),
-                              child: Text(
-                                'Principal',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: typeColor,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 17,
+                                    color: AppColors.error,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Eliminar',
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
-                        ],
+                    ),
+                  ],
+                ),
+
+                // Dirección
+                if (location.addressLine != null &&
+                    location.addressLine!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 13,
+                        color: AppColors.textMuted,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        CustomerLocationEntity.typeLabel(location.locationType),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: typeColor,
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          location.addressLine!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Referencia
+                if (location.reference != null &&
+                    location.reference!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.signpost_rounded,
+                        size: 12,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          location.reference!,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 10),
+
+                // Coordenadas & Botón Rápido de Mapa
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontFamily: 'monospace',
+                          color: AppColors.textMuted,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (location.addressLine != null &&
-                          location.addressLine!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            location.addressLine!,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
+                    ),
+                    const Spacer(),
+                    InkWell(
+                      onTap: onView,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.map_outlined,
+                              size: 13,
+                              color: typeColor,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                // Acciones (Menu Kebab)
-                PopupMenuButton<String>(
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: AppColors.textSecondary,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  position: PopupMenuPosition.under,
-                  onSelected: (val) {
-                    if (val == 'map') onView();
-                    if (val == 'edit') onEdit();
-                    if (val == 'delete') onDelete();
-                  },
-                  itemBuilder:
-                      (context) => [
-                        const PopupMenuItem(
-                          value: 'map',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.map_outlined,
-                                size: 18,
-                                color: AppColors.info,
+                            const SizedBox(width: 4),
+                            Text(
+                              'Abrir mapa',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: typeColor,
                               ),
-                              SizedBox(width: 12),
-                              Text('Ver mapa'),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.edit_rounded,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              SizedBox(width: 12),
-                              Text('Editar'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete_outline_rounded,
-                                size: 18,
-                                color: AppColors.error,
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                'Eliminar',
-                                style: TextStyle(color: AppColors.error),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

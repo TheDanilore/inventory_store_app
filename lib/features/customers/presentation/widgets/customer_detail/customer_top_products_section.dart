@@ -59,8 +59,14 @@ class _TopProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = product;
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
       child: Row(
         children: [
           _Thumb(url: p.imageUrl, rank: rank, color: color),
@@ -69,32 +75,59 @@ class _TopProductTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  p.productName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
                 Row(
                   children: [
-                    Text(
-                      '${p.totalQuantity} uds',
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                    Expanded(
+                      child: Text(
+                        p.productName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Text(
-                      '· S/ ${p.totalSpent.toStringAsFixed(2)}',
+                      'S/ ${p.totalSpent.toStringAsFixed(2)}',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${p.totalQuantity} unidades',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${(pct * 100).toStringAsFixed(0)}% del top',
+                      style: const TextStyle(
+                        fontSize: 10.5,
                         color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -104,9 +137,9 @@ class _TopProductTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: pct,
-                    backgroundColor: color.withValues(alpha: 0.1),
+                    backgroundColor: color.withValues(alpha: 0.12),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
-                    minHeight: 5,
+                    minHeight: 6,
                   ),
                 ),
               ],
@@ -125,6 +158,13 @@ class _Thumb extends StatelessWidget {
 
   const _Thumb({required this.url, required this.rank, required this.color});
 
+  Color get _badgeColor {
+    if (rank == 1) return const Color(0xFFF59E0B); // Gold
+    if (rank == 2) return const Color(0xFF94A3B8); // Silver
+    if (rank == 3) return const Color(0xFFD97706); // Bronze
+    return color;
+  }
+
   @override
   Widget build(BuildContext context) {
     final fallback = Container(
@@ -133,8 +173,8 @@ class _Thumb extends StatelessWidget {
     );
 
     return SizedBox(
-      width: 56,
-      height: 56,
+      width: 52,
+      height: 52,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -154,23 +194,30 @@ class _Thumb extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: -4,
-            left: -4,
+            top: -5,
+            left: -5,
             child: Container(
               width: 20,
               height: 20,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: rank == 1 ? AppColors.gold : color,
+                color: _badgeColor,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Text(
                 '$rank',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),

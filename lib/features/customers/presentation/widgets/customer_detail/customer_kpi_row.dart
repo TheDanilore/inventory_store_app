@@ -86,23 +86,31 @@ class _KpiCard extends StatelessWidget {
       child: Semantics(
         label: '$label: $displayValue',
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            color: color.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                color: color.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: 18),
-              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(height: 8),
               TweenAnimationBuilder<double>(
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.easeOutCubic,
@@ -112,19 +120,22 @@ class _KpiCard extends StatelessWidget {
                     '$prefix${val.toStringAsFixed(decimals)}',
                     style: TextStyle(
                       color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                      letterSpacing: -0.3,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   );
                 },
               ),
+              const SizedBox(height: 2),
               Text(
                 label,
                 style: const TextStyle(
                   fontSize: 11,
-                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),

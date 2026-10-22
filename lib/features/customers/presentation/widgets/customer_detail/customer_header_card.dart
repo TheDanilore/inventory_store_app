@@ -19,7 +19,6 @@ class CustomerHeaderCard extends StatelessWidget {
     final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
     if (cleanPhone.isEmpty) return;
 
-    // Asumiendo prefijo +51 si no lo tiene
     final fullPhone =
         cleanPhone.startsWith('51') ? cleanPhone : '51$cleanPhone';
     final url = Uri.parse('https://wa.me/$fullPhone');
@@ -32,142 +31,279 @@ class CustomerHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = customer;
+    final isDesktop = MediaQuery.sizeOf(context).width > 600;
+
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors:
               c.isActive
-                  ? [AppColors.primary, AppColors.primaryDark]
-                  : [Colors.grey.shade600, Colors.grey.shade800],
+                  ? const [Color(0xFF1E293B), Color(0xFF0F172A)]
+                  : [Colors.grey.shade800, Colors.grey.shade900],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: (c.isActive ? AppColors.primary : Colors.grey).withValues(
-              alpha: 0.3,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            backgroundImage:
-                c.avatarUrl != null
-                    ? CachedNetworkImageProvider(c.avatarUrl!)
-                    : null,
-            child:
-                c.avatarUrl == null
-                    ? Text(
-                      c.fullName.trim().isNotEmpty
-                          ? c.fullName.trim()[0].toUpperCase()
-                          : 'C',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                    : null,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  c.fullName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (c.documentNumber != null && c.documentNumber!.isNotEmpty)
-                  Text(
-                    '${c.documentType ?? 'Doc'}: ${c.documentNumber}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
+          // Acento decorativo sutil en esquina
+          Positioned(
+            top: -24,
+            right: -24,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    (c.isActive ? AppColors.teal : Colors.grey).withValues(
+                      alpha: 0.18,
                     ),
-                  ),
-                if (c.phone != null && c.phone!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: InkWell(
-                      onTap: () => _launchWhatsApp(c.phone!),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 2,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.phone_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              c.phone!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _HeaderChip(
-                      label: c.isActive ? 'Activo' : 'Inactivo',
-                      color: c.isActive ? AppColors.success : AppColors.danger,
-                    ),
-                    const SizedBox(width: 6),
-                    _HeaderChip(
-                      label:
-                          'Desde ${DateFormat('MMM yyyy', 'es').format(c.createdAt ?? DateTime.now())}',
-                      color: Colors.white54,
-                    ),
+                    Colors.transparent,
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-          Column(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_rounded, color: Colors.white),
-                onPressed: onEdit,
-                tooltip: 'Editar cliente',
-              ),
-              if (c.phone != null && c.phone!.isNotEmpty)
-                IconButton(
-                  icon: const Icon(
-                    Icons.chat_bubble_rounded,
-                    color: Colors.greenAccent,
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar con marco estilizado
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                  onPressed: () => _launchWhatsApp(c.phone!),
-                  tooltip: 'Chat por WhatsApp',
+                  child: CircleAvatar(
+                    radius: 34,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    backgroundImage:
+                        c.avatarUrl != null
+                            ? CachedNetworkImageProvider(c.avatarUrl!)
+                            : null,
+                    child:
+                        c.avatarUrl == null
+                            ? Text(
+                              c.fullName.trim().isNotEmpty
+                                  ? c.fullName.trim()[0].toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            )
+                            : null,
+                  ),
                 ),
-            ],
+                const SizedBox(width: 18),
+
+                // Info del cliente
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              c.fullName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Documento & Código
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          if (c.documentNumber != null &&
+                              c.documentNumber!.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.badge_outlined,
+                                    size: 12,
+                                    color: Colors.white70,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${c.documentType ?? 'DOC'}: ${c.documentNumber}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          // Estado Activo/Inactivo
+                          _HeaderChip(
+                            label: c.isActive ? 'Activo' : 'Inactivo',
+                            color:
+                                c.isActive
+                                    ? AppColors.success
+                                    : AppColors.danger,
+                            icon:
+                                c.isActive
+                                    ? Icons.check_circle_rounded
+                                    : Icons.cancel_rounded,
+                          ),
+
+                          // Fecha de registro
+                          _HeaderChip(
+                            label:
+                                'Desde ${DateFormat('MMM yyyy', 'es').format(c.createdAt ?? DateTime.now())}',
+                            color: Colors.white60,
+                            icon: Icons.calendar_today_rounded,
+                          ),
+                        ],
+                      ),
+
+                      // Contacto Telefónico y WhatsApp directo
+                      if (c.phone != null && c.phone!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () => _launchWhatsApp(c.phone!),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF25D366,
+                              ).withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF25D366,
+                                ).withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.chat_bubble_rounded,
+                                  color: Color(0xFF4ADE80),
+                                  size: 13,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  c.phone!,
+                                  style: const TextStyle(
+                                    color: Color(0xFF4ADE80),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.open_in_new_rounded,
+                                  color: Color(0xFF4ADE80),
+                                  size: 11,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // Botón Editar
+                if (isDesktop)
+                  FilledButton.tonalIcon(
+                    onPressed: onEdit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.15),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_rounded, size: 16),
+                    label: const Text(
+                      'Editar',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                else
+                  IconButton.filledTonal(
+                    onPressed: onEdit,
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.15),
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    tooltip: 'Editar cliente',
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -178,20 +314,35 @@ class CustomerHeaderCard extends StatelessWidget {
 class _HeaderChip extends StatelessWidget {
   final String label;
   final Color color;
-  const _HeaderChip({required this.label, required this.color});
+  final IconData? icon;
+
+  const _HeaderChip({required this.label, required this.color, this.icon});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontSize: 11),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

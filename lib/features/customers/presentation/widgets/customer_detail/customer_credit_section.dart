@@ -85,21 +85,25 @@ class CustomerCreditSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Fila de Estadísticas de Crédito
           Row(
             children: [
               Expanded(
                 child: _CreditStat(
-                  label: 'Deuda',
+                  label: 'Deuda Pendiente',
                   value: 'S/ ${debt.toStringAsFixed(2)}',
-                  color: debt > 0 ? AppColors.danger : AppColors.textMuted,
+                  color: debt > 0 ? AppColors.danger : AppColors.textPrimary,
+                  icon: Icons.trending_up_rounded,
                 ),
               ),
+              const SizedBox(width: 8),
               if (isUnlimited)
                 const Expanded(
                   child: _CreditStat(
                     label: 'Límite',
                     value: 'Sin límite ∞',
-                    color: AppColors.success,
+                    color: AppColors.teal,
+                    icon: Icons.all_inclusive_rounded,
                   ),
                 )
               else ...[
@@ -108,44 +112,45 @@ class CustomerCreditSection extends StatelessWidget {
                     label: 'Disponible',
                     value: 'S/ ${available.toStringAsFixed(2)}',
                     color: isActive ? AppColors.success : AppColors.textMuted,
+                    icon: Icons.account_balance_wallet_outlined,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _CreditStat(
-                    label: 'Límite',
+                    label: 'Límite Total',
                     value: 'S/ ${limit.toStringAsFixed(2)}',
                     color: AppColors.textSecondary,
+                    icon: Icons.speed_rounded,
                   ),
                 ),
               ],
             ],
           ),
+          const SizedBox(height: 14),
 
           if (isUnlimited)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.tealLight.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.success.withValues(alpha: 0.25),
+                  color: AppColors.teal.withValues(alpha: 0.25),
                 ),
               ),
               child: const Row(
                 children: [
-                  Icon(
-                    Icons.all_inclusive_rounded,
-                    size: 16,
-                    color: AppColors.success,
-                  ),
-                  SizedBox(width: 8),
+                  Icon(Icons.verified_rounded, size: 16, color: AppColors.teal),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Línea de crédito sin límite configurado',
+                      'Línea de crédito abierta sin límite configurado',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.tealDark,
                       ),
                     ),
                   ),
@@ -158,20 +163,19 @@ class CustomerCreditSection extends StatelessWidget {
               curve: Curves.easeOutCubic,
               tween: Tween<double>(begin: 0, end: pct),
               builder: (context, value, child) {
-                // Interpolar el color
                 final animColor = Color.lerp(
                   AppColors.success,
                   AppColors.danger,
-                  value >= 0.8 ? 1.0 : (value / 0.8), // Rojo cuando >= 80%
+                  value >= 0.8 ? 1.0 : (value / 0.8),
                 );
 
                 return Semantics(
                   label: 'Crédito usado: ${(value * 100).toStringAsFixed(0)}%',
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
                       value: value,
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: AppColors.border,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         animColor ??
                             (isRisk ? AppColors.danger : AppColors.success),
@@ -182,46 +186,62 @@ class CustomerCreditSection extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${(pct * 100).toStringAsFixed(0)}% usado',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isRisk ? AppColors.danger : AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isRisk
+                      ? '⚠️ Nivel de riesgo crediticio alto'
+                      : 'Estado regular',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isRisk ? AppColors.danger : AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+                Text(
+                  '${(pct * 100).toStringAsFixed(0)}% utilizado',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isRisk ? AppColors.danger : AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ],
 
           if (isActive) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
+              height: 46,
               child: ElevatedButton.icon(
                 icon: Icon(
                   Icons.payments_rounded,
                   color: debt > 0 ? Colors.white : AppColors.textMuted,
-                  size: 18,
+                  size: 19,
                 ),
                 label: Text(
-                  debt > 0 ? 'Registrar Pago' : 'Sin Deuda Pendiente',
+                  debt > 0
+                      ? 'Registrar Pago de Crédito'
+                      : 'Sin Deuda Pendiente',
                   style: TextStyle(
                     color: debt > 0 ? Colors.white : AppColors.textMuted,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      debt > 0 ? AppColors.success : AppColors.background,
-                  disabledBackgroundColor: AppColors.background,
-                  elevation: debt > 0 ? 1 : 0,
+                      debt > 0 ? AppColors.teal : AppColors.background,
+                  foregroundColor: Colors.white,
+                  elevation: debt > 0 ? 2 : 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(14),
                     side: BorderSide(
-                      color: debt > 0 ? AppColors.success : AppColors.border,
+                      color: debt > 0 ? AppColors.teal : AppColors.border,
                     ),
                   ),
                 ),
@@ -232,18 +252,18 @@ class CustomerCreditSection extends StatelessWidget {
           ],
 
           if (movements.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Movimientos recientes',
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 TextButton(
@@ -265,18 +285,28 @@ class CustomerCreditSection extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text(
-                    'Ver todos →',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
+                  child: const Row(
+                    children: [
+                      Text(
+                        'Ver historial completo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             ...movements.take(5).map((m) => _CreditMovementRow(movement: m)),
           ],
         ],
@@ -297,30 +327,37 @@ class _CreditMovementRow extends StatelessWidget {
         isCharge ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
     final prefix = isCharge ? '+' : '-';
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 14, color: color),
+            child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   isCharge
-                      ? 'Cargo'
-                      : 'Pago${movement.paymentMethod != null ? ' (${movement.paymentMethod})' : ''}',
+                      ? 'Cargo (Venta a crédito)'
+                      : 'Abono / Pago${movement.paymentMethod != null ? ' (${movement.paymentMethod})' : ''}',
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 if (movement.notes != null && movement.notes!.isNotEmpty)
@@ -342,19 +379,20 @@ class _CreditMovementRow extends StatelessWidget {
               Text(
                 '$prefix S/ ${movement.amount.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
                   color: color,
                 ),
               ),
               Text(
                 DateFormat(
-                  'd MMM',
+                  'd MMM, HH:mm',
                   'es',
                 ).format(movement.createdAt ?? DateTime.now()),
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -369,29 +407,60 @@ class _CreditStat extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final IconData? icon;
+
   const _CreditStat({
     required this.label,
     required this.value,
     required this.color,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 13, color: color),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              letterSpacing: -0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
+import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
 import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
 import 'package:inventory_store_app/core/services/pos_printer_settings_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -33,6 +37,19 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
   final TextEditingController _printerFooterCtrl = TextEditingController();
   bool _isPrintingTestTicket = false;
   bool _isSavingLoyalty = false;
+
+  // ── Controladores de la Empresa ──────────────────────────────────────────
+  final TextEditingController _businessNameCtrl = TextEditingController();
+  final TextEditingController _taxIdCtrl = TextEditingController();
+  final TextEditingController _addressCtrl = TextEditingController();
+  final TextEditingController _phoneCtrl = TextEditingController();
+  final TextEditingController _logoUrlCtrl = TextEditingController();
+
+  bool _hasBusinessChanges = false;
+  bool _isUploadingLogo = false;
+  bool _isSavingBusiness = false;
+  bool _showManualLogoUrl = false;
+  bool _isBusinessPopulated = false;
 
   static const _tabs = [
     _TabSpec(
@@ -98,6 +115,137 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     final cubit = context.read<AppConfigCubit>();
     if (cubit.state.businessInfo == null) {
       cubit.loadBusinessInfo();
+    } else {
+      _populateBusinessFields(cubit.state.businessInfo!);
+    }
+    if (cubit.state.connectionUrl == null) {
+      cubit.loadConnectionUrl();
+    }
+  }
+
+  void _populateBusinessFields(BusinessInfoEntity info) {
+    if (_hasBusinessChanges) return;
+    _businessNameCtrl.text =
+        info.businessName == 'Sin configurar' ? '' : info.businessName;
+    _taxIdCtrl.text = info.taxId;
+    _addressCtrl.text = info.address;
+    _phoneCtrl.text = info.phone;
+    _logoUrlCtrl.text = info.logoUrl;
+    _isBusinessPopulated = true;
+  }
+
+  Future<void> _pickLogoImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingLogo = true);
+      final bytes = await pickedFile.readAsBytes();
+
+      final compressed = await FlutterImageCompress.compressWithList(
+        bytes,
+        minWidth: 500,
+        minHeight: 500,
+        quality: 85,
+        format: CompressFormat.webp,
+      );
+
+      if (!mounted) return;
+      final cubit = context.read<AppConfigCubit>();
+      final url = await cubit.uploadBusinessLogo(compressed);
+      if (!mounted) return;
+      setState(() => _isUploadingLogo = false);
+
+      if (url != null) {
+        setState(() {
+          _logoUrlCtrl.text = url;
+          _hasBusinessChanges = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Logotipo cargado. Recuerda presionar "Guardar Cambios".',
+            ),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al subir el logotipo a la nube.'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isUploadingLogo = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo procesar la imagen seleccionada.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveBusinessInfo() async {
+    final name = _businessNameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El nombre de la empresa no puede estar vacío.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSavingBusiness = true);
+    final cubit = context.read<AppConfigCubit>();
+    final current = cubit.state.businessInfo;
+
+    final success = await cubit.saveBusinessInfo(
+      businessName: name,
+      taxId: _taxIdCtrl.text.trim(),
+      address: _addressCtrl.text.trim(),
+      phone: _phoneCtrl.text.trim(),
+      logoUrl: _logoUrlCtrl.text.trim(),
+      loyaltyGlobalEnabled: current?.loyaltyGlobalEnabled ?? false,
+      loyaltyCustomerVisible: current?.loyaltyCustomerVisible ?? false,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isSavingBusiness = false;
+      if (success) _hasBusinessChanges = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Información de la empresa guardada exitosamente.'
+              : 'Error al guardar los datos de la empresa.',
+        ),
+        backgroundColor: success ? const Color(0xFF10B981) : AppColors.danger,
+      ),
+    );
+  }
+
+  void _discardBusinessChanges(BusinessInfoEntity? info) {
+    if (info != null) {
+      setState(() {
+        _hasBusinessChanges = false;
+        _populateBusinessFields(info);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cambios descartados.'),
+          backgroundColor: Color(0xFF64748B),
+        ),
+      );
     }
   }
 
@@ -116,6 +264,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
   void dispose() {
     _tabController.dispose();
     _printerFooterCtrl.dispose();
+    _businessNameCtrl.dispose();
+    _taxIdCtrl.dispose();
+    _addressCtrl.dispose();
+    _phoneCtrl.dispose();
+    _logoUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -347,145 +500,496 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     );
   }
 
-  // ── Tab 0: Empresa & Negocio ──────────────────────────────────────────────
+  // ── Tab 0: Empresa & Negocio (Totalmente Configurable) ────────────────────
   Widget _buildBusinessView(BuildContext context, bool isDark) {
     return BlocBuilder<AppConfigCubit, AppConfigState>(
-      builder: (context, state) {
+      builder: (blocCtx, state) {
         final info = state.businessInfo;
-        final name = info?.businessName ?? 'DANILORE ONE ERP';
-        final ruc = info?.taxId ?? '10751565149';
-        final address = info?.address ?? 'Virtual';
-        final phone = info?.phone ?? '936081881';
-        final logoUrl = info?.logoUrl;
+        if (!_isBusinessPopulated && info != null) {
+          _populateBusinessFields(info);
+        }
+
+        final logoUrl = _logoUrlCtrl.text.trim();
+        final supabaseUrl = state.connectionUrl ?? 'https://*.supabase.co';
 
         return ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // ── Card 1: Identidad de Marca y Logotipo Comercial ─────────────
             _buildSectionCard(
               context,
               isDark: isDark,
               icon: Icons.storefront_rounded,
-              title: 'Identidad Comercial de la Empresa',
+              title: 'Identidad de Marca & Logotipo Comercial',
               subtitle:
-                  'Información principal impresa en comprobantes de venta y tickets',
-              action: FilledButton.icon(
-                onPressed: () => context.go('/business-info'),
-                icon: const Icon(Icons.edit_rounded, size: 16),
-                label: const Text('Editar Información Completa'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+                  'Logotipo oficial impreso en tickets POS, comprobantes electrónicos y catálogo',
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? AppColors.darkBorderSubtle
+                              : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  child: Row(
+                    children: [
+                      // Preview del Logotipo
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0xFF0F172A) : Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : const Color(0xFFCBD5E1),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.3 : 0.05,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child:
+                              logoUrl.isNotEmpty
+                                  ? Image.network(
+                                    logoUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (c, e, s) => const Icon(
+                                          Icons.broken_image_rounded,
+                                          color: Color(0xFF94A3B8),
+                                          size: 28,
+                                        ),
+                                  )
+                                  : const Icon(
+                                    Icons.business_rounded,
+                                    color: Color(0xFF3B82F6),
+                                    size: 32,
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Textos y Acciones
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Logotipo Oficial de la Empresa',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Formato recomendado: PNG o WebP con fondo transparente.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 6,
+                              children: [
+                                FilledButton.tonalIcon(
+                                  icon:
+                                      _isUploadingLogo
+                                          ? const SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                          : const Icon(
+                                            Icons.upload_rounded,
+                                            size: 16,
+                                          ),
+                                  label: Text(
+                                    _isUploadingLogo
+                                        ? 'Subiendo...'
+                                        : 'Subir Nuevo Logo',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      _isUploadingLogo ? null : _pickLogoImage,
+                                ),
+                                TextButton.icon(
+                                  icon: Icon(
+                                    _showManualLogoUrl
+                                        ? Icons.expand_less_rounded
+                                        : Icons.link_rounded,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    _showManualLogoUrl
+                                        ? 'Ocultar URL'
+                                        : 'URL pública manual',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () {
+                                    setState(
+                                      () =>
+                                          _showManualLogoUrl =
+                                              !_showManualLogoUrl,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              children: [
-                if (logoUrl != null && logoUrl.isNotEmpty) ...[
+                if (_showManualLogoUrl) ...[
+                  const SizedBox(height: 10),
                   Container(
-                    margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color:
                           isDark
                               ? AppColors.darkSurfaceElevated
-                              : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? AppColors.darkBorderSubtle
-                                : const Color(0xFFE2E8F0),
-                      ),
+                              : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            logoUrl,
-                            width: 52,
-                            height: 52,
-                            fit: BoxFit.cover,
-                            errorBuilder:
-                                (c, e, s) => const Icon(
-                                  Icons.business_rounded,
-                                  size: 32,
-                                ),
+                        Expanded(
+                          child: TextField(
+                            controller: _logoUrlCtrl,
+                            style: const TextStyle(fontSize: 12.5),
+                            decoration: const InputDecoration(
+                              hintText: 'https://ejemplo.com/logo.png',
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (_) {
+                              setState(() => _hasBusinessChanges = true);
+                            },
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Logotipo Oficial Activo',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Visible en tickets, comprobantes y reportes',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () => setState(() {}),
+                          style: ElevatedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text(
+                            'Previsualizar',
+                            style: TextStyle(fontSize: 11.5),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ],
-                _buildInfoTile(
-                  context,
-                  isDark: isDark,
-                  icon: Icons.badge_outlined,
-                  title: 'Nombre Comercial',
-                  value: name,
-                  badge: 'Moneda Base: PEN (S/)',
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Card 2: Datos Comerciales y Fiscales ─────────────────────────
+            _buildSectionCard(
+              context,
+              isDark: isDark,
+              icon: Icons.business_center_rounded,
+              title: 'Datos Fiscales y Comerciales del Negocio',
+              subtitle:
+                  'Información oficial para boletas, facturas electrónicas, tickets y catálogo',
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth >= 650;
+
+                    if (isDesktop) {
+                      return Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _buildBusinessInputField(
+                                  context: context,
+                                  isDark: isDark,
+                                  label: 'Nombre Comercial / Razón Social',
+                                  hint: 'Ej: DANILORE STORE',
+                                  icon: Icons.storefront_rounded,
+                                  controller: _businessNameCtrl,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: _buildBusinessInputField(
+                                  context: context,
+                                  isDark: isDark,
+                                  label: 'RUC / Identificador Fiscal (Tax ID)',
+                                  hint: 'Ej: 10751565149 (11 dígitos)',
+                                  icon: Icons.badge_outlined,
+                                  controller: _taxIdCtrl,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(11),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _buildBusinessInputField(
+                                  context: context,
+                                  isDark: isDark,
+                                  label:
+                                      'Dirección Comercial / Almacén Central',
+                                  hint: 'Ej: Av. Principal 123, Lima',
+                                  icon: Icons.location_on_outlined,
+                                  controller: _addressCtrl,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: _buildBusinessInputField(
+                                  context: context,
+                                  isDark: isDark,
+                                  label: 'Teléfono o WhatsApp Comercial',
+                                  hint: 'Ej: 936081881',
+                                  icon: Icons.phone_outlined,
+                                  controller: _phoneCtrl,
+                                  keyboardType: TextInputType.phone,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+
+                    // Mobile Single Column
+                    return Column(
+                      children: [
+                        _buildBusinessInputField(
+                          context: context,
+                          isDark: isDark,
+                          label: 'Nombre Comercial / Razón Social',
+                          hint: 'Ej: DANILORE STORE',
+                          icon: Icons.storefront_rounded,
+                          controller: _businessNameCtrl,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildBusinessInputField(
+                          context: context,
+                          isDark: isDark,
+                          label: 'RUC / Identificador Fiscal (Tax ID)',
+                          hint: 'Ej: 10751565149 (11 dígitos)',
+                          icon: Icons.badge_outlined,
+                          controller: _taxIdCtrl,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(11),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildBusinessInputField(
+                          context: context,
+                          isDark: isDark,
+                          label: 'Dirección Comercial / Almacén Central',
+                          hint: 'Ej: Av. Principal 123, Lima',
+                          icon: Icons.location_on_outlined,
+                          controller: _addressCtrl,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildBusinessInputField(
+                          context: context,
+                          isDark: isDark,
+                          label: 'Teléfono o WhatsApp Comercial',
+                          hint: 'Ej: 936081881',
+                          icon: Icons.phone_outlined,
+                          controller: _phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 10),
-                _buildInfoTile(
-                  context,
-                  isDark: isDark,
-                  icon: Icons.pin_outlined,
-                  title: 'RUC / Identificación Fiscal',
-                  value: ruc,
-                  badge: 'IGV: 18%',
-                ),
-                const SizedBox(height: 10),
-                _buildInfoTile(
-                  context,
-                  isDark: isDark,
-                  icon: Icons.location_on_outlined,
-                  title: 'Dirección Comercial',
-                  value: address,
-                  badge: 'Tel: $phone',
+                const SizedBox(height: 18),
+
+                // Barra de Guardado y Estado de Cambios
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color:
+                        _hasBusinessChanges
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.1)
+                            : (isDark
+                                ? AppColors.darkSurfaceElevated
+                                : const Color(0xFFF8FAFC)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color:
+                          _hasBusinessChanges
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.35)
+                              : (isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _hasBusinessChanges
+                            ? Icons.info_outline_rounded
+                            : Icons.check_circle_outline_rounded,
+                        color:
+                            _hasBusinessChanges
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF10B981),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _hasBusinessChanges
+                              ? 'Tienes modificaciones pendientes sin guardar.'
+                              : 'Datos fiscales sincronizados correctamente con Supabase.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                                _hasBusinessChanges
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                            color:
+                                _hasBusinessChanges
+                                    ? (isDark
+                                        ? const Color(0xFFFCD34D)
+                                        : const Color(0xFFB45309))
+                                    : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (_hasBusinessChanges) ...[
+                        TextButton(
+                          onPressed: () => _discardBusinessChanges(info),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF64748B),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text('Descartar'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      FilledButton.icon(
+                        icon:
+                            _isSavingBusiness
+                                ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Icon(Icons.save_rounded, size: 16),
+                        label: Text(
+                          _isSavingBusiness
+                              ? 'Guardando...'
+                              : 'Guardar Cambios',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _isSavingBusiness ? null : _saveBusinessInfo,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
+
+            // ── Card 3: Infraestructura Cloud & Multi-Tenant ────────────────
             _buildSectionCard(
               context,
               isDark: isDark,
               icon: Icons.cloud_done_rounded,
               title: 'Infraestructura de Datos & Nube',
-              subtitle: 'Conexión activa con el backend Supabase',
+              subtitle: 'Conexión activa con el backend Supabase Multi-Tenant',
+              action: OutlinedButton.icon(
+                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                label: const Text('Cambiar Servidor (Multi-Tenant)'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  ChangeConnectionDialog.show(context, supabaseUrl);
+                },
+              ),
               children: [
                 _buildInfoTile(
                   context,
                   isDark: isDark,
                   icon: Icons.cloud_done_rounded,
                   title: 'Base de Datos Cloud',
-                  value: 'Supabase PostgreSQL con RLS Activo',
+                  value: 'Supabase PostgreSQL con RLS Activo ($supabaseUrl)',
                   badge: 'Conectado',
                   badgeColor: const Color(0xFF10B981),
                 ),
@@ -494,6 +998,89 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
           ],
         );
       },
+    );
+  }
+
+  Widget _buildBusinessInputField({
+    required BuildContext context,
+    required bool isDark,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppColors.darkTextPrimary : const Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          style: TextStyle(
+            fontSize: 13.5,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+          onChanged: (_) {
+            if (!_hasBusinessChanges) {
+              setState(() => _hasBusinessChanges = true);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.darkTextMuted : const Color(0xFF94A3B8),
+            ),
+            prefixIcon: Icon(
+              icon,
+              size: 19,
+              color:
+                  isDark
+                      ? AppColors.darkTextSecondary
+                      : const Color(0xFF64748B),
+            ),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color:
+                    isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFE2E8F0),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: Color(0xFF2563EB),
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
