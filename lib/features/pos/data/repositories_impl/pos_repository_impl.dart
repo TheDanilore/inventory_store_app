@@ -50,13 +50,34 @@ class PosRepositoryImpl implements PosRepository {
           _cachedWarehouses!.isNotEmpty) {
         warehouses = _cachedWarehouses!;
       } else {
-        final whRes = await _supabase
-            .from('warehouses')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('name');
-        final rawWh = (whRes as List);
-        warehouses = rawWh.map((e) => WarehouseModel.fromJson(e)).toList();
+        try {
+          final whRes = await _supabase.rpc('get_my_warehouses');
+          final rawWh = (whRes as List);
+          warehouses =
+              rawWh
+                  .map(
+                    (e) => WarehouseModel.fromJson(
+                      Map<String, dynamic>.from(e as Map),
+                    ),
+                  )
+                  .toList();
+        } catch (_) {
+          // Fallback a consulta directa por si el RPC no existe aún
+          final whRes = await _supabase
+              .from('warehouses')
+              .select('id, name, address, is_active')
+              .eq('is_active', true)
+              .order('name');
+          final rawWh = (whRes as List);
+          warehouses =
+              rawWh
+                  .map(
+                    (e) => WarehouseModel.fromJson(
+                      Map<String, dynamic>.from(e as Map),
+                    ),
+                  )
+                  .toList();
+        }
         _cachedWarehouses = warehouses;
       }
 

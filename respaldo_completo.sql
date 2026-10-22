@@ -1394,6 +1394,38 @@ $_$;
 ALTER FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text", "p_account_id" "text", "p_search_text" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_my_default_warehouse"() RETURNS "uuid"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- Si puede ver todos, devolver primer almacén activo
+  IF public.user_has_permission('warehouses.view_all') THEN
+    RETURN (
+      SELECT w.id
+      FROM public.warehouses w
+      WHERE w.is_active = TRUE
+      ORDER BY w.name
+      LIMIT 1
+    );
+  END IF;
+
+  -- Sino, devolver almacén por defecto o primer asignado
+  RETURN (
+    SELECT uw.warehouse_id
+    FROM public.user_warehouses uw
+    JOIN public.profiles p ON p.id = uw.profile_id
+    WHERE p.auth_user_id = auth.uid()
+    ORDER BY uw.is_default DESC, uw.created_at ASC
+    LIMIT 1
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_default_warehouse"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_my_permissions"() RETURNS TABLE("role_name" "text", "permission_code" "text", "permission_name" "text", "module" "text")
     LANGUAGE "sql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1413,6 +1445,37 @@ $$;
 
 
 ALTER FUNCTION "public"."get_my_permissions"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_my_warehouses"() RETURNS TABLE("id" "uuid", "name" "text", "address" "text", "is_active" boolean, "is_default" boolean)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  -- Si tiene permiso warehouses.view_all, ver todos los almacenes activos
+  IF public.user_has_permission('warehouses.view_all') THEN
+    RETURN QUERY
+    SELECT w.id, w.name, w.address, w.is_active, FALSE AS is_default
+    FROM public.warehouses w
+    WHERE w.is_active = TRUE
+    ORDER BY w.name;
+    RETURN;
+  END IF;
+
+  -- Sino, solo almacenes asignados vía user_warehouses
+  RETURN QUERY
+  SELECT w.id, w.name, w.address, w.is_active, uw.is_default
+  FROM public.user_warehouses uw
+  JOIN public.profiles p ON p.id = uw.profile_id
+  JOIN public.warehouses w ON w.id = uw.warehouse_id
+  WHERE p.auth_user_id = auth.uid()
+    AND w.is_active = TRUE
+  ORDER BY uw.is_default DESC, w.name;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_my_warehouses"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") RETURNS "jsonb"
@@ -4662,6 +4725,21 @@ $$;
 
 ALTER FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") OWNER TO "postgres";
 
+
+CREATE OR REPLACE FUNCTION "public"."user_has_permission"("p_permission_code" "text") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.get_my_permissions()
+    WHERE permission_code = p_permission_code
+  );
+$$;
+
+
+ALTER FUNCTION "public"."user_has_permission"("p_permission_code" "text") OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -5446,6 +5524,19 @@ CREATE OR REPLACE VIEW "public"."user_effective_permissions" AS
 ALTER VIEW "public"."user_effective_permissions" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."user_warehouses" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "profile_id" "uuid" NOT NULL,
+    "warehouse_id" "uuid" NOT NULL,
+    "is_default" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "created_by" "uuid"
+);
+
+
+ALTER TABLE "public"."user_warehouses" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."variant_attribute_values" (
     "variant_id" "uuid" NOT NULL,
     "attribute_value_id" "uuid" NOT NULL
@@ -5769,6 +5860,16 @@ ALTER TABLE ONLY "public"."user_roles"
 
 
 
+ALTER TABLE ONLY "public"."user_warehouses"
+    ADD CONSTRAINT "user_warehouses_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_warehouses"
+    ADD CONSTRAINT "user_warehouses_profile_id_warehouse_id_key" UNIQUE ("profile_id", "warehouse_id");
+
+
+
 ALTER TABLE ONLY "public"."variant_attribute_values"
     ADD CONSTRAINT "variant_attribute_values_pkey" PRIMARY KEY ("variant_id", "attribute_value_id");
 
@@ -5898,6 +5999,10 @@ CREATE INDEX "idx_inventory_movements_warehouse_id" ON "public"."inventory_movem
 
 
 
+CREATE UNIQUE INDEX "idx_one_default_per_user" ON "public"."user_warehouses" USING "btree" ("profile_id") WHERE ("is_default" = true);
+
+
+
 CREATE INDEX "idx_order_items_order_id" ON "public"."order_items" USING "btree" ("order_id");
 
 
@@ -5971,6 +6076,14 @@ CREATE INDEX "idx_user_roles_profile_id" ON "public"."user_roles" USING "btree" 
 
 
 CREATE INDEX "idx_user_roles_role_id" ON "public"."user_roles" USING "btree" ("role_id");
+
+
+
+CREATE INDEX "idx_user_warehouses_profile_id" ON "public"."user_warehouses" USING "btree" ("profile_id");
+
+
+
+CREATE INDEX "idx_user_warehouses_warehouse_id" ON "public"."user_warehouses" USING "btree" ("warehouse_id");
 
 
 
@@ -6616,6 +6729,21 @@ ALTER TABLE ONLY "public"."user_roles"
 
 
 
+ALTER TABLE ONLY "public"."user_warehouses"
+    ADD CONSTRAINT "user_warehouses_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."user_warehouses"
+    ADD CONSTRAINT "user_warehouses_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."user_warehouses"
+    ADD CONSTRAINT "user_warehouses_warehouse_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."variant_attribute_values"
     ADD CONSTRAINT "vav_attribute_value_id_fkey" FOREIGN KEY ("attribute_value_id") REFERENCES "public"."attribute_values"("id") ON DELETE RESTRICT;
 
@@ -6708,10 +6836,6 @@ CREATE POLICY "Acceso total admin y empleado" ON "public"."account_movements" US
 
 
 
-CREATE POLICY "Acceso total admin y empleado" ON "public"."financial_accounts" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
 CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventories" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
@@ -6729,10 +6853,6 @@ CREATE POLICY "Acceso total admin y empleado" ON "public"."suppliers" USING (("e
 
 
 CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouse_stock_batches" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouses" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
 
 
 
@@ -6761,6 +6881,10 @@ CREATE POLICY "Actualización del propio perfil" ON "public"."profiles" FOR UPDA
 
 
 CREATE POLICY "Admins and owners can manage customer locations" ON "public"."customer_locations" TO "authenticated", "anon" USING (true) WITH CHECK (true);
+
+
+
+CREATE POLICY "Admins manage warehouse assignments" ON "public"."user_warehouses" TO "authenticated" USING ("public"."user_has_permission"('warehouses.view_all'::"text")) WITH CHECK ("public"."user_has_permission"('warehouses.view_all'::"text"));
 
 
 
@@ -6813,6 +6937,10 @@ CREATE POLICY "Borrado admin/empleado" ON "public"."variant_attribute_values" FO
 
 
 CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+
+
+
+CREATE POLICY "Financial accounts: read active for authenticated" ON "public"."financial_accounts" FOR SELECT TO "authenticated" USING (("is_active" = true));
 
 
 
@@ -7026,7 +7154,7 @@ CREATE POLICY "Lectura selectiva de movimientos de billetera por rol o propiet" 
 
 
 
-CREATE POLICY "Lectura selectiva de perfiles por rol o propietario" ON "public"."profiles" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Lectura selectiva de perfiles por rol o propietario" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "auth_user_id") OR ("auth"."uid"() = "id") OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
@@ -7128,9 +7256,22 @@ CREATE POLICY "Solo administradores pueden modificar roles" ON "public"."roles" 
 
 
 
+CREATE POLICY "Users can view own warehouse assignments" ON "public"."user_warehouses" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
+   FROM "public"."profiles" "p"
+  WHERE (("p"."id" = "user_warehouses"."profile_id") AND ("p"."auth_user_id" = "auth"."uid"())))) OR "public"."user_has_permission"('warehouses.view_all'::"text")));
+
+
+
 CREATE POLICY "Usuarios pueden ver sus propios roles asignados" ON "public"."user_roles" FOR SELECT TO "authenticated" USING ((("profile_id" IN ( SELECT "profiles"."id"
    FROM "public"."profiles"
   WHERE ("profiles"."auth_user_id" = "auth"."uid"()))) OR "public"."is_admin"()));
+
+
+
+CREATE POLICY "Warehouses: view all or assigned" ON "public"."warehouses" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('warehouses.view_all'::"text") OR (EXISTS ( SELECT 1
+   FROM ("public"."user_warehouses" "uw"
+     JOIN "public"."profiles" "p" ON (("p"."id" = "uw"."profile_id")))
+  WHERE (("p"."auth_user_id" = "auth"."uid"()) AND ("uw"."warehouse_id" = "warehouses"."id"))))));
 
 
 
@@ -7255,6 +7396,9 @@ ALTER TABLE "public"."suppliers" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."user_roles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."user_warehouses" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."variant_attribute_values" ENABLE ROW LEVEL SECURITY;
@@ -7573,9 +7717,21 @@ GRANT ALL ON FUNCTION "public"."get_movement_totals_rpc"("p_filter_type" "text",
 
 
 
+GRANT ALL ON FUNCTION "public"."get_my_default_warehouse"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_default_warehouse"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_default_warehouse"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "service_role";
 
 
 
@@ -7768,6 +7924,12 @@ GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid"
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."user_has_permission"("p_permission_code" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."user_has_permission"("p_permission_code" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."user_has_permission"("p_permission_code" "text") TO "service_role";
 
 
 
@@ -8069,6 +8231,12 @@ GRANT ALL ON TABLE "public"."suppliers" TO "service_role";
 GRANT ALL ON TABLE "public"."user_effective_permissions" TO "anon";
 GRANT ALL ON TABLE "public"."user_effective_permissions" TO "authenticated";
 GRANT ALL ON TABLE "public"."user_effective_permissions" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."user_warehouses" TO "anon";
+GRANT ALL ON TABLE "public"."user_warehouses" TO "authenticated";
+GRANT ALL ON TABLE "public"."user_warehouses" TO "service_role";
 
 
 
