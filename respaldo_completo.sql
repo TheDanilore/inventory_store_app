@@ -576,6 +576,227 @@ $$;
 ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb", "p_currency_code" "text" DEFAULT 'PEN'::"text", "p_exchange_rate" numeric DEFAULT 1.0000) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
+    AS $$
+DECLARE
+    v_po_id UUID;
+    v_item JSONB;
+    v_credit_id UUID;
+    v_credit_limit NUMERIC;
+    v_current_debt NUMERIC;
+    v_credit_active BOOLEAN;
+    v_acc_balance NUMERIC;
+    v_acc_type TEXT;
+    v_acc_name TEXT;
+    v_acc_currency TEXT;
+    v_shift_status TEXT;
+    v_real_debt NUMERIC;
+    v_po_debt NUMERIC;
+    v_item_subtotal NUMERIC;
+    v_rate NUMERIC;
+    v_total_base NUMERIC;
+    v_deduct_amount NUMERIC;
+BEGIN
+    -- 0. Verificación de permisos granulares (requiere purchases.create o rol admin)
+    IF NOT public.user_has_permission('purchases.create') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No cuenta con el permiso requerido para registrar órdenes de compra (purchases.create).');
+    END IF;
+
+    -- Extraer Profile ID (Auditoría) si no se provee
+    IF p_profile_id IS NULL THEN
+        SELECT id INTO p_profile_id FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+    END IF;
+
+    v_rate := COALESCE(p_exchange_rate, 1.0000);
+    IF v_rate <= 0 THEN
+        v_rate := 1.0000;
+    END IF;
+    v_total_base := p_total_amount * v_rate;
+
+    -- 1. Validar límite de crédito si la orden queda en Pago Pendiente o es CRÉDITO
+    IF p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING' THEN
+        SELECT id, credit_limit, current_debt, is_active 
+        INTO v_credit_id, v_credit_limit, v_current_debt, v_credit_active
+        FROM public.supplier_credits
+        WHERE supplier_id = p_supplier_id
+        FOR UPDATE;
+
+        IF NOT FOUND AND p_payment_method = 'CRÉDITO' THEN
+            RETURN jsonb_build_object('success', false, 'error', 'El proveedor no tiene una línea de crédito habilitada.');
+        END IF;
+
+        IF v_credit_id IS NOT NULL THEN
+            IF NOT v_credit_active AND p_payment_method = 'CRÉDITO' THEN
+                RETURN jsonb_build_object('success', false, 'error', 'La línea de crédito con este proveedor se encuentra inactiva.');
+            END IF;
+
+            IF p_payment_method = 'CRÉDITO' AND v_credit_limit <= 0 THEN
+                RETURN jsonb_build_object('success', false, 'error', 'El proveedor tiene un límite de crédito de S/ 0.00.');
+            END IF;
+
+            -- Calcular deuda real (sumando OCs pendientes valorizadas en moneda base)
+            SELECT COALESCE(SUM(total_amount_base - (COALESCE(amount_paid, 0) * exchange_rate)), 0) INTO v_po_debt
+            FROM public.purchase_orders
+            WHERE supplier_id = p_supplier_id 
+              AND payment_status IN ('PENDING', 'PARTIAL')
+              AND status != 'CANCELLED';
+
+            v_real_debt := GREATEST(v_current_debt, v_po_debt);
+
+            IF v_credit_limit > 0 AND (v_real_debt + v_total_base) > v_credit_limit THEN
+                RETURN jsonb_build_object(
+                    'success', false, 
+                    'error', 'Límite de crédito excedido. Disponible: S/ ' || ROUND((v_credit_limit - v_real_debt), 2) || ', Monto base orden: S/ ' || ROUND(v_total_base, 2)
+                );
+            END IF;
+        END IF;
+    END IF;
+
+    -- 2. Validar saldo suficiente y turno de caja abierto si es PAID
+    IF p_payment_status = 'PAID' THEN
+        IF p_account_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'error', 'Debe seleccionar una cuenta origen para registrar el pago.');
+        END IF;
+
+        SELECT name, type, balance, currency_code 
+        INTO v_acc_name, v_acc_type, v_acc_balance, v_acc_currency
+        FROM public.financial_accounts
+        WHERE id = p_account_id
+        FOR UPDATE;
+
+        IF NOT FOUND THEN
+            RETURN jsonb_build_object('success', false, 'error', 'La cuenta financiera seleccionada no existe.');
+        END IF;
+
+        -- Calcular deducción según la moneda de la cuenta
+        IF v_acc_currency = p_currency_code THEN
+            v_deduct_amount := p_total_amount;
+        ELSEIF v_acc_currency = 'PEN' THEN
+            v_deduct_amount := v_total_base;
+        ELSEIF p_currency_code = 'PEN' THEN
+            v_deduct_amount := p_total_amount / v_rate;
+        ELSE
+            v_deduct_amount := v_total_base;
+        END IF;
+
+        IF v_acc_balance < v_deduct_amount THEN
+            RETURN jsonb_build_object(
+                'success', false, 
+                'error', 'Saldo insuficiente en la cuenta "' || v_acc_name || '". Saldo disponible: ' || COALESCE(v_acc_currency, 'PEN') || ' ' || ROUND(v_acc_balance, 2) || ', Requerido: ' || ROUND(v_deduct_amount, 2)
+            );
+        END IF;
+
+        IF v_acc_type = 'CAJA' THEN
+            IF p_active_shift_id IS NULL THEN
+                SELECT id INTO p_active_shift_id 
+                FROM public.cash_shifts 
+                WHERE account_id = p_account_id AND status = 'OPEN' 
+                LIMIT 1;
+            END IF;
+
+            IF p_active_shift_id IS NULL THEN
+                RETURN jsonb_build_object('success', false, 'error', 'No hay un turno de caja abierto para la cuenta "' || v_acc_name || '".');
+            END IF;
+
+            SELECT status INTO v_shift_status FROM public.cash_shifts WHERE id = p_active_shift_id;
+            IF v_shift_status != 'OPEN' THEN
+                RETURN jsonb_build_object('success', false, 'error', 'El turno de caja especificado ya no está abierto.');
+            END IF;
+        END IF;
+    END IF;
+
+    -- 3. Inserción de la Orden de Compra
+    INSERT INTO public.purchase_orders (
+        supplier_id, supplier_name, warehouse_id, total_amount, 
+        payment_method, payment_status, due_date, document_date, 
+        document_type, document_number, notes, created_by, status,
+        amount_paid, currency_code, exchange_rate, total_amount_base
+    ) VALUES (
+        p_supplier_id, p_supplier_name, p_warehouse_id, p_total_amount, 
+        p_payment_method, p_payment_status, p_due_date, p_document_date, 
+        p_document_type, p_document_number, p_notes, p_profile_id, 'PENDING',
+        CASE WHEN p_payment_status = 'PAID' THEN p_total_amount ELSE 0 END,
+        p_currency_code, v_rate, v_total_base
+    ) RETURNING id INTO v_po_id;
+
+    -- 4. Inserción de los Ítems
+    FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+    LOOP
+        v_item_subtotal := ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_cost')::NUMERIC);
+
+        INSERT INTO public.purchase_order_items (
+            purchase_order_id, 
+            product_id, 
+            variant_id, 
+            quantity_ordered, 
+            unit_cost, 
+            net_cost,
+            subtotal, 
+            batch_number, 
+            expiry_date,
+            unit_cost_base
+        ) VALUES (
+            v_po_id, 
+            (v_item->>'product_id')::UUID, 
+            NULLIF(v_item->>'variant_id', '')::UUID, 
+            (v_item->>'quantity')::NUMERIC, 
+            (v_item->>'unit_cost')::NUMERIC, 
+            (v_item->>'unit_cost')::NUMERIC,
+            v_item_subtotal,
+            COALESCE(v_item->>'batch_number', 'DEFAULT'), 
+            CASE WHEN (v_item->>'expiry_date') IS NOT NULL AND (v_item->>'expiry_date') != ''
+                 THEN (v_item->>'expiry_date')::DATE 
+                 ELSE NULL END,
+            ((v_item->>'unit_cost')::NUMERIC * v_rate)
+        );
+    END LOOP;
+
+    -- 5. Operaciones Financieras / Movimientos
+    IF p_payment_status = 'PAID' THEN
+        UPDATE public.financial_accounts
+        SET balance = balance - v_deduct_amount,
+            updated_at = NOW()
+        WHERE id = p_account_id;
+
+        INSERT INTO public.account_movements (
+            account_id, shift_id, movement_type, amount, description, reference_type, reference_id, created_by,
+            currency_code, exchange_rate, amount_base
+        ) VALUES (
+            p_account_id, p_active_shift_id, 'EXPENSE', v_deduct_amount, 
+            'Pago OC #' || left(v_po_id::text, 8), 
+            'PURCHASE_ORDER', v_po_id, p_profile_id,
+            v_acc_currency, v_rate, (v_deduct_amount * CASE WHEN v_acc_currency = 'PEN' THEN 1.0 ELSE v_rate END)
+        );
+    END IF;
+
+    -- 6. Actualización de Deuda en Línea de Crédito Proveedor
+    IF p_payment_method = 'CRÉDITO' OR p_payment_status = 'PENDING' THEN
+        IF v_credit_id IS NOT NULL THEN
+            UPDATE public.supplier_credits
+            SET current_debt = current_debt + v_total_base,
+                updated_at = NOW()
+            WHERE id = v_credit_id;
+
+            INSERT INTO public.supplier_credit_movements (
+                supplier_credit_id, movement_type, amount, purchase_order_id, notes, created_by
+            ) VALUES (
+                v_credit_id, 'CHARGE', v_total_base, v_po_id, 'Generación de deuda por OC #' || left(v_po_id::text, 8), p_profile_id
+            );
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object('success', true, 'id', v_po_id, 'purchase_order_id', v_po_id);
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('success', false, 'error', SQLERRM, 'detail', SQLSTATE);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb", "p_currency_code" "text", "p_exchange_rate" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_active_ingredient_safely"("p_ingredient_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -2613,13 +2834,34 @@ DECLARE
   v_account_id uuid;
   v_shift_id uuid;
   v_warehouse_id uuid := (payload->>'warehouseId')::uuid;
+
+  -- Comprobante y facturación
+  v_doc_type text := COALESCE(payload->>'documentType', 'NOTA_VENTA');
+  v_doc_series text := payload->>'documentSeries';
+  v_doc_number text := payload->>'documentNumber';
+  v_tax_amount numeric := COALESCE((payload->>'taxAmount')::numeric, 0.00);
+  v_subtotal_amount numeric := COALESCE((payload->>'subtotalAmount')::numeric, (v_total_amount - v_tax_amount));
+  v_payment_reference text := payload->>'paymentReference';
+  v_customer_doc_type text := payload->>'customerDocumentType';
+  v_customer_doc_num text := payload->>'customerDocumentNumber';
+  v_customer_address text := payload->>'customerAddress';
+
+  -- Multimoneda
+  v_currency_code text := COALESCE(payload->>'currencyCode', 'PEN');
+  v_exchange_rate numeric := COALESCE((payload->>'exchangeRate')::numeric, 1.0000);
+  v_total_amount_base numeric := COALESCE((payload->>'totalAmountBase')::numeric, (v_total_amount * COALESCE((payload->>'exchangeRate')::numeric, 1.0000)));
+  v_subtotal_amount_base numeric := COALESCE((payload->>'subtotalAmountBase')::numeric, (v_subtotal_amount * COALESCE((payload->>'exchangeRate')::numeric, 1.0000)));
+  v_tax_amount_base numeric := COALESCE((payload->>'taxAmountBase')::numeric, (v_tax_amount * COALESCE((payload->>'exchangeRate')::numeric, 1.0000)));
+
+  v_series_row record;
+  v_next_correlative int;
   
   item jsonb;
   v_variant_id uuid;
   v_quantity int;
   v_remaining_qty int;
 
-  -- Costo y ganancia calculados EN EL SERVIDOR (no se confía en el cliente)
+  -- Costo y ganancia calculados EN EL SERVIDOR
   v_unit_cost numeric;
   v_applied_price numeric;
   v_total_cost numeric := 0;
@@ -2638,19 +2880,22 @@ DECLARE
   v_credit_active boolean;
   v_credit_disponible numeric;
 BEGIN
-  -- 1. BLINDAJE DE SEGURIDAD: Resolver creador únicamente vía JWT de Supabase Auth
+  -- 1. BLINDAJE DE SEGURIDAD: Resolver perfil del usuario autenticado
   SELECT id INTO v_created_by FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
   IF v_created_by IS NULL THEN
     RAISE EXCEPTION 'Usuario autenticado no posee un perfil válido en el sistema.';
   END IF;
 
+  -- 1.1 Verificación de permisos granulares: requiere permiso pos.sale o rol admin
+  IF NOT public.user_has_permission('pos.sale') THEN
+    RAISE EXCEPTION 'No cuenta con el permiso requerido para registrar ventas en el POS (pos.sale).' USING ERRCODE = '42501';
+  END IF;
+
   -- Handle optional UUIDs
   IF payload->>'customerId' IS NOT NULL AND payload->>'customerId' != '' THEN v_customer_id := (payload->>'customerId')::uuid; END IF;
   IF payload->>'accountId' IS NOT NULL AND payload->>'accountId' != '' THEN v_account_id := (payload->>'accountId')::uuid; END IF;
-  
-  -- YA NO TOMAMOS EL activeShiftId DESDE EL PAYLOAD POR SEGURIDAD. EL BACKEND LO DETERMINARÁ.
 
-  -- VALIDACIÓN ATÓMICA DE CRÉDITO ANTES DE COMPROMETER STOCK O CREAR ÓRDENES
+  -- VALIDACIÓN ATÓMICA DE CRÉDITO
   IF NOT v_is_draft AND v_is_credit AND v_customer_id IS NOT NULL THEN
     SELECT id, current_debt, credit_limit, is_active 
       INTO v_credit_id, v_current_debt, v_credit_limit, v_credit_active
@@ -2666,7 +2911,6 @@ BEGIN
       RAISE EXCEPTION 'La línea de crédito del cliente no está activa.' USING ERRCODE = 'P0011';
     END IF;
 
-    -- credit_limit <= 0 = crédito ilimitado (misma regla que la UI)
     IF v_credit_limit > 0 THEN
       v_credit_disponible := v_credit_limit - v_current_debt;
       IF v_credit_disponible < (v_total_amount - v_amount_paid) THEN
@@ -2677,7 +2921,43 @@ BEGIN
     END IF;
   END IF;
 
-  -- Costo real desde product_variants.unit_cost (el payload solo aporta cantidades y precios)
+  -- ASIGNACIÓN ATÓMICA DE SERIE Y CORRELATIVO FISCAL (Si no es borrador y tiene tipo)
+  IF NOT v_is_draft AND v_doc_type IS NOT NULL AND v_doc_type != 'NINGUNO' THEN
+    -- Si no especificó serie, buscar la serie por defecto para este tipo y almacén
+    IF v_doc_series IS NULL OR trim(v_doc_series) = '' THEN
+      SELECT * INTO v_series_row
+      FROM public.document_series
+      WHERE document_type = v_doc_type
+        AND (warehouse_id = v_warehouse_id OR warehouse_id IS NULL)
+        AND is_active = true
+      ORDER BY (warehouse_id IS NOT NULL) DESC, is_default DESC
+      LIMIT 1
+      FOR UPDATE;
+    ELSE
+      SELECT * INTO v_series_row
+      FROM public.document_series
+      WHERE document_type = v_doc_type
+        AND series = v_doc_series
+        AND (warehouse_id = v_warehouse_id OR warehouse_id IS NULL)
+        AND is_active = true
+      ORDER BY (warehouse_id IS NOT NULL) DESC
+      LIMIT 1
+      FOR UPDATE;
+    END IF;
+
+    IF FOUND THEN
+      v_next_correlative := v_series_row.current_correlative + 1;
+      v_doc_series := v_series_row.series;
+      v_doc_number := v_series_row.series || '-' || LPAD(v_next_correlative::text, v_series_row.correlative_padding, '0');
+
+      UPDATE public.document_series
+      SET current_correlative = v_next_correlative,
+          updated_at = now()
+      WHERE id = v_series_row.id;
+    END IF;
+  END IF;
+
+  -- Costo real desde product_variants.unit_cost
   FOR item IN SELECT * FROM jsonb_array_elements(payload->'items')
   LOOP
     SELECT unit_cost INTO v_unit_cost
@@ -2692,10 +2972,9 @@ BEGIN
   END LOOP;
 
   v_total_profit := v_total_amount - v_total_cost;
-
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
-  -- Insertar orden principal
+  -- 2. INSERTAR ORDEN PRINCIPAL CON COMPROBANTE Y MULTIMONEDA
   INSERT INTO orders (
     customer_id,
     customer_name,
@@ -2709,7 +2988,22 @@ BEGIN
     status,
     points_used,
     points_earned,
-    created_by
+    created_by,
+    document_type,
+    document_series,
+    document_number,
+    document_date,
+    tax_amount,
+    subtotal_amount,
+    payment_reference,
+    customer_document_type,
+    customer_document_number,
+    customer_address,
+    currency_code,
+    exchange_rate,
+    total_amount_base,
+    subtotal_amount_base,
+    tax_amount_base
   ) VALUES (
     v_customer_id,
     NULLIF(payload->>'customerName', ''),
@@ -2723,27 +3017,41 @@ BEGIN
     v_order_status,
     CASE WHEN v_is_draft THEN 0 ELSE v_points_used END,
     CASE WHEN v_is_draft THEN 0 ELSE v_points_earned END,
-    v_created_by
+    v_created_by,
+    v_doc_type,
+    v_doc_series,
+    v_doc_number,
+    CURRENT_DATE,
+    v_tax_amount,
+    v_subtotal_amount,
+    v_payment_reference,
+    v_customer_doc_type,
+    v_customer_doc_num,
+    v_customer_address,
+    v_currency_code,
+    v_exchange_rate,
+    v_total_amount_base,
+    v_subtotal_amount_base,
+    v_tax_amount_base
   ) RETURNING id INTO v_order_id;
 
-  -- 2. PROCESAMIENTO ATÓMICO DE ITEMS
+  -- 3. PROCESAMIENTO ATÓMICO DE ITEMS
   FOR item IN SELECT * FROM jsonb_array_elements(payload->'items')
   LOOP
     v_variant_id := (item->>'variantId')::uuid;
     v_quantity := (item->>'quantity')::int;
 
-    -- Costo vigente en BD y precio aplicado (el precio sí puede venir del POS:
-    -- mayorista, descuento manual, etc.)
     SELECT COALESCE(unit_cost, 0) INTO v_unit_cost
     FROM product_variants WHERE id = v_variant_id;
     v_applied_price := (item->>'appliedPrice')::numeric;
 
-    -- Validado con esquema de tabla order_items
     INSERT INTO order_items (
-      order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit
+      order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit,
+      applied_price_base, unit_cost_base
     ) VALUES (
       v_order_id, (item->>'productId')::uuid, v_variant_id, v_quantity,
-      v_unit_cost, v_applied_price, (v_applied_price - v_unit_cost) * v_quantity
+      v_unit_cost, v_applied_price, (v_applied_price - v_unit_cost) * v_quantity,
+      (v_applied_price * v_exchange_rate), (v_unit_cost * v_exchange_rate)
     );
 
     IF NOT v_is_draft THEN
@@ -2769,12 +3077,11 @@ BEGIN
           SET available_quantity = available_quantity - v_take
           WHERE id = (batch_assign->>'batchId')::uuid;
           
-          -- Validado con esquema de tabla inventory_movements (con order_id)
           INSERT INTO inventory_movements (
             variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
             v_variant_id, v_warehouse_id, (batch_assign->>'batchId')::uuid, v_order_id, -v_take, v_old_qty, v_old_qty - v_take, v_unit_cost, 'SALE', 
-            'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || v_batch_number, v_created_by
+            'Venta POS ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)) || ' • Lote: ' || v_batch_number, v_created_by
           );
         END LOOP;
         
@@ -2803,7 +3110,7 @@ BEGIN
             variant_id, warehouse_id, stock_batch_id, order_id, quantity, previous_stock, new_stock, unit_cost, reason, notes, created_by
           ) VALUES (
             v_variant_id, v_warehouse_id, batch_row.id, v_order_id, -v_take, batch_row.available_quantity, batch_row.available_quantity - v_take, v_unit_cost, 'SALE', 
-            'Venta POS - ' || COALESCE(payload->>'paymentMethod', 'N/A') || ' • Lote: ' || batch_row.batch_number, v_created_by
+            'Venta POS ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)) || ' • Lote: ' || batch_row.batch_number, v_created_by
           );
           
           v_remaining_qty := v_remaining_qty - v_take;
@@ -2816,10 +3123,8 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 3. FLUJOS FINANCIEROS Y DE FIDELIZACIÓN COMPLEMENTARIOS
+  -- 4. FLUJOS FINANCIEROS Y DE CAJA
   IF NOT v_is_draft THEN
-    
-    -- Control de Cajas y Cuentas Financieras
     IF v_account_id IS NOT NULL THEN
       DECLARE
         v_account_type text;
@@ -2832,7 +3137,6 @@ BEGIN
           RAISE EXCEPTION 'Cuenta financiera no encontrada.';
         END IF;
 
-        -- Validación ATÓMICA del Turno de Caja (ignora lo que envía el cliente)
         IF v_account_type = 'CAJA' THEN
           SELECT id INTO v_shift_id
           FROM cash_shifts
@@ -2846,11 +3150,14 @@ BEGIN
           v_shift_id := NULL;
         END IF;
 
-        -- Insertar el movimiento financiero
         INSERT INTO account_movements (
-          account_id, shift_id, movement_type, amount, description, reference_id, reference_type, created_by
+          account_id, shift_id, movement_type, amount, description, reference_id, reference_type, created_by,
+          currency_code, exchange_rate, amount_base
         ) VALUES (
-          v_account_id, v_shift_id, 'INCOME', v_amount_paid, 'Venta POS #' || substring(v_order_id::text, 1, 8), v_order_id, 'ORDER', v_created_by
+          v_account_id, v_shift_id, 'INCOME', v_amount_paid, 
+          'Venta POS ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)), 
+          v_order_id, 'ORDER', v_created_by,
+          v_currency_code, v_exchange_rate, (v_amount_paid * v_exchange_rate)
         );
         
         UPDATE financial_accounts
@@ -2859,26 +3166,26 @@ BEGIN
       END;
     END IF;
 
-    -- Actualización Segura de Wallet de Puntos del Cliente
+    -- Actualización de puntos
     IF (v_points_earned > 0 OR v_points_used > 0) AND v_customer_id IS NOT NULL THEN
       UPDATE profiles
       SET wallet_balance = wallet_balance + v_points_earned - v_points_used
       WHERE id = v_customer_id;
       
-      -- Registrar EARNED y REDEEMED por separado para correcta auditoría y reversión
       IF v_points_earned > 0 THEN
         INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
-        VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED', 'Puntos ganados por Venta #' || substring(v_order_id::text, 1, 8));
+        VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED', 
+          'Puntos ganados por Venta ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)));
       END IF;
 
       IF v_points_used > 0 THEN
         INSERT INTO wallet_movements (profile_id, order_id, points, movement_type, description)
-        VALUES (v_customer_id, v_order_id, v_points_used, 'REDEEMED', 'Puntos canjeados en Venta #' || substring(v_order_id::text, 1, 8));
+        VALUES (v_customer_id, v_order_id, v_points_used, 'REDEEMED', 
+          'Puntos canjeados en Venta ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)));
       END IF;
     END IF;
 
-    -- Flujo de Crédito a Clientes
-    -- FIX: customer_credit_movements con columnas correctas
+    -- Crédito a clientes
     IF v_is_credit AND v_customer_id IS NOT NULL THEN
       UPDATE customer_credits
       SET current_debt = current_debt + (v_total_amount - v_amount_paid)
@@ -2887,7 +3194,9 @@ BEGIN
       INSERT INTO customer_credit_movements (
         customer_credit_id, order_id, movement_type, amount, notes, created_by
       ) VALUES (
-        v_credit_id, v_order_id, 'CHARGE', (v_total_amount - v_amount_paid), 'Venta al crédito - POS #' || substring(v_order_id::text, 1, 8), v_created_by
+        v_credit_id, v_order_id, 'CHARGE', (v_total_amount - v_amount_paid), 
+        'Venta al crédito - ' || COALESCE(v_doc_number, 'POS #' || substring(v_order_id::text, 1, 8)), 
+        v_created_by
       );
     END IF;
 
@@ -4732,8 +5041,16 @@ CREATE OR REPLACE FUNCTION "public"."user_has_permission"("p_permission_code" "t
     AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.get_my_permissions()
-    WHERE permission_code = p_permission_code
+    FROM public.profiles pr
+    JOIN public.user_roles ur ON ur.profile_id = pr.id
+    JOIN public.roles r ON r.id = ur.role_id
+    LEFT JOIN public.role_permissions rp ON rp.role_id = r.id
+    LEFT JOIN public.permissions p ON p.id = rp.permission_id
+    WHERE pr.auth_user_id = auth.uid()
+      AND (
+        LOWER(r.name) IN ('admin', 'administrador')
+        OR p.code = p_permission_code
+      )
   );
 $$;
 
@@ -4755,7 +5072,10 @@ CREATE TABLE IF NOT EXISTS "public"."account_movements" (
     "reference_id" "uuid",
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "shift_id" "uuid"
+    "shift_id" "uuid",
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "amount_base" numeric DEFAULT 0.00 NOT NULL
 );
 
 
@@ -4887,6 +5207,22 @@ CREATE TABLE IF NOT EXISTS "public"."categories" (
 ALTER TABLE "public"."categories" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."currencies" (
+    "code" "text" NOT NULL,
+    "name" "text" NOT NULL,
+    "symbol" "text" NOT NULL,
+    "suggested_exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "is_base" boolean DEFAULT false NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "decimal_places" integer DEFAULT 2 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."currencies" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."customer_credit_movements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "customer_credit_id" "uuid" NOT NULL,
@@ -4927,7 +5263,19 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "document_date" "date",
     "updated_by" "uuid",
     "updated_at" timestamp with time zone,
-    CONSTRAINT "orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['BOLETA'::"text", 'FACTURA'::"text", 'TICKET'::"text", 'NINGUNO'::"text"]))),
+    "document_series" "text",
+    "tax_amount" numeric DEFAULT 0.00 NOT NULL,
+    "subtotal_amount" numeric DEFAULT 0.00 NOT NULL,
+    "customer_document_type" "text",
+    "customer_document_number" "text",
+    "customer_address" "text",
+    "payment_reference" "text",
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "subtotal_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "tax_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    CONSTRAINT "orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['NOTA_VENTA'::"text", 'BOLETA'::"text", 'FACTURA'::"text", 'TICKET'::"text", 'NINGUNO'::"text"]))),
     CONSTRAINT "orders_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PAID'::"text", 'PENDING'::"text", 'PARTIAL'::"text"])))
 );
 
@@ -5024,6 +5372,24 @@ CREATE TABLE IF NOT EXISTS "public"."daily_checkins" (
 ALTER TABLE "public"."daily_checkins" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."document_series" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "document_type" "text" NOT NULL,
+    "series" "text" NOT NULL,
+    "current_correlative" integer DEFAULT 0 NOT NULL,
+    "correlative_padding" integer DEFAULT 8 NOT NULL,
+    "is_default" boolean DEFAULT true,
+    "is_active" boolean DEFAULT true,
+    "warehouse_id" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "document_series_type_check" CHECK (("document_type" = ANY (ARRAY['NOTA_VENTA'::"text", 'BOLETA'::"text", 'FACTURA'::"text"])))
+);
+
+
+ALTER TABLE "public"."document_series" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."financial_accounts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
@@ -5031,7 +5397,8 @@ CREATE TABLE IF NOT EXISTS "public"."financial_accounts" (
     "balance" numeric DEFAULT 0.00 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "currency_code" "text" DEFAULT 'PEN'::"text"
 );
 
 
@@ -5064,7 +5431,10 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_entries" (
     "payment_mode" "text" DEFAULT 'CONTADO'::"text",
     "account_id" "uuid",
     "shift_id" "uuid",
-    "status" "text" DEFAULT 'COMPLETED'::"text"
+    "status" "text" DEFAULT 'COMPLETED'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "total_amount_base" numeric DEFAULT 0.00 NOT NULL
 );
 
 
@@ -5081,6 +5451,7 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_entry_items" (
     "batch_number" "text" DEFAULT 'DEFAULT'::"text",
     "expiry_date" "date",
     "created_at" timestamp with time zone DEFAULT "now"(),
+    "unit_cost_base" numeric DEFAULT 0.00 NOT NULL,
     CONSTRAINT "inventory_entry_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
     CONSTRAINT "inventory_entry_items_unit_cost_check" CHECK (("unit_cost" >= (0)::numeric))
 );
@@ -5135,7 +5506,9 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_movements" (
     "reason" "text" NOT NULL,
     "notes" "text",
     "created_by" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL
 );
 
 
@@ -5151,7 +5524,9 @@ CREATE TABLE IF NOT EXISTS "public"."order_items" (
     "applied_price" numeric NOT NULL,
     "net_profit" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "variant_id" "uuid" NOT NULL
+    "variant_id" "uuid" NOT NULL,
+    "applied_price_base" numeric DEFAULT 0.00 NOT NULL,
+    "unit_cost_base" numeric DEFAULT 0.00 NOT NULL
 );
 
 
@@ -5395,6 +5770,7 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_order_items" (
     "expiry_date" "date",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "subtotal" numeric DEFAULT 0,
+    "unit_cost_base" numeric DEFAULT 0.00 NOT NULL,
     CONSTRAINT "purchase_order_items_quantity_ordered_check" CHECK (("quantity_ordered" > (0)::numeric)),
     CONSTRAINT "purchase_order_items_unit_cost_check" CHECK (("unit_cost" >= (0)::numeric))
 );
@@ -5424,6 +5800,11 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_orders" (
     "updated_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "subtotal_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "tax_amount_base" numeric DEFAULT 0.00 NOT NULL,
     CONSTRAINT "purchase_orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['FACTURA'::"text", 'BOLETA'::"text", 'GUIA_REMISION'::"text", 'TICKET'::"text", 'NINGUNO'::"text"]))),
     CONSTRAINT "purchase_orders_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PAID'::"text", 'PENDING'::"text", 'PARTIAL'::"text"]))),
     CONSTRAINT "purchase_orders_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'SENT'::"text", 'PARTIAL'::"text", 'RECEIVED'::"text", 'CANCELLED'::"text"])))
@@ -5665,6 +6046,11 @@ ALTER TABLE ONLY "public"."customer_credit_movements"
 
 
 
+ALTER TABLE ONLY "public"."currencies"
+    ADD CONSTRAINT "currencies_pkey" PRIMARY KEY ("code");
+
+
+
 ALTER TABLE ONLY "public"."customer_credits"
     ADD CONSTRAINT "customer_credits_pkey" PRIMARY KEY ("id");
 
@@ -5682,6 +6068,16 @@ ALTER TABLE ONLY "public"."customer_locations"
 
 ALTER TABLE ONLY "public"."daily_checkins"
     ADD CONSTRAINT "daily_checkins_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."document_series"
+    ADD CONSTRAINT "document_series_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."document_series"
+    ADD CONSTRAINT "document_series_unique" UNIQUE ("warehouse_id", "document_type", "series");
 
 
 
@@ -5963,6 +6359,10 @@ CREATE INDEX "daily_checkins_profile_id_idx" ON "public"."daily_checkins" USING 
 
 
 
+CREATE UNIQUE INDEX "idx_currencies_unique_base" ON "public"."currencies" USING "btree" ("is_base") WHERE ("is_base" = true);
+
+
+
 CREATE INDEX "idx_customer_credit_movements_created_by" ON "public"."customer_credit_movements" USING "btree" ("created_by");
 
 
@@ -5976,6 +6376,14 @@ CREATE INDEX "idx_customer_credit_movements_order_id" ON "public"."customer_cred
 
 
 CREATE INDEX "idx_customer_locations_profile_id" ON "public"."customer_locations" USING "btree" ("profile_id");
+
+
+
+CREATE UNIQUE INDEX "idx_document_series_global_unique" ON "public"."document_series" USING "btree" ("document_type", "series") WHERE ("warehouse_id" IS NULL);
+
+
+
+CREATE UNIQUE INDEX "idx_document_series_warehouse_unique" ON "public"."document_series" USING "btree" ("warehouse_id", "document_type", "series") WHERE ("warehouse_id" IS NOT NULL);
 
 
 
@@ -6404,6 +6812,16 @@ ALTER TABLE ONLY "public"."daily_checkins"
 
 
 
+ALTER TABLE ONLY "public"."document_series"
+    ADD CONSTRAINT "document_series_warehouse_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."financial_accounts"
+    ADD CONSTRAINT "financial_accounts_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code");
+
+
+
 ALTER TABLE ONLY "public"."inventory_entry_items"
     ADD CONSTRAINT "iei_entry_id_fkey" FOREIGN KEY ("entry_id") REFERENCES "public"."inventory_entries"("id");
 
@@ -6485,6 +6903,11 @@ ALTER TABLE ONLY "public"."inventory_entries"
 
 
 ALTER TABLE ONLY "public"."inventory_entries"
+    ADD CONSTRAINT "inventory_entries_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code");
+
+
+
+ALTER TABLE ONLY "public"."inventory_entries"
     ADD CONSTRAINT "inventory_entries_purchase_order_id_fkey" FOREIGN KEY ("purchase_order_id") REFERENCES "public"."purchase_orders"("id");
 
 
@@ -6511,6 +6934,11 @@ ALTER TABLE ONLY "public"."inventory_exits"
 
 ALTER TABLE ONLY "public"."inventory_exits"
     ADD CONSTRAINT "inventory_exits_store_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id");
+
+
+
+ALTER TABLE ONLY "public"."inventory_movements"
+    ADD CONSTRAINT "inventory_movements_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code");
 
 
 
@@ -6661,6 +7089,11 @@ ALTER TABLE ONLY "public"."purchase_order_items"
 
 ALTER TABLE ONLY "public"."purchase_orders"
     ADD CONSTRAINT "purchase_orders_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code");
 
 
 
@@ -6880,6 +7313,10 @@ CREATE POLICY "Actualización del propio perfil" ON "public"."profiles" FOR UPDA
 
 
 
+CREATE POLICY "Administración de monedas por settings.edit" ON "public"."currencies" TO "authenticated" USING ("public"."user_has_permission"('settings.edit'::"text")) WITH CHECK ("public"."user_has_permission"('settings.edit'::"text"));
+
+
+
 CREATE POLICY "Admins and owners can manage customer locations" ON "public"."customer_locations" TO "authenticated", "anon" USING (true) WITH CHECK (true);
 
 
@@ -7090,6 +7527,10 @@ CREATE POLICY "Lectura admin/empleado" ON "public"."supplier_credit_movements" F
 
 
 
+CREATE POLICY "Lectura de monedas para personal autenticado" ON "public"."currencies" FOR SELECT TO "authenticated" USING (true);
+
+
+
 CREATE POLICY "Lectura propia de checkins" ON "public"."daily_checkins" FOR SELECT USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
@@ -7240,6 +7681,14 @@ CREATE POLICY "Permitir lectura de roles a usuarios autenticados" ON "public"."r
 
 
 
+CREATE POLICY "Series administrables por personal con permiso de configuració" ON "public"."document_series" TO "authenticated" USING ("public"."user_has_permission"('settings.edit'::"text")) WITH CHECK ("public"."user_has_permission"('settings.edit'::"text"));
+
+
+
+CREATE POLICY "Series legibles por personal con acceso" ON "public"."document_series" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('pos.view'::"text") OR "public"."user_has_permission"('pos.sale'::"text") OR "public"."user_has_permission"('settings.view'::"text") OR "public"."user_has_permission"('settings.edit'::"text")));
+
+
+
 CREATE POLICY "Solo administradores pueden asignar user_roles" ON "public"."user_roles" TO "authenticated" USING ("public"."is_admin"()) WITH CHECK ("public"."is_admin"());
 
 
@@ -7305,6 +7754,9 @@ ALTER TABLE "public"."cash_shifts" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."categories" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."currencies" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."customer_credit_movements" ENABLE ROW LEVEL SECURITY;
 
 
@@ -7315,6 +7767,9 @@ ALTER TABLE "public"."customer_locations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."daily_checkins" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."document_series" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."financial_accounts" ENABLE ROW LEVEL SECURITY;
@@ -7648,6 +8103,12 @@ GRANT ALL ON FUNCTION "public"."clear_cloud_cart_rpc"("p_user_id" "uuid") TO "se
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb", "p_currency_code" "text", "p_exchange_rate" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb", "p_currency_code" "text", "p_exchange_rate" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_purchase_order_rpc"("p_supplier_id" "uuid", "p_supplier_name" "text", "p_warehouse_id" "uuid", "p_total_amount" numeric, "p_payment_method" "text", "p_payment_status" "text", "p_account_id" "uuid", "p_active_shift_id" "uuid", "p_due_date" "date", "p_document_date" "date", "p_document_type" "text", "p_document_number" "text", "p_notes" "text", "p_profile_id" "uuid", "p_items" "jsonb", "p_currency_code" "text", "p_exchange_rate" numeric) TO "service_role";
 
 
 
@@ -8014,6 +8475,12 @@ GRANT ALL ON TABLE "public"."categories" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."currencies" TO "anon";
+GRANT ALL ON TABLE "public"."currencies" TO "authenticated";
+GRANT ALL ON TABLE "public"."currencies" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."customer_credit_movements" TO "anon";
 GRANT ALL ON TABLE "public"."customer_credit_movements" TO "authenticated";
 GRANT ALL ON TABLE "public"."customer_credit_movements" TO "service_role";
@@ -8053,6 +8520,12 @@ GRANT ALL ON TABLE "public"."customer_locations" TO "service_role";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "anon";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "authenticated";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."document_series" TO "anon";
+GRANT ALL ON TABLE "public"."document_series" TO "authenticated";
+GRANT ALL ON TABLE "public"."document_series" TO "service_role";
 
 
 
