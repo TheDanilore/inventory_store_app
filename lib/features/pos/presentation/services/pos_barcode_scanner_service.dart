@@ -278,6 +278,7 @@ class PosBarcodeScannerService {
 
       cartCubit.addItem(cartItem);
       HapticFeedback.lightImpact();
+      SystemSound.play(SystemSoundType.click);
 
       AppSnackbar.show(
         context,

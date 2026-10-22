@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 
 class OrderPdfGenerator {
   /// Helper para convertir cualquier fecha de UTC a Hora de Perú (UTC-5)
@@ -309,10 +310,10 @@ class OrderPdfGenerator {
       phone: phone,
     );
 
-    await FileSaver.instance.saveFile(
-      name: 'Pedido_${order.id.substring(0, 8)}',
+    await FileExportService.save(
+      fileName: 'Pedido_${order.id.substring(0, 8)}',
       bytes: bytes,
-      fileExtension: 'pdf',
+      extension: 'pdf',
       mimeType: MimeType.pdf,
     );
   }

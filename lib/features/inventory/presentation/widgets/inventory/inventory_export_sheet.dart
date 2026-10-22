@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -73,7 +74,7 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
 
     try {
       final exportUseCase = sl<ExportInventoryExcelUseCase>();
-      final fileName = await exportUseCase(
+      final result = await exportUseCase(
         warehouseId:
             _selectedMode == InventoryExportMode.consolidated
                 ? null
@@ -83,13 +84,33 @@ class _InventoryExportSheetState extends State<InventoryExportSheet> {
         filter: _filterOption,
       );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        AppSnackbar.show(
-          context,
-          message: 'Inventario exportado con éxito: $fileName',
-          type: SnackbarType.success,
-        );
+      if (!mounted) return;
+
+      switch (result.outcome) {
+        case FileExportOutcome.saved:
+          Navigator.of(context).pop();
+          AppSnackbar.show(
+            context,
+            message: 'Inventario exportado con éxito.',
+            type: SnackbarType.success,
+          );
+          break;
+        case FileExportOutcome.cancelled:
+          setState(() => _isExporting = false);
+          AppSnackbar.show(
+            context,
+            message: 'Exportación cancelada.',
+            type: SnackbarType.warning,
+          );
+          break;
+        case FileExportOutcome.failed:
+          setState(() => _isExporting = false);
+          AppSnackbar.show(
+            context,
+            message: 'Ocurrió un error al guardar el archivo exportado.',
+            type: SnackbarType.error,
+          );
+          break;
       }
     } catch (e, stackTrace) {
       LoggerService.e(

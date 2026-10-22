@@ -7,6 +7,7 @@ import 'package:vibration/vibration.dart';
 
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -172,14 +173,35 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         duration: const Duration(seconds: 2),
       );
       try {
-        await DashboardExportService.exportConsolidatedReport(state);
-        if (mounted) {
-          AppSnackbar.show(
-            context,
-            message: 'Reporte consolidado descargado exitosamente.',
-            type: SnackbarType.success,
-            duration: const Duration(seconds: 3),
-          );
+        final result = await DashboardExportService.exportConsolidatedReport(
+          state,
+        );
+        if (!mounted) return;
+        switch (result.outcome) {
+          case FileExportOutcome.saved:
+            AppSnackbar.show(
+              context,
+              message: 'Reporte consolidado descargado exitosamente.',
+              type: SnackbarType.success,
+              duration: const Duration(seconds: 3),
+            );
+            break;
+          case FileExportOutcome.cancelled:
+            AppSnackbar.show(
+              context,
+              message: 'Exportación cancelada.',
+              type: SnackbarType.warning,
+              duration: const Duration(seconds: 3),
+            );
+            break;
+          case FileExportOutcome.failed:
+            AppSnackbar.show(
+              context,
+              message: 'Error al exportar reporte consolidado: ${result.error}',
+              type: SnackbarType.error,
+              duration: const Duration(seconds: 4),
+            );
+            break;
         }
       } catch (e) {
         if (mounted) {

@@ -34,15 +34,16 @@ class BusinessPreviewCard extends StatelessWidget {
         border: Border.all(
           color: isDark ? AppColors.darkBorder : Colors.grey.shade200,
         ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+        boxShadow:
+            isDark
+                ? []
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -55,9 +56,8 @@ class BusinessPreviewCard extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
-                  color: isDark
-                      ? const Color(0xFFF8FAFC)
-                      : AppColors.textPrimary,
+                  color:
+                      isDark ? const Color(0xFFF8FAFC) : AppColors.textPrimary,
                 ),
               ),
               const Spacer(),
@@ -93,30 +93,30 @@ class BusinessPreviewCard extends StatelessWidget {
                     // Logo (clicable solo si hay permiso)
                     onUploadLogo != null
                         ? InkWell(
-                            onTap: onUploadLogo,
-                            borderRadius: BorderRadius.circular(16),
-                            child: Stack(
-                              children: [
-                                BusinessLogoBadge(logoUrl: businessLogoUrl),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.camera_alt_rounded,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
+                          onTap: onUploadLogo,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Stack(
+                            children: [
+                              BusinessLogoBadge(logoUrl: businessLogoUrl),
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 12,
                                   ),
                                 ),
-                              ],
-                            ),
-                          )
+                              ),
+                            ],
+                          ),
+                        )
                         : BusinessLogoBadge(logoUrl: businessLogoUrl),
                     const Spacer(),
                     Container(
@@ -243,14 +243,16 @@ class _LiveBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-            : const Color(0xFFECFDF5),
+        color:
+            isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                : const Color(0xFFECFDF5),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark
-              ? const Color(0xFF059669).withValues(alpha: 0.4)
-              : const Color(0xFFA7F3D0),
+          color:
+              isDark
+                  ? const Color(0xFF059669).withValues(alpha: 0.4)
+                  : const Color(0xFFA7F3D0),
         ),
       ),
       child: Row(
@@ -259,9 +261,7 @@ class _LiveBadge extends StatelessWidget {
           Icon(
             Icons.visibility_rounded,
             size: 12,
-            color: isDark
-                ? const Color(0xFF34D399)
-                : const Color(0xFF059669),
+            color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
           ),
           const SizedBox(width: 4),
           Text(
@@ -269,9 +269,7 @@ class _LiveBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: isDark
-                  ? const Color(0xFF34D399)
-                  : const Color(0xFF059669),
+              color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
             ),
           ),
         ],
@@ -312,20 +310,22 @@ class BusinessLogoBadge extends StatelessWidget {
       child: CachedNetworkImage(
         imageUrl: logoUrl,
         fit: BoxFit.cover,
-        placeholder: (context, url) => const Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+        placeholder:
+            (context, url) => const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
             ),
-          ),
-        ),
-        errorWidget: (context, url, error) => Padding(
-          padding: const EdgeInsets.all(8),
-          child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
-        ),
+        errorWidget:
+            (context, url, error) => Padding(
+              padding: const EdgeInsets.all(8),
+              child: Image.asset('assets/logo_icon.png', fit: BoxFit.contain),
+            ),
       ),
     );
   }

@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_badges.dart';
 
+/// Card de pedido para la vista de tarjetas.
+///
+/// Estructura fija (igual en todos los estados) para que la grilla se vea
+/// ordenada y nada se corte:
+///   1. ID + fecha ................... total
+///   2. Cliente
+///   3. Badges: estado + cobro
+///   4. Meta (método · sucursal)  /  barra de progreso si es crédito
+///   ── footer fijo abajo ──
+///   5. [Ticket]  ............  Cancelar · Cobrar   |   Ver detalle ›
+///
+/// Funciona con altura acotada (grilla con mainAxisExtent) y con altura libre
+/// (lista en móvil).
 class AdminOrderCard extends StatefulWidget {
   final OrderEntity order;
   final bool isProcessing;
@@ -35,40 +49,58 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isProcessing = widget.isProcessing;
-    final isGeneratingPDF = widget.isGeneratingPDF;
     final isSelected = widget.isSelected;
-    final isLoyaltyEnabled = widget.isLoyaltyEnabled;
-    final onTap = widget.onTap;
-    final onUpdateStatus = widget.onUpdateStatus;
-    final onPrint = widget.onPrint;
-    final status = order.status;
-    final date = (order.createdAt ?? DateTime.now()).toLocal();
-    final dateString = DateFormat('dd MMM yyyy, hh:mm a', 'es').format(date);
-    final customerName = order.displayCustomerName;
-    final shortId = order.id.substring(0, 8).toUpperCase();
 
-    final isCredit = order.paymentMethod == 'CRÉDITO';
+    final status = order.status.toUpperCase();
+    final isDraft = isDraftStatus(status);
+    final payment = OrderPaymentInfo.from(order);
+    final isCredit = isCreditPayment(order.paymentMethod);
+    final paid = payment?.paid ?? 0.0;
+    final remaining = payment?.remaining ?? 0.0;
+    final total = order.totalAmount;
 
-    // Calcular estado de pago dinámico
-    String paymentStatus = order.paymentStatus;
-    double amountPaid = order.amountPaid;
-    if (status == 'COMPLETED' && !isCredit) {
-      paymentStatus = 'PAID';
-      amountPaid = order.totalAmount;
-    }
-
-    final totalAmount = order.totalAmount;
-    final pendingAmount = totalAmount - amountPaid;
-    final warehouseName = order.warehouseName;
-
-    // Chip de puntos pendientes (crédito completado con puntos a ganar)
-    final showPendingPointsChip =
-        isLoyaltyEnabled &&
-        status == 'COMPLETED' &&
-        isCredit &&
-        paymentStatus != 'PAID' &&
+    final showCreditProgress =
+        payment != null && isCredit && status == 'COMPLETED';
+    final showPoints =
+        widget.isLoyaltyEnabled &&
+        showCreditProgress &&
+        remaining > 0 &&
         order.pointsEarned > 0;
+
+    final date = (order.createdAt ?? DateTime.now()).toLocal();
+    final sameYear = date.year == DateTime.now().year;
+    final dateString = DateFormat(
+      sameYear ? 'dd MMM, hh:mm a' : 'dd MMM yyyy, hh:mm a',
+      'es',
+    ).format(date);
+
+    final primaryText = isDark ? Colors.white : AppColors.textPrimary;
+    final baseSurface = isDark ? AppColors.darkSurface : Colors.white;
+    final surface =
+        isSelected
+            ? Color.alphaBlend(
+              AppColors.teal.withValues(alpha: 0.05),
+              baseSurface,
+            )
+            : baseSurface;
+    final borderColor =
+        isSelected
+            ? AppColors.teal
+            : _isHovered
+            ? AppColors.teal.withValues(alpha: 0.35)
+            : (isDark ? AppColors.darkBorder : AppColors.border);
+
+    // Meta: método de pago · sucursal (una sola línea, nunca crece)
+    final method = order.paymentMethod.trim();
+    final hasMethod =
+        method.isNotEmpty && method.toUpperCase() != 'POR ACORDAR';
+    final warehouse = (order.warehouseName ?? '').trim();
+    final metaParts = <String>[
+      if (hasMethod) (isCredit ? 'Crédito' : method),
+      if (warehouse.isNotEmpty) warehouse,
+    ];
 
     return RepaintBoundary(
       child: MouseRegion(
@@ -77,307 +109,89 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
-          transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
-          margin: const EdgeInsets.only(bottom: 12),
+          transform: Matrix4.translationValues(
+            0,
+            _isHovered && !isProcessing ? -2 : 0,
+            0,
+          ),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFAFCFF) : Colors.white,
+            color: surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color:
-                  isSelected
-                      ? AppColors.teal
-                      : _isHovered
-                      ? AppColors.teal.withValues(alpha: 0.35)
-                      : AppColors.border,
+              color: borderColor,
               width: (isSelected || _isHovered) ? 1.5 : 1.0,
             ),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: AppColors.teal.withValues(alpha: 0.12),
-                        blurRadius: 18,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                    : [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: _isHovered ? 0.06 : 0.03,
+            boxShadow: [
+              BoxShadow(
+                color:
+                    isSelected
+                        ? AppColors.teal.withValues(alpha: 0.12)
+                        : Colors.black.withValues(
+                          alpha: _isHovered ? 0.07 : 0.03,
                         ),
-                        blurRadius: _isHovered ? 14 : 8,
-                        offset: Offset(0, _isHovered ? 4 : 2),
-                      ),
-                    ],
+                blurRadius: isSelected ? 18 : (_isHovered ? 14 : 8),
+                offset: Offset(0, _isHovered ? 4 : 2),
+              ),
+            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(15),
-                onTap: isProcessing ? null : onTap,
+                onTap: isProcessing ? null : widget.onTap,
                 child: Stack(
+                  fit: StackFit.passthrough,
                   children: [
-                    if (isSelected)
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 4,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: AppColors.teal,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(15),
-                              bottomLeft: Radius.circular(15),
-                            ),
-                          ),
-                        ),
-                      ),
                     Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isSelected ? 18 : 16,
-                        14,
-                        16,
-                        14,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Indicador de procesamiento ────────────────────────────
-                          if (isProcessing)
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 10),
-                              child: LinearProgressIndicator(
-                                color: AppColors.teal,
-                                minHeight: 2,
-                              ),
-                            ),
-
-                          // ── Fila 1: Info Cliente e ID ─────────────────────────────
-                          Row(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                      child: LayoutBuilder(
+                        builder: (context, c) {
+                          final bounded = c.hasBoundedHeight;
+                          return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize:
+                                bounded ? MainAxisSize.max : MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ID del pedido
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 7,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: AppColors.border,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.tag_rounded,
-                                            size: 11,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            shortId,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textSecondary,
-                                              fontFamily: 'monospace',
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 7),
-
-                                    // Cliente
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(5),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.teal.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              7,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.person_rounded,
-                                            size: 14,
-                                            color: AppColors.teal,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            customerName,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14.5,
-                                              color: AppColors.textPrimary,
-                                              letterSpacing: -0.2,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-
-                                    // Fecha
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.access_time_rounded,
-                                          size: 13,
-                                          color: AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          dateString,
-                                          style: const TextStyle(
-                                            fontSize: 11.5,
-                                            color: AppColors.textSecondary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-
-                                    // Método de pago
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isCredit
-                                              ? Icons.credit_card_rounded
-                                              : Icons.payments_outlined,
-                                          size: 13,
-                                          color:
-                                              isCredit
-                                                  ? Colors.deepOrange.shade400
-                                                  : AppColors.textMuted,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          order.paymentMethod,
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color:
-                                                isCredit
-                                                    ? Colors.deepOrange.shade600
-                                                    : AppColors.textSecondary,
-                                            fontWeight:
-                                                isCredit
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    if (warehouseName != null &&
-                                        warehouseName.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.warehouse_outlined,
-                                            size: 13,
-                                            color: AppColors.textMuted,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            warehouseName,
-                                            style: const TextStyle(
-                                              fontSize: 11.5,
-                                              color: AppColors.textSecondary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-
-                                    // Chip: puntos pendientes de otorgar
-                                    if (showPendingPointsChip) ...[
-                                      const SizedBox(height: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.shade50,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.amber.shade300,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text(
-                                              '🪙',
-                                              style: TextStyle(fontSize: 12),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '${order.pointsEarned} monedas pendientes',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.amber.shade800,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-
-                              // Monto y Tags de Estado
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              // 1. ID + fecha ................ total
+                              Row(
                                 children: [
-                                  RichText(
-                                    text: TextSpan(
+                                  _IdChip(shortId: orderShortId(order.id)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      dateString,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text.rich(
+                                    TextSpan(
                                       children: [
                                         const TextSpan(
                                           text: 'S/ ',
                                           style: TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 12.5,
                                             fontWeight: FontWeight.w800,
                                             color: AppColors.teal,
                                           ),
                                         ),
                                         TextSpan(
-                                          text: totalAmount.toStringAsFixed(2),
-                                          style: const TextStyle(
-                                            fontSize: 18,
+                                          text: total.toStringAsFixed(2),
+                                          style: TextStyle(
+                                            fontSize: 19,
                                             fontWeight: FontWeight.w900,
-                                            color: AppColors.textPrimary,
-                                            letterSpacing: -0.3,
-                                            fontFeatures: [
+                                            color: primaryText,
+                                            letterSpacing: -0.4,
+                                            fontFeatures: const [
                                               FontFeature.tabularFigures(),
                                             ],
                                           ),
@@ -385,34 +199,125 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  _StatusTag(status: status),
-                                  const SizedBox(height: 6),
-                                  _PaymentStatusTag(
-                                    paymentStatus:
-                                        status == 'CANCELLED'
-                                            ? 'CANCELLED'
-                                            : (status == 'RETURNED'
-                                                ? 'RETURNED'
-                                                : paymentStatus),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+
+                              // 2. Cliente
+                              Row(
+                                children: [
+                                  _CustomerAvatar(
+                                    name: order.displayCustomerName,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      order.displayCustomerName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14.5,
+                                        color: primaryText,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                              const SizedBox(height: 8),
 
-                          // ── Progreso de pagos (Si es parcial o crédito) ───────────
-                          if (status == 'COMPLETED' && isCredit) ...[
-                            const SizedBox(height: 14),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                              // 3. Badges (estado + cobro)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  OrderStatusBadge(status: order.status),
+                                  if (payment != null)
+                                    OrderPaymentBadge(info: payment),
+                                ],
+                              ),
+
+                              // 4. Meta
+                              if (metaParts.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isCredit
+                                          ? Icons.credit_card_rounded
+                                          : (hasMethod
+                                              ? Icons.payments_outlined
+                                              : Icons.storefront_outlined),
+                                      size: 13,
+                                      color:
+                                          isCredit
+                                              ? Colors.deepOrange.shade400
+                                              : AppColors.textMuted,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Text(
+                                        metaParts.join(' · '),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight:
+                                              isCredit
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                          color:
+                                              isCredit
+                                                  ? Colors.deepOrange.shade600
+                                                  : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (showPoints)
+                                      Tooltip(
+                                        message:
+                                            '${order.pointsEarned} monedas pendientes',
+                                        child: Container(
+                                          margin: const EdgeInsets.only(
+                                            left: 6,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.amber.shade300,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '🪙 ${order.pointsEarned}',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.amber.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+
+                              // Progreso de pago (crédito completado)
+                              if (showCreditProgress) ...[
+                                const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Pagado: S/ ${amountPaid.toStringAsFixed(2)}',
+                                      'Pagado: S/ ${paid.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w600,
@@ -423,12 +328,12 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                                       ),
                                     ),
                                     Text(
-                                      'Resta: S/ ${pendingAmount.toStringAsFixed(2)}',
+                                      'Resta: S/ ${remaining.toStringAsFixed(2)}',
                                       style: TextStyle(
                                         fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w800,
                                         color:
-                                            pendingAmount > 0
+                                            remaining > 0
                                                 ? AppColors.error
                                                 : AppColors.success,
                                         fontFeatures: const [
@@ -438,86 +343,156 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 5),
+                                const SizedBox(height: 4),
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(5),
+                                  borderRadius: BorderRadius.circular(4),
                                   child: LinearProgressIndicator(
                                     value:
-                                        totalAmount > 0
-                                            ? (amountPaid / totalAmount).clamp(
-                                              0.0,
-                                              1.0,
-                                            )
-                                            : 0,
+                                        total > 0
+                                            ? (paid / total)
+                                                .clamp(0.0, 1.0)
+                                                .toDouble()
+                                            : 0.0,
                                     minHeight: 5,
-                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    backgroundColor: const Color(0xFFE2E8F0),
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      pendingAmount <= 0
+                                      remaining <= 0
                                           ? AppColors.success
                                           : AppColors.teal,
                                     ),
                                   ),
                                 ),
                               ],
-                            ),
-                          ],
 
-                          const SizedBox(
-                            height: 10,
-                          ), // ── Botones de Acción Rápida ──────────────────────────────────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              // Imprimir Ticket (con animación si está generando)
-                              _AnimatedSoftButton(
-                                onPressed:
-                                    isProcessing || isGeneratingPDF
-                                        ? null
-                                        : onPrint,
-                                icon: const Icon(Icons.print_rounded),
-                                label: 'Ticket',
-                                color: Colors.blueGrey.shade700,
-                                isLoading: isGeneratingPDF,
-                              ),
-                              const SizedBox(width: 8),
+                              // Footer pegado abajo (grilla) o separado (lista)
+                              if (bounded)
+                                const Spacer()
+                              else
+                                const SizedBox(height: 12),
 
-                              if (status == 'PENDING') ...[
-                                // Botón Cancelar Borrador
-                                _AnimatedSoftButton(
-                                  onPressed:
-                                      isProcessing
-                                          ? null
-                                          : () => onUpdateStatus(
-                                            order,
-                                            'CANCELLED',
-                                          ),
-                                  icon: const Icon(Icons.cancel_outlined),
-                                  label: 'Cancelar',
-                                  color: Colors.red.shade700,
-                                ),
-                                const SizedBox(width: 8),
-
-                                // Botón Completar
-                                _AnimatedSoftButton(
-                                  onPressed:
-                                      isProcessing
-                                          ? null
-                                          : () => onUpdateStatus(
-                                            order,
-                                            'COMPLETED',
-                                          ),
-                                  icon: const Icon(
-                                    Icons.check_circle_outline_rounded,
+                              // 5. Acciones
+                              Row(
+                                children: [
+                                  _TicketButton(
+                                    isLoading: widget.isGeneratingPDF,
+                                    onPressed:
+                                        isProcessing || widget.isGeneratingPDF
+                                            ? null
+                                            : widget.onPrint,
                                   ),
-                                  label: 'Cobrar',
-                                  color: Colors.green.shade700,
-                                ),
-                              ],
+                                  const Spacer(),
+                                  if (isDraft) ...[
+                                    TextButton.icon(
+                                      onPressed:
+                                          isProcessing
+                                              ? null
+                                              : () => widget.onUpdateStatus(
+                                                order,
+                                                'CANCELLED',
+                                              ),
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Cancelar'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red.shade700,
+                                        minimumSize: const Size(0, 36),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    FilledButton.icon(
+                                      onPressed:
+                                          isProcessing
+                                              ? null
+                                              : () => widget.onUpdateStatus(
+                                                order,
+                                                'COMPLETED',
+                                              ),
+                                      icon: const Icon(
+                                        Icons.payments_rounded,
+                                        size: 16,
+                                      ),
+                                      label: const Text('Cobrar'),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.teal,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size(0, 36),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ] else
+                                    const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Ver detalle',
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        SizedBox(width: 2),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 18,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
                             ],
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ),
+
+                    // Barra lateral de selección
+                    if (isSelected)
+                      const Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 4,
+                        child: ColoredBox(color: AppColors.teal),
+                      ),
+
+                    // Indicador de procesamiento (no cambia el layout)
+                    if (isProcessing)
+                      const Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        child: LinearProgressIndicator(
+                          color: AppColors.teal,
+                          minHeight: 2,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -529,259 +504,88 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
   }
 }
 
-// ─── Helpers: Etiquetas de estado ──────────────────────────────────────────
+// ─── Piezas ─────────────────────────────────────────────────────────────────
 
-class _StatusTag extends StatelessWidget {
-  final String status;
-  const _StatusTag({required this.status});
+class _IdChip extends StatelessWidget {
+  final String shortId;
+  const _IdChip({required this.shortId});
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
-    String label;
-    IconData icon;
-
-    switch (status) {
-      case 'COMPLETED':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
-        label = 'COMPLETADO';
-        icon = Icons.check_circle_rounded;
-        break;
-      case 'PENDING':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade800;
-        label = 'BORRADOR';
-        icon = Icons.edit_note_rounded;
-        break;
-      case 'CANCELLED':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
-        label = 'CANCELADO';
-        icon = Icons.cancel_rounded;
-        break;
-      case 'RETURNED':
-        bgColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade700;
-        label = 'DEVUELTO';
-        icon = Icons.rotate_left_rounded;
-        break;
-      default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade700;
-        label = status;
-        icon = Icons.info_outline_rounded;
-    }
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: textColor.withValues(alpha: 0.3)),
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentStatusTag extends StatelessWidget {
-  final String paymentStatus;
-  const _PaymentStatusTag({required this.paymentStatus});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
-    String label;
-    IconData icon;
-
-    switch (paymentStatus) {
-      case 'PAID':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade700;
-        label = 'PAGADO';
-        icon = Icons.done_all_rounded;
-        break;
-      case 'PARTIAL':
-        bgColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade700;
-        label = 'PARCIAL';
-        icon = Icons.donut_large_rounded;
-        break;
-      case 'PENDING':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade800;
-        label = 'POR COBRAR';
-        icon = Icons.hourglass_empty_rounded;
-        break;
-      case 'CANCELLED':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade700;
-        label = 'ANULADO';
-        icon = Icons.money_off_rounded;
-        break;
-      case 'RETURNED':
-        bgColor = Colors.purple.shade50;
-        textColor = Colors.purple.shade700;
-        label = 'DEVUELTO';
-        icon = Icons.assignment_return_rounded;
-        break;
-      default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade700;
-        label = paymentStatus;
-        icon = Icons.payments_outlined;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: textColor.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: textColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Helpers: Botón Animado Tinted ──────────────────────────────────────────
-
-class _AnimatedSoftButton extends StatefulWidget {
-  final VoidCallback? onPressed;
-  final Widget icon;
-  final String label;
-  final Color color;
-  final bool isLoading;
-
-  const _AnimatedSoftButton({
-    required this.onPressed,
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.isLoading = false,
-  });
-
-  @override
-  State<_AnimatedSoftButton> createState() => _AnimatedSoftButtonState();
-}
-
-class _AnimatedSoftButtonState extends State<_AnimatedSoftButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDisabled = widget.onPressed == null || widget.isLoading;
-
-    return MouseRegion(
-      cursor: isDisabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: isDisabled ? null : (_) => _controller.forward(),
-        onTapUp:
-            isDisabled
-                ? null
-                : (_) {
-                  _controller.reverse();
-                  widget.onPressed!();
-                },
-        onTapCancel: isDisabled ? null : () => _controller.reverse(),
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color:
-                  isDisabled
-                      ? Colors.grey.shade100
-                      : widget.color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.isLoading)
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: widget.color,
-                    ),
-                  )
-                else
-                  IconTheme(
-                    data: IconThemeData(
-                      size: 18,
-                      color: isDisabled ? Colors.grey.shade400 : widget.color,
-                    ),
-                    child: widget.icon,
-                  ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.isLoading ? 'Procesando...' : widget.label,
-                  style: TextStyle(
-                    color: isDisabled ? Colors.grey.shade500 : widget.color,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
+      child: Text(
+        '#$shortId',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF0F172A),
+          fontFamily: 'monospace',
+          letterSpacing: 0.4,
         ),
+      ),
+    );
+  }
+}
+
+class _CustomerAvatar extends StatelessWidget {
+  final String name;
+  const _CustomerAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = name.trim();
+    final initial =
+        trimmed.isEmpty ? '?' : trimmed.characters.first.toUpperCase();
+    return Container(
+      width: 26,
+      height: 26,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.teal.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          color: AppColors.teal,
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback? onPressed;
+  const _TicketButton({required this.isLoading, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Imprimir ticket',
+      onPressed: onPressed,
+      icon:
+          isLoading
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.print_rounded, size: 18),
+      style: IconButton.styleFrom(
+        foregroundColor: const Color(0xFF475569),
+        backgroundColor: const Color(0xFFF1F5F9),
+        minimumSize: const Size(36, 36),
+        fixedSize: const Size(36, 36),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/repositories/inventory_repository.dart';
 
@@ -15,7 +16,7 @@ class ExportInventoryExcelUseCase {
 
   ExportInventoryExcelUseCase(this._repository);
 
-  Future<String> call({
+  Future<FileExportResult> call({
     String? warehouseId,
     String? warehouseName,
     InventoryExportMode mode = InventoryExportMode.consolidated,
@@ -63,14 +64,12 @@ class ExportInventoryExcelUseCase {
 
     final bytes = utf8.encode(csvString);
 
-    await FileSaver.instance.saveFile(
-      name: fileName,
+    return FileExportService.save(
+      fileName: fileName,
       bytes: bytes,
-      fileExtension: 'csv',
+      extension: 'csv',
       mimeType: MimeType.csv,
     );
-
-    return '$fileName.csv';
   }
 }
 

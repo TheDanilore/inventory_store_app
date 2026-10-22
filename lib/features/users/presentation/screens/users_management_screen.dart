@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
@@ -152,19 +153,37 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
           final fileName =
               'usuarios_colaboradores_${DateTime.now().millisecondsSinceEpoch}';
 
-          await FileSaver.instance.saveFile(
-            name: fileName,
+          final result = await FileExportService.save(
+            fileName: fileName,
             bytes: bytes,
-            fileExtension: 'csv',
+            extension: 'csv',
             mimeType: MimeType.csv,
           );
 
-          if (mounted) {
-            AppSnackbar.show(
-              context,
-              message: 'Exportado correctamente: $fileName.csv',
-              type: SnackbarType.success,
-            );
+          if (!mounted) return;
+
+          switch (result.outcome) {
+            case FileExportOutcome.saved:
+              AppSnackbar.show(
+                context,
+                message: 'Exportado correctamente: $fileName.csv',
+                type: SnackbarType.success,
+              );
+              break;
+            case FileExportOutcome.cancelled:
+              AppSnackbar.show(
+                context,
+                message: 'Exportación cancelada.',
+                type: SnackbarType.warning,
+              );
+              break;
+            case FileExportOutcome.failed:
+              AppSnackbar.show(
+                context,
+                message: 'No se pudo guardar el archivo: ${result.error}',
+                type: SnackbarType.error,
+              );
+              break;
           }
         },
       );

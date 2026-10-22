@@ -339,6 +339,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
     final cartCubit = context.read<CartCubit>();
 
+    HapticFeedback.mediumImpact();
+    SystemSound.play(SystemSoundType.click);
+
     AppSnackbar.show(
       context,
       message: 'Escaneado: "$code"',

@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/bulk_import_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/bulk_import/bulk_import_state.dart';
@@ -258,12 +259,13 @@ class BulkImportCubit extends Cubit<BulkImportState> {
 
         final fileBytes = excel.save();
         if (fileBytes != null) {
-          await FileSaver.instance.saveFile(
-            name: 'plantilla_productos',
+          final result = await FileExportService.save(
+            fileName: 'plantilla_productos',
             bytes: Uint8List.fromList(fileBytes),
-            fileExtension: 'xlsx',
+            extension: 'xlsx',
             mimeType: MimeType.microsoftExcel,
           );
+          _emitDownloadOutcome(result, 'Plantilla descargada correctamente.');
         }
       } else {
         final csv = Csv().encode(rows);
@@ -274,12 +276,13 @@ class BulkImportCubit extends Cubit<BulkImportState> {
           0xBF,
           ...utf8.encode(csv),
         ]);
-        await FileSaver.instance.saveFile(
-          name: 'plantilla_productos',
+        final result = await FileExportService.save(
+          fileName: 'plantilla_productos',
           bytes: bytes,
-          fileExtension: 'csv',
+          extension: 'csv',
           mimeType: MimeType.csv,
         );
+        _emitDownloadOutcome(result, 'Plantilla descargada correctamente.');
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Error al descargar plantilla: $e'));
@@ -321,12 +324,13 @@ class BulkImportCubit extends Cubit<BulkImportState> {
 
         final fileBytes = excel.save();
         if (fileBytes != null) {
-          await FileSaver.instance.saveFile(
-            name: 'reporte_importacion',
+          final result = await FileExportService.save(
+            fileName: 'reporte_importacion',
             bytes: Uint8List.fromList(fileBytes),
-            fileExtension: 'xlsx',
+            extension: 'xlsx',
             mimeType: MimeType.microsoftExcel,
           );
+          _emitDownloadOutcome(result, 'Reporte descargado correctamente.');
         }
       } else {
         final bytes = Uint8List.fromList([
@@ -335,15 +339,35 @@ class BulkImportCubit extends Cubit<BulkImportState> {
           0xBF,
           ...utf8.encode(Csv().encode(rows)),
         ]);
-        await FileSaver.instance.saveFile(
-          name: 'reporte_importacion',
+        final result = await FileExportService.save(
+          fileName: 'reporte_importacion',
           bytes: bytes,
-          fileExtension: 'csv',
+          extension: 'csv',
           mimeType: MimeType.csv,
         );
+        _emitDownloadOutcome(result, 'Reporte descargado correctamente.');
       }
     } catch (e) {
       emit(state.copyWith(errorMessage: 'Error al descargar reporte: $e'));
+    }
+  }
+
+  /// Traduce el resultado del guardado del archivo a un aviso para el usuario.
+  void _emitDownloadOutcome(FileExportResult result, String successMessage) {
+    switch (result.outcome) {
+      case FileExportOutcome.saved:
+        emit(state.copyWith(successMessage: successMessage));
+        break;
+      case FileExportOutcome.cancelled:
+        emit(state.copyWith(errorMessage: 'Descarga cancelada.'));
+        break;
+      case FileExportOutcome.failed:
+        emit(
+          state.copyWith(
+            errorMessage: 'No se pudo guardar el archivo: ${result.error}',
+          ),
+        );
+        break;
     }
   }
 

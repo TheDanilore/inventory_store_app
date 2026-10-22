@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
@@ -11,7 +12,9 @@ import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboa
 /// Implementa codificación UTF-8 BOM (\uFEFF) para visualización sin caracteres extraños
 /// en Microsoft Excel, Google Sheets y LibreOffice Calc.
 class DashboardExportService {
-  static Future<String> exportConsolidatedReport(DashboardLoaded state) async {
+  static Future<FileExportResult> exportConsolidatedReport(
+    DashboardLoaded state,
+  ) async {
     try {
       final csvString = await compute(_generateCsvContent, state);
       final bytes = Uint8List.fromList(utf8.encode(csvString));
@@ -20,14 +23,20 @@ class DashboardExportService {
       final dateStr = DateFormat('yyyyMMdd_HHmm').format(now);
       final fileName = 'reporte_ejecutivo_dashboard_$dateStr';
 
-      final savedPath = await FileSaver.instance.saveFile(
-        name: fileName,
+      final result = await FileExportService.save(
+        fileName: fileName,
         bytes: bytes,
-        fileExtension: 'csv',
+        extension: 'csv',
         mimeType: MimeType.csv,
       );
 
-      return savedPath;
+      if (result.isFailed) {
+        throw Exception(
+          result.error ?? 'Error desconocido al guardar el archivo.',
+        );
+      }
+
+      return result;
     } catch (e, stack) {
       LoggerService.e(
         'Error al exportar reporte consolidado del dashboard',

@@ -451,7 +451,8 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     return SingleChildScrollView(
       controller: widget.scrollController,
       padding: EdgeInsets.only(
-        bottom: _isMultiSelectEnabled && widget.selectedIds.isNotEmpty ? 88 : 12,
+        bottom:
+            _isMultiSelectEnabled && widget.selectedIds.isNotEmpty ? 88 : 12,
       ),
       child: child,
     );
@@ -1027,9 +1028,10 @@ class _AdminProTableState<T> extends State<AdminProTable<T>> {
     const gap = 12.0;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = (constraints.maxWidth / widget.cardMinWidth)
-            .floor()
-            .clamp(1, 4);
+        final cols = (constraints.maxWidth / widget.cardMinWidth).floor().clamp(
+          1,
+          4,
+        );
         final itemWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
         return Wrap(
           spacing: gap,

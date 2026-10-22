@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -524,12 +525,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           );
           break;
         case ExportFormat.excel:
-          await CatalogExcelExporter.exportToExcel(filteredProducts);
-          emit(state.copyWith(actionState: ViewState.success));
+          final excelResult = await CatalogExcelExporter.exportToExcel(
+            filteredProducts,
+          );
+          _emitExportOutcome(excelResult);
           break;
         case ExportFormat.csv:
-          await CatalogExcelExporter.exportToCsv(filteredProducts);
-          emit(state.copyWith(actionState: ViewState.success));
+          final csvResult = await CatalogExcelExporter.exportToCsv(
+            filteredProducts,
+          );
+          _emitExportOutcome(csvResult);
           break;
       }
     } catch (e, st) {
@@ -545,6 +550,27 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           errorMessage: 'Error inesperado: $e',
         ),
       );
+    }
+  }
+
+  /// Traduce el resultado del guardado del archivo al estado de la pantalla.
+  void _emitExportOutcome(FileExportResult result) {
+    switch (result.outcome) {
+      case FileExportOutcome.saved:
+        emit(state.copyWith(actionState: ViewState.success));
+        break;
+      case FileExportOutcome.cancelled:
+        // El usuario cerró el diálogo nativo de guardado: no es un error.
+        emit(state.copyWith(actionState: ViewState.initial));
+        break;
+      case FileExportOutcome.failed:
+        emit(
+          state.copyWith(
+            actionState: ViewState.error,
+            errorMessage: 'Error al guardar el archivo: ${result.error}',
+          ),
+        );
+        break;
     }
   }
 

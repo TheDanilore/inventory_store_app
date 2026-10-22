@@ -4,6 +4,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 
@@ -317,10 +318,10 @@ class ProductPdfGenerator {
       stockByVariant: stockByVariant,
     );
 
-    await FileSaver.instance.saveFile(
-      name: 'Producto_${product.name.replaceAll(' ', '_')}',
+    await FileExportService.save(
+      fileName: 'Producto_${product.name.replaceAll(' ', '_')}',
       bytes: bytes,
-      fileExtension: 'pdf',
+      extension: 'pdf',
       mimeType: MimeType.pdf,
     );
   }

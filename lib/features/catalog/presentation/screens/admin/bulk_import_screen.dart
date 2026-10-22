@@ -83,13 +83,23 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
       ),
       child: BlocListener<BulkImportCubit, BulkImportState>(
         listenWhen:
-            (p, c) => p.status != c.status || p.errorMessage != c.errorMessage,
+            (p, c) =>
+                p.status != c.status ||
+                p.errorMessage != c.errorMessage ||
+                p.successMessage != c.successMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
               context,
               message: state.errorMessage!,
               type: SnackbarType.error,
+            );
+          }
+          if (state.successMessage != null) {
+            AppSnackbar.show(
+              context,
+              message: state.successMessage!,
+              type: SnackbarType.success,
             );
           }
           if (state.status == BulkImportStatus.success) {

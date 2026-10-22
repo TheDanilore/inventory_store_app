@@ -231,6 +231,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
 
       if (result != null) {
         HapticFeedback.lightImpact();
+        SystemSound.play(SystemSoundType.click);
 
         if (widget.continuousMode || widget.onContinuousScan != null) {
           // Modo Rápido / Continuo: agrega a la lista y se mantiene escaneando

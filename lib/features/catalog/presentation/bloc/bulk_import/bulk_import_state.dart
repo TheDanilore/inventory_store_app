@@ -38,6 +38,9 @@ class BulkImportState extends Equatable {
   /// Mensaje transitorio (snackbar).
   final String? errorMessage;
 
+  /// Mensaje transitorio de éxito (snackbar).
+  final String? successMessage;
+
   const BulkImportState({
     this.status = BulkImportStatus.initial,
     this.warehouses = const [],
@@ -55,6 +58,7 @@ class BulkImportState extends Equatable {
     this.importError,
     this.result,
     this.errorMessage,
+    this.successMessage,
   });
 
   ImportWarehouse? get selectedWarehouse {
@@ -86,6 +90,8 @@ class BulkImportState extends Equatable {
     ImportBatchResult? result,
     String? errorMessage,
     bool clearErrorMessage = false,
+    String? successMessage,
+    bool clearSuccessMessage = false,
   }) {
     return BulkImportState(
       status: status ?? this.status,
@@ -105,6 +111,8 @@ class BulkImportState extends Equatable {
       result: result ?? this.result,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      successMessage:
+          clearSuccessMessage ? null : (successMessage ?? this.successMessage),
     );
   }
 
@@ -126,5 +134,6 @@ class BulkImportState extends Equatable {
     importError,
     result,
     errorMessage,
+    successMessage,
   ];
 }

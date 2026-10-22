@@ -4,11 +4,14 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:intl/intl.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 
 class CatalogExcelExporter {
   /// Exporta el listado de productos a un archivo Excel (.xlsx) con formato tabular.
-  static Future<String> exportToExcel(List<ProductEntity> products) async {
+  static Future<FileExportResult> exportToExcel(
+    List<ProductEntity> products,
+  ) async {
     final excel = Excel.createExcel();
     final defaultSheet = excel.getDefaultSheet() ?? 'Sheet1';
     excel.rename(defaultSheet, 'Catálogo');
@@ -84,18 +87,18 @@ class CatalogExcelExporter {
     final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final fileName = 'catalogo_productos_$dateStr';
 
-    await FileSaver.instance.saveFile(
-      name: fileName,
+    return FileExportService.save(
+      fileName: fileName,
       bytes: Uint8List.fromList(fileBytes),
-      fileExtension: 'xlsx',
+      extension: 'xlsx',
       mimeType: MimeType.microsoftExcel,
     );
-
-    return '$fileName.xlsx';
   }
 
   /// Exporta el listado de productos a un archivo CSV estándar (con BOM UTF-8).
-  static Future<String> exportToCsv(List<ProductEntity> products) async {
+  static Future<FileExportResult> exportToCsv(
+    List<ProductEntity> products,
+  ) async {
     final rows = <List<dynamic>>[
       [
         'Producto / Nombre',
@@ -169,13 +172,11 @@ class CatalogExcelExporter {
     final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final fileName = 'catalogo_productos_$dateStr';
 
-    await FileSaver.instance.saveFile(
-      name: fileName,
+    return FileExportService.save(
+      fileName: fileName,
       bytes: bytes,
-      fileExtension: 'csv',
+      extension: 'csv',
       mimeType: MimeType.csv,
     );
-
-    return '$fileName.csv';
   }
 }
