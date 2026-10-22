@@ -146,7 +146,7 @@ class _UsersTabState extends State<UsersTab>
 
         // Tarjetas: skeleton de tarjetas. Tabla: shimmer propio de AdminProTable.
         if (isInitialLoading && showCards) {
-          return const UsersSkeleton();
+          return const UsersSkeleton(isTableView: false);
         }
 
         if (state is UsersError && state.currentUsers.isEmpty) {

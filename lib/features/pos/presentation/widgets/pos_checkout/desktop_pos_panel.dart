@@ -195,8 +195,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       return;
     }
 
-
-
     _lastSaleWasDraft = isDraft;
     _lastSoldQuantities = {
       for (final item in cartCubit.state.items.values)
@@ -627,10 +625,11 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
         ),
         const SizedBox(height: 16),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.discountText != curr.discountText ||
-              prev.isDiscountPercentage != curr.isDiscountPercentage ||
-              prev.puntosAUsar != curr.puntosAUsar,
+          buildWhen:
+              (prev, curr) =>
+                  prev.discountText != curr.discountText ||
+                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
+                  prev.puntosAUsar != curr.puntosAUsar,
           builder: (context, posState) {
             return BlocBuilder<CartCubit, CartState>(
               buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,

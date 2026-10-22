@@ -487,15 +487,6 @@ class UsersRepositoryImpl implements UsersRepository {
         'is_active': isActive,
       };
 
-      // Si se especificó rol o roles, sincronizamos también la columna de compatibilidad en profiles
-      final primaryRole =
-          (roles != null && roles.isNotEmpty)
-              ? roles.first
-              : (role.isNotEmpty ? role : null);
-      if (primaryRole != null) {
-        updateData['role'] = primaryRole;
-      }
-
       await _supabase.from('profiles').update(updateData).eq('id', id);
 
       // Sincronizar roles en tabla relacional user_roles (fuente de verdad multi-rol)

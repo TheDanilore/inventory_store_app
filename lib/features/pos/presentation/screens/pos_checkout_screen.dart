@@ -251,8 +251,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       return;
     }
 
-
-
     _lastSaleWasDraft = isDraft;
     _lastSaleTotalAmount = totalFinal;
     _lastSoldQuantities = {
@@ -963,10 +961,11 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         ),
         const SizedBox(height: 16),
         BlocBuilder<PosCubit, PosState>(
-          buildWhen: (prev, curr) =>
-              prev.discountText != curr.discountText ||
-              prev.isDiscountPercentage != curr.isDiscountPercentage ||
-              prev.puntosAUsar != curr.puntosAUsar,
+          buildWhen:
+              (prev, curr) =>
+                  prev.discountText != curr.discountText ||
+                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
+                  prev.puntosAUsar != curr.puntosAUsar,
           builder: (context, posState) {
             return BlocBuilder<CartCubit, CartState>(
               buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,

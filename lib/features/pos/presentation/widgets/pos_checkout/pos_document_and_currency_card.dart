@@ -12,10 +12,7 @@ import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state
 class PosDocumentAndCurrencyCard extends StatefulWidget {
   final double totalFinal;
 
-  const PosDocumentAndCurrencyCard({
-    super.key,
-    required this.totalFinal,
-  });
+  const PosDocumentAndCurrencyCard({super.key, required this.totalFinal});
 
   @override
   State<PosDocumentAndCurrencyCard> createState() =>
@@ -55,15 +52,16 @@ class _PosDocumentAndCurrencyCardState
     final posCubit = context.read<PosCubit>();
 
     return BlocBuilder<PosCubit, PosState>(
-      buildWhen: (prev, curr) =>
-          prev.documentType != curr.documentType ||
-          prev.selectedSeries != curr.selectedSeries ||
-          prev.currencyCode != curr.currencyCode ||
-          prev.exchangeRate != curr.exchangeRate ||
-          prev.paymentMethod != curr.paymentMethod ||
-          prev.selectedClientId != curr.selectedClientId ||
-          prev.customerDocumentNumber != curr.customerDocumentNumber ||
-          prev.documentSeries != curr.documentSeries,
+      buildWhen:
+          (prev, curr) =>
+              prev.documentType != curr.documentType ||
+              prev.selectedSeries != curr.selectedSeries ||
+              prev.currencyCode != curr.currencyCode ||
+              prev.exchangeRate != curr.exchangeRate ||
+              prev.paymentMethod != curr.paymentMethod ||
+              prev.selectedClientId != curr.selectedClientId ||
+              prev.customerDocumentNumber != curr.customerDocumentNumber ||
+              prev.documentSeries != curr.documentSeries,
       builder: (context, posState) {
         final docType = posState.documentType;
         final isFactura = docType == 'FACTURA';
@@ -71,10 +69,11 @@ class _PosDocumentAndCurrencyCardState
         final showRef = _isDigitalOrBank(posState.paymentMethod);
 
         // Series disponibles para el tipo actual
-        final seriesList = posState.documentSeries
-            .where((s) => s.documentType == docType && s.isActive)
-            .map((s) => s.series)
-            .toList();
+        final seriesList =
+            posState.documentSeries
+                .where((s) => s.documentType == docType && s.isActive)
+                .map((s) => s.series)
+                .toList();
 
         if (seriesList.isEmpty) {
           seriesList.add(
@@ -84,9 +83,10 @@ class _PosDocumentAndCurrencyCardState
           );
         }
 
-        final currentSeries = seriesList.contains(posState.selectedSeries)
-            ? posState.selectedSeries!
-            : seriesList.first;
+        final currentSeries =
+            seriesList.contains(posState.selectedSeries)
+                ? posState.selectedSeries!
+                : seriesList.first;
 
         return Container(
           padding: const EdgeInsets.all(14),
@@ -124,18 +124,20 @@ class _PosDocumentAndCurrencyCardState
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: isFactura
-                          ? Colors.purple.shade50
-                          : (isBoleta
-                              ? Colors.blue.shade50
-                              : AppColors.teal.withValues(alpha: 0.1)),
+                      color:
+                          isFactura
+                              ? Colors.purple.shade50
+                              : (isBoleta
+                                  ? Colors.blue.shade50
+                                  : AppColors.teal.withValues(alpha: 0.1)),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: isFactura
-                            ? Colors.purple.shade200
-                            : (isBoleta
-                                ? Colors.blue.shade200
-                                : AppColors.teal.withValues(alpha: 0.3)),
+                        color:
+                            isFactura
+                                ? Colors.purple.shade200
+                                : (isBoleta
+                                    ? Colors.blue.shade200
+                                    : AppColors.teal.withValues(alpha: 0.3)),
                       ),
                     ),
                     child: Text(
@@ -143,9 +145,12 @@ class _PosDocumentAndCurrencyCardState
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: isFactura
-                            ? Colors.purple.shade700
-                            : (isBoleta ? Colors.blue.shade700 : AppColors.teal),
+                        color:
+                            isFactura
+                                ? Colors.purple.shade700
+                                : (isBoleta
+                                    ? Colors.blue.shade700
+                                    : AppColors.teal),
                       ),
                     ),
                   ),
@@ -209,12 +214,13 @@ class _PosDocumentAndCurrencyCardState
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
-                      items: seriesList.map((s) {
-                        return DropdownMenuItem<String>(
-                          value: s,
-                          child: Text(s),
-                        );
-                      }).toList(),
+                      items:
+                          seriesList.map((s) {
+                            return DropdownMenuItem<String>(
+                              value: s,
+                              child: Text(s),
+                            );
+                          }).toList(),
                       onChanged: (val) {
                         if (val != null) posCubit.setDocumentSeries(val);
                       },
@@ -228,11 +234,12 @@ class _PosDocumentAndCurrencyCardState
                     child: BlocBuilder<AppConfigCubit, AppConfigState>(
                       builder: (context, configState) {
                         final currencies = configState.activeCurrencies;
-                        final currentCode = currencies.any(
+                        final currentCode =
+                            currencies.any(
                                   (c) => c.code == posState.currencyCode,
                                 )
-                            ? posState.currencyCode
-                            : 'PEN';
+                                ? posState.currencyCode
+                                : 'PEN';
 
                         return DropdownButtonFormField<String>(
                           initialValue: currentCode,
@@ -253,45 +260,50 @@ class _PosDocumentAndCurrencyCardState
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
-                          items: (currencies.isEmpty
-                                  ? [
-                                      (
-                                        code: 'PEN',
-                                        symbol: 'S/ ',
-                                        rate: 1.0,
-                                        name: 'Soles'
+                          items:
+                              (currencies.isEmpty
+                                      ? [
+                                        (
+                                          code: 'PEN',
+                                          symbol: 'S/ ',
+                                          rate: 1.0,
+                                          name: 'Soles',
+                                        ),
+                                        (
+                                          code: 'USD',
+                                          symbol: '\$ ',
+                                          rate: 3.75,
+                                          name: 'Dólares',
+                                        ),
+                                      ]
+                                      : currencies.map(
+                                        (c) => (
+                                          code: c.code,
+                                          symbol: c.symbol,
+                                          rate: c.exchangeRate,
+                                          name: c.name,
+                                        ),
+                                      ))
+                                  .map((c) {
+                                    return DropdownMenuItem<String>(
+                                      value: c.code,
+                                      child: Text(
+                                        '${c.code} (${c.symbol.trim()})',
                                       ),
-                                      (
-                                        code: 'USD',
-                                        symbol: '\$ ',
-                                        rate: 3.75,
-                                        name: 'Dólares'
-                                      ),
-                                    ]
-                                  : currencies.map((c) => (
-                                        code: c.code,
-                                        symbol: c.symbol,
-                                        rate: c.exchangeRate,
-                                        name: c.name,
-                                      )))
-                              .map((c) {
-                            return DropdownMenuItem<String>(
-                              value: c.code,
-                              child: Text('${c.code} (${c.symbol.trim()})'),
-                            );
-                          }).toList(),
+                                    );
+                                  })
+                                  .toList(),
                           onChanged: (code) {
                             if (code != null) {
                               final curr = configState.currencies.firstWhere(
                                 (c) => c.code == code,
-                                orElse: () => configState.currencies.isNotEmpty
-                                    ? configState.currencies.first
-                                    : throw StateError('No currencies'),
+                                orElse:
+                                    () =>
+                                        configState.currencies.isNotEmpty
+                                            ? configState.currencies.first
+                                            : throw StateError('No currencies'),
                               );
-                              posCubit.setCurrency(
-                                code,
-                                curr.exchangeRate,
-                              );
+                              posCubit.setCurrency(code, curr.exchangeRate);
                             }
                           },
                         );
@@ -305,8 +317,10 @@ class _PosDocumentAndCurrencyCardState
               if (posState.currencyCode != 'PEN') ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade50,
                     borderRadius: BorderRadius.circular(6),
@@ -352,8 +366,10 @@ class _PosDocumentAndCurrencyCardState
               if (isBoleta && widget.totalFinal >= 700.0) ...[
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(6),
@@ -498,10 +514,10 @@ class _PosDocumentAndCurrencyCardState
               style: const TextStyle(fontSize: 12),
               onChanged: (val) {
                 context.read<PosCubit>().setCustomerFiscalData(
-                      customerDocType: 'RUC',
-                      customerDocNumber: val.trim(),
-                      customerAddress: _addressCtrl.text.trim(),
-                    );
+                  customerDocType: 'RUC',
+                  customerDocNumber: val.trim(),
+                  customerAddress: _addressCtrl.text.trim(),
+                );
               },
             ),
           ],
@@ -563,34 +579,34 @@ class _DocTypeChip extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? (label == 'FACTURA'
-                      ? Colors.purple.shade600
-                      : (label == 'BOLETA'
-                          ? Colors.blue.shade600
-                          : AppColors.teal))
-                  : AppColors.surface,
+              color:
+                  isSelected
+                      ? (label == 'FACTURA'
+                          ? Colors.purple.shade600
+                          : (label == 'BOLETA'
+                              ? Colors.blue.shade600
+                              : AppColors.teal))
+                      : AppColors.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected
-                    ? Colors.transparent
-                    : AppColors.border,
+                color: isSelected ? Colors.transparent : AppColors.border,
                 width: 1.2,
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: (label == 'FACTURA'
-                                ? Colors.purple
-                                : (label == 'BOLETA'
-                                    ? Colors.blue
-                                    : AppColors.teal))
-                            .withValues(alpha: 0.25),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+              boxShadow:
+                  isSelected
+                      ? [
+                        BoxShadow(
+                          color: (label == 'FACTURA'
+                                  ? Colors.purple
+                                  : (label == 'BOLETA'
+                                      ? Colors.blue
+                                      : AppColors.teal))
+                              .withValues(alpha: 0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

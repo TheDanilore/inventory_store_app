@@ -283,13 +283,16 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
                             )
                             .length;
 
+                final isInitialLoading =
+                    state is UsersInitial ||
+                    (state is UsersLoading && state.currentUsers.isEmpty);
+
                 return Column(
                   children: [
                     // ─── 1. BENTO KPI METRICS BAR ─────────────────────────────────
                     AdminKpiMetricsBar(
                       isDesktop: isDesktop,
-                      isLoading:
-                          state is UsersLoading && state.currentUsers.isEmpty,
+                      isLoading: isInitialLoading,
                       padding: EdgeInsets.fromLTRB(
                         16,
                         isDesktop ? 12 : 10,
