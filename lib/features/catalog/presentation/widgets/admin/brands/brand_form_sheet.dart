@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/brands_cubit.dart';
@@ -170,6 +171,7 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (!widget.isSlideOver) const AppSheetDragHandle(),
           // ── Header del Sheet / Drawer ─────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),

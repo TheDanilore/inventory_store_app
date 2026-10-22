@@ -4,6 +4,7 @@ import 'package:inventory_store_app/features/purchases/domain/entities/supplier_
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/suppliers/suppliers_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierFormModal extends StatefulWidget {
@@ -449,7 +450,7 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
 
     // --- DISEÑO MÓVIL (Apple HIG BottomSheet con Drag Handle) ---
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
+      padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + bottomInset),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -461,6 +462,7 @@ class _SupplierFormModalState extends State<SupplierFormModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 12)),
               Text(
                 _isEditing ? 'Editar Proveedor' : 'Nuevo Proveedor',
                 style: const TextStyle(

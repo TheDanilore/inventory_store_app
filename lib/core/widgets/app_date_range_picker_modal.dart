@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 /// Modal corporativo de selección de rango de fechas para el ERP.
 /// Inspirado en diseños modernos de Linear, Stripe y Apple HIG.
@@ -204,6 +205,7 @@ class _AppDateRangePickerModalState extends State<AppDateRangePickerModal> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!isDesktop) const AppSheetDragHandle(),
         // ── 1. HEADER ──────────────────────────────────────────────────────────
         _buildHeader(context, isDark),
         Divider(

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 /// Contenedor marco/contorno reutilizable para vistas de detalle:
 ///  - Desktop / Tablet (>= 900px): Slide-over panel lateral flotante con bordes redondeados y desenfoque de fondo.
@@ -226,20 +227,7 @@ class DetailSheetFrame extends StatelessWidget {
       mainAxisSize: isSide ? MainAxisSize.max : MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!isSide)
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
+        if (!isSide) const AppSheetDragHandle(),
 
         // Cabecera / Header
         Padding(

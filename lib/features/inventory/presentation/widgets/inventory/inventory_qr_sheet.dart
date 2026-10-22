@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:inventory_store_app/core/services/file_export_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -33,7 +36,7 @@ class InventoryQrSheet {
   }) {
     return AdaptiveDetailSheet.show<void>(
       context,
-      desktopWidth: 440,
+      desktopWidth: 480,
       barrierLabel: 'Cerrar generador de códigos',
       builder:
           (_) => _InventoryQrContent(
@@ -146,75 +149,80 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
     );
   }
 
+  pw.Document _buildLabelDoc() {
+    final isBarcode = _type == _CodeType.barcode;
+    final data = _effectiveData;
+    final doc = pw.Document();
+
+    // Formato estándar de etiqueta adhesiva térmica (50mm x 30mm)
+    const pageFormat = PdfPageFormat(
+      50 * PdfPageFormat.mm,
+      30 * PdfPageFormat.mm,
+      marginAll: 2 * PdfPageFormat.mm,
+    );
+
+    doc.addPage(
+      pw.Page(
+        pageFormat: pageFormat,
+        build: (pw.Context context) {
+          return pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Text(
+                  widget.productName,
+                  maxLines: 1,
+                  textAlign: pw.TextAlign.center,
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                if (_variantLabel.isNotEmpty)
+                  pw.Text(
+                    _variantLabel,
+                    maxLines: 1,
+                    style: const pw.TextStyle(fontSize: 7),
+                  ),
+                pw.SizedBox(height: 2),
+                if (isBarcode)
+                  pw.BarcodeWidget(
+                    barcode: pw.Barcode.code128(),
+                    data: data,
+                    height: 14 * PdfPageFormat.mm,
+                    width: 44 * PdfPageFormat.mm,
+                    drawText: true,
+                    textStyle: const pw.TextStyle(fontSize: 6.5),
+                  )
+                else
+                  pw.BarcodeWidget(
+                    barcode: pw.Barcode.qrCode(),
+                    data: data,
+                    height: 16 * PdfPageFormat.mm,
+                    width: 16 * PdfPageFormat.mm,
+                    drawText: false,
+                  ),
+                if (!isBarcode) ...[
+                  pw.SizedBox(height: 1),
+                  pw.Text(
+                    data.length > 25 ? '${data.substring(0, 22)}...' : data,
+                    style: const pw.TextStyle(fontSize: 5.5),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    return doc;
+  }
+
   Future<void> _printLabel() async {
     try {
-      final isBarcode = _type == _CodeType.barcode;
-      final data = _effectiveData;
-      final doc = pw.Document();
-
-      // Formato estándar de etiqueta adhesiva térmica (50mm x 30mm)
-      const pageFormat = PdfPageFormat(
-        50 * PdfPageFormat.mm,
-        30 * PdfPageFormat.mm,
-        marginAll: 2 * PdfPageFormat.mm,
-      );
-
-      doc.addPage(
-        pw.Page(
-          pageFormat: pageFormat,
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Column(
-                mainAxisAlignment: pw.MainAxisAlignment.center,
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Text(
-                    widget.productName,
-                    maxLines: 1,
-                    textAlign: pw.TextAlign.center,
-                    style: pw.TextStyle(
-                      fontSize: 8.5,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  if (_variantLabel.isNotEmpty)
-                    pw.Text(
-                      _variantLabel,
-                      maxLines: 1,
-                      style: const pw.TextStyle(fontSize: 7),
-                    ),
-                  pw.SizedBox(height: 2),
-                  if (isBarcode)
-                    pw.BarcodeWidget(
-                      barcode: pw.Barcode.code128(),
-                      data: data,
-                      height: 14 * PdfPageFormat.mm,
-                      width: 44 * PdfPageFormat.mm,
-                      drawText: true,
-                      textStyle: const pw.TextStyle(fontSize: 6.5),
-                    )
-                  else
-                    pw.BarcodeWidget(
-                      barcode: pw.Barcode.qrCode(),
-                      data: data,
-                      height: 16 * PdfPageFormat.mm,
-                      width: 16 * PdfPageFormat.mm,
-                      drawText: false,
-                    ),
-                  if (!isBarcode) ...[
-                    pw.SizedBox(height: 1),
-                    pw.Text(
-                      data.length > 25 ? '${data.substring(0, 22)}...' : data,
-                      style: const pw.TextStyle(fontSize: 5.5),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        ),
-      );
-
+      final doc = _buildLabelDoc();
       await Printing.layoutPdf(
         name: 'Etiqueta_${widget.productName.replaceAll(' ', '_')}',
         onLayout: (format) async => doc.save(),
@@ -224,6 +232,93 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
         AppSnackbar.show(
           context,
           message: 'Error al abrir diálogo de impresión: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _savePdfLabel() async {
+    try {
+      final doc = _buildLabelDoc();
+      final bytes = await doc.save();
+      final cleanName = widget.productName
+          .replaceAll(RegExp(r'[^\w\s-]'), '')
+          .replaceAll(' ', '_');
+      final fileName = 'Etiqueta_${cleanName}_$_effectiveData';
+
+      final result = await FileExportService.save(
+        fileName: fileName,
+        bytes: bytes,
+        extension: 'pdf',
+        mimeType: MimeType.pdf,
+        dialogTitle: 'Guardar Etiqueta PDF',
+      );
+
+      if (!mounted) return;
+      if (result.isSaved) {
+        AppSnackbar.show(
+          context,
+          message: 'Etiqueta guardada exitosamente.',
+          type: SnackbarType.success,
+        );
+      } else if (result.isFailed) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al guardar la etiqueta: ${result.error}',
+          type: SnackbarType.error,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al exportar la etiqueta: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _shareWhatsApp() async {
+    final buffer = StringBuffer();
+    buffer.writeln('🏷️ *ETIQUETA DE PRODUCTO*');
+    buffer.writeln('📦 *Producto:* ${widget.productName}');
+    if (_variantLabel.isNotEmpty) {
+      buffer.writeln('🔹 *Variante:* $_variantLabel');
+    }
+    if (_hasSku) {
+      buffer.writeln('🔖 *SKU:* $_cleanSku');
+    }
+    if (_hasBarcode) {
+      buffer.writeln('📊 *Código de Barras:* $_cleanBarcode');
+    }
+    buffer.writeln('🔢 *Código codificado:* $_effectiveData');
+    if (_payloadMode == _CodePayloadMode.link) {
+      buffer.writeln('🔗 *Enlace ficha:* $_linkPayload');
+    }
+
+    final uri = Uri.parse(
+      'https://wa.me/?text=${Uri.encodeComponent(buffer.toString())}',
+    );
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message: 'No se pudo abrir WhatsApp',
+            type: SnackbarType.warning,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al abrir WhatsApp: $e',
           type: SnackbarType.error,
         );
       }
@@ -581,33 +676,124 @@ class _InventoryQrContentState extends State<_InventoryQrContent> {
           ),
         ],
       ),
-      footer: Row(
+      footer: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _copy(_effectiveData, 'Código'),
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              label: const Text('Copiar Código'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: AppColors.border),
-                foregroundColor: AppColors.textPrimary,
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _printLabel,
+              icon: const Icon(Icons.print_rounded, size: 18),
+              label: const Text(
+                'IMPRIMIR ETIQUETA (50x30mm)',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.textPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _printLabel,
-              icon: const Icon(Icons.print_rounded, size: 16),
-              label: const Text('Imprimir'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _shareWhatsApp,
+                  icon: const Icon(
+                    Icons.chat_bubble_rounded,
+                    size: 15,
+                    color: Color(0xFF16A34A),
+                  ),
+                  label: const Text(
+                    'WhatsApp',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF16A34A),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: BorderSide(
+                      color: const Color(0xFF16A34A).withValues(alpha: 0.4),
+                    ),
+                    backgroundColor: const Color(
+                      0xFF16A34A,
+                    ).withValues(alpha: 0.06),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _savePdfLabel,
+                  icon: const Icon(
+                    Icons.download_rounded,
+                    size: 15,
+                    color: Color(0xFFD97706),
+                  ),
+                  label: const Text(
+                    'Guardar PDF',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFD97706),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: BorderSide(
+                      color: const Color(0xFFD97706).withValues(alpha: 0.4),
+                    ),
+                    backgroundColor: const Color(
+                      0xFFD97706,
+                    ).withValues(alpha: 0.06),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _copy(_effectiveData, 'Código'),
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    size: 15,
+                    color: AppColors.textSecondary,
+                  ),
+                  label: const Text(
+                    'Copiar',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

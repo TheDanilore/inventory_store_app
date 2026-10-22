@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 /// Descriptor para los widgets modulares disponibles en el Dashboard
 class DashboardWidgetItem {
@@ -283,21 +284,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Mobile Drag Handle (solo pantallas móviles) ─────────────
-          if (!isDesktop)
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 4),
-                width: 38,
-                height: 4.5,
-                decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF475569)
-                          : const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-            ),
+          if (!isDesktop) const AppSheetDragHandle(),
 
           // ── Header: Título, contador y botón cerrar ──────────────────
           Padding(

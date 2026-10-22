@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
@@ -275,6 +276,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 12)),
             Row(
               children: [
                 Expanded(

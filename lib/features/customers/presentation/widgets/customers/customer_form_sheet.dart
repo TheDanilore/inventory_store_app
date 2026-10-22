@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -267,18 +268,9 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
       child: Column(
         children: [
           // Handle
-          if (!widget.isDialog) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ] else
+          if (!widget.isDialog)
+            const AppSheetDragHandle()
+          else
             const SizedBox(height: 8),
 
           // Header

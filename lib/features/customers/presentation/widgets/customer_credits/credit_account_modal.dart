@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_credit/customer_credit_list_cubit.dart';
@@ -255,17 +256,7 @@ class _CreditAccountModalViewState extends State<_CreditAccountModalView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (!widget.isDialog)
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 16)),
           Row(
             children: [
               Expanded(

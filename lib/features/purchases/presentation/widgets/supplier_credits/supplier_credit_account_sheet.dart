@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_credit_entity.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 class SupplierCreditAccountSheet extends StatefulWidget {
@@ -391,7 +392,7 @@ class _SupplierCreditAccountSheetState
       child: Padding(
         padding: EdgeInsets.fromLTRB(
           20,
-          20,
+          8,
           20,
           20 + MediaQuery.of(context).viewInsets.bottom,
         ),
@@ -401,6 +402,7 @@ class _SupplierCreditAccountSheetState
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 12)),
               Text(
                 _isEditing
                     ? 'Editar línea de crédito'

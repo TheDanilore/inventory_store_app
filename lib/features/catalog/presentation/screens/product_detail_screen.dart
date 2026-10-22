@@ -20,6 +20,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/produc
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_batches_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_description_card.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_detail_header.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_export_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_gallery_section.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_detail/product_ingredients_card.dart';
@@ -176,34 +177,25 @@ class _ProductDetailScreenContentState
   }
 
   Future<void> _exportPdf() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (dialogCtx) => const AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text('Generando PDF...', textAlign: TextAlign.center),
-              ],
-            ),
-          ),
-    );
-
-    try {
-      if (cubit.state.product == null) return;
-      await cubit.exportProductPdf();
-    } catch (e) {
-      if (mounted) {
-        _showSnack('Error al generar PDF: $e', isError: true);
-      }
-    } finally {
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
+    final state = cubit.state;
+    final currentProduct = state.product ?? product;
+    final stockByVariant = <String, int>{};
+    for (final row in state.warehouseStocks) {
+      final vId = row['variant_id'] as String?;
+      final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
+      if (vId != null) {
+        stockByVariant[vId] = (stockByVariant[vId] ?? 0) + qty;
       }
     }
+    await ProductExportSheet.show(
+      context,
+      product: currentProduct,
+      variants:
+          state.variants.isNotEmpty
+              ? state.variants
+              : currentProduct.productVariants,
+      stockByVariant: stockByVariant,
+    );
   }
 
   void _showQrCode() {

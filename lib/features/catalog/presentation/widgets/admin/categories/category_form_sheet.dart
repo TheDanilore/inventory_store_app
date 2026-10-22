@@ -6,6 +6,7 @@ import 'package:inventory_store_app/features/catalog/presentation/bloc/categorie
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_state.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 /// Formulario adaptativo de Categoría:
@@ -592,17 +593,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 16)),
               formContent,
             ],
           ),

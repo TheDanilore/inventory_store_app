@@ -22,7 +22,9 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/detail_sheet_header.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/financial_summary_card.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_order_export_sheet.dart';
 import 'package:inventory_store_app/core/widgets/product_item_card.dart';
 
 class PODetailSheet extends StatefulWidget {
@@ -121,6 +123,39 @@ class _PODetailSheetState extends State<PODetailSheet> {
         );
       }
     }
+  }
+
+  void _openExportSheet() {
+    final paymentStatus =
+        _amountPaid >= widget.po.totalAmount
+            ? 'PAID'
+            : (_amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+    final currentPo = PurchaseOrderModel(
+      id: widget.po.id,
+      createdAt: widget.po.createdAt,
+      supplierId: widget.po.supplierId,
+      supplierName: widget.po.supplierName,
+      warehouseId: widget.po.warehouseId,
+      warehouseName: widget.po.warehouseName,
+      status: _status,
+      totalAmount: widget.po.totalAmount,
+      paymentMethod: _paymentMethod,
+      paymentStatus: paymentStatus,
+      amountPaid: _amountPaid,
+      dueDate: widget.po.dueDate,
+      discountAmount: widget.po.discountAmount,
+      taxAmount: widget.po.taxAmount,
+      documentType: widget.po.documentType,
+      documentNumber: widget.po.documentNumber,
+      notes: widget.po.notes,
+      itemCount: widget.po.itemCount,
+    );
+    PurchaseOrderExportSheet.show(
+      context,
+      po: currentPo,
+      initialItems: _items,
+      loadItems: widget.loadItems,
+    );
   }
 
   Future<void> _handleUpdateStatus(String newStatus) async {
@@ -556,6 +591,7 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (!widget.isDialog) const AppSheetDragHandle(),
               if (_isProcessingAction)
                 const LinearProgressIndicator(
                   color: AppColors.primary,
@@ -639,46 +675,28 @@ Por favor confirmar recepción y fecha estimada de entrega. ¡Gracias!
                         if (isNarrow) ...[
                           IconButton(
                             onPressed:
-                                _isProcessingAction
-                                    ? null
-                                    : () {
-                                      AppSnackbar.show(
-                                        context,
-                                        message:
-                                            'Función de PDF próximamente ($shortCode)',
-                                        type: SnackbarType.info,
-                                      );
-                                    },
+                                _isProcessingAction ? null : _openExportSheet,
                             icon: const Icon(
                               Icons.picture_as_pdf_rounded,
                               size: 18,
                               color: AppColors.primary,
                             ),
-                            tooltip: 'Exportar PDF',
+                            tooltip: 'Exportar / Imprimir Orden',
                             visualDensity: VisualDensity.compact,
                           ),
                         ] else ...[
                           Tooltip(
-                            message: 'Exportar orden en PDF',
+                            message: 'Comprobar, imprimir o exportar orden',
                             child: OutlinedButton.icon(
                               onPressed:
-                                  _isProcessingAction
-                                      ? null
-                                      : () {
-                                        AppSnackbar.show(
-                                          context,
-                                          message:
-                                              'Función de PDF próximamente ($shortCode)',
-                                          type: SnackbarType.info,
-                                        );
-                                      },
+                                  _isProcessingAction ? null : _openExportSheet,
                               icon: const Icon(
                                 Icons.picture_as_pdf_rounded,
                                 size: 16,
                                 color: AppColors.primary,
                               ),
                               label: const Text(
-                                'Exportar PDF',
+                                'Exportar / Imprimir',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,

@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 class BatchEditSheet extends StatefulWidget {
   final String productName;
@@ -197,19 +198,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── DRAG HANDLE (SOLO MÓVIL) ──
-            if (!isDesktop) ...[
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ],
+            if (!isDesktop) const AppSheetDragHandle(),
 
             // ── CABECERA PRO ──
             Padding(

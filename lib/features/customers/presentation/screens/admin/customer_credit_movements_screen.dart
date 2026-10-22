@@ -19,6 +19,7 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
+import 'package:inventory_store_app/core/widgets/account_statement_export_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 
 class CustomerCreditMovementsScreen extends StatelessWidget {
@@ -110,7 +111,16 @@ class _CustomerCreditMovementsScreenContentState
   }
 
   void _exportToPdf() {
-    context.read<CustomerCreditMovementsCubit>().exportToPdf();
+    final state = context.read<CustomerCreditMovementsCubit>().state;
+    AccountStatementExportSheet.show(
+      context,
+      titularName: widget.customerName,
+      isSupplier: false,
+      currentBalance: state.currentDebt,
+      totalCharged: state.totalCharged,
+      totalPaid: state.totalPaid,
+      items: state.movements.map((m) => StatementItem.fromCustomer(m)).toList(),
+    );
   }
 
   void _openOrderDetails(String orderId) async {

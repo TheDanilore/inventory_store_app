@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/register_payment/register_payment_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/register_payment/register_payment_state.dart';
@@ -226,19 +227,8 @@ class _RegisterPaymentModalViewState extends State<_RegisterPaymentModalView> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isMobile) ...[
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ],
+          if (isMobile)
+            const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 16)),
           // Header
           Row(
             children: [

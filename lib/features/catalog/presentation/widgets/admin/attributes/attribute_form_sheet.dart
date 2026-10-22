@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_state.dart';
@@ -510,17 +511,7 @@ class _AttributeFormSheetState extends State<AttributeFormSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
+          const AppSheetDragHandle(padding: EdgeInsets.only(bottom: 16)),
           Expanded(child: formContent),
         ],
       ),

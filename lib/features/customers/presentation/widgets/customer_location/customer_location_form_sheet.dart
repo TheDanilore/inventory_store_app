@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_location_entity.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/services/geocoding_service.dart';
 import 'package:inventory_store_app/features/customers/presentation/screens/customer_location_map_screen.dart';
 
@@ -211,16 +212,7 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Handle bar
-          if (!widget.isDialog)
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 6),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+          if (!widget.isDialog) const AppSheetDragHandle(),
           // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 16, 0),

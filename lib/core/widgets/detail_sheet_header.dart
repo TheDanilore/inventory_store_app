@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
 /// Header reutilizable para todos los bottom sheets del panel admin.
 ///
@@ -23,7 +24,7 @@ class DetailSheetHeader extends StatefulWidget {
     required this.title,
     this.trailing,
     this.horizontalPadding = 24,
-    this.showDragHandle = false,
+    this.showDragHandle = true,
   });
 
   @override
@@ -70,15 +71,7 @@ class _DetailSheetHeaderState extends State<DetailSheetHeader>
       children: [
         // ── Drag handle ──────────────────────────────────────────
         if (widget.showDragHandle)
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 16),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          )
+          const AppSheetDragHandle(padding: EdgeInsets.only(top: 8, bottom: 12))
         else
           const SizedBox(height: 16),
 

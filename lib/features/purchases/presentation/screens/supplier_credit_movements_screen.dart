@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/purchases/presentation/bloc/supplie
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credit_movements/summary_header.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/supplier_credit_movements/movement_card.dart';
 import 'package:inventory_store_app/features/purchases/domain/repositories/supplier_credit_movements_repository.dart';
+import 'package:inventory_store_app/core/widgets/account_statement_export_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class SupplierCreditMovementsScreen extends StatefulWidget {
@@ -165,7 +166,39 @@ class _SupplierCreditMovementsScreenState
                 icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
                 onSelected: (value) {
                   if (value == 'export') {
-                    context.read<SupplierCreditMovementsCubit>().exportToPdf();
+                    final cubit = context.read<SupplierCreditMovementsCubit>();
+                    final s = cubit.state;
+                    final movements =
+                        s is SupplierCreditMovementsLoaded
+                            ? s.movements
+                            : (s is SupplierCreditMovementsError
+                                ? s.currentMovements
+                                : <SupplierCreditMovementEntity>[]);
+                    final charged =
+                        s is SupplierCreditMovementsLoaded
+                            ? s.totalCharged
+                            : (s is SupplierCreditMovementsError
+                                ? s.totalCharged
+                                : 0.0);
+                    final paid =
+                        s is SupplierCreditMovementsLoaded
+                            ? s.totalPaid
+                            : (s is SupplierCreditMovementsError
+                                ? s.totalPaid
+                                : 0.0);
+
+                    AccountStatementExportSheet.show(
+                      context,
+                      titularName: widget.supplierName,
+                      isSupplier: true,
+                      currentBalance: widget.currentDebt,
+                      totalCharged: charged,
+                      totalPaid: paid,
+                      items:
+                          movements
+                              .map((m) => StatementItem.fromSupplier(m))
+                              .toList(),
+                    );
                   } else if (value == 'filter') {
                     _showFilterSheet(context, currentFilter);
                   }

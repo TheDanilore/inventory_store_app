@@ -74,6 +74,7 @@ class _InventoryExitDetailSheetState extends State<InventoryExitDetailSheet> {
         children: [
           // ── Header compartido ──────────────────────────────────────
           DetailSheetHeader(
+            showDragHandle: widget.isBottomSheet,
             title: 'Detalle de Salida',
             trailing:
                 reason.isNotEmpty
