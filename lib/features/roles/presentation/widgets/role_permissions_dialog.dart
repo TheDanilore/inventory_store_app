@@ -70,7 +70,12 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
     return groups;
   }
 
+  bool get _isAdminRole =>
+      widget.role.name.toLowerCase() == 'admin' ||
+      widget.role.name.toLowerCase() == 'administrador';
+
   void _togglePermission(String code) {
+    if (_isAdminRole) return;
     setState(() {
       if (_selectedPermissions.contains(code)) {
         _selectedPermissions.remove(code);
@@ -81,6 +86,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
   }
 
   void _toggleModule(List<PermissionEntity> perms, bool selectAll) {
+    if (_isAdminRole) return;
     setState(() {
       for (final p in perms) {
         if (selectAll) {
@@ -203,6 +209,40 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                 ],
               ),
               const SizedBox(height: 14),
+
+              if (_isAdminRole)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.indigo.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.shield_rounded,
+                        color: Colors.indigo.shade700,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'El rol Administrador cuenta con acceso total e inmutable a todos los módulos y permisos del sistema.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.indigo.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // ── Buscador y acciones masivas ────────────────────────────────
               if (isDesktop)
@@ -537,7 +577,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                     Expanded(
                       flex: 2,
                       child: FilledButton.icon(
-                        onPressed: _isSaving ? null : _handleSave,
+                        onPressed: (_isSaving || _isAdminRole) ? null : _handleSave,
                         icon:
                             _isSaving
                                 ? const SizedBox(
@@ -548,9 +588,11 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                                     color: Colors.white,
                                   ),
                                 )
-                                : const Icon(Icons.check_rounded, size: 16),
+                                : Icon(_isAdminRole ? Icons.shield_rounded : Icons.check_rounded, size: 16),
                         label: Text(
-                          _isSaving ? 'Guardando...' : 'Guardar Permisos',
+                          _isSaving
+                              ? 'Guardando...'
+                              : (_isAdminRole ? 'Acceso Total Fijo' : 'Guardar Permisos'),
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         style: FilledButton.styleFrom(
@@ -586,7 +628,7 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                     ),
                     const SizedBox(width: 12),
                     FilledButton.icon(
-                      onPressed: _isSaving ? null : _handleSave,
+                      onPressed: (_isSaving || _isAdminRole) ? null : _handleSave,
                       icon:
                           _isSaving
                               ? const SizedBox(
@@ -597,9 +639,11 @@ class _RolePermissionsDialogState extends State<RolePermissionsDialog> {
                                   color: Colors.white,
                                 ),
                               )
-                              : const Icon(Icons.check_rounded, size: 18),
+                              : Icon(_isAdminRole ? Icons.shield_rounded : Icons.check_rounded, size: 18),
                       label: Text(
-                        _isSaving ? 'Guardando...' : 'Guardar Permisos',
+                        _isSaving
+                            ? 'Guardando...'
+                            : (_isAdminRole ? 'Acceso Total Fijo' : 'Guardar Permisos'),
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(

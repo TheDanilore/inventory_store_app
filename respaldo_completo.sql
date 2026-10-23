@@ -3210,6 +3210,35 @@ $$;
 ALTER FUNCTION "public"."process_pos_sale"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."protect_system_roles"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- Impedir eliminar roles del sistema
+  IF TG_OP = 'DELETE' THEN
+    IF LOWER(OLD.name) IN ('admin', 'administrador', 'cashier', 'cajero', 'warehouse_keeper', 'almacenero', 'employee', 'empleado', 'customer', 'cliente') THEN
+      RAISE EXCEPTION 'Operación denegada: No está permitido eliminar los roles base del sistema (%).', OLD.name;
+    END IF;
+    RETURN OLD;
+  END IF;
+
+  -- Impedir cambiar el identificador 'name' de roles del sistema
+  IF TG_OP = 'UPDATE' THEN
+    IF LOWER(OLD.name) IN ('admin', 'administrador', 'cashier', 'cajero', 'warehouse_keeper', 'almacenero', 'employee', 'empleado', 'customer', 'cliente') 
+       AND LOWER(NEW.name) <> LOWER(OLD.name) THEN
+      RAISE EXCEPTION 'Operación denegada: No está permitido renombrar el identificador de los roles base del sistema (%).', OLD.name;
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."protect_system_roles"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Abono registrado a crédito'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -6781,6 +6810,10 @@ CREATE OR REPLACE TRIGGER "set_product_variants_updated_at" BEFORE UPDATE ON "pu
 
 
 
+CREATE OR REPLACE TRIGGER "trg_protect_system_roles" BEFORE DELETE OR UPDATE ON "public"."roles" FOR EACH ROW EXECUTE FUNCTION "public"."protect_system_roles"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_warehouse_auto_cash_account" AFTER INSERT ON "public"."warehouses" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_counter_cash_account"();
 
 
@@ -7334,60 +7367,6 @@ ALTER TABLE ONLY "public"."warehouse_stock_batches"
 
 
 
-CREATE POLICY "Acceso a cart_items propios" ON "public"."cart_items" USING ((("cart_id" IN ( SELECT "shopping_carts"."id"
-   FROM "public"."shopping_carts"
-  WHERE ("shopping_carts"."profile_id" = "extensions"."auth_profile_id"()))) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
-CREATE POLICY "Acceso propio CRUD" ON "public"."shopping_carts" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
-CREATE POLICY "Acceso propio CRUD" ON "public"."wishlist" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
-CREATE POLICY "Acceso selectivo a créditos por rol o propietario" ON "public"."customer_credits" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."account_movements" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventories" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."physical_inventory_items" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."supplier_credits" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado" ON "public"."warehouse_stock_batches" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado customer_credits" ON "public"."customer_credits" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado perfiles" ON "public"."profiles" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Acceso total admin y empleado wallet_movements" ON "public"."wallet_movements" TO "authenticated" USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))) WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Actualizacion de reviews" ON "public"."product_reviews" FOR UPDATE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
-
-
-
 CREATE POLICY "Actualización del propio perfil" ON "public"."profiles" FOR UPDATE USING ((( SELECT "auth"."uid"() AS "uid") = "id")) WITH CHECK ((( SELECT "auth"."uid"() AS "uid") = "id"));
 
 
@@ -7404,51 +7383,35 @@ CREATE POLICY "Admins manage warehouse assignments" ON "public"."user_warehouses
 
 
 
-CREATE POLICY "Borrado admin checkins" ON "public"."daily_checkins" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "App Settings: Gestión por permiso" ON "public"."app_settings" TO "authenticated" USING ("public"."user_has_permission"('settings.edit'::"text")) WITH CHECK ("public"."user_has_permission"('settings.edit'::"text"));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."active_ingredients" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Atributos: Gestión por permiso" ON "public"."attributes" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."app_settings" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Billetera: Lectura por permiso o propio" ON "public"."wallet_movements" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "profile_id") OR "public"."user_has_permission"('reports.financial'::"text") OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."attribute_values" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Business Info: Modificación por permiso" ON "public"."business_info" TO "authenticated" USING ("public"."user_has_permission"('settings.edit'::"text")) WITH CHECK ("public"."user_has_permission"('settings.edit'::"text"));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."attributes" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Carritos: Acceso propio o gestión" ON "public"."shopping_carts" TO "authenticated" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."brands" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Categorías: Gestión por permiso" ON "public"."categories" TO "authenticated" USING ("public"."user_has_permission"('categories.manage'::"text")) WITH CHECK ("public"."user_has_permission"('categories.manage'::"text"));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."categories" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Checkins: Lectura por permiso o propio" ON "public"."daily_checkins" FOR SELECT TO "authenticated" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_active_ingredients" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_images" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Borrado admin/empleado" ON "public"."product_variants" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Borrado admin/empleado" ON "public"."variant_attribute_values" FOR DELETE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Compras: Gestión por permiso" ON "public"."purchase_orders" TO "authenticated" USING (("public"."user_has_permission"('purchases.create'::"text") OR "public"."user_has_permission"('purchases.view'::"text"))) WITH CHECK ("public"."user_has_permission"('purchases.create'::"text"));
 
 
 
@@ -7460,7 +7423,23 @@ CREATE POLICY "Compras: Lectura por permiso" ON "public"."purchase_orders" FOR S
 
 
 
+CREATE POLICY "Créditos cliente: Gestión por permiso" ON "public"."customer_credits" TO "authenticated" USING ("public"."user_has_permission"('credits.manage'::"text")) WITH CHECK ("public"."user_has_permission"('credits.manage'::"text"));
+
+
+
+CREATE POLICY "Créditos cliente: Lectura por permiso o propio" ON "public"."customer_credits" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "profile_id") OR "public"."user_has_permission"('credits.manage'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
+
+
+
+CREATE POLICY "Créditos proveedor: Lectura por permiso" ON "public"."supplier_credits" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('purchases.view'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
+
+
+
 CREATE POLICY "Cuentas: Gestión por permiso" ON "public"."financial_accounts" TO "authenticated" USING ("public"."user_has_permission"('financial.accounts.manage'::"text")) WITH CHECK ("public"."user_has_permission"('financial.accounts.manage'::"text"));
+
+
+
+CREATE POLICY "Entradas: Lectura por permiso" ON "public"."inventory_entries" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.view'::"text") OR "public"."user_has_permission"('inventory.entries'::"text")));
 
 
 
@@ -7468,47 +7447,15 @@ CREATE POLICY "Financial accounts: read all for authenticated" ON "public"."fina
 
 
 
-CREATE POLICY "Gestión selectiva de ubicaciones por rol o propietario" ON "public"."customer_locations" FOR DELETE TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Imágenes producto: Gestión por permiso" ON "public"."product_images" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."active_ingredients" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Ingredientes activos producto: Gestión" ON "public"."product_active_ingredients" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
 
 
 
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."app_settings" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attribute_values" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."attributes" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."brands" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."categories" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_active_ingredients" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_images" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."product_variants" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion admin/empleado con validacion de identidad" ON "public"."variant_attribute_values" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Ingredientes activos: Gestión" ON "public"."active_ingredients" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
 
 
 
@@ -7520,40 +7467,6 @@ CREATE POLICY "Insercion propia de checkins" ON "public"."daily_checkins" FOR IN
 
 
 
-CREATE POLICY "Insercion validada e inmutable" ON "public"."customer_credit_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_entry_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_exit_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."inventory_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."purchase_order_items" FOR INSERT WITH CHECK (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Insercion validada e inmutable" ON "public"."supplier_credit_movements" FOR INSERT WITH CHECK ((("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) AND ("created_by" = "extensions"."auth_profile_id"())));
-
-
-
-CREATE POLICY "Inserción unificada de artículos de orden" ON "public"."order_items" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (EXISTS ( SELECT 1
-   FROM "public"."orders" "o"
-  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = ( SELECT "auth"."uid"() AS "uid")))))));
-
-
-
-CREATE POLICY "Inserción unificada de órdenes" ON "public"."orders" FOR INSERT TO "authenticated" WITH CHECK (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (( SELECT "auth"."uid"() AS "uid") = "customer_id")));
-
-
-
 CREATE POLICY "Inventario: Entradas por permiso" ON "public"."inventory_entries" FOR INSERT TO "authenticated" WITH CHECK ("public"."user_has_permission"('inventory.entries'::"text"));
 
 
@@ -7562,47 +7475,61 @@ CREATE POLICY "Inventario: Salidas por permiso" ON "public"."inventory_exits" FO
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."cash_shifts" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items carrito: Acceso propio o gestión" ON "public"."cart_items" TO "authenticated" USING (((EXISTS ( SELECT 1
+   FROM "public"."shopping_carts" "sc"
+  WHERE (("sc"."id" = "cart_items"."cart_id") AND ("sc"."profile_id" = "extensions"."auth_profile_id"())))) OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."customer_credit_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items compra: Gestión por permiso" ON "public"."purchase_order_items" TO "authenticated" USING ("public"."user_has_permission"('purchases.create'::"text")) WITH CHECK ("public"."user_has_permission"('purchases.create'::"text"));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entries" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items compra: Lectura por permiso" ON "public"."purchase_order_items" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('purchases.view'::"text") OR "public"."user_has_permission"('purchases.create'::"text")));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_entry_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items entradas: Inserción por permiso" ON "public"."inventory_entry_items" FOR INSERT TO "authenticated" WITH CHECK ("public"."user_has_permission"('inventory.entries'::"text"));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exit_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items entradas: Lectura por permiso" ON "public"."inventory_entry_items" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.view'::"text") OR "public"."user_has_permission"('inventory.entries'::"text")));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_exits" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items orden: Inserción por permiso o cliente propio" ON "public"."order_items" FOR INSERT TO "authenticated" WITH CHECK (((EXISTS ( SELECT 1
+   FROM "public"."orders" "o"
+  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = "auth"."uid"())))) OR "public"."user_has_permission"('pos.sale'::"text")));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."inventory_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items orden: Lectura por permiso o cliente propio" ON "public"."order_items" FOR SELECT TO "authenticated" USING (((EXISTS ( SELECT 1
+   FROM "public"."orders" "o"
+  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = "auth"."uid"())))) OR "public"."user_has_permission"('pos.view'::"text") OR "public"."user_has_permission"('pos.sale'::"text") OR "public"."user_has_permission"('reports.sales'::"text")));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."purchase_order_items" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items salidas: Inserción por permiso" ON "public"."inventory_exit_items" FOR INSERT TO "authenticated" WITH CHECK ("public"."user_has_permission"('inventory.exits'::"text"));
 
 
 
-CREATE POLICY "Lectura admin/empleado" ON "public"."supplier_credit_movements" FOR SELECT USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Items salidas: Lectura por permiso" ON "public"."inventory_exit_items" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.view'::"text") OR "public"."user_has_permission"('inventory.exits'::"text")));
+
+
+
+CREATE POLICY "Items tomas físicas: Gestión por permiso" ON "public"."physical_inventory_items" TO "authenticated" USING (("public"."user_has_permission"('inventory.physical_count'::"text") OR "public"."user_has_permission"('inventory.adjust'::"text"))) WITH CHECK (("public"."user_has_permission"('inventory.physical_count'::"text") OR "public"."user_has_permission"('inventory.adjust'::"text")));
+
+
+
+CREATE POLICY "Kardex: Inserción por permiso" ON "public"."inventory_movements" FOR INSERT TO "authenticated" WITH CHECK (("public"."user_has_permission"('inventory.entries'::"text") OR "public"."user_has_permission"('inventory.exits'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
+
+
+
+CREATE POLICY "Kardex: Lectura por permiso" ON "public"."inventory_movements" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.kardex'::"text") OR "public"."user_has_permission"('inventory.view'::"text")));
 
 
 
 CREATE POLICY "Lectura de monedas para personal autenticado" ON "public"."currencies" FOR SELECT TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Lectura propia de checkins" ON "public"."daily_checkins" FOR SELECT USING ((("profile_id" = "extensions"."auth_profile_id"()) OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
 
 
 
@@ -7662,77 +7589,47 @@ CREATE POLICY "Lectura publica de stock" ON "public"."warehouse_stock_batches" F
 
 
 
-CREATE POLICY "Lectura selectiva de movimientos de billetera por rol o propiet" ON "public"."wallet_movements" FOR SELECT TO "authenticated" USING (((( SELECT "auth"."uid"() AS "uid") = "profile_id") OR (( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Lotes de stock: Gestión por permiso" ON "public"."warehouse_stock_batches" TO "authenticated" USING (("public"."user_has_permission"('inventory.adjust'::"text") OR "public"."user_has_permission"('warehouses.manage'::"text"))) WITH CHECK (("public"."user_has_permission"('inventory.adjust'::"text") OR "public"."user_has_permission"('warehouses.manage'::"text")));
 
 
 
-CREATE POLICY "Lectura selectiva de perfiles por rol o propietario" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "auth_user_id") OR ("auth"."uid"() = "id") OR ("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"]))));
+CREATE POLICY "Lotes de stock: Lectura por permiso" ON "public"."warehouse_stock_batches" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.view'::"text") OR "public"."user_has_permission"('warehouses.manage'::"text")));
 
 
 
-CREATE POLICY "Lectura unificada de artículos de orden" ON "public"."order_items" FOR SELECT TO "authenticated" USING (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (EXISTS ( SELECT 1
-   FROM "public"."orders" "o"
-  WHERE (("o"."id" = "order_items"."order_id") AND ("o"."customer_id" = ( SELECT "auth"."uid"() AS "uid")))))));
+CREATE POLICY "Marcas: Gestión por permiso" ON "public"."brands" TO "authenticated" USING ("public"."user_has_permission"('brands.manage'::"text")) WITH CHECK ("public"."user_has_permission"('brands.manage'::"text"));
 
 
 
-CREATE POLICY "Lectura unificada de órdenes" ON "public"."orders" FOR SELECT TO "authenticated" USING (((( SELECT "extensions"."auth_user_role"() AS "auth_user_role") = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])) OR (( SELECT "auth"."uid"() AS "uid") = "customer_id")));
+CREATE POLICY "Movimientos crédito cliente: Inserción por permiso" ON "public"."customer_credit_movements" FOR INSERT TO "authenticated" WITH CHECK (("public"."user_has_permission"('credits.manage'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin business_info" ON "public"."business_info" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Movimientos crédito cliente: Lectura por permiso o propio" ON "public"."customer_credit_movements" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('credits.manage'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin checkins" ON "public"."daily_checkins" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Movimientos crédito proveedor: Inserción por permiso" ON "public"."supplier_credit_movements" FOR INSERT TO "authenticated" WITH CHECK (("public"."user_has_permission"('purchases.create'::"text") OR "public"."user_has_permission"('financial.movements.create'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."active_ingredients" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Movimientos crédito proveedor: Lectura por permiso" ON "public"."supplier_credit_movements" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('purchases.view'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."app_settings" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Movimientos cuenta: Inserción por permiso" ON "public"."account_movements" FOR INSERT TO "authenticated" WITH CHECK (("public"."user_has_permission"('financial.movements.create'::"text") OR "public"."user_has_permission"('financial.accounts.manage'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."attribute_values" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Movimientos cuenta: Lectura por permiso" ON "public"."account_movements" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('financial.accounts.manage'::"text") OR "public"."user_has_permission"('reports.financial'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."attributes" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Perfiles: Gestión por permiso o propio" ON "public"."profiles" TO "authenticated" USING ((("auth"."uid"() = "auth_user_id") OR ("auth"."uid"() = "id") OR "public"."user_has_permission"('users.manage'::"text") OR "public"."user_has_permission"('customers.manage'::"text") OR "public"."user_has_permission"('pos.sale'::"text"))) WITH CHECK ((("auth"."uid"() = "auth_user_id") OR ("auth"."uid"() = "id") OR "public"."user_has_permission"('users.manage'::"text") OR "public"."user_has_permission"('customers.manage'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
 
 
 
-CREATE POLICY "Modificacion admin/empleado" ON "public"."brands" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."categories" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_active_ingredients" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_images" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."product_variants" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."purchase_order_items" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."purchase_orders" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
-
-
-
-CREATE POLICY "Modificacion admin/empleado" ON "public"."variant_attribute_values" FOR UPDATE USING (("extensions"."auth_user_role"() = ANY (ARRAY['admin'::"public"."user_role", 'employee'::"public"."user_role"])));
+CREATE POLICY "Perfiles: Lectura por permiso o propio" ON "public"."profiles" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "auth_user_id") OR ("auth"."uid"() = "id") OR "public"."user_has_permission"('users.view'::"text") OR "public"."user_has_permission"('customers.view'::"text") OR "public"."user_has_permission"('pos.view'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
 
 
 
@@ -7768,6 +7665,18 @@ CREATE POLICY "Proveedores: Lectura por permiso" ON "public"."suppliers" FOR SEL
 
 
 
+CREATE POLICY "Reseñas: Eliminación por permiso o propio" ON "public"."product_reviews" FOR DELETE TO "authenticated" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('products.edit'::"text")));
+
+
+
+CREATE POLICY "Reseñas: Modificación por permiso o propio" ON "public"."product_reviews" FOR UPDATE TO "authenticated" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('products.edit'::"text")));
+
+
+
+CREATE POLICY "Salidas: Lectura por permiso" ON "public"."inventory_exits" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('inventory.view'::"text") OR "public"."user_has_permission"('inventory.exits'::"text")));
+
+
+
 CREATE POLICY "Series administrables por personal con permiso de configuració" ON "public"."document_series" TO "authenticated" USING ("public"."user_has_permission"('settings.edit'::"text")) WITH CHECK ("public"."user_has_permission"('settings.edit'::"text"));
 
 
@@ -7792,11 +7701,23 @@ CREATE POLICY "Solo administradores pueden modificar roles" ON "public"."roles" 
 
 
 
+CREATE POLICY "Tomas físicas: Gestión por permiso" ON "public"."physical_inventories" TO "authenticated" USING (("public"."user_has_permission"('inventory.physical_count'::"text") OR "public"."user_has_permission"('inventory.adjust'::"text"))) WITH CHECK (("public"."user_has_permission"('inventory.physical_count'::"text") OR "public"."user_has_permission"('inventory.adjust'::"text")));
+
+
+
 CREATE POLICY "Turnos de caja: Apertura por permiso" ON "public"."cash_shifts" FOR INSERT TO "authenticated" WITH CHECK (("public"."user_has_permission"('pos.cash_shift.open'::"text") AND ("opened_by" = "extensions"."auth_profile_id"())));
 
 
 
 CREATE POLICY "Turnos de caja: Cierre por permiso" ON "public"."cash_shifts" FOR UPDATE TO "authenticated" USING ("public"."user_has_permission"('pos.cash_shift.close'::"text"));
+
+
+
+CREATE POLICY "Turnos de caja: Lectura por permiso o propio" ON "public"."cash_shifts" FOR SELECT TO "authenticated" USING ((("opened_by" = "extensions"."auth_profile_id"()) OR ("closed_by" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('pos.cash_shift.view'::"text") OR "public"."user_has_permission"('pos.view'::"text")));
+
+
+
+CREATE POLICY "Ubicaciones: Gestión por permiso o propio" ON "public"."customer_locations" TO "authenticated" USING ((("auth"."uid"() = "profile_id") OR "public"."user_has_permission"('customers.manage'::"text"))) WITH CHECK ((("auth"."uid"() = "profile_id") OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
@@ -7812,10 +7733,26 @@ CREATE POLICY "Usuarios pueden ver sus propios roles asignados" ON "public"."use
 
 
 
+CREATE POLICY "Valores atributo: Gestión por permiso" ON "public"."attribute_values" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
+
+
+
+CREATE POLICY "Valores variante: Gestión por permiso" ON "public"."variant_attribute_values" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
+
+
+
+CREATE POLICY "Variantes: Gestión por permiso" ON "public"."product_variants" TO "authenticated" USING (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text"))) WITH CHECK (("public"."user_has_permission"('products.edit'::"text") OR "public"."user_has_permission"('products.create'::"text")));
+
+
+
 CREATE POLICY "Warehouses: view all or assigned" ON "public"."warehouses" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('warehouses.view_all'::"text") OR (EXISTS ( SELECT 1
    FROM ("public"."user_warehouses" "uw"
      JOIN "public"."profiles" "p" ON (("p"."id" = "uw"."profile_id")))
   WHERE (("p"."auth_user_id" = "auth"."uid"()) AND ("uw"."warehouse_id" = "warehouses"."id"))))));
+
+
+
+CREATE POLICY "Wishlist: Acceso propio o gestión" ON "public"."wishlist" TO "authenticated" USING ((("profile_id" = "extensions"."auth_profile_id"()) OR "public"."user_has_permission"('customers.manage'::"text")));
 
 
 
@@ -7964,6 +7901,14 @@ ALTER TABLE "public"."warehouses" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."wishlist" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "Órdenes: Inserción por permiso o cliente propio" ON "public"."orders" FOR INSERT TO "authenticated" WITH CHECK ((("auth"."uid"() = "customer_id") OR "public"."user_has_permission"('pos.sale'::"text")));
+
+
+
+CREATE POLICY "Órdenes: Lectura por permiso o cliente propio" ON "public"."orders" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "customer_id") OR "public"."user_has_permission"('pos.view'::"text") OR "public"."user_has_permission"('pos.sale'::"text") OR "public"."user_has_permission"('reports.sales'::"text")));
+
 
 
 
@@ -8366,6 +8311,12 @@ GRANT ALL ON FUNCTION "public"."process_inventory_exit_rpc"("p_warehouse_id" "uu
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."process_pos_sale"("payload" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."protect_system_roles"() TO "anon";
+GRANT ALL ON FUNCTION "public"."protect_system_roles"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."protect_system_roles"() TO "service_role";
 
 
 
