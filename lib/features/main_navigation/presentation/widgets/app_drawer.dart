@@ -274,10 +274,7 @@ class _AppDrawerState extends State<AppDrawer> {
             },
           ),
         if (isAdmin ||
-            canAny([
-              AppPermissions.brandsManage,
-              AppPermissions.productsEdit,
-            ]))
+            canAny([AppPermissions.brandsManage, AppPermissions.productsEdit]))
           _DrawerSubItem(
             icon: Icons.branding_watermark_outlined,
             title: 'Marcas',

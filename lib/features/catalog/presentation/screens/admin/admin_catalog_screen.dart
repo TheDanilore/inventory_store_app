@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
@@ -640,7 +641,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                   _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
           actions: [
-            if (!isMobile)
+            if (!isMobile &&
+                (context.watch<AuthCubit>().state.currentUser?.canAccessPos ??
+                    false))
               OutlinedButton.icon(
                 onPressed: () => context.go('/pos'),
                 style: OutlinedButton.styleFrom(
@@ -759,7 +762,16 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                 if ((event.logicalKey == LogicalKeyboardKey.keyP &&
                         !isModifier) ||
                     (isAlt && event.logicalKey == LogicalKeyboardKey.keyP)) {
-                  context.go('/pos');
+                  final canPos =
+                      context
+                          .read<AuthCubit>()
+                          .state
+                          .currentUser
+                          ?.canAccessPos ??
+                      false;
+                  if (canPos) {
+                    context.go('/pos');
+                  }
                   return KeyEventResult.handled;
                 }
 

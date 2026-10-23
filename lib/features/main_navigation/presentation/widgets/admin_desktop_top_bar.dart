@@ -270,11 +270,13 @@ class AdminDesktopTopBar extends StatelessWidget {
               final authState = context.read<AuthCubit>().state;
               final currentUser = authState.currentUser;
               final isAdmin = currentUser?.isAdmin ?? false;
-              final canBusiness = isAdmin ||
+              final canBusiness =
+                  isAdmin ||
                   (currentUser?.hasAnyPermission([
-                    AppPermissions.settingsView,
-                    AppPermissions.settingsEdit,
-                  ]) ?? false);
+                        AppPermissions.settingsView,
+                        AppPermissions.settingsEdit,
+                      ]) ??
+                      false);
 
               return [
                 const PopupMenuItem(

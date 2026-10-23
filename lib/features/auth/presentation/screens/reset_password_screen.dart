@@ -54,7 +54,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (success) {
       AppSnackbar.show(
         context,
-        message: '¡Contraseña actualizada con éxito! Inicia sesión con tu nueva clave.',
+        message:
+            '¡Contraseña actualizada con éxito! Inicia sesión con tu nueva clave.',
         type: SnackbarType.success,
       );
       // Cierra la sesión temporal de recuperación
@@ -65,7 +66,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } else {
       AppSnackbar.show(
         context,
-        message: cubit.state.errorMessage ?? 'No se pudo actualizar la contraseña. El enlace pudo haber expirado.',
+        message:
+            cubit.state.errorMessage ??
+            'No se pudo actualizar la contraseña. El enlace pudo haber expirado.',
         type: SnackbarType.error,
       );
     }
@@ -88,7 +91,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 color: isDark ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  color:
+                      isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
                   width: 1.2,
                 ),
                 boxShadow: [
@@ -110,7 +114,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       child: Container(
                         height: 90,
                         constraints: const BoxConstraints(maxWidth: 160),
-                        child: Image.asset('assets/logo_full.png', fit: BoxFit.contain),
+                        child: Image.asset(
+                          'assets/logo_full.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -136,7 +143,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                         letterSpacing: -0.5,
                       ),
                       textAlign: TextAlign.center,
@@ -146,7 +156,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       'Ingresa tu nueva contraseña para volver a acceder a tu cuenta.',
                       style: TextStyle(
                         fontSize: 13.5,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textSecondary,
                         fontWeight: FontWeight.w400,
                       ),
                       textAlign: TextAlign.center,
@@ -165,7 +178,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: obscure,
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               size: 20,
                               color: AppColors.textMuted,
                             ),
@@ -173,8 +188,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                           validator: (val) {
                             final text = val ?? '';
-                            if (text.isEmpty) return 'Ingresa una nueva contraseña';
-                            if (text.length < 6) return 'Debe tener al menos 6 caracteres';
+                            if (text.isEmpty)
+                              return 'Ingresa una nueva contraseña';
+                            if (text.length < 6)
+                              return 'Debe tener al menos 6 caracteres';
                             return null;
                           },
                         );
@@ -194,7 +211,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           obscureText: obscure,
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               size: 20,
                               color: AppColors.textMuted,
                             ),
@@ -224,22 +243,23 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           elevation: 0,
                         ),
                         onPressed: _isLoading ? null : _onSubmit,
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
+                        child:
+                            _isLoading
+                                ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Text(
+                                  'Guardar Nueva Contraseña',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                'Guardar Nueva Contraseña',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -252,7 +272,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
                         ),
                       ),
                     ),

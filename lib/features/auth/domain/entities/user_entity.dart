@@ -101,27 +101,62 @@ class UserEntity extends Equatable {
       isAdmin ||
       hasAnyPermission([AppPermissions.posSale, AppPermissions.posView]);
 
-  /// Comprueba si el usuario tiene permisos para consultar o administrar el ERP
-  bool get canAccessErp =>
-      isAdmin ||
-      hasAnyPermission([
-        AppPermissions.productsCreate,
-        AppPermissions.productsEdit,
-        AppPermissions.inventoryEntries,
-        AppPermissions.inventoryExits,
-        AppPermissions.inventoryKardex,
-        AppPermissions.purchasesView,
-        AppPermissions.purchasesCreate,
-        AppPermissions.suppliersView,
-        AppPermissions.customersView,
-        AppPermissions.reportsFinancial,
-        AppPermissions.reportsSales,
-        AppPermissions.usersView,
-        AppPermissions.rolesManage,
-        AppPermissions.settingsView,
-        AppPermissions.warehousesManage,
-        AppPermissions.financialAccountsManage,
-      ]);
+  /// Comprueba si el usuario tiene acceso al entorno administrativo (ERP / Dashboard).
+  ///
+  /// DISEÑO RBAC: La decisión se toma **únicamente por permisos**, nunca por el nombre
+  /// del rol. Los roles son agrupaciones de permisos; la autorización real siempre es
+  /// "¿tiene el usuario el permiso X?"
+  ///
+  /// Evaluación en orden de prioridad:
+  ///
+  /// 1. Admin (isAdmin) → acceso total garantizado. Es el único chequeo de rol porque
+  ///    el admin es un superusuario que por definición bypasea el sistema de permisos.
+  /// 2. Permiso explícito `erp.access` → mecanismo principal y recomendado.
+  ///    Si el rol tiene este permiso → accede al ERP. Si no → no accede.
+  /// 3. Fallback de compatibilidad → para roles que aún no tienen `erp.access` en BD
+  ///    pero tienen permisos estrictamente administrativos (products.create,
+  ///    inventory.entries, purchases.view, etc.).
+  ///    Nota: `customers.view`, `inventory.view` y `products.view` fueron retirados
+  ///    del fallback porque el cajero también los necesita para operar en el POS.
+  ///    El cajero no tiene ninguno de los permisos del fallback, por lo que
+  ///    canAccessErp = false de forma natural, sin chequear nombres de roles.
+  bool get canAccessErp {
+    if (isAdmin) return true;
+
+    // Permiso explícito: mecanismo principal
+    if (hasPermission(AppPermissions.erpAccess)) return true;
+
+    // Fallback de compatibilidad: permisos que solo tienen roles ERP (no cajero)
+    return hasAnyPermission([
+      AppPermissions.productsCreate,
+      AppPermissions.productsEdit,
+      AppPermissions.inventoryEntries,
+      AppPermissions.inventoryExits,
+      AppPermissions.inventoryKardex,
+      AppPermissions.inventoryAdjust,
+      AppPermissions.inventoryTransfer,
+      AppPermissions.inventoryPhysicalCount,
+      AppPermissions.purchasesView,
+      AppPermissions.purchasesCreate,
+      AppPermissions.purchasesReceive,
+      AppPermissions.suppliersView,
+      AppPermissions.suppliersManage,
+      AppPermissions.reportsFinancial,
+      AppPermissions.reportsSales,
+      AppPermissions.reportsInventory,
+      AppPermissions.reportsView,
+      AppPermissions.usersView,
+      AppPermissions.usersCreate,
+      AppPermissions.rolesManage,
+      AppPermissions.permissionsAssign,
+      AppPermissions.settingsView,
+      AppPermissions.settingsEdit,
+      AppPermissions.warehousesManage,
+      AppPermissions.warehousesViewAll,
+      AppPermissions.financialAccountsManage,
+      AppPermissions.financialMovementsCreate,
+    ]);
+  }
 
   /// Usuario asignado exclusivamente a POS/Caja (tiene permiso de POS pero no tiene acceso al ERP)
   bool get isPosOnly => canAccessPos && !canAccessErp;

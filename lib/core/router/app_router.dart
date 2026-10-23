@@ -211,6 +211,11 @@ class AppRouter {
           return null;
         }
 
+        // Si el usuario intenta entrar a /pos pero no tiene permisos para el POS:
+        if (!user.canAccessPos && currentPath.startsWith('/pos')) {
+          return '/';
+        }
+
         if (isSplash || isLogin) {
           return '/';
         }

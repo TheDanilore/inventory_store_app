@@ -2,6 +2,11 @@
 class AppPermissions {
   AppPermissions._();
 
+  // ─── ACCESO A ENTORNOS ────────────────────────────────────────────────────
+  /// Permiso de acceso al entorno administrativo (ERP / Dashboard).
+  /// Los roles que NO tengan este permiso son redirigidos exclusivamente al POS.
+  static const String erpAccess = 'erp.access';
+
   // ─── MÓDULO POS ───────────────────────────────────────────────────────────
   static const String posView = 'pos.view';
   static const String posSale = 'pos.sale';
@@ -77,6 +82,7 @@ class AppPermissions {
 
   /// Lista con todos los permisos del sistema
   static const List<String> all = [
+    erpAccess,
     warehousesViewAll,
     warehousesManage,
     suppliersView,
@@ -131,6 +137,8 @@ class AppPermissions {
   /// Nombres legibles para la interfaz
   static String getLabel(String code) {
     switch (code) {
+      case erpAccess:
+        return 'Acceso al entorno administrativo (ERP)';
       case warehousesViewAll:
         return 'Ver todos los almacenes';
       case warehousesManage:
@@ -236,6 +244,7 @@ class AppPermissions {
 
   /// Módulo de pertenencia para agrupar en la interfaz
   static String getModule(String code) {
+    if (code == 'erp.access') return 'Acceso y Seguridad';
     if (code.startsWith('warehouses.')) return 'Almacenes y Sucursales';
     if (code.startsWith('pos.')) return 'Punto de Venta (POS)';
     if (code.startsWith('inventory.')) return 'Inventario y Almacén';

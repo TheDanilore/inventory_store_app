@@ -282,10 +282,7 @@ class AuthRepositoryImpl implements AuthRepository {
         redirectTo = 'io.supabase.inventory://reset-callback';
       }
 
-      await _supabase.auth.resetPasswordForEmail(
-        email,
-        redirectTo: redirectTo,
-      );
+      await _supabase.auth.resetPasswordForEmail(email, redirectTo: redirectTo);
       return right(null);
     } on sb.AuthException catch (e, st) {
       LoggerService.w(

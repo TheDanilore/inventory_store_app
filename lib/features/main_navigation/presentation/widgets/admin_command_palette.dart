@@ -73,10 +73,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/catalog',
       icon: Icons.grid_view_rounded,
       category: 'Navegación Rápida',
-      permissions: [
-        AppPermissions.productsView,
-        AppPermissions.inventoryView,
-      ],
+      permissions: [AppPermissions.productsView, AppPermissions.inventoryView],
     ),
     AdminCommandPaletteItem(
       title: 'Gestión de Pedidos',
@@ -84,10 +81,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/orders',
       icon: Icons.receipt_long_rounded,
       category: 'Comercial',
-      permissions: [
-        AppPermissions.posView,
-        AppPermissions.posSale,
-      ],
+      permissions: [AppPermissions.posView, AppPermissions.posSale],
     ),
     AdminCommandPaletteItem(
       title: 'Órdenes de Compra',
@@ -107,9 +101,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/inventory-entries',
       icon: Icons.add_business_rounded,
       category: 'Inventario',
-      permissions: [
-        AppPermissions.inventoryEntries,
-      ],
+      permissions: [AppPermissions.inventoryEntries],
     ),
     AdminCommandPaletteItem(
       title: 'Salidas de Inventario',
@@ -117,9 +109,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/inventory-exits',
       icon: Icons.remove_shopping_cart_rounded,
       category: 'Inventario',
-      permissions: [
-        AppPermissions.inventoryExits,
-      ],
+      permissions: [AppPermissions.inventoryExits],
     ),
     AdminCommandPaletteItem(
       title: 'Stock e Inventario',
@@ -127,9 +117,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/inventory',
       icon: Icons.inventory_2_outlined,
       category: 'Inventario',
-      permissions: [
-        AppPermissions.inventoryView,
-      ],
+      permissions: [AppPermissions.inventoryView],
     ),
     AdminCommandPaletteItem(
       title: 'Kardex de Inventario',
@@ -137,9 +125,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/kardex',
       icon: Icons.article_outlined,
       category: 'Inventario',
-      permissions: [
-        AppPermissions.inventoryKardex,
-      ],
+      permissions: [AppPermissions.inventoryKardex],
     ),
     AdminCommandPaletteItem(
       title: 'Directorio de Clientes',
@@ -216,10 +202,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/brands',
       icon: Icons.branding_watermark_outlined,
       category: 'Configuración',
-      permissions: [
-        AppPermissions.brandsManage,
-        AppPermissions.productsEdit,
-      ],
+      permissions: [AppPermissions.brandsManage, AppPermissions.productsEdit],
     ),
     AdminCommandPaletteItem(
       title: 'Almacenes',
@@ -239,9 +222,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/users',
       icon: Icons.account_circle_outlined,
       category: 'Sistema',
-      permissions: [
-        AppPermissions.usersView,
-      ],
+      permissions: [AppPermissions.usersView],
     ),
     AdminCommandPaletteItem(
       title: 'Roles y Permisos',
@@ -260,10 +241,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/business-info',
       icon: Icons.storefront_rounded,
       category: 'Configuración',
-      permissions: [
-        AppPermissions.settingsView,
-        AppPermissions.settingsEdit,
-      ],
+      permissions: [AppPermissions.settingsView, AppPermissions.settingsEdit],
     ),
     AdminCommandPaletteItem(
       title: 'Configuraciones',
@@ -271,9 +249,7 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
       routePath: '/settings',
       icon: Icons.settings_outlined,
       category: 'Sistema',
-      permissions: [
-        AppPermissions.settingsView,
-      ],
+      permissions: [AppPermissions.settingsView],
     ),
     AdminCommandPaletteItem(
       title: 'Mi Perfil',
@@ -304,11 +280,13 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     final currentUser = authState.currentUser;
     final isAdmin = currentUser?.isAdmin ?? false;
 
-    _allowedItems = _allItems.where((item) {
-      if (isAdmin) return true;
-      if (item.permissions == null || item.permissions!.isEmpty) return true;
-      return currentUser?.hasAnyPermission(item.permissions!) ?? false;
-    }).toList();
+    _allowedItems =
+        _allItems.where((item) {
+          if (isAdmin) return true;
+          if (item.permissions == null || item.permissions!.isEmpty)
+            return true;
+          return currentUser?.hasAnyPermission(item.permissions!) ?? false;
+        }).toList();
 
     _applyFilter();
   }
