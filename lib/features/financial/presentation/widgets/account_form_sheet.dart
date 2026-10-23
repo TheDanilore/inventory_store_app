@@ -70,6 +70,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   bool _isActive = true;
   bool _editBalance = false;
   bool _saving = false;
+  bool _userEditedName = false;
 
   String? _selectedWarehouseId;
   List<WarehouseEntity> _warehouses = [];
@@ -120,6 +121,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _currencyCode = acc.currencyCode;
       _balanceCtrl.text = acc.balance.toStringAsFixed(2);
       _selectedWarehouseId = acc.warehouseId;
+      _userEditedName = true;
 
       // Detectar si la cuenta corresponde a alguna entidad conocida
       final detected = FinancialBrandHelper.getBrand(
@@ -142,15 +144,59 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _currencyCode = 'PEN';
       _brandKey = 'caja_principal';
       _balanceCtrl.text = '0.00';
+      _userEditedName = false;
     }
 
     _loadWarehouses();
 
     _nameCtrl.addListener(() {
-      if (mounted) setState(() {});
+      if (mounted) {
+        if (!_isEditing) {
+          _userEditedName = true;
+        }
+        setState(() {});
+      }
     });
     _balanceCtrl.addListener(() {
       if (mounted) setState(() {});
+    });
+  }
+
+  String _getSelectedWarehouseName() {
+    if (_selectedWarehouseId == null || _warehouses.isEmpty) return '';
+    final w =
+        _warehouses
+            .where((e) => e.id == _selectedWarehouseId)
+            .cast<WarehouseEntity?>()
+            .firstOrNull;
+    return w?.name ?? '';
+  }
+
+  void _applySuggestedCajaName({bool force = false}) {
+    if (_isEditing) return;
+    if (_type != 'CAJA') return;
+    if (!force && _userEditedName) return;
+    final wname = _getSelectedWarehouseName();
+    if (wname.isEmpty) return;
+    String base = 'Caja Principal';
+    final currentLower = _nameCtrl.text.toLowerCase();
+    if (currentLower.contains('chica')) {
+      base = 'Caja Principal';
+    } else if (currentLower.contains('principal') ||
+        _brandKey == 'caja_principal') {
+      base = 'Caja Principal';
+    } else if (currentLower.isEmpty) {
+      base = 'Caja Principal';
+    } else {
+      // Si ya tiene algo custom pero no incluye almacén, mejor forzar con almacén
+      base = 'Caja Principal';
+    }
+    final suggested = '$base - $wname';
+    if (_nameCtrl.text.trim() == suggested) return;
+    setState(() {
+      _nameCtrl.text = suggested;
+      _brandKey = 'caja_principal';
+      _userEditedName = false;
     });
   }
 
@@ -166,6 +212,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             _selectedWarehouseId = _warehouses.first.id;
           }
         });
+        _applySuggestedCajaName(force: true);
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingWarehouses = false);
@@ -185,7 +232,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     setState(() {
       _brandKey = preset.key;
       _type = preset.type;
-      _nameCtrl.text = preset.defaultName;
+      _userEditedName = false;
       final lower = preset.defaultName.toLowerCase();
       if (preset.key.contains('usd') ||
           lower.contains('dólar') ||
@@ -193,6 +240,19 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         _currencyCode = 'USD';
       }
     });
+    if (preset.type == 'CAJA') {
+      // Unificar Caja Principal/Caja Chica a Caja Principal con almacén
+      if (preset.key == 'caja_chica') {
+        setState(() {
+          _brandKey = 'caja_principal';
+        });
+      }
+      _applySuggestedCajaName(force: true);
+    } else {
+      setState(() {
+        _nameCtrl.text = preset.defaultName;
+      });
+    }
   }
 
   /// "Otro": logo automático según el nombre. Si viene [name] (desde el
@@ -200,7 +260,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   void _onSelectCustom([String? name]) {
     setState(() {
       _brandKey = 'auto';
-      if (name != null && name.trim().isNotEmpty) _nameCtrl.text = name.trim();
+      if (name != null && name.trim().isNotEmpty) {
+        _nameCtrl.text = name.trim();
+        _userEditedName = true;
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -221,8 +284,35 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       final balance =
           balanceText.isNotEmpty ? double.tryParse(balanceText) ?? 0.0 : 0.0;
 
+      String finalName = _nameCtrl.text.trim();
+      if (!_isEditing && _type == 'CAJA') {
+        final wname = _getSelectedWarehouseName();
+        if (wname.isNotEmpty) {
+          final lowerName = finalName.toLowerCase();
+          final lowerW = wname.toLowerCase();
+          if (!lowerName.contains(lowerW)) {
+            // Asegura formato único por almacén
+            if (lowerName == 'caja principal' ||
+                lowerName == 'caja chica' ||
+                lowerName == 'caja') {
+              finalName = 'Caja Principal - $wname';
+            } else {
+              finalName = '$finalName - $wname';
+            }
+          } else {
+            // Ya contiene el almacén, pero normaliza "caja chica" a "caja principal"
+            if (lowerName.contains('chica')) {
+              finalName = finalName.replaceFirst(
+                RegExp(r'Caja\s+Chica', caseSensitive: false),
+                'Caja Principal',
+              );
+            }
+          }
+        }
+      }
+
       await context.read<FinancialAccountsCubit>().saveAccount(
-        name: _nameCtrl.text.trim(),
+        name: finalName,
         type: _type,
         isActive: _isActive,
         initialBalance: (!_isEditing || _editBalance) ? balance : null,
@@ -912,7 +1002,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           ),
       ],
       onChanged: (val) {
-        if (val != null) setState(() => _selectedWarehouseId = val);
+        if (val != null) {
+          setState(() => _selectedWarehouseId = val);
+          _applySuggestedCajaName();
+        }
       },
     );
   }

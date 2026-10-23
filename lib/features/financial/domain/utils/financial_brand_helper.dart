@@ -19,7 +19,6 @@ enum FinancialBrandType {
   cajaCusco,
   cajaPiura,
   cajaMunicipal,
-  cajaChica,
   caja,
   posNiubiz,
   posIzipay,
@@ -197,15 +196,6 @@ class FinancialBrandHelper {
       primaryColor: AppColors.teal,
       icon: Icons.point_of_sale_rounded,
     ),
-    FinancialBrandPreset(
-      key: 'caja_chica',
-      label: 'Caja Chica',
-      defaultName: 'Caja Chica',
-      type: 'CAJA',
-      brandType: FinancialBrandType.cajaChica,
-      primaryColor: Color(0xFF0284C7),
-      icon: Icons.savings_rounded,
-    ),
 
     // POS / Pasarelas
     FinancialBrandPreset(
@@ -318,11 +308,6 @@ class FinancialBrandHelper {
         n.contains('STRIPE') ||
         n.contains('PAYPAL')) {
       return _fromBrandType(FinancialBrandType.posNiubiz, 'POS / Tarjeta');
-    }
-
-    // 13. Caja Chica
-    if (n.contains('CHICA')) {
-      return _fromBrandType(FinancialBrandType.cajaChica, 'Caja Chica');
     }
 
     // 14. Caja Física / Efectivo
@@ -485,17 +470,6 @@ class FinancialBrandHelper {
           textColor: Color(0xFF0D47A1),
           icon: Icons.account_balance_rounded,
           shortCode: 'CAJA',
-        );
-
-      case FinancialBrandType.cajaChica:
-        return const FinancialBrandInfo(
-          brand: FinancialBrandType.cajaChica,
-          label: 'Caja Chica',
-          primaryColor: Color(0xFF0284C7),
-          bgColor: Color(0xFFE0F2FE),
-          textColor: Color(0xFF0369A1),
-          icon: Icons.savings_rounded,
-          shortCode: 'CHICA',
         );
 
       case FinancialBrandType.caja:
@@ -926,23 +900,7 @@ class FinancialBrandHelper {
           ),
         );
 
-      case FinancialBrandType.cajaChica:
-        return _buildImageBadge(
-          assetPath: 'assets/icons/banks/caja_chica.png',
-          size: size,
-          fit: BoxFit.cover,
-          showBorder: false,
-          fallback: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: info.primaryColor,
-              borderRadius: BorderRadius.circular(size * 0.28),
-            ),
-            alignment: Alignment.center,
-            child: Icon(info.icon, size: size * 0.52, color: Colors.white),
-          ),
-        );
+
 
       case FinancialBrandType.posNiubiz:
         return _buildImageBadge(
