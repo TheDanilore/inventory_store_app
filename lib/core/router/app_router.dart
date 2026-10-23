@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -123,7 +124,7 @@ class AppRouter {
   }
 
   static GoRouter createRouter(AuthCubit authCubit) {
-    return GoRouter(
+    final router = GoRouter(
       navigatorKey: rootNavigatorKey,
       restorationScopeId: 'router',
       initialLocation: '/splash',
@@ -165,6 +166,9 @@ class AppRouter {
         final currentPath = state.uri.path;
         final isSplash = currentPath == '/splash';
         final isLogin = currentPath == '/login';
+        final isResetPassword = currentPath == '/reset-password';
+
+        if (isResetPassword) return null;
 
         LoggerService.d(
           'Evaluando redirección: path=$currentPath, status=${authState.authStatus}',
@@ -305,5 +309,24 @@ class AppRouter {
         ),
       ],
     );
+
+    try {
+      sb.Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+        if (data.event == sb.AuthChangeEvent.passwordRecovery) {
+          LoggerService.i(
+            'AuthChangeEvent.passwordRecovery detectado -> Redirigiendo a /reset-password',
+            tag: 'AppRouter',
+          );
+          router.go('/reset-password');
+        }
+      });
+    } catch (e) {
+      LoggerService.w(
+        'No se pudo registrar listener de recuperación de contraseña: $e',
+        tag: 'AppRouter',
+      );
+    }
+
+    return router;
   }
 }

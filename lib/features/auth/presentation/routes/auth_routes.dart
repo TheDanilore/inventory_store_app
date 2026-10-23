@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/profile_screen.dart';
+import 'package:inventory_store_app/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:inventory_store_app/features/auth/presentation/screens/splash_screen.dart';
 
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -22,6 +23,10 @@ class AuthRoutes {
           ),
     ),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const ResetPasswordScreen(),
+    ),
   ];
 
   static List<RouteBase> get adminRoutes => [

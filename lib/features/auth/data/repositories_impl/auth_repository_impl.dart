@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
@@ -274,7 +274,18 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> resetPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      String? redirectTo;
+      if (kIsWeb) {
+        final origin = Uri.base.origin;
+        redirectTo = '$origin/#/reset-password';
+      } else {
+        redirectTo = 'io.supabase.inventory://reset-callback';
+      }
+
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: redirectTo,
+      );
       return right(null);
     } on sb.AuthException catch (e, st) {
       LoggerService.w(
