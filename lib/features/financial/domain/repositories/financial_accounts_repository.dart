@@ -24,5 +24,6 @@ abstract class FinancialAccountsRepository {
     required String type,
     required bool isActive,
     double? initialBalance,
+    String currencyCode = 'PEN',
   });
 }

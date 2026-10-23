@@ -172,11 +172,21 @@ class _AccountsTabState extends State<AccountsTab> {
                                                     );
                                                   }
                                                 },
-                                                onEdit:
-                                                    () => AccountFormSheet.show(
-                                                      context,
-                                                      account: entry.value,
-                                                    ),
+                                                onEdit: () async {
+                                                  final updated =
+                                                      await AccountFormSheet.show(
+                                                        context,
+                                                        account: entry.value,
+                                                      );
+                                                  if (updated == true &&
+                                                      context.mounted) {
+                                                    context
+                                                        .read<
+                                                          FinancialAccountsCubit
+                                                        >()
+                                                        .fetchAccounts();
+                                                  }
+                                                },
                                               ),
                                             ),
                                           ),
@@ -235,11 +245,21 @@ class _AccountsTabState extends State<AccountsTab> {
                                                     );
                                                   }
                                                 },
-                                                onEdit:
-                                                    () => AccountFormSheet.show(
-                                                      context,
-                                                      account: entry.value,
-                                                    ),
+                                                onEdit: () async {
+                                                  final updated =
+                                                      await AccountFormSheet.show(
+                                                        context,
+                                                        account: entry.value,
+                                                      );
+                                                  if (updated == true &&
+                                                      context.mounted) {
+                                                    context
+                                                        .read<
+                                                          FinancialAccountsCubit
+                                                        >()
+                                                        .fetchAccounts();
+                                                  }
+                                                },
                                               ),
                                             ),
                                           ),
@@ -478,6 +498,7 @@ class _AccountCardState extends State<_AccountCard> {
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             onTap: widget.onTap,
+            onDoubleTap: widget.onEdit,
             borderRadius: BorderRadius.circular(14),
             child: Stack(
               children: [
@@ -645,20 +666,28 @@ class _AccountCardState extends State<_AccountCard> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit_outlined,
-                                  size: 15,
-                                  color: AppColors.textSecondary,
+                              const SizedBox(width: 6),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: widget.onEdit,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 14,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
                                 ),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                ),
-                                tooltip: 'Editar cuenta',
-                                onPressed: widget.onEdit,
                               ),
                             ],
                           ),

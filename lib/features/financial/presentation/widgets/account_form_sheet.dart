@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
+import 'package:inventory_store_app/features/financial/domain/utils/financial_brand_helper.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
 
 class AccountFormSheet extends StatefulWidget {
@@ -22,7 +24,7 @@ class AccountFormSheet extends StatefulWidget {
     final cubit = context.read<FinancialAccountsCubit>();
     return AdaptiveDetailSheet.show<bool>(
       context,
-      desktopWidth: 460.0,
+      desktopWidth: 480.0,
       builder:
           (dialogCtx) => BlocProvider.value(
             value: cubit,
@@ -45,7 +47,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   String _type = 'CAJA';
   String _currencyCode = 'PEN';
+  String _brandKey = 'auto';
   bool _isActive = true;
+  bool _editBalance = false;
   bool _saving = false;
 
   static const _types = [
@@ -73,11 +77,40 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   void initState() {
     super.initState();
     if (_isEditing) {
-      _nameCtrl.text = widget.account!.name;
-      _type = widget.account!.type;
-      _isActive = widget.account!.isActive;
-      _currencyCode = widget.account!.currencyCode;
+      final acc = widget.account!;
+      _nameCtrl.text = acc.name;
+      _type = acc.type;
+      _isActive = acc.isActive;
+      _currencyCode = acc.currencyCode;
+      _balanceCtrl.text = acc.balance.toStringAsFixed(2);
+
+      // Detectar si el nombre coincide con algún preset conocido
+      final detected = FinancialBrandHelper.getBrand(
+        name: acc.name,
+        type: acc.type,
+      );
+      final match =
+          FinancialBrandHelper.presets
+              .where((p) => p.brandType == detected.brand)
+              .firstOrNull;
+      if (match != null) {
+        _brandKey = match.key;
+      }
+    } else {
+      // Valor por defecto inicial amigable ("por defecto salir algo")
+      _nameCtrl.text = 'Caja Principal';
+      _type = 'CAJA';
+      _currencyCode = 'PEN';
+      _brandKey = 'caja_principal';
+      _balanceCtrl.text = '0.00';
     }
+
+    _nameCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _balanceCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -85,6 +118,22 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     _nameCtrl.dispose();
     _balanceCtrl.dispose();
     super.dispose();
+  }
+
+  void _onSelectPreset(FinancialBrandPreset preset) {
+    setState(() {
+      _brandKey = preset.key;
+      _type = preset.type;
+      // Si el nombre estaba vacío o coincidía con un preset previo, actualizarlo
+      final isInitialOrEmpty =
+          _nameCtrl.text.trim().isEmpty ||
+          FinancialBrandHelper.presets.any(
+            (p) => p.defaultName == _nameCtrl.text.trim(),
+          );
+      if (isInitialOrEmpty) {
+        _nameCtrl.text = preset.defaultName;
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -100,8 +149,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         name: _nameCtrl.text.trim(),
         type: _type,
         isActive: _isActive,
-        initialBalance: balance,
+        initialBalance: (!_isEditing || _editBalance) ? balance : null,
         accountId: widget.account?.id,
+        currencyCode: _currencyCode,
       );
 
       if (!mounted) return;
@@ -130,7 +180,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   Widget _buildSlideOverLayout() {
     return Column(
       children: [
-        // Encabezado del Side Sheet con botón de cierre explícito y atajo [Esc]
+        // Encabezado del Side Sheet
         Container(
           padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
           decoration: const BoxDecoration(
@@ -157,7 +207,9 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isEditing ? 'Editar Cuenta' : 'Nueva Cuenta Financiera',
+                      _isEditing
+                          ? 'Editar Cuenta Financiera'
+                          : 'Nueva Cuenta Financiera',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -168,8 +220,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
                     const SizedBox(height: 2),
                     Text(
                       _isEditing
-                          ? 'Modifica los parámetros de la cuenta'
-                          : 'Registra una caja, banco o billetera digital',
+                          ? 'Modifica los parámetros y logo de la cuenta'
+                          : 'Configura una caja, banco o billetera digital',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -347,53 +399,16 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!_isEditing) ...[
-          _fieldLabel('Plantillas rápidas sugeridas'),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _presetChip(
-                label: 'Yape',
-                type: 'DIGITAL',
-                icon: Icons.qr_code_2_rounded,
-                color: const Color(0xFF742284),
-              ),
-              _presetChip(
-                label: 'Plin',
-                type: 'DIGITAL',
-                icon: Icons.send_to_mobile_rounded,
-                color: const Color(0xFF00B4D8),
-              ),
-              _presetChip(
-                label: 'BCP Soles',
-                type: 'BANCO',
-                icon: Icons.account_balance_rounded,
-                color: const Color(0xFF002A8F),
-              ),
-              _presetChip(
-                label: 'BBVA',
-                type: 'BANCO',
-                icon: Icons.account_balance_rounded,
-                color: const Color(0xFF004481),
-              ),
-              _presetChip(
-                label: 'Interbank',
-                type: 'BANCO',
-                icon: Icons.account_balance_rounded,
-                color: const Color(0xFF009B3A),
-              ),
-              _presetChip(
-                label: 'Caja Chica',
-                type: 'CAJA',
-                icon: Icons.point_of_sale_rounded,
-                color: AppColors.teal,
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-        ],
+        // ── 1. Tarjeta de Vista Previa en Tiempo Real (Live Preview) ─────────
+        _buildLivePreviewCard(),
+        const SizedBox(height: 20),
 
+        // ── 2. Selector Visual de Entidad / Logotipo / Marca ─────────────────
+        _fieldLabel('Entidad / Logotipo de la Cuenta'),
+        _buildBrandPicker(),
+        const SizedBox(height: 18),
+
+        // ── 3. Nombre de la Cuenta ───────────────────────────────────────────
         _fieldLabel('Nombre de la cuenta *'),
         TextFormField(
           controller: _nameCtrl,
@@ -414,6 +429,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
         const SizedBox(height: 16),
 
+        // ── 4. Moneda de la Cuenta ───────────────────────────────────────────
         _fieldLabel('Moneda de la cuenta *'),
         Row(
           children: [
@@ -440,6 +456,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
         const SizedBox(height: 16),
 
+        // ── 5. Tipo de Cuenta ────────────────────────────────────────────────
         _fieldLabel('Tipo de cuenta *'),
         Wrap(
           spacing: 8,
@@ -513,6 +530,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         ),
         const SizedBox(height: 18),
 
+        // ── 6. Balance (Inicial o Ajuste) ────────────────────────────────────
         if (!_isEditing) ...[
           _fieldLabel('Balance inicial ($currSymbol)'),
           TextFormField(
@@ -551,12 +569,130 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Saldo con el que inicia la cuenta en el sistema. Puedes dejarlo en 0.00.',
+            'Saldo inicial de apertura para la cuenta. Puedes dejarlo en 0.00.',
             style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
         ],
 
+        if (_isEditing) ...[
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Ajustar Balance Actual',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _editBalance
+                                ? 'Puedes corregir directamente el saldo de la cuenta'
+                                : 'Saldo actual registrado: $currSymbol${widget.account!.balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _editBalance = !_editBalance;
+                          if (!_editBalance) {
+                            _balanceCtrl.text = widget.account!.balance
+                                .toStringAsFixed(2);
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        _editBalance
+                            ? Icons.close_rounded
+                            : Icons.edit_note_rounded,
+                        size: 16,
+                      ),
+                      label: Text(
+                        _editBalance ? 'Cancelar ajuste' : 'Corregir saldo',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_editBalance) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _balanceCtrl,
+                    decoration: _inputDeco('0.00').copyWith(
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        child: Text(
+                          currSymbol,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
+                      ),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                    ],
+                    validator: (v) {
+                      if (!_editBalance) {
+                        return null;
+                      }
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Ingresa un saldo';
+                      }
+                      final parsed = double.tryParse(
+                        v.trim().replaceAll(',', '.'),
+                      );
+                      if (parsed == null) {
+                        return 'Ingresa un número válido';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // ── 7. Estado Operativo (Activa / Inactiva) ───────────────────────────
         if (_isEditing) ...[
           Container(
             padding: const EdgeInsets.all(14),
@@ -607,6 +743,328 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     );
   }
 
+  // ── Tarjeta de Vista Previa en Vivo ──────────────────────────────────────
+  Widget _buildLivePreviewCard() {
+    final name =
+        _nameCtrl.text.trim().isEmpty
+            ? 'Nombre de Cuenta'
+            : _nameCtrl.text.trim();
+    final brandInfo = FinancialBrandHelper.getBrand(
+      name: name,
+      type: _type,
+      brandKey: _brandKey,
+    );
+    final currSymbol = _currencyCode == 'USD' ? '\$ ' : 'S/ ';
+    final balanceVal =
+        double.tryParse(_balanceCtrl.text.trim().replaceAll(',', '.')) ??
+        (_isEditing ? widget.account!.balance : 0.0);
+    final currencyFmt = NumberFormat.currency(
+      locale: _currencyCode == 'USD' ? 'en_US' : 'es_PE',
+      symbol: currSymbol,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: brandInfo.primaryColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: brandInfo.primaryColor.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.visibility_outlined,
+                size: 14,
+                color: brandInfo.primaryColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'VISTA PREVIA EN VIVO',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: brandInfo.primaryColor,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      _isActive
+                          ? const Color(0xFFE6FFFA)
+                          : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _isActive ? 'Activa' : 'Inactiva',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        _isActive
+                            ? AppColors.tealDark
+                            : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 18, color: Color(0xFFF1F5F9)),
+          Row(
+            children: [
+              FinancialBrandHelper.buildBrandBadge(
+                name: name,
+                type: _type,
+                brandKey: _brandKey,
+                size: 42,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _type,
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                _currencyCode == 'USD'
+                                    ? Colors.amber.shade50
+                                    : AppColors.teal.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _currencyCode,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  _currencyCode == 'USD'
+                                      ? Colors.amber.shade900
+                                      : AppColors.tealDark,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '• ${brandInfo.label}',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: brandInfo.primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    currencyFmt.format(balanceVal),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15.5,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Saldo',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Selector Visual de Logotipo y Marca ──────────────────────────────────
+  Widget _buildBrandPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              // Opción Automática
+              _brandPresetChip(
+                label: 'Auto (según nombre)',
+                isSelected: _brandKey == 'auto',
+                icon: Icons.auto_awesome_rounded,
+                color: AppColors.textSecondary,
+                onTap: () => setState(() => _brandKey = 'auto'),
+              ),
+              const SizedBox(width: 8),
+
+              // Presets populares de Bancos y Billeteras
+              ...FinancialBrandHelper.presets.map((p) {
+                final isSelected = _brandKey == p.key;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    onTap: () => _onSelectPreset(p),
+                    borderRadius: BorderRadius.circular(10),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? p.primaryColor.withValues(alpha: 0.12)
+                                : AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? p.primaryColor : AppColors.border,
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FinancialBrandHelper.buildBrandBadge(
+                            name: p.label,
+                            type: p.type,
+                            brandKey: p.key,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            p.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? p.primaryColor
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Elige la entidad para asignar el logo oficial automáticamente, o déjalo en automático.',
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _brandPresetChip({
+    required String label,
+    required bool isSelected,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.teal.withValues(alpha: 0.12)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: isSelected ? AppColors.teal : color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _fieldLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 6),
     child: Text(
@@ -643,46 +1101,6 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
     ),
   );
-
-  Widget _presetChip({
-    required String label,
-    required String type,
-    required IconData icon,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _type = type;
-          _nameCtrl.text = label;
-        });
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _currencyCard({
     required String code,

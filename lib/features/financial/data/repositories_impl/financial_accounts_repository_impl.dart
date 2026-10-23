@@ -22,7 +22,9 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
     try {
       final response = await _supabase
           .from('financial_accounts')
-          .select('id, name, type, balance, is_active, created_at')
+          .select(
+            'id, name, type, balance, is_active, created_at, currency_code',
+          )
           .order('is_active', ascending: false)
           .order('name')
           .range(start, end);
@@ -53,7 +55,9 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
       final response =
           await _supabase
               .from('financial_accounts')
-              .select('id, name, type, balance, is_active, created_at')
+              .select(
+                'id, name, type, balance, is_active, created_at, currency_code',
+              )
               .eq('id', accountId)
               .maybeSingle();
       if (response == null) return null;
@@ -95,12 +99,23 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
     required String type,
     required bool isActive,
     double? initialBalance,
+    String currencyCode = 'PEN',
   }) async {
     try {
       if (accountId != null) {
+        final updatePayload = <String, dynamic>{
+          'name': name,
+          'type': type,
+          'is_active': isActive,
+          'currency_code': currencyCode,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+        if (initialBalance != null) {
+          updatePayload['balance'] = initialBalance;
+        }
         await _supabase
             .from('financial_accounts')
-            .update({'name': name, 'type': type, 'is_active': isActive})
+            .update(updatePayload)
             .eq('id', accountId);
       } else {
         await _supabase.from('financial_accounts').insert({
@@ -108,6 +123,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
           'type': type,
           'balance': initialBalance ?? 0.0,
           'is_active': isActive,
+          'currency_code': currencyCode,
         });
       }
     } catch (e, st) {

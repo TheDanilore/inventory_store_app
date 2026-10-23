@@ -92,6 +92,13 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     }
   }
 
+  Future<void> _openAccountForm() async {
+    final res = await AccountFormSheet.show(context);
+    if (res == true && mounted) {
+      _refreshAll();
+    }
+  }
+
   bool get _isInputFieldFocused =>
       FocusUtils.isInputFieldFocused(_searchFocusNode);
 
@@ -141,7 +148,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     // 'C' o Alt+C: Nueva Cuenta (Side Sheet emergente)
     if ((event.logicalKey == LogicalKeyboardKey.keyC && !isModifier) ||
         (isAlt && event.logicalKey == LogicalKeyboardKey.keyC)) {
-      AccountFormSheet.show(context);
+      _openAccountForm();
       return KeyEventResult.handled;
     }
 
@@ -210,7 +217,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
-                      onPressed: () => AccountFormSheet.show(context),
+                      onPressed: _openAccountForm,
                       icon: const Icon(
                         Icons.account_balance_wallet_outlined,
                         size: 16,
@@ -256,7 +263,7 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
     if (index == 0) {
       return FloatingActionButton.extended(
         heroTag: 'mobile_fab_accounts',
-        onPressed: () => AccountFormSheet.show(context),
+        onPressed: _openAccountForm,
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(

@@ -7377,7 +7377,11 @@ CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USIN
 
 
 
-CREATE POLICY "Financial accounts: read active for authenticated" ON "public"."financial_accounts" FOR SELECT TO "authenticated" USING (("is_active" = true));
+CREATE POLICY "Financial accounts: read all for authenticated" ON "public"."financial_accounts" FOR SELECT TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "Financial accounts: manage for authenticated" ON "public"."financial_accounts" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
 
 
 
