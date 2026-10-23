@@ -9,6 +9,7 @@ class BusinessInfoModel {
   final String logoUrl;
   final bool loyaltyGlobalEnabled;
   final bool loyaltyCustomerVisible;
+  final String cashRegisterMode;
 
   const BusinessInfoModel({
     this.id,
@@ -19,6 +20,7 @@ class BusinessInfoModel {
     required this.logoUrl,
     required this.loyaltyGlobalEnabled,
     required this.loyaltyCustomerVisible,
+    this.cashRegisterMode = 'COUNTER',
   });
 
   static bool _parseBool(dynamic value, {bool defaultValue = false}) {
@@ -49,6 +51,7 @@ class BusinessInfoModel {
         map['loyalty_customer_visible'],
         defaultValue: false,
       ),
+      cashRegisterMode: map['cash_register_mode']?.toString() ?? 'COUNTER',
     );
   }
 
@@ -62,6 +65,7 @@ class BusinessInfoModel {
       logoUrl: entity.logoUrl,
       loyaltyGlobalEnabled: entity.loyaltyGlobalEnabled,
       loyaltyCustomerVisible: entity.loyaltyCustomerVisible,
+      cashRegisterMode: entity.cashRegisterMode,
     );
   }
 
@@ -75,6 +79,7 @@ class BusinessInfoModel {
       logoUrl: logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
+      cashRegisterMode: cashRegisterMode,
     );
   }
 
@@ -87,6 +92,7 @@ class BusinessInfoModel {
       'logo_url': logoUrl.isNotEmpty ? logoUrl : null,
       'loyalty_global_enabled': loyaltyGlobalEnabled,
       'loyalty_customer_visible': loyaltyCustomerVisible,
+      'cash_register_mode': cashRegisterMode,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
   }
@@ -100,6 +106,7 @@ class BusinessInfoModel {
     String? logoUrl,
     bool? loyaltyGlobalEnabled,
     bool? loyaltyCustomerVisible,
+    String? cashRegisterMode,
   }) {
     return BusinessInfoModel(
       id: id ?? this.id,
@@ -111,6 +118,7 @@ class BusinessInfoModel {
       loyaltyGlobalEnabled: loyaltyGlobalEnabled ?? this.loyaltyGlobalEnabled,
       loyaltyCustomerVisible:
           loyaltyCustomerVisible ?? this.loyaltyCustomerVisible,
+      cashRegisterMode: cashRegisterMode ?? this.cashRegisterMode,
     );
   }
 }

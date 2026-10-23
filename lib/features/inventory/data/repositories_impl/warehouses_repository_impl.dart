@@ -102,9 +102,48 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
           .from('warehouses')
           .update(payload)
           .eq('id', existingWarehouse.id);
+
+      // Si el estado activo del almacén cambió, sincronizar sus cajas asociadas
+      if (existingWarehouse.isActive != isActive) {
+        await _supabase
+            .from('financial_accounts')
+            .update({'is_active': isActive})
+            .eq('warehouse_id', existingWarehouse.id)
+            .eq('type', 'CAJA');
+      }
     } else {
       if (profileId != null) payload['created_by'] = profileId;
-      await _supabase.from('warehouses').insert(payload);
+      final inserted =
+          await _supabase
+              .from('warehouses')
+              .insert(payload)
+              .select('id, name')
+              .single();
+      final newWhId = inserted['id'] as String?;
+      final newWhName = inserted['name'] as String? ?? name.trim();
+
+      if (newWhId != null) {
+        // Verificar si la caja mostrador ya fue creada (ej. por Trigger PostgreSQL)
+        final existingCaja =
+            await _supabase
+                .from('financial_accounts')
+                .select('id')
+                .eq('warehouse_id', newWhId)
+                .eq('type', 'CAJA')
+                .maybeSingle();
+
+        if (existingCaja == null) {
+          await _supabase.from('financial_accounts').insert({
+            'name': 'Caja Mostrador - $newWhName',
+            'type': 'CAJA',
+            'currency_code': 'PEN',
+            'balance': 0.0,
+            'warehouse_id': newWhId,
+            'is_active': isActive,
+            if (profileId != null) 'created_by': profileId,
+          });
+        }
+      }
     }
   }
 
@@ -129,6 +168,13 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
           if (profileId != null) 'updated_by': profileId,
         })
         .eq('id', wh.id);
+
+    // Sincronizar estado en las cajas físicas del almacén
+    await _supabase
+        .from('financial_accounts')
+        .update({'is_active': isActive})
+        .eq('warehouse_id', wh.id)
+        .eq('type', 'CAJA');
   }
 
   @override

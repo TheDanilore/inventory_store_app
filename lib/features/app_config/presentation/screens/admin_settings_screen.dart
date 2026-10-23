@@ -1637,6 +1637,277 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   ),
                   const SizedBox(height: 16),
 
+                  // ── Sección: Modalidad de Control de Cajas Físicas ──────────
+                  BlocBuilder<AppConfigCubit, AppConfigState>(
+                    builder: (context, configState) {
+                      final currentMode =
+                          configState.businessInfo?.cashRegisterMode ??
+                          'COUNTER';
+                      final isCounter = currentMode != 'INDIVIDUAL';
+
+                      return _buildSectionCard(
+                        context,
+                        isDark: isDark,
+                        icon: Icons.tune_rounded,
+                        title: 'Modalidad de Caja Física (POS)',
+                        subtitle:
+                            'Define cómo operan los cajeros las cajas registradoras de cada sucursal',
+                        children: [
+                          Row(
+                            children: [
+                              // Opción 1: Caja por Mostrador / Sucursal
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap:
+                                      isCounter
+                                          ? null
+                                          : () async {
+                                            final ok = await context
+                                                .read<AppConfigCubit>()
+                                                .updateCashRegisterMode(
+                                                  'COUNTER',
+                                                );
+                                            if (ok && context.mounted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Modalidad cambiada a: Caja por Mostrador / Sucursal.',
+                                                  ),
+                                                  backgroundColor: Color(
+                                                    0xFF10B981,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isCounter
+                                              ? (isDark
+                                                  ? AppColors.tealDark
+                                                      .withValues(alpha: 0.15)
+                                                  : AppColors.teal.withValues(
+                                                    alpha: 0.08,
+                                                  ))
+                                              : (isDark
+                                                  ? AppColors
+                                                      .darkSurfaceElevated
+                                                  : const Color(0xFFF8FAFC)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            isCounter
+                                                ? AppColors.teal
+                                                : (isDark
+                                                    ? AppColors.darkBorder
+                                                    : const Color(0xFFE2E8F0)),
+                                        width: isCounter ? 1.8 : 1.0,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.storefront_rounded,
+                                              size: 20,
+                                              color:
+                                                  isCounter
+                                                      ? AppColors.teal
+                                                      : (isDark
+                                                          ? AppColors
+                                                              .darkTextSecondary
+                                                          : const Color(
+                                                            0xFF64748B,
+                                                          )),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Caja por Mostrador / Tienda',
+                                                style: TextStyle(
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      isCounter
+                                                          ? (isDark
+                                                              ? Colors.white
+                                                              : const Color(
+                                                                0xFF0F172A,
+                                                              ))
+                                                          : (isDark
+                                                              ? AppColors
+                                                                  .darkTextSecondary
+                                                              : const Color(
+                                                                0xFF475569,
+                                                              )),
+                                                ),
+                                              ),
+                                            ),
+                                            if (isCounter)
+                                              const Icon(
+                                                Icons.check_circle_rounded,
+                                                size: 18,
+                                                color: AppColors.teal,
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Predeterminado: 1 caja física principal por tienda. Los cajeros la operan por turnos con apertura y arqueo.',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color:
+                                                isDark
+                                                    ? AppColors
+                                                        .darkTextSecondary
+                                                    : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Opción 2: Caja por Cajero Individual
+                              Expanded(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap:
+                                      !isCounter
+                                          ? null
+                                          : () async {
+                                            final ok = await context
+                                                .read<AppConfigCubit>()
+                                                .updateCashRegisterMode(
+                                                  'INDIVIDUAL',
+                                                );
+                                            if (ok && context.mounted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Modalidad cambiada a: Caja por Cajero Individual.',
+                                                  ),
+                                                  backgroundColor: Color(
+                                                    0xFF10B981,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          !isCounter
+                                              ? (isDark
+                                                  ? AppColors.tealDark
+                                                      .withValues(alpha: 0.15)
+                                                  : AppColors.teal.withValues(
+                                                    alpha: 0.08,
+                                                  ))
+                                              : (isDark
+                                                  ? AppColors
+                                                      .darkSurfaceElevated
+                                                  : const Color(0xFFF8FAFC)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            !isCounter
+                                                ? AppColors.teal
+                                                : (isDark
+                                                    ? AppColors.darkBorder
+                                                    : const Color(0xFFE2E8F0)),
+                                        width: !isCounter ? 1.8 : 1.0,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.person_rounded,
+                                              size: 20,
+                                              color:
+                                                  !isCounter
+                                                      ? AppColors.teal
+                                                      : (isDark
+                                                          ? AppColors
+                                                              .darkTextSecondary
+                                                          : const Color(
+                                                            0xFF64748B,
+                                                          )),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Caja por Cajero Individual',
+                                                style: TextStyle(
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      !isCounter
+                                                          ? (isDark
+                                                              ? Colors.white
+                                                              : const Color(
+                                                                0xFF0F172A,
+                                                              ))
+                                                          : (isDark
+                                                              ? AppColors
+                                                                  .darkTextSecondary
+                                                              : const Color(
+                                                                0xFF475569,
+                                                              )),
+                                                ),
+                                              ),
+                                            ),
+                                            if (!isCounter)
+                                              const Icon(
+                                                Icons.check_circle_rounded,
+                                                size: 18,
+                                                color: AppColors.teal,
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Cada cajero tiene su propia caja y dinero asignado de forma personal e independiente.',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color:
+                                                isDark
+                                                    ? AppColors
+                                                        .darkTextSecondary
+                                                    : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
                   // ── Sección 2: Configuración de Moneda y Parámetros Contables ─
                   _buildSectionCard(
                     context,

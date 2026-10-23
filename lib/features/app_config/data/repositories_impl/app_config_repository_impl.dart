@@ -140,7 +140,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
       final rawResponse = await _supabase
           .from('business_info')
           .select(
-            'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+            'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible, cash_register_mode',
           )
           .order('updated_at', ascending: false)
           .limit(1);
@@ -246,7 +246,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
                 .from('business_info')
                 .upsert(payload)
                 .select(
-                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible, cash_register_mode',
                 )
                 .single();
 
@@ -259,7 +259,7 @@ class AppConfigRepositoryImpl implements AppConfigRepository {
                 .from('business_info')
                 .insert(payload)
                 .select(
-                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible',
+                  'id, business_name, tax_id, address, phone, logo_url, loyalty_global_enabled, loyalty_customer_visible, cash_register_mode',
                 )
                 .single();
 

@@ -4932,6 +4932,66 @@ $$;
 ALTER FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_auto_create_counter_cash_account"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- Verificar si ya existe una caja física para este almacén
+  IF NOT EXISTS (
+    SELECT 1 FROM public.financial_accounts
+    WHERE warehouse_id = NEW.id AND type = 'CAJA'
+  ) THEN
+    INSERT INTO public.financial_accounts (
+      name,
+      type,
+      currency_code,
+      balance,
+      warehouse_id,
+      is_active,
+      created_by
+    ) VALUES (
+      'Caja Mostrador - ' || NEW.name,
+      'CAJA',
+      'PEN',
+      0.00,
+      NEW.id,
+      NEW.is_active,
+      NEW.created_by
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_auto_create_counter_cash_account"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  IF (OLD.is_active IS DISTINCT FROM NEW.is_active) THEN
+    UPDATE public.financial_accounts
+    SET is_active = NEW.is_active
+    WHERE warehouse_id = NEW.id AND type = 'CAJA';
+  END IF;
+
+  -- Si se renombra el almacén, actualizar el nombre de la Caja Mostrador
+  IF (OLD.name IS DISTINCT FROM NEW.name) THEN
+    UPDATE public.financial_accounts
+    SET name = 'Caja Mostrador - ' || NEW.name
+    WHERE warehouse_id = NEW.id AND type = 'CAJA' AND name LIKE 'Caja Mostrador%';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_po_payment_method_rpc"("p_order_id" "uuid", "p_supplier_id" "uuid", "p_new_method" "text", "p_old_method" "text", "p_order_amount" numeric, "p_profile_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -5151,11 +5211,16 @@ CREATE TABLE IF NOT EXISTS "public"."business_info" (
     "loyalty_global_enabled" boolean DEFAULT true,
     "loyalty_customer_visible" boolean DEFAULT true,
     "raffles_global_enabled" boolean DEFAULT false,
-    "raffles_customer_visible" boolean DEFAULT false
+    "raffles_customer_visible" boolean DEFAULT false,
+    "cash_register_mode" character varying(20) DEFAULT 'COUNTER'::character varying
 );
 
 
 ALTER TABLE "public"."business_info" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."business_info"."cash_register_mode" IS 'Modalidad de control de caja: COUNTER (Caja por mostrador/sucursal) o INDIVIDUAL (Caja por cajero).';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."cart_items" (
@@ -6713,6 +6778,14 @@ CREATE INDEX "wsb_warehouse_id_idx" ON "public"."warehouse_stock_batches" USING 
 
 
 CREATE OR REPLACE TRIGGER "set_product_variants_updated_at" BEFORE UPDATE ON "public"."product_variants" FOR EACH ROW EXECUTE FUNCTION "public"."handle_update_timestamp"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_warehouse_auto_cash_account" AFTER INSERT ON "public"."warehouses" FOR EACH ROW EXECUTE FUNCTION "public"."trg_auto_create_counter_cash_account"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_warehouse_sync_cash_account" AFTER UPDATE ON "public"."warehouses" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"();
 
 
 
@@ -8397,6 +8470,18 @@ GRANT ALL ON FUNCTION "public"."sync_purchase_order_reception_rpc"("p_purchase_o
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."transfer_funds_rpc"("p_source_account_id" "uuid", "p_dest_account_id" "uuid", "p_amount" numeric, "p_description" "text", "p_created_by" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trg_auto_create_counter_cash_account"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_auto_create_counter_cash_account"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_auto_create_counter_cash_account"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "service_role";
 
 
 

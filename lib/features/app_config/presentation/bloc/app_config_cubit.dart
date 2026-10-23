@@ -51,6 +51,10 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       state.businessInfo?.loyaltyGlobalEnabled ?? false;
   bool get loyaltyCustomerVisible =>
       state.businessInfo?.loyaltyCustomerVisible ?? false;
+  String get cashRegisterMode =>
+      state.businessInfo?.cashRegisterMode ?? 'COUNTER';
+  bool get isCashRegisterCounterMode =>
+      state.businessInfo?.isCounterMode ?? true;
 
   String get businessName => state.businessInfo?.businessName ?? '';
   String get businessTaxId => state.businessInfo?.taxId ?? '';
@@ -288,6 +292,7 @@ class AppConfigCubit extends Cubit<AppConfigState> {
               : currentInfo.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
+      cashRegisterMode: currentInfo.cashRegisterMode,
     );
 
     final result = await saveBusinessInfoUseCase(updatedInfo);
@@ -343,6 +348,38 @@ class AppConfigCubit extends Cubit<AppConfigState> {
       logoUrl: currentInfo.logoUrl,
       loyaltyGlobalEnabled: loyaltyGlobalEnabled,
       loyaltyCustomerVisible: loyaltyCustomerVisible,
+    );
+  }
+
+  /// Actualiza la modalidad de control de caja física ('COUNTER' o 'INDIVIDUAL')
+  Future<bool> updateCashRegisterMode(String mode) async {
+    final currentInfo =
+        state.businessInfo ??
+        const BusinessInfoEntity(
+          businessName: 'DANILORE ONE ERP',
+          taxId: '',
+          address: '',
+          phone: '',
+          logoUrl: '',
+          loyaltyGlobalEnabled: false,
+          loyaltyCustomerVisible: false,
+          cashRegisterMode: 'COUNTER',
+        );
+
+    final updated = currentInfo.copyWith(cashRegisterMode: mode);
+    final result = await saveBusinessInfoUseCase(updated);
+    return result.fold(
+      (failure) {
+        LoggerService.e(
+          'Fallo al actualizar modalidad de caja: ${failure.message}',
+          tag: 'AppConfigCubit',
+        );
+        return false;
+      },
+      (savedInfo) {
+        emit(state.copyWith(businessInfo: savedInfo));
+        return true;
+      },
     );
   }
 
