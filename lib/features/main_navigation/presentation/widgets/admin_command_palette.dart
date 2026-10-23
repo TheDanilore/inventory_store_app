@@ -283,8 +283,9 @@ class _AdminCommandPaletteDialogState extends State<AdminCommandPaletteDialog> {
     _allowedItems =
         _allItems.where((item) {
           if (isAdmin) return true;
-          if (item.permissions == null || item.permissions!.isEmpty)
+          if (item.permissions == null || item.permissions!.isEmpty) {
             return true;
+          }
           return currentUser?.hasAnyPermission(item.permissions!) ?? false;
         }).toList();
 

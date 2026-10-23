@@ -322,7 +322,10 @@ class _AccountsTabState extends State<AccountsTab> {
       0.0,
       (sum, a) => sum + a.balance,
     );
-    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
+    final currencyFmt = NumberFormat.currency(
+      customPattern: 'S/ #,##0.00',
+      decimalDigits: 2,
+    );
 
     return Container(
       margin: const EdgeInsets.only(top: 12, bottom: 8),
@@ -446,13 +449,13 @@ class _AccountCardState extends State<_AccountCard> {
       name: account.name,
       type: account.type,
     );
-    final currSymbol = FinancialBrandHelper.formatCurrencySymbol(
+    FinancialBrandHelper.formatCurrencySymbol(
       account.currencyCode,
     );
     final isUsd = account.currencyCode == 'USD';
     final currencyFmt = NumberFormat.currency(
-      locale: isUsd ? 'en_US' : 'es_PE',
-      symbol: '$currSymbol ',
+      customPattern: isUsd ? '\$ #,##0.00' : 'S/ #,##0.00',
+      decimalDigits: 2,
     );
 
     return MouseRegion(
@@ -547,8 +550,11 @@ class _AccountCardState extends State<_AccountCard> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 3),
-                            Row(
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 5,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -571,7 +577,6 @@ class _AccountCardState extends State<_AccountCard> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 5),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
@@ -606,8 +611,7 @@ class _AccountCardState extends State<_AccountCard> {
                                     ),
                                   ),
                                 ),
-                                if (account.warehouseName != null) ...[
-                                  const SizedBox(width: 5),
+                                if (account.warehouseName != null)
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 6,
@@ -631,7 +635,7 @@ class _AccountCardState extends State<_AccountCard> {
                                         const SizedBox(width: 3),
                                         ConstrainedBox(
                                           constraints: const BoxConstraints(
-                                            maxWidth: 90,
+                                            maxWidth: 85,
                                           ),
                                           child: Text(
                                             account.warehouseName!,
@@ -646,9 +650,8 @@ class _AccountCardState extends State<_AccountCard> {
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ] else if (account.type != 'CAJA') ...[
-                                  const SizedBox(width: 5),
+                                  )
+                                else if (account.type != 'CAJA')
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 6,
@@ -670,18 +673,6 @@ class _AccountCardState extends State<_AccountCard> {
                                       ),
                                     ),
                                   ),
-                                ],
-                                if (isSelected) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '• Filtrando',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: brand.primaryColor,
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                           ],
@@ -701,10 +692,49 @@ class _AccountCardState extends State<_AccountCard> {
                                       : AppColors.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              if (isSelected) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: brand.primaryColor.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: brand.primaryColor.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.filter_alt_rounded,
+                                        size: 10,
+                                        color: brand.primaryColor,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        'Filtro',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: brand.primaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,
@@ -792,7 +822,10 @@ class _AllAccountsCardState extends State<_AllAccountsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFmt = NumberFormat.currency(locale: 'es_PE', symbol: 'S/ ');
+    final currencyFmt = NumberFormat.currency(
+      customPattern: 'S/ #,##0.00',
+      decimalDigits: 2,
+    );
     final isSelected = widget.isSelected;
 
     return MouseRegion(

@@ -188,10 +188,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           ),
                           validator: (val) {
                             final text = val ?? '';
-                            if (text.isEmpty)
+                            if (text.isEmpty) {
                               return 'Ingresa una nueva contraseña';
-                            if (text.length < 6)
+                            }
+                            if (text.length < 6) {
                               return 'Debe tener al menos 6 caracteres';
+                            }
                             return null;
                           },
                         );

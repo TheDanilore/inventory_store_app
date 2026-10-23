@@ -770,7 +770,7 @@ class _DashItem extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         Text(
-          'S/ ${amount.abs().toStringAsFixed(2)}',
+          'S/ ${NumberFormat('#,##0.00', 'es_PE').format(amount.abs())}',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 14.5,
@@ -1260,14 +1260,32 @@ class _DesktopMovementRowState extends State<_DesktopMovementRow> {
             // Monto
             SizedBox(
               width: 130,
-              child: Text(
-                '${isIncome ? '+' : '-'} S/ ${m.amount.toStringAsFixed(2)}',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: isIncome ? AppColors.tealDark : AppColors.danger,
-                ),
+              child: Builder(
+                builder: (context) {
+                  final isZero = m.amount == 0.0;
+                  final formattedAmount = NumberFormat(
+                    '#,##0.00',
+                    'es_PE',
+                  ).format(m.amount.abs());
+                  final label =
+                      isZero
+                          ? 'S/ 0.00'
+                          : '${isIncome ? '+' : '-'} S/ $formattedAmount';
+                  final textColor =
+                      isZero
+                          ? AppColors.textSecondary
+                          : (isIncome ? AppColors.tealDark : AppColors.danger);
+
+                  return Text(
+                    label,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: textColor,
+                    ),
+                  );
+                },
               ),
             ),
           ],
