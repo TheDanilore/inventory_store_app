@@ -249,11 +249,100 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     return out;
   }
 
+  List<String> _searchTokens() {
+    final q = _searchQuery.trim();
+    if (q.isEmpty) return const [];
+    return _norm(
+      q,
+    ).split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toSet().toList();
+  }
+
+  List<TextSpan> _highlightSpans(String text, TextStyle baseStyle) {
+    final tokens = _searchTokens();
+    if (tokens.isEmpty) return [TextSpan(text: text, style: baseStyle)];
+    final t = _t;
+    final normalizedText = _norm(text);
+    final spans = <TextSpan>[];
+    var index = 0;
+    while (index < text.length) {
+      int? nextMatchIndex;
+      String? matchedToken;
+      for (final token in tokens) {
+        final matchIndex = normalizedText.indexOf(token, index);
+        if (matchIndex == -1) continue;
+        if (nextMatchIndex == null || matchIndex < nextMatchIndex) {
+          nextMatchIndex = matchIndex;
+          matchedToken = token;
+        } else if (matchIndex == nextMatchIndex && matchedToken != null) {
+          if (token.length > matchedToken.length) {
+            matchedToken = token;
+          }
+        }
+      }
+      if (nextMatchIndex == null || matchedToken == null) {
+        spans.add(TextSpan(text: text.substring(index), style: baseStyle));
+        break;
+      }
+      if (nextMatchIndex > index) {
+        spans.add(
+          TextSpan(
+            text: text.substring(index, nextMatchIndex),
+            style: baseStyle,
+          ),
+        );
+        index = nextMatchIndex;
+        continue;
+      }
+      final matchLength = matchedToken.length;
+      if (index + matchLength <= text.length) {
+        final matchText = text.substring(index, index + matchLength);
+        spans.add(
+          TextSpan(
+            text: matchText,
+            style: baseStyle.copyWith(
+              backgroundColor: t.accent.withValues(alpha: t.dark ? 0.22 : 0.16),
+              color: t.title,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+        index += matchLength;
+      } else {
+        spans.add(TextSpan(text: text.substring(index), style: baseStyle));
+        break;
+      }
+    }
+    return spans;
+  }
+
+  Widget _highlightedText(
+    String text, {
+    TextStyle? style,
+    TextAlign? textAlign,
+    int? maxLines,
+    TextOverflow? overflow,
+  }) {
+    final tokens = _searchTokens();
+    if (tokens.isEmpty) {
+      return Text(
+        text,
+        style: style,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }
+    final baseStyle = style ?? TextStyle(fontSize: 13, color: _t.body);
+    return RichText(
+      textAlign: textAlign ?? TextAlign.start,
+      maxLines: maxLines,
+      overflow: overflow ?? TextOverflow.clip,
+      text: TextSpan(children: _highlightSpans(text, baseStyle)),
+    );
+  }
+
   List<_Hit> _search(List<_HelpTab> tabs) {
-    final tokens =
-        _norm(
-          _searchQuery,
-        ).split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final tokens = _searchTokens();
     final hits = <_Hit>[];
     for (var ti = 0; ti < tabs.length; ti++) {
       for (final g in tabs[ti].groups) {
@@ -815,8 +904,6 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
       items[i],
     ],
   ];
-
-
 
   _Item _i(String text, Widget child) => _Item(text, child);
 
@@ -1382,15 +1469,20 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
   // ── TAB 8: DIAGNÓSTICO ────────────────────────────────────────────────────
   _HelpTab _diagnosticsTab() {
     final t = _t;
-    final isOnline =
-        context.watch<NetworkCubit>().state is NetworkConnected;
+    final isOnline = context.watch<NetworkCubit>().state is NetworkConnected;
 
     final latencyText =
         _measuringLatency
             ? 'Midiendo...'
             : _latencyMs == null
             ? (_supabaseReachable ? 'N/D' : 'Error de conexión')
-            : '$_latencyMs ms (${_latencyMs! < 100 ? 'Excelente' : _latencyMs! < 300 ? 'Bueno' : _latencyMs! < 600 ? 'Regular' : 'Lento'})';
+            : '$_latencyMs ms (${_latencyMs! < 100
+                ? 'Excelente'
+                : _latencyMs! < 300
+                ? 'Bueno'
+                : _latencyMs! < 600
+                ? 'Regular'
+                : 'Lento'})';
 
     final latencyColor =
         _latencyMs == null
@@ -1411,7 +1503,11 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     final rows = [
       ('Versión de Software', versionDisplay, null),
       ('Motor de Base de Datos', 'PostgreSQL vía Supabase Cloud', null),
-      ('Arquitectura POS', 'Multi-Store, Multi-Register y caché offline resiliente', null),
+      (
+        'Arquitectura POS',
+        'Multi-Store, Multi-Register y caché offline resiliente',
+        null,
+      ),
       ('Plataforma Activa', 'Flutter Multiplatform Desktop/Web/Android', null),
       ('Latencia a Supabase', latencyText, latencyColor),
       (
@@ -1451,7 +1547,11 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             Row(
               children: [
                 FilledButton.icon(
-                  onPressed: () => _copyToClipboard(reportText, 'Reporte de Diagnóstico'),
+                  onPressed:
+                      () => _copyToClipboard(
+                        reportText,
+                        'Reporte de Diagnóstico',
+                      ),
                   icon: const Icon(Icons.copy_rounded, size: 16),
                   label: const Text('Copiar reporte para soporte técnico'),
                   style: FilledButton.styleFrom(
@@ -1505,24 +1605,40 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _sectionHeader(String title, String? subtitle) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: t.title,
-            letterSpacing: -0.3,
-          ),
-        ),
+        searching
+            ? _highlightedText(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: t.title,
+                letterSpacing: -0.3,
+              ),
+            )
+            : Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: t.title,
+                letterSpacing: -0.3,
+              ),
+            ),
         if (subtitle != null) ...[
           const SizedBox(height: 3),
-          Text(
-            subtitle,
-            style: TextStyle(fontSize: 13, color: t.muted, height: 1.4),
-          ),
+          searching
+              ? _highlightedText(
+                subtitle,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.4),
+              )
+              : Text(
+                subtitle,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.4),
+              ),
         ],
       ],
     );
@@ -1607,6 +1723,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     String? lead,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: t.dark ? 0.10 : 0.06),
@@ -1632,36 +1749,55 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              title,
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: t.tone(color),
-                                height: 1.3,
-                              ),
-                            ),
+                            searching
+                                ? _highlightedText(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: t.tone(color),
+                                    height: 1.3,
+                                  ),
+                                )
+                                : Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: t.tone(color),
+                                    height: 1.3,
+                                  ),
+                                ),
                             const SizedBox(height: 6),
-                            Text.rich(
-                              TextSpan(
-                                children: [
-                                  if (lead != null)
-                                    TextSpan(
-                                      text: '$lead ',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: t.title,
-                                      ),
-                                    ),
-                                  TextSpan(text: content),
-                                ],
-                              ),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: t.body,
-                                height: 1.55,
-                              ),
-                            ),
+                            searching
+                                ? _highlightedText(
+                                  lead == null ? content : '$lead $content',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: t.body,
+                                    height: 1.55,
+                                  ),
+                                )
+                                : Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      if (lead != null)
+                                        TextSpan(
+                                          text: '$lead ',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: t.title,
+                                          ),
+                                        ),
+                                      TextSpan(text: content),
+                                    ],
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: t.body,
+                                    height: 1.55,
+                                  ),
+                                ),
                           ],
                         ),
                       ),
@@ -1684,6 +1820,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     required Color color,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return _card(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1697,19 +1834,33 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             ],
           ),
           const SizedBox(height: 14),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: t.title,
-            ),
-          ),
+          searching
+              ? _highlightedText(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: t.title,
+                ),
+              )
+              : Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: t.title,
+                ),
+              ),
           const SizedBox(height: 6),
-          Text(
-            desc,
-            style: TextStyle(fontSize: 13, color: t.muted, height: 1.5),
-          ),
+          searching
+              ? _highlightedText(
+                desc,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.5),
+              )
+              : Text(
+                desc,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.5),
+              ),
         ],
       ),
     );
@@ -1742,6 +1893,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     required Color color,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1790,24 +1942,43 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(top: 5),
-                    child: Text(
-                      s.$2,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: t.title,
-                      ),
-                    ),
+                    child:
+                        searching
+                            ? _highlightedText(
+                              s.$2,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: t.title,
+                              ),
+                            )
+                            : Text(
+                              s.$2,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: t.title,
+                              ),
+                            ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    s.$3,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: t.muted,
-                      height: 1.55,
-                    ),
-                  ),
+                  searching
+                      ? _highlightedText(
+                        s.$3,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: t.muted,
+                          height: 1.55,
+                        ),
+                      )
+                      : Text(
+                        s.$3,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: t.muted,
+                          height: 1.55,
+                        ),
+                      ),
                 ],
               ),
             ),
@@ -1846,23 +2017,39 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
               Icon(Icons.help_outline_rounded, size: 18, color: t.accent),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  question,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.title,
-                    height: 1.35,
-                  ),
-                ),
+                child:
+                    searching
+                        ? _highlightedText(
+                          question,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: t.title,
+                            height: 1.35,
+                          ),
+                        )
+                        : Text(
+                          question,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: t.title,
+                            height: 1.35,
+                          ),
+                        ),
               ),
             ],
           ),
           children: [
-            Text(
-              answer,
-              style: TextStyle(fontSize: 13, color: t.body, height: 1.55),
-            ),
+            searching
+                ? _highlightedText(
+                  answer,
+                  style: TextStyle(fontSize: 13, color: t.body, height: 1.55),
+                )
+                : Text(
+                  answer,
+                  style: TextStyle(fontSize: 13, color: t.body, height: 1.55),
+                ),
           ],
         ),
       ),
@@ -1875,6 +2062,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     required String desc,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return _card(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1885,20 +2073,43 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: t.title,
-                    height: 1.3,
-                  ),
-                ),
+                searching
+                    ? _highlightedText(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: t.title,
+                        height: 1.3,
+                      ),
+                    )
+                    : Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: t.title,
+                        height: 1.3,
+                      ),
+                    ),
                 const SizedBox(height: 4),
-                Text(
-                  desc,
-                  style: TextStyle(fontSize: 13, color: t.muted, height: 1.55),
-                ),
+                searching
+                    ? _highlightedText(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.muted,
+                        height: 1.55,
+                      ),
+                    )
+                    : Text(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.muted,
+                        height: 1.55,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -1915,6 +2126,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     required IconData icon,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return _card(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1930,22 +2142,44 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      role,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: t.tone(color),
-                      ),
-                    ),
+                    searching
+                        ? _highlightedText(
+                          role,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: t.tone(color),
+                          ),
+                        )
+                        : Text(
+                          role,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: t.tone(color),
+                          ),
+                        ),
                     _monoPill(code),
                   ],
                 ),
                 const SizedBox(height: 5),
-                Text(
-                  desc,
-                  style: TextStyle(fontSize: 13, color: t.muted, height: 1.55),
-                ),
+                searching
+                    ? _highlightedText(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.muted,
+                        height: 1.55,
+                      ),
+                    )
+                    : Text(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.muted,
+                        height: 1.55,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -1963,6 +2197,7 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     required List<String> requirements,
   }) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return _card(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1973,23 +2208,37 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: t.title,
-                ),
-              ),
+              searching
+                  ? _highlightedText(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: t.title,
+                    ),
+                  )
+                  : Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: t.title,
+                    ),
+                  ),
               _badge(badge, color),
               _monoPill(series),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            desc,
-            style: TextStyle(fontSize: 13, color: t.muted, height: 1.55),
-          ),
+          searching
+              ? _highlightedText(
+                desc,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.55),
+              )
+              : Text(
+                desc,
+                style: TextStyle(fontSize: 13, color: t.muted, height: 1.55),
+              ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 18,
@@ -2006,14 +2255,24 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
                     ),
                     const SizedBox(width: 6),
                     Flexible(
-                      child: Text(
-                        r,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: t.body,
-                        ),
-                      ),
+                      child:
+                          searching
+                              ? _highlightedText(
+                                r,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: t.body,
+                                ),
+                              )
+                              : Text(
+                                r,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: t.body,
+                                ),
+                              ),
                     ),
                   ],
                 ),
@@ -2133,21 +2392,33 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
 
   Widget _shortcutRow(String keys, String desc) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     final alternatives = keys.split(' / ');
     return _card(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              desc,
-              style: TextStyle(
-                fontSize: 13,
-                color: t.body,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
+            child:
+                searching
+                    ? _highlightedText(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.body,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                    )
+                    : Text(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.body,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                    ),
           ),
           const SizedBox(width: 12),
           for (var a = 0; a < alternatives.length; a++) ...[
@@ -2204,6 +2475,15 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
   Widget _statusBanner({bool reachable = true}) {
     final t = _t;
     final color = reachable ? AppColors.success : AppColors.error;
+    final searching = _searchQuery.isNotEmpty;
+    final title =
+        reachable
+            ? 'Servidor Supabase Cloud activo y sincronizado'
+            : 'Sin conexión a Supabase o red inaccesible';
+    final body =
+        reachable
+            ? 'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.'
+            : 'No se pudo verificar la conexión. Revisa tu red o credenciales de Supabase.';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2219,15 +2499,16 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              boxShadow: reachable
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.35),
-                        blurRadius: 0,
-                        spreadRadius: 4,
-                      ),
-                    ]
-                  : null,
+              boxShadow:
+                  reachable
+                      ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.35),
+                          blurRadius: 0,
+                          spreadRadius: 4,
+                        ),
+                      ]
+                      : null,
             ),
           ),
           const SizedBox(width: 16),
@@ -2235,23 +2516,41 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  reachable
-                      ? 'Servidor Supabase Cloud activo y sincronizado'
-                      : 'Sin conexión a Supabase o red inaccesible',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: t.tone(color),
-                  ),
-                ),
+                searching
+                    ? _highlightedText(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: t.tone(color),
+                      ),
+                    )
+                    : Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: t.tone(color),
+                      ),
+                    ),
                 const SizedBox(height: 3),
-                Text(
-                  reachable
-                      ? 'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.'
-                      : 'No se pudo verificar la conexión. Revisa tu red o credenciales de Supabase.',
-                  style: TextStyle(fontSize: 13, color: t.body, height: 1.45),
-                ),
+                searching
+                    ? _highlightedText(
+                      body,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.body,
+                        height: 1.45,
+                      ),
+                    )
+                    : Text(
+                      body,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: t.body,
+                        height: 1.45,
+                      ),
+                    ),
               ],
             ),
           ),
@@ -2262,19 +2561,29 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
 
   Widget _diagTile(String label, String value, {Color? dot}) {
     final t = _t;
+    final searching = _searchQuery.isNotEmpty;
     return _card(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: t.muted,
-            ),
-          ),
+          searching
+              ? _highlightedText(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: t.muted,
+                ),
+              )
+              : Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: t.muted,
+                ),
+              ),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -2287,15 +2596,26 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
                 const SizedBox(width: 8),
               ],
               Expanded(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: t.title,
-                    height: 1.35,
-                  ),
-                ),
+                child:
+                    searching
+                        ? _highlightedText(
+                          value,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: t.title,
+                            height: 1.35,
+                          ),
+                        )
+                        : Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: t.title,
+                            height: 1.35,
+                          ),
+                        ),
               ),
             ],
           ),
