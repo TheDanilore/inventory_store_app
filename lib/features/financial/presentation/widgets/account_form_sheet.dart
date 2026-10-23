@@ -75,8 +75,17 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   List<WarehouseEntity> _warehouses = [];
   bool _isLoadingWarehouses = false;
 
-  /// Cantidad de entidades visibles como chips antes de "Ver todas".
-  static const int _visiblePresets = 5;
+  /// Entidades más usadas, en orden fijo. Si alguna clave no existe en los
+  /// presets se ignora; si ninguna existe se usan los primeros presets.
+  static const _quickKeys = [
+    'caja_principal',
+    'yape',
+    'plin',
+    'bcp',
+    'bbva',
+    'interbank',
+  ];
+  static const int _fallbackVisible = 5;
 
   static const _types = [
     ('CAJA', 'Caja', Icons.point_of_sale_rounded),
@@ -237,13 +246,41 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   }
 
   void _showPresetSearchModal() {
+    // Desktop / tablet (slide-over): diálogo centrado.
+    // Móvil: bottom sheet.
+    if (widget.isSlideOver) {
+      showDialog(
+        context: context,
+        builder:
+            (dialogCtx) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _PresetSearchSheet(
+                  asDialog: true,
+                  selectedKey: _brandKey,
+                  onSelectPreset: (preset) {
+                    Navigator.pop(dialogCtx);
+                    _onSelectPreset(preset);
+                  },
+                  onSelectCustom: (name) {
+                    Navigator.pop(dialogCtx);
+                    _onSelectCustom(name);
+                  },
+                ),
+              ),
+            ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      // En pantallas anchas el selector no debe estirarse a todo el ancho
-      constraints: const BoxConstraints(maxWidth: 520),
       builder: (sheetCtx) {
         return _PresetSearchSheet(
           selectedKey: _brandKey,
@@ -509,10 +546,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
     final balanceVal =
         double.tryParse(_balanceCtrl.text.trim().replaceAll(',', '.')) ??
         (_isEditing ? widget.account!.balance : 0.0);
-    final fmt = NumberFormat.currency(
-      locale: _currencyCode == 'USD' ? 'en_US' : 'es_PE',
-      symbol: _symbol,
-    );
+    final balanceText =
+        '$_symbol${NumberFormat('#,##0.00', 'en_US').format(balanceVal)}';
     final isUsd = _currencyCode == 'USD';
 
     return Container(
@@ -596,7 +631,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               ),
               const SizedBox(width: 8),
               Text(
-                fmt.format(balanceVal),
+                balanceText,
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -638,14 +673,16 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   // ── Selector de entidad (chips + "Otro" + "Ver todas") ────────────────────
   Widget _buildEntityPicker() {
     final all = FinancialBrandHelper.presets;
-    final visible = all.take(_visiblePresets).toList();
+    var visible = <FinancialBrandPreset>[
+      for (final k in _quickKeys) ...all.where((p) => p.key == k),
+    ];
+    if (visible.isEmpty) visible = all.take(_fallbackVisible).toList();
 
-    // Si la entidad elegida no está entre las visibles, ocupa el último lugar
+    // Si la entidad elegida no está entre las rápidas, se agrega al final
+    // (el resto conserva su posición y nada "salta" al seleccionar).
     final selected = all.where((p) => p.key == _brandKey).firstOrNull;
-    if (selected != null &&
-        visible.isNotEmpty &&
-        visible.every((p) => p.key != selected.key)) {
-      visible[visible.length - 1] = selected;
+    if (selected != null && visible.every((p) => p.key != selected.key)) {
+      visible = [...visible, selected];
     }
     final hidden = all.length - visible.length;
 
@@ -1127,7 +1164,12 @@ class _PresetSearchSheet extends StatefulWidget {
   /// Recibe el texto buscado (si lo hay) para usarlo como nombre personalizado.
   final ValueChanged<String?> onSelectCustom;
 
+  /// true en desktop: se muestra como diálogo centrado (sin handle, con
+  /// esquinas redondeadas completas y foco automático en el buscador).
+  final bool asDialog;
+
   const _PresetSearchSheet({
+    this.asDialog = false,
     required this.selectedKey,
     required this.onSelectPreset,
     required this.onSelectCustom,
@@ -1195,124 +1237,152 @@ class _PresetSearchSheetState extends State<_PresetSearchSheet> {
       ...groups.keys.where((k) => !_groupOrder.contains(k)),
     ];
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surf(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const AppSheetDragHandle(
-            padding: EdgeInsets.only(top: 10, bottom: 8),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Seleccionar entidad',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: title,
+    final screenH = MediaQuery.of(context).size.height;
+    final maxH = widget.asDialog ? screenH * 0.8 : screenH * 0.75;
+    final radius =
+        widget.asDialog
+            ? BorderRadius.circular(18)
+            : const BorderRadius.vertical(top: Radius.circular(20));
+
+    // Material (no Container) para que el ripple de los ListTile sea visible
+    return Material(
+      color: AppColors.surf(context),
+      borderRadius: radius,
+      elevation: widget.asDialog ? 12 : 0,
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!widget.asDialog)
+              const AppSheetDragHandle(
+                padding: EdgeInsets.only(top: 10, bottom: 8),
+              )
+            else
+              const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Seleccionar entidad',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: title,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: TextField(
-              controller: _searchCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Buscar banco, billetera o caja...',
-                hintStyle: TextStyle(
-                  fontSize: 13.5,
-                  color: AppColors.txtMuted(context),
-                ),
-                prefixIcon: Icon(Icons.search_rounded, size: 20, color: muted),
-                suffixIcon:
-                    _raw.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          onPressed: _searchCtrl.clear,
-                        )
-                        : null,
-                isDense: true,
-                filled: true,
-                fillColor:
-                    dark ? AppColors.darkBackground : AppColors.background,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppColors.brdSubtle(context)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: AppColors.brdSubtle(context)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                    color: AppColors.teal,
-                    width: 1.5,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: TextField(
+                controller: _searchCtrl,
+                autofocus: widget.asDialog,
+                textInputAction: TextInputAction.done,
+                // Enter: elige el primer resultado, o usa el texto como nombre
+                onSubmitted: (_) {
+                  if (presets.isNotEmpty) {
+                    widget.onSelectPreset(presets.first);
+                  } else if (_raw.isNotEmpty) {
+                    widget.onSelectCustom(_raw);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: 'Buscar banco, billetera o caja...',
+                  hintStyle: TextStyle(
+                    fontSize: 13.5,
+                    color: AppColors.txtMuted(context),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: muted,
+                  ),
+                  suffixIcon:
+                      _raw.isNotEmpty
+                          ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, size: 18),
+                            onPressed: _searchCtrl.clear,
+                          )
+                          : null,
+                  isDense: true,
+                  filled: true,
+                  fillColor:
+                      dark ? AppColors.darkBackground : AppColors.background,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppColors.brdSubtle(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: AppColors.brdSubtle(context)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: AppColors.teal,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Divider(height: 1, color: AppColors.brd(context)),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              children: [
-                for (final key in keys) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
-                    child: Text(
-                      _groupTitle(key).toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                        color: muted,
+            Divider(height: 1, color: AppColors.brd(context)),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                children: [
+                  for (final key in keys) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 4),
+                      child: Text(
+                        _groupTitle(key).toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: muted,
+                        ),
                       ),
                     ),
-                  ),
-                  for (final p in groups[key]!) _presetTile(p, title, muted),
-                ],
-                if (_raw.isNotEmpty && presets.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
-                    child: Text(
-                      'Sin coincidencias para “$_raw”.',
-                      style: TextStyle(fontSize: 13, color: muted),
+                    for (final p in groups[key]!) _presetTile(p, title, muted),
+                  ],
+                  if (_raw.isNotEmpty && presets.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 16, 8, 4),
+                      child: Text(
+                        'Sin coincidencias para “$_raw”.',
+                        style: TextStyle(fontSize: 13, color: muted),
+                      ),
                     ),
-                  ),
-                const Divider(height: 24),
-                _customTile(title, muted, teal),
-              ],
+                  const Divider(height: 24),
+                  _customTile(title, muted, teal),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
