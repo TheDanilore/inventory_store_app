@@ -7,3 +7,10 @@
 
 # Mantener intacta la API de SharedPreferences de Flutter
 -keep class io.flutter.plugins.sharedpreferences.** { *; }
+
+# === AGREGA ESTO PARA FIXEAR TU ERROR DE COMPILACIÓN ===
+# Evitar que R8 descarte las opciones de idiomas no utilizados de ML Kit
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
