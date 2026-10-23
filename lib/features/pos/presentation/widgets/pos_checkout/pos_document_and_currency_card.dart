@@ -268,17 +268,22 @@ class _PosDocumentAndCurrencyCardState
                         final hasMultiple = currencies.length > 1;
 
                         // Sincronizar automáticamente con la moneda base si no coincide y no es multimoneda
-                        if (!hasMultiple && posState.currencyCode != base.code) {
+                        if (!hasMultiple &&
+                            posState.currencyCode != base.code) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (context.mounted) {
-                              posCubit.setCurrency(base.code, base.exchangeRate);
+                              posCubit.setCurrency(
+                                base.code,
+                                base.exchangeRate,
+                              );
                             }
                           });
                         }
 
                         if (!hasMultiple) {
                           return Tooltip(
-                            message: 'Moneda oficial configurada en Ajustes del Sistema',
+                            message:
+                                'Moneda oficial configurada en Ajustes del Sistema',
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -297,7 +302,9 @@ class _PosDocumentAndCurrencyCardState
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.teal.withValues(alpha: 0.12),
+                                      color: AppColors.teal.withValues(
+                                        alpha: 0.12,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -312,7 +319,8 @@ class _PosDocumentAndCurrencyCardState
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
@@ -347,9 +355,12 @@ class _PosDocumentAndCurrencyCardState
                         }
 
                         // Multimoneda activada por el administrador en Configuración
-                        final currentCode = currencies.any((c) => c.code == posState.currencyCode)
-                            ? posState.currencyCode
-                            : base.code;
+                        final currentCode =
+                            currencies.any(
+                                  (c) => c.code == posState.currencyCode,
+                                )
+                                ? posState.currencyCode
+                                : base.code;
 
                         return DropdownButtonFormField<String>(
                           initialValue: currentCode,

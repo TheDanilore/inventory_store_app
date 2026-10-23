@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/features/catalog/domain/utils/brand_logo_helper.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
 
@@ -434,7 +435,19 @@ class _ProductBasicInfoSectionState extends State<ProductBasicInfoSection> {
                             ...state.brands.map(
                               (brand) => DropdownMenuItem<String?>(
                                 value: brand.id,
-                                child: Text(brand.name),
+                                child: Row(
+                                  children: [
+                                    BrandLogoHelper.buildBrandLogo(
+                                      name: brand.name,
+                                      logoUrl: brand.logoUrl,
+                                      size: 18,
+                                      borderRadius: 4,
+                                      showBorder: true,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(brand.name),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

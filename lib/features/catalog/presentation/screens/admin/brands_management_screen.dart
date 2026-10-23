@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,6 +6,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/utils/brand_logo_helper.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/brands_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/brands_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/brands/brand_form_sheet.dart';
@@ -466,7 +466,6 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
   // ── Tarjeta individual de Marca ──────────────────────────────────────────
   Widget _buildBrandCard(BuildContext context, BrandEntity brand) {
     final cubit = context.read<BrandsCubit>();
-    final hasLogo = brand.logoUrl != null && brand.logoUrl!.trim().isNotEmpty;
     final productsCount = brand.productsCount ?? 0;
 
     return Material(
@@ -488,36 +487,12 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Logo o Avatar de Marca
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child:
-                    hasLogo
-                        ? CachedNetworkImage(
-                          imageUrl: brand.logoUrl!,
-                          fit: BoxFit.contain,
-                          placeholder:
-                              (ctx, url) => const Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.8,
-                                  ),
-                                ),
-                              ),
-                          errorWidget:
-                              (ctx, url, err) =>
-                                  _buildInitialAvatar(brand.name),
-                        )
-                        : _buildInitialAvatar(brand.name),
+              // Logo o Avatar oficial de Marca
+              BrandLogoHelper.buildBrandLogo(
+                name: brand.name,
+                logoUrl: brand.logoUrl,
+                size: 52,
+                borderRadius: 12,
               ),
 
               const SizedBox(width: 14),
@@ -653,20 +628,6 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInitialAvatar(String name) {
-    final letter = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'M';
-    return Center(
-      child: Text(
-        letter,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          color: AppColors.primary,
         ),
       ),
     );

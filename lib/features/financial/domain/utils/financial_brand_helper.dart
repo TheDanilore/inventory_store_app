@@ -565,7 +565,7 @@ class FinancialBrandHelper {
     return 'S/';
   }
 
-  /// Renderiza un avatar / logo vectorial estilizado para la marca financiera.
+  /// Renderiza un avatar / logo oficial o vectorial estilizado para la marca financiera.
   static Widget buildBrandBadge({
     required String name,
     String? type,
@@ -577,275 +577,414 @@ class FinancialBrandHelper {
 
     switch (info.brand) {
       case FinancialBrandType.yape:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/yape.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'Y',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.58,
+                letterSpacing: -0.5,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'Y',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.58,
-              letterSpacing: -0.5,
             ),
           ),
         );
 
       case FinancialBrandType.plin:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF00D2D3), Color(0xFF00A8E8)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF00D2D3).withValues(alpha: 0.35),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/plin.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00D2D3), Color(0xFF00A8E8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'P',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.58,
-              letterSpacing: -0.5,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'P',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.58,
+                letterSpacing: -0.5,
+              ),
             ),
           ),
         );
 
       case FinancialBrandType.bcp:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Stack(
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/bcp.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.10,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
             alignment: Alignment.center,
-            children: [
-              Text(
-                'BCP',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: size * 0.34,
-                  letterSpacing: -0.2,
-                ),
+            child: Text(
+              'BCP',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.34,
+                letterSpacing: -0.2,
               ),
-              Positioned(
-                top: size * 0.18,
-                right: size * 0.15,
-                child: Container(
-                  width: size * 0.16,
-                  height: size * 0.16,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFD6200), // naranja característico BCP
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         );
 
       case FinancialBrandType.bbva:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/bbva.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.12,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'BBVA',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.27,
+                letterSpacing: -0.3,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'BBVA',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.27,
-              letterSpacing: -0.3,
             ),
           ),
         );
 
       case FinancialBrandType.interbank:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/interbank.png',
+          size: size,
+          fit: BoxFit.cover,
+          backgroundColor: const Color(0xFF009B3A),
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'IBK',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.32,
+                letterSpacing: -0.3,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'IBK',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.32,
-              letterSpacing: -0.3,
             ),
           ),
         );
 
       case FinancialBrandType.scotiabank:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/scotiabank.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.10,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'S',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.58,
+                letterSpacing: -0.5,
               ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'S',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.58,
-              letterSpacing: -0.5,
             ),
           ),
         );
 
       case FinancialBrandType.bancoNacion:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/banco_nacion.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'BN',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: size * 0.38,
+                letterSpacing: -0.3,
               ),
-            ],
+            ),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            'BN',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: size * 0.38,
-              letterSpacing: -0.3,
+        );
+
+      case FinancialBrandType.banbif:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/banbif.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.10,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              'BanBif',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: size * 0.26,
+              ),
             ),
           ),
         );
 
       case FinancialBrandType.cajaHuancayo:
-      case FinancialBrandType.cajaArequipa:
-      case FinancialBrandType.cajaCusco:
-      case FinancialBrandType.cajaMunicipal:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
-              ),
-            ],
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_huancayo.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.account_balance_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
           ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.account_balance_rounded,
-            size: size * 0.52,
-            color: Colors.white,
+        );
+
+      case FinancialBrandType.cajaArequipa:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_arequipa.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.account_balance_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
+          ),
+        );
+
+      case FinancialBrandType.cajaPiura:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_piura.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.account_balance_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
+          ),
+        );
+
+      case FinancialBrandType.cajaCusco:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_cusco.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.account_balance_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
+          ),
+        );
+
+      case FinancialBrandType.tunki:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/tunki.png',
+          size: size,
+          fit: BoxFit.contain,
+          padding: size * 0.08,
+          backgroundColor: Colors.white,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.smartphone_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
           ),
         );
 
       case FinancialBrandType.caja:
-      case FinancialBrandType.cajaChica:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
-            boxShadow: [
-              BoxShadow(
-                color: info.primaryColor.withValues(alpha: 0.25),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
-              ),
-            ],
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_principal.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(info.icon, size: size * 0.52, color: Colors.white),
           ),
-          alignment: Alignment.center,
-          child: Icon(info.icon, size: size * 0.52, color: Colors.white),
+        );
+
+      case FinancialBrandType.cajaChica:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/caja_chica.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(info.icon, size: size * 0.52, color: Colors.white),
+          ),
         );
 
       case FinancialBrandType.posNiubiz:
-      case FinancialBrandType.posIzipay:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: info.primaryColor,
-            borderRadius: BorderRadius.circular(size * 0.28),
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/pos_niubiz.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.credit_card_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
           ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.credit_card_rounded,
-            size: size * 0.52,
-            color: Colors.white,
+        );
+
+      case FinancialBrandType.posIzipay:
+        return _buildImageBadge(
+          assetPath: 'assets/icons/banks/pos_izipay.png',
+          size: size,
+          fit: BoxFit.cover,
+          showBorder: false,
+          fallback: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: info.primaryColor,
+              borderRadius: BorderRadius.circular(size * 0.28),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.credit_card_rounded,
+              size: size * 0.52,
+              color: Colors.white,
+            ),
           ),
         );
 
@@ -867,5 +1006,48 @@ class FinancialBrandHelper {
           child: Icon(info.icon, size: size * 0.52, color: info.primaryColor),
         );
     }
+  }
+
+  static Widget _buildImageBadge({
+    required String assetPath,
+    required double size,
+    required Widget fallback,
+    Color? backgroundColor,
+    double padding = 0,
+    BoxFit fit = BoxFit.cover,
+    bool showBorder = true,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? Colors.white,
+        borderRadius: BorderRadius.circular(size * 0.24),
+        border:
+            showBorder
+                ? Border.all(color: const Color(0xFFE2E8F0), width: 0.8)
+                : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.24),
+        child: Padding(
+          padding: EdgeInsets.all(padding),
+          child: Image.asset(
+            assetPath,
+            width: size,
+            height: size,
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) => fallback,
+          ),
+        ),
+      ),
+    );
   }
 }

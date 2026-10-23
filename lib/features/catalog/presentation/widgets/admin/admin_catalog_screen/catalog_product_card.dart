@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/utils/brand_logo_helper.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 
@@ -80,69 +82,13 @@ class _AdminProductCardState extends State<AdminProductCard> {
     }
   }
 
-  /// Placeholder elegante cuando no hay imagen de producto.
+  /// Placeholder temático por categoría cuando no hay imagen de producto.
   Widget _buildProductPlaceholder(String name, bool isDark) {
-    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'P';
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors:
-              isDark
-                  ? [AppColors.darkSurfaceElevated, AppColors.darkSurface]
-                  : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurfaceHighlight : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Sin imagen',
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
-                color:
-                    isDark
-                        ? AppColors.darkTextSecondary
-                        : AppColors.textSecondary,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ProductImagePlaceholder(
+      productName: name,
+      categoryName: widget.product.categoryName,
+      isDark: isDark,
+      borderRadius: 0,
     );
   }
 
@@ -443,15 +389,14 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.verified_outlined,
-                              size: 10,
-                              color:
-                                  isDark
-                                      ? AppColors.darkTextMuted
-                                      : AppColors.textMuted,
+                            BrandLogoHelper.buildBrandLogo(
+                              name: widget.product.brandName!,
+                              logoUrl: widget.product.brandLogoUrl,
+                              size: 13,
+                              borderRadius: 3,
+                              showBorder: false,
                             ),
-                            const SizedBox(width: 3),
+                            const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 widget.product.brandName!.trim().toUpperCase(),

@@ -48,6 +48,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   String _type = 'CAJA';
   String _currencyCode = 'PEN';
   String _brandKey = 'auto';
+  String _selectedPresetKey = 'caja_principal';
+  bool _isCustomName = false;
   bool _isActive = true;
   bool _editBalance = false;
   bool _saving = false;
@@ -91,10 +93,20 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       );
       final match =
           FinancialBrandHelper.presets
-              .where((p) => p.brandType == detected.brand)
+              .where(
+                (p) =>
+                    p.brandType == detected.brand ||
+                    p.defaultName.toLowerCase() ==
+                        acc.name.toLowerCase().trim(),
+              )
               .firstOrNull;
       if (match != null) {
         _brandKey = match.key;
+        _selectedPresetKey = match.key;
+        _isCustomName = false;
+      } else {
+        _selectedPresetKey = 'custom';
+        _isCustomName = true;
       }
     } else {
       // Valor por defecto inicial amigable ("por defecto salir algo")
@@ -102,6 +114,8 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _type = 'CAJA';
       _currencyCode = 'PEN';
       _brandKey = 'caja_principal';
+      _selectedPresetKey = 'caja_principal';
+      _isCustomName = false;
       _balanceCtrl.text = '0.00';
     }
 
@@ -122,17 +136,24 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
 
   void _onSelectPreset(FinancialBrandPreset preset) {
     setState(() {
+      _selectedPresetKey = preset.key;
       _brandKey = preset.key;
       _type = preset.type;
-      // Si el nombre estaba vacío o coincidía con un preset previo, actualizarlo
-      final isInitialOrEmpty =
-          _nameCtrl.text.trim().isEmpty ||
-          FinancialBrandHelper.presets.any(
-            (p) => p.defaultName == _nameCtrl.text.trim(),
-          );
-      if (isInitialOrEmpty) {
-        _nameCtrl.text = preset.defaultName;
+      _nameCtrl.text = preset.defaultName;
+      _isCustomName = false;
+      if (preset.key.contains('usd') ||
+          preset.defaultName.toLowerCase().contains('dólar') ||
+          preset.defaultName.toLowerCase().contains('dolar')) {
+        _currencyCode = 'USD';
       }
+    });
+  }
+
+  void _onSelectCustom() {
+    setState(() {
+      _selectedPresetKey = 'custom';
+      _isCustomName = true;
+      _brandKey = 'auto';
     });
   }
 
@@ -403,31 +424,14 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         _buildLivePreviewCard(),
         const SizedBox(height: 20),
 
-        // ── 2. Selector Visual de Entidad / Logotipo / Marca ─────────────────
-        _fieldLabel('Entidad / Logotipo de la Cuenta'),
-        _buildBrandPicker(),
+        // ── 2. Selector Desplegable / Buscador de Nombre de Cuenta ───────────
+        _buildAccountNameSelector(),
         const SizedBox(height: 18),
 
-        // ── 3. Nombre de la Cuenta ───────────────────────────────────────────
-        _fieldLabel('Nombre de la cuenta *'),
-        TextFormField(
-          controller: _nameCtrl,
-          decoration: _inputDeco('Ej: BCP Soles, Caja Chica, Yape Principal'),
-          textCapitalization: TextCapitalization.words,
-          maxLength: 50,
-          buildCounter:
-              (_, {required currentLength, required isFocused, maxLength}) =>
-                  null,
-          validator: (v) {
-            final trimmed = v?.trim() ?? '';
-            if (trimmed.isEmpty) return 'El nombre es obligatorio';
-            if (trimmed.length < 2) {
-              return 'El nombre debe tener al menos 2 caracteres';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
+        // ── 3. Selector Visual de Entidad / Logotipo / Marca (Opcional) ─────────
+        _fieldLabel('Logotipo de la Cuenta (Opcional)'),
+        _buildBrandPicker(),
+        const SizedBox(height: 18),
 
         // ── 4. Moneda de la Cuenta ───────────────────────────────────────────
         _fieldLabel('Moneda de la cuenta *'),
@@ -1173,6 +1177,555 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Selector de Nombre / Entidad con Buscador y Desplegable ───────────────
+  Widget _buildAccountNameSelector() {
+    final currentName = _nameCtrl.text.trim();
+    final displayName =
+        currentName.isEmpty ? 'Seleccionar entidad o nombre...' : currentName;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fieldLabel('Nombre / Entidad Financiera *'),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showPresetSearchModal(context),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _isCustomName ? AppColors.teal : AppColors.border,
+                  width: 1.2,
+                ),
+              ),
+              child: Row(
+                children: [
+                  FinancialBrandHelper.buildBrandBadge(
+                    name: currentName,
+                    type: _type,
+                    brandKey: _brandKey,
+                    size: 30,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                currentName.isEmpty
+                                    ? AppColors.textSecondary
+                                    : AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _isCustomName
+                              ? 'Nombre personalizado (Toca para buscar predefinidos)'
+                              : 'Entidad predefinida (Toca para cambiar)',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.unfold_more_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Chips de acceso rápido horizontal
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _quickPresetChip('Caja Principal', 'caja_principal'),
+              const SizedBox(width: 6),
+              _quickPresetChip('Yape', 'yape'),
+              const SizedBox(width: 6),
+              _quickPresetChip('Plin', 'plin'),
+              const SizedBox(width: 6),
+              _quickPresetChip('BCP Soles', 'bcp'),
+              const SizedBox(width: 6),
+              _quickPresetChip('BBVA', 'bbva'),
+              const SizedBox(width: 6),
+              _quickPresetChip('Interbank', 'interbank'),
+              const SizedBox(width: 6),
+              _quickOtherChip(),
+            ],
+          ),
+        ),
+
+        // Campo de texto visible si eligió "Otro" o si desea personalizar el nombre
+        if (_isCustomName) ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _nameCtrl,
+            decoration: _inputDeco(
+              'Ej: Caja Tienda Chimbote, BCP Dólares, Yape Cobros',
+            ).copyWith(
+              prefixIcon: const Icon(
+                Icons.edit_note_rounded,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+              helperText:
+                  'Escribe el nombre con el que identificarás esta cuenta.',
+            ),
+            textCapitalization: TextCapitalization.words,
+            maxLength: 50,
+            buildCounter:
+                (_, {required currentLength, required isFocused, maxLength}) =>
+                    null,
+            validator: (v) {
+              final trimmed = v?.trim() ?? '';
+              if (trimmed.isEmpty) return 'El nombre es obligatorio';
+              if (trimmed.length < 2) {
+                return 'El nombre debe tener al menos 2 caracteres';
+              }
+              return null;
+            },
+          ),
+          if (_type == 'CAJA') ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _cajaSuggestionChip('Caja Principal'),
+                _cajaSuggestionChip('Caja Chica'),
+                _cajaSuggestionChip('Caja Tienda 1'),
+                _cajaSuggestionChip('Caja Tienda 2'),
+                _cajaSuggestionChip('Caja Almacén Central'),
+              ],
+            ),
+          ],
+        ] else ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _onSelectCustom,
+              icon: const Icon(Icons.edit_rounded, size: 14),
+              label: const Text(
+                'Personalizar nombre de cuenta',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.teal,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _quickPresetChip(String label, String presetKey) {
+    final isSelected = !_isCustomName && _selectedPresetKey == presetKey;
+    final preset = FinancialBrandHelper.presets.firstWhere(
+      (p) => p.key == presetKey,
+      orElse: () => FinancialBrandHelper.presets.first,
+    );
+
+    return InkWell(
+      onTap: () => _onSelectPreset(preset),
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.teal.withValues(alpha: 0.12)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FinancialBrandHelper.buildBrandBadge(
+              name: preset.label,
+              type: preset.type,
+              brandKey: preset.key,
+              size: 16,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickOtherChip() {
+    final isSelected = _isCustomName;
+    return InkWell(
+      onTap: _onSelectCustom,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? AppColors.teal.withValues(alpha: 0.12)
+                  : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.teal : AppColors.border,
+            width: isSelected ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_circle_outline_rounded,
+              size: 14,
+              color: isSelected ? AppColors.tealDark : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Otro...',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? AppColors.tealDark : AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _cajaSuggestionChip(String name) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _nameCtrl.text = name;
+        });
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          name,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPresetSearchModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return _PresetSearchSheet(
+          selectedKey: _isCustomName ? 'custom' : _selectedPresetKey,
+          onSelectPreset: (preset) {
+            Navigator.pop(sheetCtx);
+            _onSelectPreset(preset);
+          },
+          onSelectCustom: () {
+            Navigator.pop(sheetCtx);
+            _onSelectCustom();
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Modal Desplegable con Buscador de Entidades y Cuentas ───────────────────
+class _PresetSearchSheet extends StatefulWidget {
+  final String selectedKey;
+  final ValueChanged<FinancialBrandPreset> onSelectPreset;
+  final VoidCallback onSelectCustom;
+
+  const _PresetSearchSheet({
+    required this.selectedKey,
+    required this.onSelectPreset,
+    required this.onSelectCustom,
+  });
+
+  @override
+  State<_PresetSearchSheet> createState() => _PresetSearchSheetState();
+}
+
+class _PresetSearchSheetState extends State<_PresetSearchSheet> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl.addListener(() {
+      setState(() => _query = _searchCtrl.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final presets =
+        FinancialBrandHelper.presets.where((p) {
+          if (_query.isEmpty) return true;
+          return p.label.toLowerCase().contains(_query) ||
+              p.defaultName.toLowerCase().contains(_query) ||
+              p.type.toLowerCase().contains(_query);
+        }).toList();
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.75,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AppSheetDragHandle(
+            padding: EdgeInsets.only(top: 10, bottom: 8),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Seleccionar Entidad Financiera',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Buscar banco, billetera o caja...',
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
+                suffixIcon:
+                    _query.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () => _searchCtrl.clear(),
+                        )
+                        : null,
+                isDense: true,
+                filled: true,
+                fillColor: AppColors.background,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: AppColors.teal,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              children: [
+                // Opción especial: "Otro (Personalizado)"
+                ListTile(
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.teal.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.edit_note_rounded,
+                      color: AppColors.tealDark,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    '✨ Otra cuenta / Nombre personalizado',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Si tu entidad o caja no está en la lista, ingrésala manualmente',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  trailing:
+                      widget.selectedKey == 'custom'
+                          ? const Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.teal,
+                            size: 20,
+                          )
+                          : const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  onTap: widget.onSelectCustom,
+                ),
+                const Divider(height: 8, indent: 56),
+
+                // Lista de presets filtrados
+                ...presets.map((p) {
+                  final isSelected = widget.selectedKey == p.key;
+                  String typeLabel = 'Cuenta Bancaria';
+                  if (p.type == 'CAJA') typeLabel = 'Caja Física';
+                  if (p.type == 'DIGITAL') typeLabel = 'Billetera Digital';
+
+                  return ListTile(
+                    leading: FinancialBrandHelper.buildBrandBadge(
+                      name: p.label,
+                      type: p.type,
+                      brandKey: p.key,
+                      size: 36,
+                    ),
+                    title: Text(
+                      p.label,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color:
+                            isSelected ? p.primaryColor : AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '$typeLabel • ${p.defaultName}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    trailing:
+                        isSelected
+                            ? const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppColors.teal,
+                              size: 20,
+                            )
+                            : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    onTap: () => widget.onSelectPreset(p),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

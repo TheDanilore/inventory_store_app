@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -186,45 +186,16 @@ class PosCartItemRow extends StatelessWidget {
         children: [
           Opacity(
             opacity: isOutOfStock ? 0.55 : 1.0,
-            child: Container(
+            child: SizedBox(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child:
-                    item.imageUrl != null
-                        ? CachedNetworkImage(
-                          imageUrl: item.imageUrl!,
-                          memCacheWidth: 120,
-                          memCacheHeight: 120,
-                          fit: BoxFit.cover,
-                          placeholder:
-                              (context, url) => const Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                          errorWidget:
-                              (context, url, error) => const Icon(
-                                Icons.image_not_supported,
-                                color: AppColors.textMuted,
-                                size: 20,
-                              ),
-                        )
-                        : const Icon(
-                          Icons.inventory_2_outlined,
-                          color: AppColors.textMuted,
-                          size: 20,
-                        ),
+              child: ProductThumbnail(
+                imageUrl: item.imageUrl,
+                productName: item.productName,
+                width: 48,
+                height: 48,
+                compact: true,
+                borderRadius: 10,
               ),
             ),
           ),

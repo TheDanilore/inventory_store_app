@@ -87,7 +87,9 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                 Text(
                   isCredito
                       ? 'Crédito'
-                      : (selectedAcc['name'] as String? ?? ''),
+                      : (selectedType == 'CAJA'
+                          ? 'Efectivo'
+                          : (selectedAcc['name'] as String? ?? '')),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -110,6 +112,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                   ...sortedAccounts.map((acc) {
                     final accName = acc['name'] as String? ?? '';
                     final type = acc['type'] as String? ?? 'OTRO';
+                    final isCaja = type == 'CAJA';
                     final brand = FinancialBrandHelper.getBrand(
                       name: accName,
                       type: type,
@@ -125,6 +128,12 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                         (acc['balance'] as num?)?.toStringAsFixed(0) ?? '0';
                     final isCashRegister =
                         PosCalculatorUtils.accountRequiresShift(acc);
+
+                    final titleText = isCaja ? 'Efectivo' : accName;
+                    final subtitleText =
+                        isCaja
+                            ? '$accName • $currencySymbol $balance'
+                            : '$currencySymbol $balance';
 
                     return SizedBox(
                       width: itemWidth,
@@ -167,7 +176,7 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        accName,
+                                        titleText,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -180,11 +189,11 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        '$currencySymbol $balance',
+                                        subtitleText,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          fontSize: 10.5,
+                                          fontSize: 10.0,
                                           fontWeight: FontWeight.w600,
                                           color:
                                               isSelected

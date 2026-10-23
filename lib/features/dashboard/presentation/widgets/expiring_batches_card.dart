@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Tarjeta que lista los lotes próximos a vencer o vencidos con criterio FEFO.
@@ -383,56 +383,14 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? const Color(0xFF1E293B)
-                                      : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color:
-                                    isDark
-                                        ? AppColors.darkBorder
-                                        : AppColors.border,
-                                width: 0.8,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child:
-                                imgUrl != null && imgUrl.isNotEmpty
-                                    ? CachedNetworkImage(
-                                      imageUrl: imgUrl,
-                                      fit: BoxFit.cover,
-                                      placeholder:
-                                          (context, url) => Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 16,
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF94A3B8)
-                                                    : AppColors.textSecondary,
-                                          ),
-                                      errorWidget:
-                                          (context, url, error) => Icon(
-                                            Icons.inventory_2_outlined,
-                                            size: 16,
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF94A3B8)
-                                                    : AppColors.textSecondary,
-                                          ),
-                                    )
-                                    : Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 16,
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF94A3B8)
-                                              : AppColors.textSecondary,
-                                    ),
+                          ProductThumbnail(
+                            imageUrl: imgUrl,
+                            productName: prod,
+                            width: 34,
+                            height: 34,
+                            compact: true,
+                            isDark: isDark,
+                            borderRadius: 8,
                           ),
                           const SizedBox(width: 10),
                           Expanded(

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -6,6 +5,7 @@ import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/utils/brand_logo_helper.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/brands/brands_cubit.dart';
 
 /// Formulario adaptativo de Marca (Brand):
@@ -462,7 +462,6 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
 
   Widget _buildLivePreviewCard() {
     final name = _previewName.isEmpty ? 'Nombre de la Marca' : _previewName;
-    final hasLogo = _previewLogo.isNotEmpty && _previewLogo.startsWith('http');
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -497,49 +496,11 @@ class _BrandFormSheetState extends State<BrandFormSheet> {
           Row(
             children: [
               // Logo preview box
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child:
-                    hasLogo
-                        ? CachedNetworkImage(
-                          imageUrl: _previewLogo,
-                          fit: BoxFit.contain,
-                          placeholder:
-                              (ctx, url) => const Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                          errorWidget:
-                              (ctx, url, err) => const Center(
-                                child: Icon(
-                                  Icons.broken_image_outlined,
-                                  size: 20,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                        )
-                        : Center(
-                          child: Text(
-                            name.isNotEmpty ? name[0].toUpperCase() : 'M',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
+              BrandLogoHelper.buildBrandLogo(
+                name: name,
+                logoUrl: _previewLogo,
+                size: 48,
+                borderRadius: 10,
               ),
               const SizedBox(width: 14),
               Expanded(

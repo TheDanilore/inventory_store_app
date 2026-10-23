@@ -110,6 +110,8 @@ flutter:
     - assets/logo_circle.png
     - assets/emblema_tecnologico.png
     - assets/favicon.ico
+    - assets/icons/banks/
+    - assets/icons/brands/
     # - env.json
 
 flutter_launcher_icons:

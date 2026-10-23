@@ -113,7 +113,11 @@ class PosCubit extends Cubit<PosState> {
           );
           initialAccountId = firstAcc['id'] as String;
           if (state.paymentMethod != 'CRÉDITO') {
-            initialPaymentMethod = firstAcc['name'] as String? ?? 'EFECTIVO';
+            final type = firstAcc['type'] as String? ?? '';
+            initialPaymentMethod =
+                type == 'CAJA'
+                    ? 'EFECTIVO'
+                    : (firstAcc['name'] as String? ?? 'EFECTIVO');
           }
         }
 
@@ -259,7 +263,12 @@ class PosCubit extends Cubit<PosState> {
         orElse: () => <String, dynamic>{},
       );
       if (account.isNotEmpty) {
-        resolvedPaymentMethod = account['name'] as String? ?? 'EFECTIVO';
+        final type = account['type'] as String? ?? '';
+        if (type == 'CAJA') {
+          resolvedPaymentMethod = 'EFECTIVO';
+        } else {
+          resolvedPaymentMethod = account['name'] as String? ?? 'EFECTIVO';
+        }
       }
     }
 
