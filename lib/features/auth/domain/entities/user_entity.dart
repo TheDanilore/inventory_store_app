@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 
 class UserEntity extends Equatable {
@@ -94,6 +95,36 @@ class UserEntity extends Equatable {
       !isCashier &&
       !isWarehouseKeeper &&
       !isEmployee;
+
+  /// Comprueba si el usuario tiene acceso operativo a ventas / POS
+  bool get canAccessPos =>
+      isAdmin ||
+      hasAnyPermission([AppPermissions.posSale, AppPermissions.posView]);
+
+  /// Comprueba si el usuario tiene permisos para consultar o administrar el ERP
+  bool get canAccessErp =>
+      isAdmin ||
+      hasAnyPermission([
+        AppPermissions.productsCreate,
+        AppPermissions.productsEdit,
+        AppPermissions.inventoryEntries,
+        AppPermissions.inventoryExits,
+        AppPermissions.inventoryKardex,
+        AppPermissions.purchasesView,
+        AppPermissions.purchasesCreate,
+        AppPermissions.suppliersView,
+        AppPermissions.customersView,
+        AppPermissions.reportsFinancial,
+        AppPermissions.reportsSales,
+        AppPermissions.usersView,
+        AppPermissions.rolesManage,
+        AppPermissions.settingsView,
+        AppPermissions.warehousesManage,
+        AppPermissions.financialAccountsManage,
+      ]);
+
+  /// Usuario asignado exclusivamente a POS/Caja (tiene permiso de POS pero no tiene acceso al ERP)
+  bool get isPosOnly => canAccessPos && !canAccessErp;
 
   @override
   List<Object?> get props => [

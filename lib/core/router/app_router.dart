@@ -197,10 +197,8 @@ class AppRouter {
           return isLogin ? null : '/login';
         }
 
-        // Si es rol Cajero Exclusivo (solo POS):
-        final isCashierOnly =
-            user.isCashier && !user.isAdmin && !user.isWarehouseKeeper;
-        if (isCashierOnly) {
+        // Si es usuario exclusivo de POS (sin acceso al ERP administrativo):
+        if (user.isPosOnly) {
           if (isSplash ||
               isLogin ||
               (!currentPath.startsWith('/pos') && currentPath != '/login')) {

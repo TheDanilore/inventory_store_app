@@ -416,9 +416,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
   bool get _isCashierOnly {
     final user = context.read<AuthCubit>().state.currentUser;
-    return (user?.isCashier ?? false) &&
-        !(user?.isAdmin ?? false) &&
-        !(user?.isWarehouseKeeper ?? false);
+    return user?.isPosOnly ?? false;
   }
 
   Future<void> _onExitPos() async {
