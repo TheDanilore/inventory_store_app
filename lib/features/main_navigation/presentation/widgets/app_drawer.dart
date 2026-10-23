@@ -12,7 +12,6 @@ import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 
 // ---------------------------------------------------------------------------
 // Modelo de datos para los ítems del drawer
@@ -561,10 +560,10 @@ class _AppDrawerState extends State<AppDrawer> {
                     _DrawerItem(
                       icon: Icons.help_outline_rounded,
                       title: 'Ayuda y Soporte',
-                      routePath: '__help__',
+                      routePath: '/help',
                       onTap: () {
                         Navigator.pop(context);
-                        AdminHelpDialog.show(context);
+                        context.go('/help');
                       },
                     ),
                   ),

@@ -8,7 +8,6 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_help_dialog.dart';
 import 'package:url_launcher/link.dart';
 
 class AdminSidebarItem {
@@ -492,7 +491,8 @@ class _AdminSidebarState extends State<AdminSidebar> {
                   context,
                   icon: Icons.help_outline_rounded,
                   title: 'Ayuda y Soporte',
-                  onTap: () => AdminHelpDialog.show(context),
+                  isSelected: GoRouterState.of(context).uri.path == '/help',
+                  onTap: () => context.go('/help'),
                 ),
               ],
             ),

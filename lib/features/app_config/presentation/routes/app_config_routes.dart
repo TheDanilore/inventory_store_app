@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/screens/admin_settings_screen.dart';
+import 'package:inventory_store_app/features/app_config/presentation/screens/admin_help_screen.dart';
 
 class AppConfigRoutes {
   static List<RouteBase> get adminRoutes => [
@@ -14,6 +15,10 @@ class AppConfigRoutes {
         final initialTab = int.tryParse(tabStr ?? '') ?? 0;
         return AdminSettingsScreen(initialTabIndex: initialTab);
       },
+    ),
+    GoRoute(
+      path: '/help',
+      builder: (context, state) => const AdminHelpScreen(),
     ),
   ];
 }
