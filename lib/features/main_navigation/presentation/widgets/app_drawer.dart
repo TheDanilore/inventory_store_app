@@ -102,7 +102,6 @@ class _AppDrawerState extends State<AppDrawer> {
     final authState = context.watch<AuthCubit>().state;
     final currentUser = authState.currentUser;
     final isAdmin = widget.isAdmin || (currentUser?.isAdmin ?? false);
-    final isWarehouseKeeper = currentUser?.isWarehouseKeeper ?? false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     bool can(String perm) =>
@@ -163,7 +162,12 @@ class _AppDrawerState extends State<AppDrawer> {
     ];
 
     final purchasesChildren = <_DrawerSubItem>[
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.purchasesView,
+            AppPermissions.purchasesCreate,
+            AppPermissions.purchasesReceive,
+          ]))
         _DrawerSubItem(
           icon: Icons.receipt_long_rounded,
           title: 'Órdenes de compra',
@@ -173,7 +177,7 @@ class _AppDrawerState extends State<AppDrawer> {
             context.go('/purchase-orders');
           },
         ),
-      if (can(AppPermissions.inventoryEntries))
+      if (isAdmin || can(AppPermissions.inventoryEntries))
         _DrawerSubItem(
           icon: Icons.add_rounded,
           title: 'Entradas inventario',
@@ -183,7 +187,11 @@ class _AppDrawerState extends State<AppDrawer> {
             context.go('/inventory-entries');
           },
         ),
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.reportsFinancial))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.purchasesView,
+            AppPermissions.reportsFinancial,
+          ]))
         _DrawerSubItem(
           icon: Icons.credit_score_rounded,
           title: 'Créditos proveedores',
@@ -193,7 +201,11 @@ class _AppDrawerState extends State<AppDrawer> {
             context.go('/supplier-credits');
           },
         ),
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.suppliersView,
+            AppPermissions.suppliersManage,
+          ]))
         _DrawerSubItem(
           icon: Icons.local_shipping_outlined,
           title: 'Proveedores',
@@ -206,11 +218,13 @@ class _AppDrawerState extends State<AppDrawer> {
     ];
 
     final customersChildren = <_DrawerSubItem>[
-      if (canAny([
-        AppPermissions.posView,
-        AppPermissions.posSale,
-        AppPermissions.reportsFinancial,
-      ])) ...[
+      if (isAdmin ||
+          canAny([
+            AppPermissions.customersView,
+            AppPermissions.customersManage,
+            AppPermissions.posView,
+            AppPermissions.posSale,
+          ])) ...[
         _DrawerSubItem(
           icon: Icons.person_outline_rounded,
           title: 'Clientes',
@@ -220,41 +234,59 @@ class _AppDrawerState extends State<AppDrawer> {
             context.go('/customers');
           },
         ),
-        _DrawerSubItem(
-          icon: Icons.credit_score_rounded,
-          title: 'Créditos clientes',
-          routePath: '/customer-credits',
-          onTap: () {
-            Navigator.pop(context);
-            context.go('/customer-credits');
-          },
-        ),
+        if (isAdmin ||
+            canAny([
+              AppPermissions.creditsManage,
+              AppPermissions.reportsFinancial,
+            ]))
+          _DrawerSubItem(
+            icon: Icons.credit_score_rounded,
+            title: 'Créditos clientes',
+            routePath: '/customer-credits',
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/customer-credits');
+            },
+          ),
       ],
     ];
 
     final mastersChildren = <_DrawerSubItem>[
-      if (canAny([
-        AppPermissions.productsCreate,
-        AppPermissions.productsEdit,
-      ])) ...[
-        _DrawerSubItem(
-          icon: Icons.category_outlined,
-          title: 'Categorías',
-          routePath: '/categories',
-          onTap: () {
-            Navigator.pop(context);
-            context.go('/categories');
-          },
-        ),
-        _DrawerSubItem(
-          icon: Icons.branding_watermark_outlined,
-          title: 'Marcas',
-          routePath: '/brands',
-          onTap: () {
-            Navigator.pop(context);
-            context.go('/brands');
-          },
-        ),
+      if (isAdmin ||
+          canAny([
+            AppPermissions.productsCreate,
+            AppPermissions.productsEdit,
+            AppPermissions.categoriesManage,
+            AppPermissions.brandsManage,
+          ])) ...[
+        if (isAdmin ||
+            canAny([
+              AppPermissions.categoriesManage,
+              AppPermissions.productsEdit,
+            ]))
+          _DrawerSubItem(
+            icon: Icons.category_outlined,
+            title: 'Categorías',
+            routePath: '/categories',
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/categories');
+            },
+          ),
+        if (isAdmin ||
+            canAny([
+              AppPermissions.brandsManage,
+              AppPermissions.productsEdit,
+            ]))
+          _DrawerSubItem(
+            icon: Icons.branding_watermark_outlined,
+            title: 'Marcas',
+            routePath: '/brands',
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/brands');
+            },
+          ),
         _DrawerSubItem(
           icon: Icons.local_offer,
           title: 'Atributos',
@@ -434,10 +466,12 @@ class _AppDrawerState extends State<AppDrawer> {
                               context.go('/roles');
                             },
                           ),
-                        if (canAny([
-                          AppPermissions.reportsFinancial,
-                          AppPermissions.settingsView,
-                        ]))
+                        if (isAdmin ||
+                            canAny([
+                              AppPermissions.financialAccountsManage,
+                              AppPermissions.reportsFinancial,
+                              AppPermissions.settingsView,
+                            ]))
                           _DrawerSubItem(
                             icon: Icons.account_balance_wallet_outlined,
                             title: 'Cuentas',
@@ -447,10 +481,12 @@ class _AppDrawerState extends State<AppDrawer> {
                               context.go('/financial-accounts');
                             },
                           ),
-                        if (canAny([
-                          AppPermissions.inventoryTransfer,
-                          AppPermissions.settingsView,
-                        ]))
+                        if (isAdmin ||
+                            canAny([
+                              AppPermissions.warehousesManage,
+                              AppPermissions.inventoryTransfer,
+                              AppPermissions.settingsView,
+                            ]))
                           _DrawerSubItem(
                             icon: Icons.warehouse_outlined,
                             title: 'Almacenes',
@@ -1107,12 +1143,13 @@ class _DrawerFooter extends StatelessWidget {
           child: BlocSelector<
             AuthCubit,
             auth_state.AuthState,
-            ({String? avatarUrl, String fullName})
+            ({String? avatarUrl, String fullName, String? roleName})
           >(
             selector:
                 (state) => (
                   avatarUrl: state.currentUser?.avatarUrl,
                   fullName: state.currentUser?.fullName ?? '',
+                  roleName: state.currentUser?.role,
                 ),
             builder: (context, data) {
               return Material(
@@ -1171,7 +1208,8 @@ class _DrawerFooter extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                isAdmin ? 'Administrador' : 'Cliente',
+                                data.roleName ??
+                                    (isAdmin ? 'Administrador' : 'Colaborador'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: textSecondary,

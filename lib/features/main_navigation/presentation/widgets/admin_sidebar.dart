@@ -81,7 +81,6 @@ class _AdminSidebarState extends State<AdminSidebar> {
     final authState = context.watch<AuthCubit>().state;
     final currentUser = authState.currentUser;
     final isAdmin = currentUser?.isAdmin ?? false;
-    final isWarehouseKeeper = currentUser?.isWarehouseKeeper ?? false;
 
     bool can(String perm) =>
         isAdmin || (currentUser?.hasPermission(perm) ?? false);
@@ -125,25 +124,38 @@ class _AdminSidebarState extends State<AdminSidebar> {
     ];
 
     final purchasesChildren = <AdminSidebarItem>[
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.purchasesView,
+            AppPermissions.purchasesCreate,
+            AppPermissions.purchasesReceive,
+          ]))
         const AdminSidebarItem(
           icon: Icons.receipt_long_rounded,
           title: 'Órdenes de compra',
           routePath: '/purchase-orders',
         ),
-      if (can(AppPermissions.inventoryEntries))
+      if (isAdmin || can(AppPermissions.inventoryEntries))
         const AdminSidebarItem(
           icon: Icons.add_rounded,
           title: 'Entradas inventario',
           routePath: '/inventory-entries',
         ),
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.reportsFinancial))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.purchasesView,
+            AppPermissions.reportsFinancial,
+          ]))
         const AdminSidebarItem(
           icon: Icons.credit_score_rounded,
           title: 'Créditos proveedores',
           routePath: '/supplier-credits',
         ),
-      if (isAdmin || isWarehouseKeeper || can(AppPermissions.inventoryEntries))
+      if (isAdmin ||
+          canAny([
+            AppPermissions.suppliersView,
+            AppPermissions.suppliersManage,
+          ]))
         const AdminSidebarItem(
           icon: Icons.local_shipping_outlined,
           title: 'Proveedores',
@@ -152,39 +164,56 @@ class _AdminSidebarState extends State<AdminSidebar> {
     ];
 
     final customersChildren = <AdminSidebarItem>[
-      if (canAny([
-        AppPermissions.posView,
-        AppPermissions.posSale,
-        AppPermissions.reportsFinancial,
-      ])) ...[
+      if (isAdmin ||
+          canAny([
+            AppPermissions.customersView,
+            AppPermissions.customersManage,
+            AppPermissions.posView,
+            AppPermissions.posSale,
+          ])) ...[
         const AdminSidebarItem(
           icon: Icons.person_outline_rounded,
           title: 'Clientes',
           routePath: '/customers',
         ),
-        const AdminSidebarItem(
-          icon: Icons.credit_score_rounded,
-          title: 'Créditos clientes',
-          routePath: '/customer-credits',
-        ),
+        if (isAdmin ||
+            canAny([
+              AppPermissions.creditsManage,
+              AppPermissions.reportsFinancial,
+            ]))
+          const AdminSidebarItem(
+            icon: Icons.credit_score_rounded,
+            title: 'Créditos clientes',
+            routePath: '/customer-credits',
+          ),
       ],
     ];
 
     final mastersChildren = <AdminSidebarItem>[
-      if (canAny([
-        AppPermissions.productsCreate,
-        AppPermissions.productsEdit,
-      ])) ...[
-        const AdminSidebarItem(
-          icon: Icons.category_outlined,
-          title: 'Categorías',
-          routePath: '/categories',
-        ),
-        const AdminSidebarItem(
-          icon: Icons.branding_watermark_outlined,
-          title: 'Marcas',
-          routePath: '/brands',
-        ),
+      if (isAdmin ||
+          canAny([
+            AppPermissions.productsCreate,
+            AppPermissions.productsEdit,
+            AppPermissions.categoriesManage,
+            AppPermissions.brandsManage,
+          ])) ...[
+        if (isAdmin ||
+            canAny([
+              AppPermissions.categoriesManage,
+              AppPermissions.productsEdit,
+            ]))
+          const AdminSidebarItem(
+            icon: Icons.category_outlined,
+            title: 'Categorías',
+            routePath: '/categories',
+          ),
+        if (isAdmin ||
+            canAny([AppPermissions.brandsManage, AppPermissions.productsEdit]))
+          const AdminSidebarItem(
+            icon: Icons.branding_watermark_outlined,
+            title: 'Marcas',
+            routePath: '/brands',
+          ),
         const AdminSidebarItem(
           icon: Icons.local_offer,
           title: 'Atributos',
@@ -358,19 +387,23 @@ class _AdminSidebarState extends State<AdminSidebar> {
                             title: 'Roles y Permisos',
                             routePath: '/roles',
                           ),
-                        if (canAny([
-                          AppPermissions.reportsFinancial,
-                          AppPermissions.settingsView,
-                        ]))
+                        if (isAdmin ||
+                            canAny([
+                              AppPermissions.financialAccountsManage,
+                              AppPermissions.reportsFinancial,
+                              AppPermissions.settingsView,
+                            ]))
                           const AdminSidebarItem(
                             icon: Icons.account_balance_wallet_outlined,
                             title: 'Cuentas',
                             routePath: '/financial-accounts',
                           ),
-                        if (canAny([
-                          AppPermissions.inventoryTransfer,
-                          AppPermissions.settingsView,
-                        ]))
+                        if (isAdmin ||
+                            canAny([
+                              AppPermissions.warehousesManage,
+                              AppPermissions.inventoryTransfer,
+                              AppPermissions.settingsView,
+                            ]))
                           const AdminSidebarItem(
                             icon: Icons.warehouse_outlined,
                             title: 'Almacenes',

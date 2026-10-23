@@ -13,6 +13,30 @@ class AppPermissions {
 
   // ─── MÓDULO ALMACENES ─────────────────────────────────────────────────────
   static const String warehousesViewAll = 'warehouses.view_all';
+  static const String warehousesManage = 'warehouses.manage';
+
+  // ─── MÓDULO PROVEEDORES ───────────────────────────────────────────────────
+  static const String suppliersView = 'suppliers.view';
+  static const String suppliersManage = 'suppliers.manage';
+
+  // ─── MÓDULO COMPRAS ───────────────────────────────────────────────────────
+  static const String purchasesView = 'purchases.view';
+  static const String purchasesCreate = 'purchases.create';
+  static const String purchasesReceive = 'purchases.receive';
+  static const String purchasesCancel = 'purchases.cancel';
+
+  // ─── MÓDULO MARCAS Y CATEGORÍAS ───────────────────────────────────────────
+  static const String brandsManage = 'brands.manage';
+  static const String categoriesManage = 'categories.manage';
+
+  // ─── MÓDULO CLIENTES Y CRÉDITOS ───────────────────────────────────────────
+  static const String customersView = 'customers.view';
+  static const String customersManage = 'customers.manage';
+  static const String creditsManage = 'credits.manage';
+
+  // ─── MÓDULO FINANZAS Y TESORERÍA ──────────────────────────────────────────
+  static const String financialAccountsManage = 'financial.accounts.manage';
+  static const String financialMovementsCreate = 'financial.movements.create';
 
   // ─── MÓDULO INVENTARIO ────────────────────────────────────────────────────
   static const String inventoryView = 'inventory.view';
@@ -54,6 +78,20 @@ class AppPermissions {
   /// Lista con todos los permisos del sistema
   static const List<String> all = [
     warehousesViewAll,
+    warehousesManage,
+    suppliersView,
+    suppliersManage,
+    purchasesView,
+    purchasesCreate,
+    purchasesReceive,
+    purchasesCancel,
+    brandsManage,
+    categoriesManage,
+    customersView,
+    customersManage,
+    creditsManage,
+    financialAccountsManage,
+    financialMovementsCreate,
     posView,
     posSale,
     posDiscount,
@@ -95,6 +133,34 @@ class AppPermissions {
     switch (code) {
       case warehousesViewAll:
         return 'Ver todos los almacenes';
+      case warehousesManage:
+        return 'Administrar almacenes y sucursales';
+      case suppliersView:
+        return 'Ver lista y detalle de proveedores';
+      case suppliersManage:
+        return 'Crear, editar y eliminar proveedores';
+      case purchasesView:
+        return 'Ver órdenes de compra y abastecimiento';
+      case purchasesCreate:
+        return 'Crear y emitir órdenes de compra';
+      case purchasesReceive:
+        return 'Recepcionar mercadería en almacén';
+      case purchasesCancel:
+        return 'Anular órdenes de compra';
+      case brandsManage:
+        return 'Crear y editar marcas y laboratorios';
+      case categoriesManage:
+        return 'Crear y editar categorías de productos';
+      case customersView:
+        return 'Ver listado y fichas de clientes';
+      case customersManage:
+        return 'Crear y editar información de clientes';
+      case creditsManage:
+        return 'Administrar líneas de crédito y abonos';
+      case financialAccountsManage:
+        return 'Crear y administrar cuentas bancarias y cajas';
+      case financialMovementsCreate:
+        return 'Registrar ingresos y egresos manuales de dinero';
       case posView:
         return 'Acceder al POS';
       case posSale:
@@ -170,10 +236,20 @@ class AppPermissions {
 
   /// Módulo de pertenencia para agrupar en la interfaz
   static String getModule(String code) {
-    if (code.startsWith('warehouses.')) return 'Almacenes';
+    if (code.startsWith('warehouses.')) return 'Almacenes y Sucursales';
     if (code.startsWith('pos.')) return 'Punto de Venta (POS)';
     if (code.startsWith('inventory.')) return 'Inventario y Almacén';
-    if (code.startsWith('products.')) return 'Catálogo y Productos';
+    if (code.startsWith('products.') ||
+        code.startsWith('brands.') ||
+        code.startsWith('categories.')) {
+      return 'Catálogo y Productos';
+    }
+    if (code.startsWith('purchases.')) return 'Compras y Abastecimiento';
+    if (code.startsWith('suppliers.')) return 'Proveedores';
+    if (code.startsWith('customers.') || code.startsWith('credits.')) {
+      return 'Clientes y Créditos';
+    }
+    if (code.startsWith('financial.')) return 'Finanzas y Tesorería';
     if (code.startsWith('users.') ||
         code.startsWith('roles.') ||
         code.startsWith('permissions.')) {

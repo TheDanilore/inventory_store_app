@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -265,18 +266,28 @@ class AdminDesktopTopBar extends StatelessWidget {
               if (value == 'business') context.go('/business-info');
               if (value == 'logout') context.read<AuthCubit>().logout();
             },
-            itemBuilder:
-                (ctx) => [
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person_outline_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text('Mi Perfil'),
-                      ],
-                    ),
+            itemBuilder: (ctx) {
+              final authState = context.read<AuthCubit>().state;
+              final currentUser = authState.currentUser;
+              final isAdmin = currentUser?.isAdmin ?? false;
+              final canBusiness = isAdmin ||
+                  (currentUser?.hasAnyPermission([
+                    AppPermissions.settingsView,
+                    AppPermissions.settingsEdit,
+                  ]) ?? false);
+
+              return [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text('Mi Perfil'),
+                    ],
                   ),
+                ),
+                if (canBusiness)
                   const PopupMenuItem(
                     value: 'business',
                     child: Row(
@@ -287,25 +298,26 @@ class AdminDesktopTopBar extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.logout_rounded,
-                          size: 18,
-                          color: AppColors.error,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Cerrar Sesión',
-                          style: TextStyle(color: AppColors.error),
-                        ),
-                      ],
-                    ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.logout_rounded,
+                        size: 18,
+                        color: AppColors.error,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Cerrar Sesión',
+                        style: TextStyle(color: AppColors.error),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ];
+            },
             child: const AdminProfileAvatar(),
           ),
         ],
