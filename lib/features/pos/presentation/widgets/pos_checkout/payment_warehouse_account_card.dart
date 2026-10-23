@@ -348,6 +348,39 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
             },
           ),
 
+          // ── Aviso si la tienda activa no tiene caja física ──
+          if (!availableAccounts.any((a) => a['type'] == 'CAJA')) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 15,
+                    color: Colors.amber.shade800,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta tienda no tiene una caja física asignada para cobros en efectivo. Cambie de tienda o cree una en Cuentas y Bancos.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // ── Banner contextual de Turno (Solo cuando se elige Efectivo sin Turno Abierto) ──
           if (isCajaSelected && activeShift == null) ...[
             const SizedBox(height: 10),

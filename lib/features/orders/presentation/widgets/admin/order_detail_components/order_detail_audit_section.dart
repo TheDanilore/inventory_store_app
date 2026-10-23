@@ -58,7 +58,7 @@ class OrderDetailAuditSection extends StatelessWidget {
                         DateFormat(
                           'dd MMM yyyy, hh:mm a',
                           'es',
-                        ).format(order.createdAt!),
+                        ).format(order.createdAt!.toLocal()),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -105,7 +105,7 @@ class OrderDetailAuditSection extends StatelessWidget {
                         DateFormat(
                           'dd MMM yyyy, hh:mm a',
                           'es',
-                        ).format(order.updatedAt!),
+                        ).format(order.updatedAt!.toLocal()),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

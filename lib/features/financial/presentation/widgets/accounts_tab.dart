@@ -449,9 +449,7 @@ class _AccountCardState extends State<_AccountCard> {
       name: account.name,
       type: account.type,
     );
-    FinancialBrandHelper.formatCurrencySymbol(
-      account.currencyCode,
-    );
+    FinancialBrandHelper.formatCurrencySymbol(account.currencyCode);
     final isUsd = account.currencyCode == 'USD';
     final currencyFmt = NumberFormat.currency(
       customPattern: isUsd ? '\$ #,##0.00' : 'S/ #,##0.00',
