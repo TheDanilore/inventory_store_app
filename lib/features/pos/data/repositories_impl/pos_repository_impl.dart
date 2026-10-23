@@ -84,7 +84,7 @@ class PosRepositoryImpl implements PosRepository {
 
       final accRes = await _supabase
           .from('financial_accounts')
-          .select('id, name, type, balance')
+          .select('id, name, type, balance, warehouse_id')
           .eq('is_active', true)
           .order('type')
           .order('name');
@@ -194,7 +194,7 @@ class PosRepositoryImpl implements PosRepository {
     try {
       final accRes = await _supabase
           .from('financial_accounts')
-          .select('id, name, type, balance')
+          .select('id, name, type, balance, warehouse_id')
           .eq('is_active', true)
           .order('type')
           .order('name');

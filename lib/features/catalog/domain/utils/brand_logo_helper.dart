@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Helper inteligente para identificación, recursos gráficos y renderizado
@@ -16,7 +17,7 @@ class BrandLogoHelper {
     'GENFAR': 'assets/icons/brands/genfar.png',
     'MK': 'assets/icons/brands/mk.png',
     'TECNOQUIMICAS': 'assets/icons/brands/mk.png',
-    'ALKOFARMA': 'assets/icons/brands/alkofarma.png',
+    'ALKOFARMA': 'assets/icons/brands/alkofarma.svg',
   };
 
   /// Paletas de color representativas de cada marca.
@@ -118,13 +119,22 @@ class BrandLogoHelper {
     BoxFit fit = BoxFit.contain,
   }) {
     if (presetAsset != null) {
+      final isSvg = presetAsset.toLowerCase().endsWith('.svg');
       return Padding(
         padding: EdgeInsets.all(size * 0.12),
-        child: Image.asset(
-          presetAsset,
-          fit: fit,
-          errorBuilder: (ctx, err, stack) => _buildStylizedAvatar(name, size),
-        ),
+        child:
+            isSvg
+                ? SvgPicture.asset(
+                  presetAsset,
+                  fit: fit,
+                  placeholderBuilder: (_) => _buildStylizedAvatar(name, size),
+                )
+                : Image.asset(
+                  presetAsset,
+                  fit: fit,
+                  errorBuilder:
+                      (ctx, err, stack) => _buildStylizedAvatar(name, size),
+                ),
       );
     }
 

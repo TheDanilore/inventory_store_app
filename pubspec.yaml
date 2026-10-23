@@ -74,6 +74,7 @@ dependencies:
   barcode_widget: ^2.0.4
   mobile_scanner: ^7.4.2
   google_mlkit_text_recognition: ^0.17.1
+  flutter_svg: ^2.3.0
 
 dependency_overrides:
   xml: ^7.0.1
@@ -110,6 +111,8 @@ flutter:
     - assets/logo_circle.png
     - assets/emblema_tecnologico.png
     - assets/favicon.ico
+    - assets/images/
+    - assets/icons/
     - assets/icons/banks/
     - assets/icons/brands/
     # - env.json

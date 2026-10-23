@@ -45,7 +45,18 @@ class PaymentWarehouseAccountCard extends StatelessWidget {
     final selectedType = selectedAcc['type'] as String? ?? '';
     final isCajaSelected = !isCredito && selectedType == 'CAJA';
 
-    final sortedAccounts = List<Map<String, dynamic>>.from(accountsList)
+    // Cuentas digitales y bancarias son globales (visibles para todas las tiendas).
+    // Las cajas físicas (CAJA) se filtran para la tienda activa.
+    final availableAccounts =
+        accountsList.where((acc) {
+          final type = acc['type'] as String? ?? 'OTRO';
+          final whId = acc['warehouse_id'] as String?;
+          if (type != 'CAJA') return true;
+          if (selectedWarehouseId == null) return true;
+          return whId == null || whId == selectedWarehouseId;
+        }).toList();
+
+    final sortedAccounts = List<Map<String, dynamic>>.from(availableAccounts)
       ..sort((a, b) {
         const order = ['CAJA', 'DIGITAL', 'BANCO', 'OTRO'];
         final ai = order.indexOf(a['type'] as String? ?? 'OTRO');

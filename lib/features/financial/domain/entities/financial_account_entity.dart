@@ -8,6 +8,8 @@ class FinancialAccountEntity {
   final bool isActive;
   final DateTime createdAt;
   final String currencyCode;
+  final String? warehouseId;
+  final String? warehouseName;
 
   const FinancialAccountEntity({
     required this.id,
@@ -17,6 +19,8 @@ class FinancialAccountEntity {
     required this.isActive,
     required this.createdAt,
     this.currencyCode = 'PEN',
+    this.warehouseId,
+    this.warehouseName,
   });
 
   FinancialAccountEntity copyWith({
@@ -27,6 +31,8 @@ class FinancialAccountEntity {
     bool? isActive,
     DateTime? createdAt,
     String? currencyCode,
+    String? warehouseId,
+    String? warehouseName,
   }) {
     return FinancialAccountEntity(
       id: id ?? this.id,
@@ -36,6 +42,8 @@ class FinancialAccountEntity {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       currencyCode: currencyCode ?? this.currencyCode,
+      warehouseId: warehouseId ?? this.warehouseId,
+      warehouseName: warehouseName ?? this.warehouseName,
     );
   }
 

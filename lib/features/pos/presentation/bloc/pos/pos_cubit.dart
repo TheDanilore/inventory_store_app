@@ -108,8 +108,16 @@ class PosCubit extends Cubit<PosState> {
 
         if (data.accounts.isNotEmpty) {
           final firstAcc = data.accounts.firstWhere(
-            (a) => PosCalculatorUtils.accountRequiresShift(a),
-            orElse: () => data.accounts.first,
+            (a) =>
+                PosCalculatorUtils.accountRequiresShift(a) &&
+                (initialWarehouseId == null ||
+                    a['warehouse_id'] == null ||
+                    a['warehouse_id'] == initialWarehouseId),
+            orElse:
+                () => data.accounts.firstWhere(
+                  (a) => PosCalculatorUtils.accountRequiresShift(a),
+                  orElse: () => data.accounts.first,
+                ),
           );
           initialAccountId = firstAcc['id'] as String;
           if (state.paymentMethod != 'CRÉDITO') {
@@ -136,12 +144,20 @@ class PosCubit extends Cubit<PosState> {
 
         // Monitorear siempre el turno de la caja física de la tienda
         final cashAcc = data.accounts.firstWhere(
-          (a) => PosCalculatorUtils.accountRequiresShift(a),
+          (a) =>
+              PosCalculatorUtils.accountRequiresShift(a) &&
+              (initialWarehouseId == null ||
+                  a['warehouse_id'] == null ||
+                  a['warehouse_id'] == initialWarehouseId),
           orElse:
-              () =>
-                  data.accounts.isNotEmpty
-                      ? data.accounts.first
-                      : <String, dynamic>{},
+              () => data.accounts.firstWhere(
+                (a) => PosCalculatorUtils.accountRequiresShift(a),
+                orElse:
+                    () =>
+                        data.accounts.isNotEmpty
+                            ? data.accounts.first
+                            : <String, dynamic>{},
+              ),
         );
         final cashAccId = cashAcc['id'] as String?;
         if (cashAccId != null) {
@@ -250,7 +266,36 @@ class PosCubit extends Cubit<PosState> {
   }
 
   void setWarehouse(String? id) {
-    emit(state.copyWith(selectedWarehouseId: id));
+    String? newAccountId = state.selectedAccountId;
+
+    // Si la cuenta actual es una CAJA física, verificar si coincide con la nueva tienda o cambiar a la de la nueva tienda
+    final currentAcc = state.accounts.firstWhere(
+      (a) => a['id'] == state.selectedAccountId,
+      orElse: () => <String, dynamic>{},
+    );
+    final isCurrentCaja = currentAcc['type'] == 'CAJA';
+
+    if (isCurrentCaja && id != null) {
+      final matchingCaja = state.accounts.firstWhere(
+        (a) => a['type'] == 'CAJA' && a['warehouse_id'] == id,
+        orElse:
+            () => state.accounts.firstWhere(
+              (a) => a['type'] == 'CAJA',
+              orElse: () => <String, dynamic>{},
+            ),
+      );
+      if (matchingCaja.isNotEmpty) {
+        newAccountId = matchingCaja['id'] as String?;
+      }
+    }
+
+    emit(
+      state.copyWith(selectedWarehouseId: id, selectedAccountId: newAccountId),
+    );
+
+    if (newAccountId != null && isCurrentCaja) {
+      checkActiveShift(newAccountId);
+    }
   }
 
   void setSelectedAccountId(String? accountId) {

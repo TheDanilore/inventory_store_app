@@ -70,6 +70,7 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
     required bool isActive,
     double? initialBalance,
     String currencyCode = 'PEN',
+    String? warehouseId,
   }) async {
     final currentAccounts = switch (state) {
       FinancialAccountsLoaded(:final accounts) => accounts,
@@ -88,6 +89,7 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
         isActive: isActive,
         initialBalance: initialBalance,
         currencyCode: currencyCode,
+        warehouseId: warehouseId,
       );
       emit(FinancialAccountSaved(accounts: currentAccounts));
       // Refresca la lista en la misma página

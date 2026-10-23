@@ -606,6 +606,71 @@ class _AccountCardState extends State<_AccountCard> {
                                     ),
                                   ),
                                 ),
+                                if (account.warehouseName != null) ...[
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blueGrey.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: Colors.blueGrey.shade200,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.storefront_rounded,
+                                          size: 10,
+                                          color: Colors.blueGrey.shade700,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxWidth: 90,
+                                          ),
+                                          child: Text(
+                                            account.warehouseName!,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.blueGrey.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else if (account.type != 'CAJA') ...[
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: Colors.purple.shade200,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Global',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.purple,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 if (isSelected) ...[
                                   const SizedBox(width: 6),
                                   Text(

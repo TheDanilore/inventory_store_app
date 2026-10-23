@@ -5398,11 +5398,16 @@ CREATE TABLE IF NOT EXISTS "public"."financial_accounts" (
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "currency_code" "text" DEFAULT 'PEN'::"text"
+    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "warehouse_id" "uuid"
 );
 
 
 ALTER TABLE "public"."financial_accounts" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."financial_accounts"."warehouse_id" IS 'ID del almacén o sucursal al que pertenece la caja física. NULL para cuentas centralizadas (bancos, billeteras digitales).';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."import_batches" (
@@ -6387,6 +6392,10 @@ CREATE UNIQUE INDEX "idx_document_series_warehouse_unique" ON "public"."document
 
 
 
+CREATE INDEX "idx_financial_accounts_warehouse_id" ON "public"."financial_accounts" USING "btree" ("warehouse_id");
+
+
+
 CREATE INDEX "idx_inventory_entries_account_id" ON "public"."inventory_entries" USING "btree" ("account_id");
 
 
@@ -6819,6 +6828,11 @@ ALTER TABLE ONLY "public"."document_series"
 
 ALTER TABLE ONLY "public"."financial_accounts"
     ADD CONSTRAINT "financial_accounts_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code");
+
+
+
+ALTER TABLE ONLY "public"."financial_accounts"
+    ADD CONSTRAINT "financial_accounts_warehouse_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE SET NULL;
 
 
 
@@ -7377,11 +7391,11 @@ CREATE POLICY "Borrado de reviews" ON "public"."product_reviews" FOR DELETE USIN
 
 
 
+CREATE POLICY "Financial accounts: manage for authenticated" ON "public"."financial_accounts" TO "authenticated" USING (true) WITH CHECK (true);
+
+
+
 CREATE POLICY "Financial accounts: read all for authenticated" ON "public"."financial_accounts" FOR SELECT TO "authenticated" USING (true);
-
-
-
-CREATE POLICY "Financial accounts: manage for authenticated" ON "public"."financial_accounts" FOR ALL TO "authenticated" USING (true) WITH CHECK (true);
 
 
 

@@ -8,6 +8,8 @@ class FinancialAccountModel {
   final bool isActive;
   final DateTime createdAt;
   final String currencyCode;
+  final String? warehouseId;
+  final String? warehouseName;
 
   FinancialAccountModel({
     required this.id,
@@ -17,10 +19,19 @@ class FinancialAccountModel {
     required this.isActive,
     required this.createdAt,
     this.currencyCode = 'PEN',
+    this.warehouseId,
+    this.warehouseName,
   });
 
   /// ¡Agrega o reemplaza este método en tu modelo!
   factory FinancialAccountModel.fromJson(Map<String, dynamic> map) {
+    String? whName;
+    if (map['warehouses'] is Map) {
+      whName = (map['warehouses'] as Map)['name'] as String?;
+    } else if (map['warehouse_name'] is String) {
+      whName = map['warehouse_name'] as String;
+    }
+
     return FinancialAccountModel(
       id: map['id'] as String? ?? '',
       name: map['name'] as String? ?? '',
@@ -34,6 +45,8 @@ class FinancialAccountModel {
               ? DateTime.parse(map['created_at'] as String)
               : DateTime.now(),
       currencyCode: (map['currency_code'] as String? ?? 'PEN').toUpperCase(),
+      warehouseId: map['warehouse_id'] as String?,
+      warehouseName: whName,
     );
   }
 
@@ -47,6 +60,7 @@ class FinancialAccountModel {
       'is_active': isActive,
       'created_at': createdAt.toIso8601String(),
       'currency_code': currencyCode,
+      if (warehouseId != null) 'warehouse_id': warehouseId,
     };
   }
 
@@ -60,6 +74,8 @@ class FinancialAccountModel {
       isActive: isActive,
       createdAt: createdAt,
       currencyCode: currencyCode,
+      warehouseId: warehouseId,
+      warehouseName: warehouseName,
     );
   }
 }

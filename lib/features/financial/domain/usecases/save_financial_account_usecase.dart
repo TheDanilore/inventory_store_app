@@ -14,6 +14,7 @@ class SaveFinancialAccountUseCase {
     required bool isActive,
     double? initialBalance,
     String currencyCode = 'PEN',
+    String? warehouseId,
   }) {
     return _repository.saveAccount(
       accountId: accountId,
@@ -22,6 +23,7 @@ class SaveFinancialAccountUseCase {
       isActive: isActive,
       initialBalance: initialBalance,
       currencyCode: currencyCode,
+      warehouseId: warehouseId,
     );
   }
 }

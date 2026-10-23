@@ -7,9 +7,12 @@ import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/utils/financial_brand_helper.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/repositories/warehouses_repository.dart';
 
 class AccountFormSheet extends StatefulWidget {
   final FinancialAccountEntity? account;
@@ -54,6 +57,10 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
   bool _editBalance = false;
   bool _saving = false;
 
+  String? _selectedWarehouseId;
+  List<WarehouseEntity> _warehouses = [];
+  bool _isLoadingWarehouses = false;
+
   static const _types = [
     {
       'type': 'CAJA',
@@ -85,6 +92,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _isActive = acc.isActive;
       _currencyCode = acc.currencyCode;
       _balanceCtrl.text = acc.balance.toStringAsFixed(2);
+      _selectedWarehouseId = acc.warehouseId;
 
       // Detectar si el nombre coincide con algún preset conocido
       final detected = FinancialBrandHelper.getBrand(
@@ -119,12 +127,35 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
       _balanceCtrl.text = '0.00';
     }
 
+    _loadWarehouses();
+
     _nameCtrl.addListener(() {
       if (mounted) setState(() {});
     });
     _balanceCtrl.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _loadWarehouses() async {
+    setState(() => _isLoadingWarehouses = true);
+    try {
+      final whs = await sl<WarehousesRepository>().getActiveWarehouses();
+      if (mounted) {
+        setState(() {
+          _warehouses = whs;
+          _isLoadingWarehouses = false;
+          // Si no hay almacén asignado aún y es caja física, asignar el primer almacén disponible
+          if (_selectedWarehouseId == null && _warehouses.isNotEmpty) {
+            _selectedWarehouseId = _warehouses.first.id;
+          }
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingWarehouses = false);
+      }
+    }
   }
 
   @override
@@ -173,6 +204,7 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
         initialBalance: (!_isEditing || _editBalance) ? balance : null,
         accountId: widget.account?.id,
         currencyCode: _currencyCode,
+        warehouseId: _type == 'CAJA' ? _selectedWarehouseId : null,
       );
 
       if (!mounted) return;
@@ -533,6 +565,128 @@ class _AccountFormSheetState extends State<AccountFormSheet> {
               }).toList(),
         ),
         const SizedBox(height: 18),
+
+        // ── 5.1 Asignación de Tienda / Sucursal ───────────────────────────────
+        if (_type == 'CAJA') ...[
+          _fieldLabel('Tienda o Sucursal física *'),
+          if (_isLoadingWarehouses)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: LinearProgressIndicator(minHeight: 3),
+            )
+          else if (_warehouses.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.amber,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No hay almacenes o tiendas activas registradas.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            DropdownButtonFormField<String>(
+              initialValue:
+                  _selectedWarehouseId != null &&
+                          _warehouses.any((w) => w.id == _selectedWarehouseId)
+                      ? _selectedWarehouseId
+                      : (_warehouses.isNotEmpty ? _warehouses.first.id : null),
+              isExpanded: true,
+              decoration: _inputDeco('Selecciona la tienda').copyWith(
+                prefixIcon: const Icon(
+                  Icons.storefront_rounded,
+                  color: AppColors.teal,
+                  size: 20,
+                ),
+              ),
+              items:
+                  _warehouses.map((w) {
+                    return DropdownMenuItem<String>(
+                      value: w.id,
+                      child: Text(
+                        w.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _selectedWarehouseId = val);
+                }
+              },
+            ),
+          const SizedBox(height: 6),
+          const Text(
+            'Cada sucursal maneja su propio cajón de dinero físico para aperturas, cierres y turnos.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 18),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.teal.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.teal.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.hub_rounded,
+                  size: 20,
+                  color: AppColors.tealDark,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Cuenta Digital / Centralizada',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.tealDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Esta cuenta está disponible para cobrar y recibir transferencias en todas las tiendas y vendedores.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.blueGrey.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
 
         // ── 6. Balance (Inicial o Ajuste) ────────────────────────────────────
         if (!_isEditing) ...[

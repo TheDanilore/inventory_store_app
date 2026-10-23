@@ -23,7 +23,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
       final response = await _supabase
           .from('financial_accounts')
           .select(
-            'id, name, type, balance, is_active, created_at, currency_code',
+            'id, name, type, balance, is_active, created_at, currency_code, warehouse_id, warehouses(id, name)',
           )
           .order('is_active', ascending: false)
           .order('name')
@@ -56,7 +56,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
           await _supabase
               .from('financial_accounts')
               .select(
-                'id, name, type, balance, is_active, created_at, currency_code',
+                'id, name, type, balance, is_active, created_at, currency_code, warehouse_id, warehouses(id, name)',
               )
               .eq('id', accountId)
               .maybeSingle();
@@ -100,6 +100,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
     required bool isActive,
     double? initialBalance,
     String currencyCode = 'PEN',
+    String? warehouseId,
   }) async {
     try {
       if (accountId != null) {
@@ -108,6 +109,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
           'type': type,
           'is_active': isActive,
           'currency_code': currencyCode,
+          'warehouse_id': warehouseId,
           'updated_at': DateTime.now().toIso8601String(),
         };
         if (initialBalance != null) {
@@ -124,6 +126,7 @@ class FinancialAccountsRepositoryImpl implements FinancialAccountsRepository {
           'balance': initialBalance ?? 0.0,
           'is_active': isActive,
           'currency_code': currencyCode,
+          'warehouse_id': warehouseId,
         });
       }
     } catch (e, st) {
