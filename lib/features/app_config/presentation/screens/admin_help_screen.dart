@@ -1,9 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/network/network_cubit.dart';
+import 'package:inventory_store_app/core/network/network_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Centro de Ayuda, Documentación y Soporte del ERP.
 ///
@@ -129,19 +136,86 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
   static const _blue = Color(0xFF2563EB);
   static const _purple = Color(0xFF7C3AED);
 
+  // Diagnóstico en tiempo real
+  String _appVersion = 'Cargando...';
+  String _buildNumber = '';
+  int? _latencyMs;
+  bool _measuringLatency = false;
+  Timer? _latencyTimer;
+  bool _supabaseReachable = true;
+
   _T get _t => _T.of(context);
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabCount, vsync: this);
+    _loadDiagnostics();
+    _latencyTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _searchQuery.isEmpty) {
+        _measureLatency();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _latencyTimer?.cancel();
     _tabController.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDiagnostics() async {
+    await _loadAppVersion();
+    await _measureLatency();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() {
+        _appVersion = info.version;
+        _buildNumber = info.buildNumber;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _appVersion = 'Desconocida';
+        _buildNumber = '';
+      });
+    }
+  }
+
+  Future<void> _measureLatency() async {
+    if (_measuringLatency) return;
+    setState(() => _measuringLatency = true);
+    try {
+      final stopwatch = Stopwatch()..start();
+      // Ping ligero a Supabase para medir latencia real
+      await Supabase.instance.client
+          .from('app_settings')
+          .select('key')
+          .limit(1)
+          .timeout(const Duration(seconds: 5));
+      stopwatch.stop();
+      if (!mounted) return;
+      setState(() {
+        _latencyMs = stopwatch.elapsedMilliseconds;
+        _supabaseReachable = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _latencyMs = null;
+        _supabaseReachable = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _measuringLatency = false);
+      }
+    }
   }
 
   void _copyToClipboard(String text, String label) {
@@ -742,6 +816,8 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     ],
   ];
 
+
+
   _Item _i(String text, Widget child) => _Item(text, child);
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1304,29 +1380,58 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
   }
 
   // ── TAB 8: DIAGNÓSTICO ────────────────────────────────────────────────────
-  // NOTA: estos valores son estáticos. Conéctalos a tu servicio real de
-  // telemetría (versión, latencia, estado de Supabase) cuando lo tengas.
   _HelpTab _diagnosticsTab() {
     final t = _t;
-    const rows = [
-      ('Versión de Software', 'DANILORE ONE ERP v1.4.2 (Octubre 2026)', null),
-      ('Motor de Base de Datos', 'PostgreSQL 15 vía Supabase Cloud', null),
-      (
-        'Arquitectura POS',
-        'Multi-Store, Multi-Register y caché offline resiliente',
-        null,
-      ),
+    final isOnline =
+        context.watch<NetworkCubit>().state is NetworkConnected;
+
+    final latencyText =
+        _measuringLatency
+            ? 'Midiendo...'
+            : _latencyMs == null
+            ? (_supabaseReachable ? 'N/D' : 'Error de conexión')
+            : '$_latencyMs ms (${_latencyMs! < 100 ? 'Excelente' : _latencyMs! < 300 ? 'Bueno' : _latencyMs! < 600 ? 'Regular' : 'Lento'})';
+
+    final latencyColor =
+        _latencyMs == null
+            ? (_supabaseReachable ? AppColors.warning : AppColors.error)
+            : _latencyMs! < 100
+            ? AppColors.success
+            : _latencyMs! < 300
+            ? AppColors.info
+            : _latencyMs! < 600
+            ? AppColors.warning
+            : AppColors.error;
+
+    final versionDisplay =
+        _buildNumber.isNotEmpty
+            ? 'DANILORE ONE ERP v$_appVersion (Build $_buildNumber)'
+            : 'DANILORE ONE ERP v$_appVersion';
+
+    final rows = [
+      ('Versión de Software', versionDisplay, null),
+      ('Motor de Base de Datos', 'PostgreSQL vía Supabase Cloud', null),
+      ('Arquitectura POS', 'Multi-Store, Multi-Register y caché offline resiliente', null),
       ('Plataforma Activa', 'Flutter Multiplatform Desktop/Web/Android', null),
-      ('Latencia Promedio', '28 ms (Excelente)', AppColors.success),
+      ('Latencia a Supabase', latencyText, latencyColor),
+      (
+        'Conectividad de Red',
+        isOnline ? 'Conectado a Internet' : 'Sin conexión a Internet',
+        isOnline ? AppColors.success : AppColors.error,
+      ),
       ('Seguridad', 'Row Level Security (RLS) + JWT Auth', null),
     ];
+
+    final buildSuffix = _buildNumber.isNotEmpty ? ' (Build $_buildNumber)' : '';
+    final reportText =
+        'DANILORE ONE ERP v$_appVersion$buildSuffix | Latency: ${_latencyMs?.toString() ?? 'N/D'}ms | DB: PostgreSQL Supabase | Network: ${isOnline ? 'Online' : 'Offline'} | Supabase: ${_supabaseReachable ? 'Reachable' : 'Unreachable'}';
 
     return _HelpTab('Diagnóstico & Cloud', Icons.cloud_done_rounded, [
       _Group(
         items: [
           _i(
-            'servidor supabase cloud activo sincronizado postgresql respaldados estado operativo',
-            _statusBanner(),
+            'servidor supabase cloud activo sincronizado postgresql respaldados estado operativo ${_supabaseReachable ? "activo" : "error"}',
+            _statusBanner(reachable: _supabaseReachable && isOnline),
           ),
         ],
       ),
@@ -1343,30 +1448,51 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
         items: [
           _i(
             'copiar reporte completo soporte técnico',
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed:
-                    () => _copyToClipboard(
-                      'DANILORE ONE ERP v1.4.2 | Latency: 28ms | DB: PostgreSQL 15 Supabase | Status: Operational',
-                      'Reporte de Diagnóstico',
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _copyToClipboard(reportText, 'Reporte de Diagnóstico'),
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copiar reporte para soporte técnico'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: t.primaryBtn,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 46),
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
                     ),
-                icon: const Icon(Icons.copy_rounded, size: 16),
-                label: const Text('Copiar reporte para soporte técnico'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: t.primaryBtn,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(0, 46),
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  textStyle: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _measuringLatency ? null : _measureLatency,
+                  icon:
+                      _measuringLatency
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Re-medir latencia'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 46),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -2075,9 +2201,9 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
     ];
   }
 
-  Widget _statusBanner() {
+  Widget _statusBanner({bool reachable = true}) {
     final t = _t;
-    const color = AppColors.success;
+    final color = reachable ? AppColors.success : AppColors.error;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2093,13 +2219,15 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.35),
-                  blurRadius: 0,
-                  spreadRadius: 4,
-                ),
-              ],
+              boxShadow: reachable
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.35),
+                        blurRadius: 0,
+                        spreadRadius: 4,
+                      ),
+                    ]
+                  : null,
             ),
           ),
           const SizedBox(width: 16),
@@ -2108,16 +2236,20 @@ class _AdminHelpScreenState extends State<AdminHelpScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Servidor Supabase Cloud activo y sincronizado',
+                  reachable
+                      ? 'Servidor Supabase Cloud activo y sincronizado'
+                      : 'Sin conexión a Supabase o red inaccesible',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: t.tone(AppColors.successDark),
+                    color: t.tone(color),
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.',
+                  reachable
+                      ? 'Conexión segura con la nube PostgreSQL. Todos los datos, turnos y ventas están respaldados.'
+                      : 'No se pudo verificar la conexión. Revisa tu red o credenciales de Supabase.',
                   style: TextStyle(fontSize: 13, color: t.body, height: 1.45),
                 ),
               ],
