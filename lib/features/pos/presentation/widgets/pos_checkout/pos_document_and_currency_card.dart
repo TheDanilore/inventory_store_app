@@ -87,11 +87,18 @@ class _PosDocumentAndCurrencyCardState
               prev.currencyCode != curr.currencyCode ||
               prev.exchangeRate != curr.exchangeRate ||
               prev.paymentMethod != curr.paymentMethod ||
+              prev.paymentReference != curr.paymentReference ||
               prev.selectedAccountId != curr.selectedAccountId ||
               prev.selectedClientId != curr.selectedClientId ||
               prev.customerDocumentNumber != curr.customerDocumentNumber ||
               prev.documentSeries != curr.documentSeries,
       builder: (context, posState) {
+        if ((posState.paymentReference == null ||
+                posState.paymentReference!.isEmpty) &&
+            _refCtrl.text.isNotEmpty) {
+          _refCtrl.clear();
+        }
+
         final docType = posState.documentType;
         final isFactura = docType == 'FACTURA';
         final isBoleta = docType == 'BOLETA';
@@ -257,19 +264,15 @@ class _PosDocumentAndCurrencyCardState
                   ),
                   const SizedBox(width: 10),
 
-                  // Moneda: Si el sistema solo tiene 1 moneda (estándar), se muestra como etiqueta fija informativa.
-                  // Si el administrador habilitó multimoneda en Ajustes, se muestra el selector entre las monedas activas.
+                  // Moneda Base Oficial del Sistema ERP (Fija, configurada por el Administrador en Ajustes)
                   Expanded(
                     flex: 1,
                     child: BlocBuilder<AppConfigCubit, AppConfigState>(
                       builder: (context, configState) {
-                        final currencies = configState.activeCurrencies;
                         final base = configState.baseCurrency;
-                        final hasMultiple = currencies.length > 1;
 
-                        // Sincronizar automáticamente con la moneda base si no coincide y no es multimoneda
-                        if (!hasMultiple &&
-                            posState.currencyCode != base.code) {
+                        // Sincronizar automáticamente con la moneda base configurada en el sistema
+                        if (posState.currencyCode != base.code) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (context.mounted) {
                               posCubit.setCurrency(
@@ -280,123 +283,78 @@ class _PosDocumentAndCurrencyCardState
                           });
                         }
 
-                        if (!hasMultiple) {
-                          return Tooltip(
-                            message:
-                                'Moneda oficial configurada en Ajustes del Sistema',
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 9,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.teal.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      base.symbol.trim(),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.tealDark,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          base.code,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const Text(
-                                          'Moneda Sistema',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.lock_outline_rounded,
-                                    size: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        // Multimoneda activada por el administrador en Configuración
-                        final currentCode =
-                            currencies.any(
-                                  (c) => c.code == posState.currencyCode,
-                                )
-                                ? posState.currencyCode
-                                : base.code;
-
-                        return DropdownButtonFormField<String>(
-                          initialValue: currentCode,
-                          isDense: true,
-                          decoration: InputDecoration(
-                            labelText: 'Moneda',
-                            labelStyle: const TextStyle(fontSize: 12),
-                            contentPadding: const EdgeInsets.symmetric(
+                        return Tooltip(
+                          message:
+                              'Moneda oficial configurada en Ajustes del Sistema (${base.name})',
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 8,
+                              vertical: 9,
                             ),
-                            border: OutlineInputBorder(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.teal.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    base.symbol.trim(),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.tealDark,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${base.code} (${base.symbol.trim()})',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const Text(
+                                        'Moneda Sistema',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.lock_outline_rounded,
+                                  size: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ],
                             ),
                           ),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                          items:
-                              currencies.map((c) {
-                                return DropdownMenuItem<String>(
-                                  value: c.code,
-                                  child: Text('${c.code} (${c.symbol.trim()})'),
-                                );
-                              }).toList(),
-                          onChanged: (code) {
-                            if (code != null) {
-                              final curr = currencies.firstWhere(
-                                (c) => c.code == code,
-                                orElse: () => base,
-                              );
-                              posCubit.setCurrency(code, curr.exchangeRate);
-                            }
-                          },
                         );
                       },
                     ),

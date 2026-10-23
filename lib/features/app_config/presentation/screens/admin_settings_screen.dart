@@ -451,8 +451,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
 
   // ── Segmented Tab Bar ─────────────────────────────────────────────────────
   Widget _buildSegmentedTabBar(BuildContext context, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF131C2E) : const Color(0xFFF1F5F9),
@@ -465,6 +468,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         controller: _tabController,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
+        physics: const BouncingScrollPhysics(),
         labelColor: Colors.white,
         unselectedLabelColor:
             isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
@@ -489,14 +493,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         tabs:
             _tabs.map((tab) {
               return Tab(
-                height: 40,
+                height: 38,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(tab.icon, size: 17),
-                      const SizedBox(width: 8),
+                      Icon(tab.icon, size: 16),
+                      const SizedBox(width: 7),
                       Text(tab.title),
                     ],
                   ),
@@ -1478,11 +1482,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                       ],
                     ),
                     children: [
-                      // Bento KPIs de Tesorería
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildBentoKpiCard(
+                      // Bento KPIs de Tesorería (Responsivo)
+                      LayoutBuilder(
+                        builder: (context, kpiConstraints) {
+                          final isNarrow = kpiConstraints.maxWidth < 460;
+                          final kpiCards = [
+                            _buildBentoKpiCard(
                               context,
                               isDark: isDark,
                               label: 'Cuentas Activas',
@@ -1491,10 +1496,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                               icon: Icons.account_balance_rounded,
                               color: const Color(0xFF2563EB),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildBentoKpiCard(
+                            _buildBentoKpiCard(
                               context,
                               isDark: isDark,
                               label: 'Saldo Total Soles',
@@ -1503,11 +1505,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                               icon: Icons.monetization_on_rounded,
                               color: const Color(0xFF10B981),
                             ),
-                          ),
-                          if (totalUsdBalance > 0) ...[
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildBentoKpiCard(
+                            if (totalUsdBalance > 0)
+                              _buildBentoKpiCard(
                                 context,
                                 isDark: isDark,
                                 label: 'Saldo Total Dólares',
@@ -1516,9 +1515,28 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                 icon: Icons.currency_exchange_rounded,
                                 color: const Color(0xFF8B5CF6),
                               ),
-                            ),
-                          ],
-                        ],
+                          ];
+
+                          if (isNarrow) {
+                            return Column(
+                              children: [
+                                for (int i = 0; i < kpiCards.length; i++) ...[
+                                  if (i > 0) const SizedBox(height: 8),
+                                  kpiCards[i],
+                                ],
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              for (int i = 0; i < kpiCards.length; i++) ...[
+                                if (i > 0) const SizedBox(width: 10),
+                                Expanded(child: kpiCards[i]),
+                              ],
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -1653,254 +1671,268 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         subtitle:
                             'Define cómo operan los cajeros las cajas registradoras de cada sucursal',
                         children: [
-                          Row(
-                            children: [
-                              // Opción 1: Caja por Mostrador / Sucursal
-                              Expanded(
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap:
-                                      isCounter
-                                          ? null
-                                          : () async {
-                                            final ok = await context
-                                                .read<AppConfigCubit>()
-                                                .updateCashRegisterMode(
-                                                  'COUNTER',
-                                                );
-                                            if (ok && context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Modalidad cambiada a: Caja por Mostrador / Sucursal.',
-                                                  ),
-                                                  backgroundColor: Color(
-                                                    0xFF10B981,
-                                                  ),
-                                                ),
+                          LayoutBuilder(
+                            builder: (context, boxConstraints) {
+                              final isStacked = boxConstraints.maxWidth < 540;
+
+                              final option1 = InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap:
+                                    isCounter
+                                        ? null
+                                        : () async {
+                                          final ok = await context
+                                              .read<AppConfigCubit>()
+                                              .updateCashRegisterMode(
+                                                'COUNTER',
                                               );
-                                            }
-                                          },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
+                                          if (ok && context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Modalidad cambiada a: Caja por Mostrador / Estación de Cobro.',
+                                                ),
+                                                backgroundColor: Color(
+                                                  0xFF10B981,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isCounter
+                                            ? (isDark
+                                                ? AppColors.tealDark.withValues(
+                                                  alpha: 0.15,
+                                                )
+                                                : AppColors.teal.withValues(
+                                                  alpha: 0.08,
+                                                ))
+                                            : (isDark
+                                                ? AppColors.darkSurfaceElevated
+                                                : const Color(0xFFF8FAFC)),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color:
                                           isCounter
-                                              ? (isDark
-                                                  ? AppColors.tealDark
-                                                      .withValues(alpha: 0.15)
-                                                  : AppColors.teal.withValues(
-                                                    alpha: 0.08,
-                                                  ))
+                                              ? AppColors.teal
                                               : (isDark
-                                                  ? AppColors
-                                                      .darkSurfaceElevated
-                                                  : const Color(0xFFF8FAFC)),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color:
-                                            isCounter
-                                                ? AppColors.teal
-                                                : (isDark
-                                                    ? AppColors.darkBorder
-                                                    : const Color(0xFFE2E8F0)),
-                                        width: isCounter ? 1.8 : 1.0,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.storefront_rounded,
-                                              size: 20,
-                                              color:
-                                                  isCounter
-                                                      ? AppColors.teal
-                                                      : (isDark
-                                                          ? AppColors
-                                                              .darkTextSecondary
-                                                          : const Color(
-                                                            0xFF64748B,
-                                                          )),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Caja por Mostrador / Tienda',
-                                                style: TextStyle(
-                                                  fontSize: 13.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  color:
-                                                      isCounter
-                                                          ? (isDark
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                0xFF0F172A,
-                                                              ))
-                                                          : (isDark
-                                                              ? AppColors
-                                                                  .darkTextSecondary
-                                                              : const Color(
-                                                                0xFF475569,
-                                                              )),
-                                                ),
-                                              ),
-                                            ),
-                                            if (isCounter)
-                                              const Icon(
-                                                Icons.check_circle_rounded,
-                                                size: 18,
-                                                color: AppColors.teal,
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Predeterminado: 1 caja física principal por tienda. Los cajeros la operan por turnos con apertura y arqueo.',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color:
-                                                isDark
-                                                    ? AppColors
-                                                        .darkTextSecondary
-                                                    : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
+                                                  ? AppColors.darkBorder
+                                                  : const Color(0xFFE2E8F0)),
+                                      width: isCounter ? 1.8 : 1.0,
                                     ),
                                   ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.storefront_rounded,
+                                            size: 20,
+                                            color:
+                                                isCounter
+                                                    ? AppColors.teal
+                                                    : (isDark
+                                                        ? AppColors
+                                                            .darkTextSecondary
+                                                        : const Color(
+                                                          0xFF64748B,
+                                                        )),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Caja por Mostrador / Estación (Recomendado)',
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w700,
+                                                color:
+                                                    isCounter
+                                                        ? (isDark
+                                                            ? Colors.white
+                                                            : const Color(
+                                                              0xFF0F172A,
+                                                            ))
+                                                        : (isDark
+                                                            ? AppColors
+                                                                .darkTextSecondary
+                                                            : const Color(
+                                                              0xFF475569,
+                                                            )),
+                                              ),
+                                            ),
+                                          ),
+                                          if (isCounter)
+                                            const Icon(
+                                              Icons.check_circle_rounded,
+                                              size: 18,
+                                              color: AppColors.teal,
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Cada estación o punto físico de cobro (ej. Caja 1, Caja 2) tiene su propio cajón y arqueo independiente. Múltiples cajas permitidas por tienda con turnos rotativos.',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          height: 1.35,
+                                          color:
+                                              isDark
+                                                  ? AppColors.darkTextSecondary
+                                                  : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Opción 2: Caja por Cajero Individual
-                              Expanded(
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12),
-                                  onTap:
-                                      !isCounter
-                                          ? null
-                                          : () async {
-                                            final ok = await context
-                                                .read<AppConfigCubit>()
-                                                .updateCashRegisterMode(
-                                                  'INDIVIDUAL',
-                                                );
-                                            if (ok && context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Modalidad cambiada a: Caja por Cajero Individual.',
-                                                  ),
-                                                  backgroundColor: Color(
-                                                    0xFF10B981,
-                                                  ),
-                                                ),
+                              );
+
+                              final option2 = InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap:
+                                    !isCounter
+                                        ? null
+                                        : () async {
+                                          final ok = await context
+                                              .read<AppConfigCubit>()
+                                              .updateCashRegisterMode(
+                                                'INDIVIDUAL',
                                               );
-                                            }
-                                          },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
+                                          if (ok && context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Modalidad cambiada a: Caja por Cajero Individual.',
+                                                ),
+                                                backgroundColor: Color(
+                                                  0xFF10B981,
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        !isCounter
+                                            ? (isDark
+                                                ? AppColors.tealDark.withValues(
+                                                  alpha: 0.15,
+                                                )
+                                                : AppColors.teal.withValues(
+                                                  alpha: 0.08,
+                                                ))
+                                            : (isDark
+                                                ? AppColors.darkSurfaceElevated
+                                                : const Color(0xFFF8FAFC)),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
                                       color:
                                           !isCounter
-                                              ? (isDark
-                                                  ? AppColors.tealDark
-                                                      .withValues(alpha: 0.15)
-                                                  : AppColors.teal.withValues(
-                                                    alpha: 0.08,
-                                                  ))
+                                              ? AppColors.teal
                                               : (isDark
-                                                  ? AppColors
-                                                      .darkSurfaceElevated
-                                                  : const Color(0xFFF8FAFC)),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color:
-                                            !isCounter
-                                                ? AppColors.teal
-                                                : (isDark
-                                                    ? AppColors.darkBorder
-                                                    : const Color(0xFFE2E8F0)),
-                                        width: !isCounter ? 1.8 : 1.0,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.person_rounded,
-                                              size: 20,
-                                              color:
-                                                  !isCounter
-                                                      ? AppColors.teal
-                                                      : (isDark
-                                                          ? AppColors
-                                                              .darkTextSecondary
-                                                          : const Color(
-                                                            0xFF64748B,
-                                                          )),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Caja por Cajero Individual',
-                                                style: TextStyle(
-                                                  fontSize: 13.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  color:
-                                                      !isCounter
-                                                          ? (isDark
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                0xFF0F172A,
-                                                              ))
-                                                          : (isDark
-                                                              ? AppColors
-                                                                  .darkTextSecondary
-                                                              : const Color(
-                                                                0xFF475569,
-                                                              )),
-                                                ),
-                                              ),
-                                            ),
-                                            if (!isCounter)
-                                              const Icon(
-                                                Icons.check_circle_rounded,
-                                                size: 18,
-                                                color: AppColors.teal,
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Cada cajero tiene su propia caja y dinero asignado de forma personal e independiente.',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color:
-                                                isDark
-                                                    ? AppColors
-                                                        .darkTextSecondary
-                                                    : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
+                                                  ? AppColors.darkBorder
+                                                  : const Color(0xFFE2E8F0)),
+                                      width: !isCounter ? 1.8 : 1.0,
                                     ),
                                   ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.person_rounded,
+                                            size: 20,
+                                            color:
+                                                !isCounter
+                                                    ? AppColors.teal
+                                                    : (isDark
+                                                        ? AppColors
+                                                            .darkTextSecondary
+                                                        : const Color(
+                                                          0xFF64748B,
+                                                        )),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Caja por Cajero Individual',
+                                              style: TextStyle(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w700,
+                                                color:
+                                                    !isCounter
+                                                        ? (isDark
+                                                            ? Colors.white
+                                                            : const Color(
+                                                              0xFF0F172A,
+                                                            ))
+                                                        : (isDark
+                                                            ? AppColors
+                                                                .darkTextSecondary
+                                                            : const Color(
+                                                              0xFF475569,
+                                                            )),
+                                              ),
+                                            ),
+                                          ),
+                                          if (!isCounter)
+                                            const Icon(
+                                              Icons.check_circle_rounded,
+                                              size: 18,
+                                              color: AppColors.teal,
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Cada cajero porta su propio dinero de forma personal (tipo riñonera o canguro). Ideal para mozos de restaurante o repartidores independientes.',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          height: 1.35,
+                                          color:
+                                              isDark
+                                                  ? AppColors.darkTextSecondary
+                                                  : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              );
+
+                              if (isStacked) {
+                                return Column(
+                                  children: [
+                                    option1,
+                                    const SizedBox(height: 10),
+                                    option2,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: option1),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: option2),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       );
@@ -2019,7 +2051,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
                           color:
                               isDark
@@ -2028,10 +2060,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
+                        horizontal: 6,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
@@ -2039,12 +2071,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                             isDark
                                 ? const Color(0xFF1E293B)
                                 : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
                         account.type.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           color:
                               isDark
@@ -2056,12 +2088,15 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   ],
                 ),
                 const SizedBox(height: 3),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Moneda: ${account.currencyCode}',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 11,
                         color:
                             isDark
                                 ? AppColors.darkTextSecondary
@@ -2069,12 +2104,16 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text('·', style: TextStyle(color: Colors.grey.shade400)),
-                    const SizedBox(width: 8),
+                    Text(
+                      '·',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
+                        horizontal: 5,
                         vertical: 1.5,
                       ),
                       decoration: BoxDecoration(
@@ -2091,7 +2130,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                       child: Text(
                         account.isActive ? 'ACTIVA' : 'INACTIVA',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                           color:
                               account.isActive
@@ -2105,7 +2144,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
           // Saldo de la Cuenta
           Column(
@@ -2115,7 +2154,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
               Text(
                 formattedBalance,
                 style: TextStyle(
-                  fontSize: 14.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color:
                       isDark
@@ -2137,12 +2176,13 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
               ),
             ],
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           // Botón Editar
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             tooltip: 'Editar cuenta',
+            visualDensity: VisualDensity.compact,
             color:
                 isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
             onPressed: onEdit,
@@ -2161,7 +2201,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
@@ -2172,14 +2212,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2199,17 +2239,20 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color:
-                        isDark
-                            ? AppColors.darkTextPrimary
-                            : const Color(0xFF0F172A),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : const Color(0xFF0F172A),
+                    ),
                   ),
                 ),
               ],
@@ -2636,40 +2679,54 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPaperWidthOption(
-                                  width: '80mm',
-                                  label: '80 mm (Estándar POS)',
-                                  desc:
-                                      'Ticketeras fijas USB/Red (Epson, Bixolon, Xprinter)',
-                                  isSelected: currentWidth == '80mm',
-                                  isDark: isDark,
-                                  onTap:
-                                      () =>
-                                          PosPrinterSettingsService.setPaperWidth(
-                                            '80mm',
-                                          ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: _buildPaperWidthOption(
-                                  width: '58mm',
-                                  label: '58 mm (Compacto)',
-                                  desc:
-                                      'Ticketeras móviles Bluetooth y terminales portátiles',
-                                  isSelected: currentWidth == '58mm',
-                                  isDark: isDark,
-                                  onTap:
-                                      () =>
-                                          PosPrinterSettingsService.setPaperWidth(
-                                            '58mm',
-                                          ),
-                                ),
-                              ),
-                            ],
+                          LayoutBuilder(
+                            builder: (context, radioConstraints) {
+                              final isNarrow = radioConstraints.maxWidth < 440;
+                              final option80 = _buildPaperWidthOption(
+                                width: '80mm',
+                                label: '80 mm (Estándar POS)',
+                                desc:
+                                    'Ticketeras fijas USB/Red (Epson, Bixolon, Xprinter)',
+                                isSelected: currentWidth == '80mm',
+                                isDark: isDark,
+                                onTap:
+                                    () =>
+                                        PosPrinterSettingsService.setPaperWidth(
+                                          '80mm',
+                                        ),
+                              );
+                              final option58 = _buildPaperWidthOption(
+                                width: '58mm',
+                                label: '58 mm (Compacto)',
+                                desc:
+                                    'Ticketeras móviles Bluetooth y terminales portátiles',
+                                isSelected: currentWidth == '58mm',
+                                isDark: isDark,
+                                onTap:
+                                    () =>
+                                        PosPrinterSettingsService.setPaperWidth(
+                                          '58mm',
+                                        ),
+                              );
+
+                              if (isNarrow) {
+                                return Column(
+                                  children: [
+                                    option80,
+                                    const SizedBox(height: 8),
+                                    option58,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: option80),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: option58),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -3021,17 +3078,21 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   size: 18,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12.5,
-                    color:
-                        isSelected
-                            ? const Color(0xFF2563EB)
-                            : (isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF0F172A)),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12.5,
+                      color:
+                          isSelected
+                              ? const Color(0xFF2563EB)
+                              : (isDark
+                                  ? AppColors.darkTextPrimary
+                                  : const Color(0xFF0F172A)),
+                    ),
                   ),
                 ),
               ],
@@ -3230,6 +3291,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             icon,
@@ -3287,7 +3349,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                     ],
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: TextStyle(
@@ -3301,13 +3363,14 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                if (trailingAction != null) ...[
+                  const SizedBox(height: 6),
+                  trailingAction,
+                ],
               ],
             ),
           ),
-          if (trailingAction != null) ...[
-            trailingAction,
-            const SizedBox(width: 8),
-          ],
+          const SizedBox(width: 10),
           if (isLoading)
             const SizedBox(
               width: 24,

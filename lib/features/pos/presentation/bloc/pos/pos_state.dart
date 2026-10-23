@@ -137,6 +137,7 @@ class PosState extends Equatable {
     double? exchangeRate,
     bool clearClient = false,
     bool clearActiveShift = false,
+    bool clearPaymentReference = false,
   }) {
     return PosState(
       isLoading: isLoading ?? this.isLoading,
@@ -162,7 +163,10 @@ class PosState extends Equatable {
       selectedAccountId: selectedAccountId ?? this.selectedAccountId,
       documentType: documentType ?? this.documentType,
       selectedSeries: selectedSeries ?? this.selectedSeries,
-      paymentReference: paymentReference ?? this.paymentReference,
+      paymentReference:
+          clearPaymentReference
+              ? null
+              : (paymentReference ?? this.paymentReference),
       customerDocumentType:
           clearClient
               ? null

@@ -11,6 +11,11 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
   final bool isCompleted;
   final bool isCredit;
   final bool isLoyaltyEnabled;
+  final double taxAmount;
+  final double subtotalAmount;
+  final String currencySymbol;
+  final String currencyCode;
+  final double exchangeRate;
 
   const OrderDetailTotalSummarySection({
     super.key,
@@ -22,6 +27,11 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     this.isCompleted = true,
     this.isCredit = false,
     required this.isLoyaltyEnabled,
+    this.taxAmount = 0.0,
+    this.subtotalAmount = 0.0,
+    this.currencySymbol = 'S/',
+    this.currencyCode = 'PEN',
+    this.exchangeRate = 1.0,
   });
 
   double get _rawDiscount => pointsUsed * pointsToSolesRatio;
@@ -91,33 +101,42 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final capApplied = _rawDiscount > _appliedDiscount;
+    final sym = currencySymbol.trim().isEmpty ? 'S/' : currencySymbol;
+
     return OrderDetailSectionCard(
       title: 'Resumen total',
       child: Column(
         children: [
-          _buildRow('Subtotal', 'S/ ${subtotal.toStringAsFixed(2)}'),
+          if (taxAmount > 0) ...[
+            _buildRow(
+              'Op. Gravada',
+              '$sym ${(subtotalAmount > 0 ? subtotalAmount : (subtotal - taxAmount)).toStringAsFixed(2)}',
+            ),
+            _buildRow('I.G.V. (18%)', '$sym ${taxAmount.toStringAsFixed(2)}'),
+          ] else
+            _buildRow('Subtotal', '$sym ${subtotal.toStringAsFixed(2)}'),
           if (pointsUsed > 0) ...[
             _buildRow('Monedas usadas', '$pointsUsed monedas'),
             _buildRow(
               'Descuento por monedas',
-              '- S/ ${_appliedDiscount.toStringAsFixed(2)}',
+              '- $sym ${_appliedDiscount.toStringAsFixed(2)}',
               valueColor: AppColors.successDark,
               hint:
                   capApplied
-                      ? 'Cap 50% aplicado (S/ ${_rawDiscount.toStringAsFixed(2)} → S/ ${_appliedDiscount.toStringAsFixed(2)})'
+                      ? 'Cap 50% aplicado ($sym ${_rawDiscount.toStringAsFixed(2)} → $sym ${_appliedDiscount.toStringAsFixed(2)})'
                       : null,
             ),
           ],
           if (discountAmount > 0)
             _buildRow(
               'Descuento adicional',
-              '- S/ ${discountAmount.toStringAsFixed(2)}',
+              '- $sym ${discountAmount.toStringAsFixed(2)}',
               valueColor: AppColors.successDark,
             ),
           const Divider(height: 16, color: AppColors.border),
           _buildRow(
             'Total final',
-            'S/ ${_totalFinal.toStringAsFixed(2)}',
+            '$sym ${_totalFinal.toStringAsFixed(2)}',
             isEmphasized: true,
             valueColor: AppColors.teal,
           ),

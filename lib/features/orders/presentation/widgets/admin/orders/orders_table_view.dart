@@ -149,6 +149,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     String method,
     double pending, {
     String? orderStatus,
+    String? paymentReference,
   }) {
     final isCancelled = orderStatus?.toUpperCase() == 'CANCELLED';
     final isReturned = orderStatus?.toUpperCase() == 'RETURNED';
@@ -203,15 +204,40 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         ),
         if (method.isNotEmpty && method != 'POR ACORDAR') ...[
           const SizedBox(height: 2),
-          Text(
-            method,
-            style: const TextStyle(
-              fontSize: 10.5,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                method,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (paymentReference != null &&
+                  paymentReference.trim().isNotEmpty) ...[
+                const Text(
+                  ' · ',
+                  style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                ),
+                Flexible(
+                  child: Text(
+                    'Op: ${paymentReference.trim()}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ],
@@ -313,16 +339,20 @@ class _OrdersTableViewState extends State<OrdersTableView> {
         AdminTableColumn<OrderEntity>(
           id: 'id',
           label: 'ID PEDIDO',
-          fixedWidth: 105,
+          fixedWidth: 135,
           isSortable: true,
-          tooltip: 'Identificador del pedido',
+          tooltip: 'Identificador del pedido y comprobante',
           cellBuilder: (context, order) {
             final shortId =
                 order.id.length >= 8
                     ? order.id.substring(0, 8).toUpperCase()
                     : order.id.toUpperCase();
-            return Row(
-              mainAxisSize: MainAxisSize.min,
+            final hasDoc =
+                order.documentNumber != null &&
+                order.documentNumber!.trim().isNotEmpty;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 InkWell(
                   onTap: () => _copyToClipboard(context, shortId, 'ID'),
@@ -348,6 +378,59 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                     ),
                   ),
                 ),
+                if (hasDoc) ...[
+                  const SizedBox(height: 3),
+                  InkWell(
+                    onTap:
+                        () => _copyToClipboard(
+                          context,
+                          order.documentNumber!.trim(),
+                          'Comprobante',
+                        ),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            (order.documentType.toUpperCase() == 'FACTURA')
+                                ? const Color(0xFFF3E8FF)
+                                : ((order.documentType.toUpperCase() ==
+                                        'BOLETA')
+                                    ? const Color(0xFFEFF6FF)
+                                    : const Color(0xFFECFDF5)),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color:
+                              (order.documentType.toUpperCase() == 'FACTURA')
+                                  ? const Color(0xFFD8B4FE)
+                                  : ((order.documentType.toUpperCase() ==
+                                          'BOLETA')
+                                      ? const Color(0xFFBFDBFE)
+                                      : const Color(0xFFA7F3D0)),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        order.documentNumber!.trim(),
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w800,
+                          color:
+                              (order.documentType.toUpperCase() == 'FACTURA')
+                                  ? const Color(0xFF7E22CE)
+                                  : ((order.documentType.toUpperCase() ==
+                                          'BOLETA')
+                                      ? const Color(0xFF1D4ED8)
+                                      : const Color(0xFF047857)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             );
           },
@@ -447,6 +530,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               order.paymentMethod,
               pending,
               orderStatus: order.status,
+              paymentReference: order.paymentReference,
             );
           },
         ),

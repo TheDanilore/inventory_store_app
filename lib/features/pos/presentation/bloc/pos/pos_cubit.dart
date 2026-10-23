@@ -235,7 +235,11 @@ class PosCubit extends Cubit<PosState> {
   }
 
   void setPaymentReference(String? reference) {
-    emit(state.copyWith(paymentReference: reference));
+    if (reference == null || reference.trim().isEmpty) {
+      emit(state.copyWith(clearPaymentReference: true));
+    } else {
+      emit(state.copyWith(paymentReference: reference.trim()));
+    }
   }
 
   void setCustomerFiscalData({
@@ -771,7 +775,13 @@ class PosCubit extends Cubit<PosState> {
           );
         },
         (orderId) {
-          emit(state.copyWith(status: PosStatus.success, lastOrderId: orderId));
+          emit(
+            state.copyWith(
+              status: PosStatus.success,
+              lastOrderId: orderId,
+              clearPaymentReference: true,
+            ),
+          );
           // Refrescar caché de ventas recientes sin bloquear la UI
           fetchRecentOrders(forceRefresh: true);
         },

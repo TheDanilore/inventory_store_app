@@ -446,6 +446,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
           posCubit.removeClient();
           posCubit.setPuntosAUsar(0);
+          posCubit.setPaymentReference(null);
           cartCubit.clearCart();
           posCubit.clearAllBatchOverrides();
           widget.onSaleCompleted?.call();

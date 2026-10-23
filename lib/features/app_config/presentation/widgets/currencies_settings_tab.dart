@@ -37,7 +37,7 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
         final currencies = state.currencies;
 
         return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
           children: [
             // Banner de Garantía de Inmutabilidad Histórica y Kárdex
             _buildInfoBanner(widget.isDark),
@@ -295,6 +295,8 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
                   isBase
                       ? 'T.C. Referencial: 1.0000 (Patrón)'
                       : '1 ${currency.code} = ${context.read<AppConfigCubit>().state.baseCurrency.symbol} ${currency.exchangeRate.toStringAsFixed(4)} (Sugerido)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -334,6 +336,7 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 19),
               tooltip: 'Editar tipo de cambio',
+              visualDensity: VisualDensity.compact,
               onPressed: () => _showEditDialog(context, currency, isDark),
             ),
         ],

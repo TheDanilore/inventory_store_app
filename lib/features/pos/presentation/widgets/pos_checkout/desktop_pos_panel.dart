@@ -346,6 +346,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           posCubit.removeClient();
           posCubit.setPuntosAUsar(0);
           posCubit.setDiscountText('');
+          posCubit.setPaymentReference(null);
           cartCubit.clearCart();
           posCubit.clearAllBatchOverrides();
 

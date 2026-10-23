@@ -97,8 +97,10 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
     final hasMethod =
         method.isNotEmpty && method.toUpperCase() != 'POR ACORDAR';
     final warehouse = (order.warehouseName ?? '').trim();
+    final ref = (order.paymentReference ?? '').trim();
     final metaParts = <String>[
       if (hasMethod) (isCredit ? 'Crédito' : method),
+      if (ref.isNotEmpty) 'Op: $ref',
       if (warehouse.isNotEmpty) warehouse,
     ];
 
@@ -159,6 +161,65 @@ class _AdminOrderCardState extends State<AdminOrderCard> {
                               Row(
                                 children: [
                                   _IdChip(shortId: orderShortId(order.id)),
+                                  if (order.documentNumber != null &&
+                                      order.documentNumber!
+                                          .trim()
+                                          .isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (order.documentType.toUpperCase() ==
+                                                    'FACTURA')
+                                                ? const Color(0xFFF3E8FF)
+                                                : ((order.documentType
+                                                            .toUpperCase() ==
+                                                        'BOLETA')
+                                                    ? const Color(0xFFEFF6FF)
+                                                    : const Color(0xFFECFDF5)),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color:
+                                              (order.documentType
+                                                          .toUpperCase() ==
+                                                      'FACTURA')
+                                                  ? const Color(0xFFD8B4FE)
+                                                  : ((order.documentType
+                                                              .toUpperCase() ==
+                                                          'BOLETA')
+                                                      ? const Color(0xFFBFDBFE)
+                                                      : const Color(
+                                                        0xFFA7F3D0,
+                                                      )),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        order.documentNumber!.trim(),
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.w800,
+                                          color:
+                                              (order.documentType
+                                                          .toUpperCase() ==
+                                                      'FACTURA')
+                                                  ? const Color(0xFF7E22CE)
+                                                  : ((order.documentType
+                                                              .toUpperCase() ==
+                                                          'BOLETA')
+                                                      ? const Color(0xFF1D4ED8)
+                                                      : const Color(
+                                                        0xFF047857,
+                                                      )),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(

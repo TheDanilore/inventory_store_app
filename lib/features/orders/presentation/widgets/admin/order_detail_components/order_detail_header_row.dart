@@ -6,6 +6,8 @@ import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 class OrderDetailHeaderRow extends StatelessWidget {
   final String orderId;
   final String? orderStatus;
+  final String? documentType;
+  final String? documentNumber;
   final bool isCompleted;
   final bool isEditing;
   final bool canToggleEdit;
@@ -17,6 +19,8 @@ class OrderDetailHeaderRow extends StatelessWidget {
     super.key,
     required this.orderId,
     this.orderStatus,
+    this.documentType,
+    this.documentNumber,
     required this.isCompleted,
     required this.isEditing,
     this.canToggleEdit = true,
@@ -32,6 +36,30 @@ class OrderDetailHeaderRow extends StatelessWidget {
       message: 'ID de pedido copiado al portapapeles',
       type: SnackbarType.info,
     );
+  }
+
+  void _copyDocNumber(BuildContext context, String docNum) {
+    Clipboard.setData(ClipboardData(text: docNum));
+    AppSnackbar.show(
+      context,
+      message: 'Comprobante $docNum copiado al portapapeles',
+      type: SnackbarType.info,
+    );
+  }
+
+  String _formatDocType(String? type) {
+    switch (type?.toUpperCase()) {
+      case 'NOTA_VENTA':
+        return 'Nota de Venta';
+      case 'BOLETA':
+        return 'Boleta';
+      case 'FACTURA':
+        return 'Factura';
+      case 'TICKET':
+        return 'Ticket';
+      default:
+        return 'Comprobante';
+    }
   }
 
   @override
@@ -109,6 +137,88 @@ class OrderDetailHeaderRow extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (documentNumber != null &&
+                      documentNumber!.trim().isNotEmpty) ...[
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap:
+                            () =>
+                                _copyDocNumber(context, documentNumber!.trim()),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                (documentType?.toUpperCase() == 'FACTURA')
+                                    ? const Color(0xFFF3E8FF)
+                                    : ((documentType?.toUpperCase() == 'BOLETA')
+                                        ? const Color(0xFFEFF6FF)
+                                        : const Color(0xFFECFDF5)),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color:
+                                  (documentType?.toUpperCase() == 'FACTURA')
+                                      ? const Color(0xFFD8B4FE)
+                                      : ((documentType?.toUpperCase() ==
+                                              'BOLETA')
+                                          ? const Color(0xFFBFDBFE)
+                                          : const Color(0xFFA7F3D0)),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.receipt_long_rounded,
+                                size: 11.5,
+                                color:
+                                    (documentType?.toUpperCase() == 'FACTURA')
+                                        ? const Color(0xFF7E22CE)
+                                        : ((documentType?.toUpperCase() ==
+                                                'BOLETA')
+                                            ? const Color(0xFF1D4ED8)
+                                            : const Color(0xFF047857)),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                documentNumber!.trim(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      (documentType?.toUpperCase() == 'FACTURA')
+                                          ? const Color(0xFF7E22CE)
+                                          : ((documentType?.toUpperCase() ==
+                                                  'BOLETA')
+                                              ? const Color(0xFF1D4ED8)
+                                              : const Color(0xFF047857)),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '(${_formatDocType(documentType)})',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      (documentType?.toUpperCase() == 'FACTURA')
+                                          ? const Color(0xFF7E22CE)
+                                          : ((documentType?.toUpperCase() ==
+                                                  'BOLETA')
+                                              ? const Color(0xFF1D4ED8)
+                                              : const Color(0xFF047857)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   _buildStatusBadge(orderStatus),
                 ],
               ),

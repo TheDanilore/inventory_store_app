@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
@@ -540,9 +542,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isRegistered
-                            ? 'Cliente registrado'
-                            : 'Cliente mostrador',
+                        (order.customerDocumentNumber != null &&
+                                order.customerDocumentNumber!.isNotEmpty)
+                            ? '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}'
+                            : (isRegistered
+                                ? 'Cliente registrado'
+                                : 'Cliente mostrador'),
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w500,
@@ -554,6 +559,32 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (order.warehouseName != null &&
+                          order.warehouseName!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.storefront_outlined,
+                              size: 11,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                order.warehouseName!,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -625,6 +656,65 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                           ),
                         ],
                       ),
+                      if (order.paymentReference != null &&
+                          order.paymentReference!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        InkWell(
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text: order.paymentReference!.trim(),
+                              ),
+                            );
+                            AppSnackbar.show(
+                              context,
+                              message:
+                                  'Nº Operación ${order.paymentReference!.trim()} copiado',
+                              type: SnackbarType.info,
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: const Color(0xFFCBD5E1),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.tag_rounded,
+                                  size: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'Op: ${order.paymentReference!.trim()}',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                const Icon(
+                                  Icons.copy_rounded,
+                                  size: 9.5,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -651,6 +741,197 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                 ),
               ),
               onPressed: () => _toggleEditing(state),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiscalDocumentCard(OrderEntity order) {
+    final docType = order.documentType;
+    final hasNumber =
+        order.documentNumber != null && order.documentNumber!.trim().isNotEmpty;
+    if (docType == 'NINGUNO' && !hasNumber) {
+      return const SizedBox.shrink();
+    }
+
+    final String docTitle;
+    final Color badgeColor;
+    final Color badgeTextColor;
+    final Color badgeBorderColor;
+
+    switch (docType.toUpperCase()) {
+      case 'FACTURA':
+        docTitle = 'Factura Electrónica';
+        badgeColor = const Color(0xFFF3E8FF);
+        badgeTextColor = const Color(0xFF7E22CE);
+        badgeBorderColor = const Color(0xFFD8B4FE);
+        break;
+      case 'BOLETA':
+        docTitle = 'Boleta de Venta';
+        badgeColor = const Color(0xFFEFF6FF);
+        badgeTextColor = const Color(0xFF1D4ED8);
+        badgeBorderColor = const Color(0xFFBFDBFE);
+        break;
+      case 'NOTA_VENTA':
+        docTitle = 'Nota de Venta';
+        badgeColor = const Color(0xFFECFDF5);
+        badgeTextColor = const Color(0xFF047857);
+        badgeBorderColor = const Color(0xFFA7F3D0);
+        break;
+      default:
+        docTitle = 'Comprobante';
+        badgeColor = const Color(0xFFF1F5F9);
+        badgeTextColor = const Color(0xFF334155);
+        badgeBorderColor = const Color(0xFFCBD5E1);
+    }
+
+    final docNum = order.documentNumber ?? order.displayReceiptNumber;
+    final date = order.documentDate ?? order.createdAt;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x040F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3.5,
+                ),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: badgeBorderColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.receipt_rounded,
+                      size: 12.5,
+                      color: badgeTextColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      docTitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: badgeTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: docNum));
+                  AppSnackbar.show(
+                    context,
+                    message: 'Comprobante $docNum copiado',
+                    type: SnackbarType.info,
+                  );
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        docNum,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.copy_rounded,
+                        size: 10,
+                        color: AppColors.textMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (date != null)
+                Text(
+                  DateFormat('dd/MM/yyyy', 'es').format(date.toLocal()),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+          if (order.customerDocumentNumber != null &&
+              order.customerDocumentNumber!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.badge_outlined,
+                  size: 12,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (order.customerAddress != null &&
+                    order.customerAddress!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  const Text('·', style: TextStyle(color: AppColors.textMuted)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      order.customerAddress!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ],
@@ -751,6 +1032,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                       orderId: (state.order ?? displayOrder).id,
                                       orderStatus:
                                           (state.order ?? displayOrder).status,
+                                      documentType:
+                                          (state.order ?? displayOrder)
+                                              .documentType,
+                                      documentNumber:
+                                          (state.order ?? displayOrder)
+                                              .documentNumber,
                                       isCompleted: state.isCompleted,
                                       isEditing: _isEditing,
                                       canToggleEdit: state.canToggleEdit,
@@ -790,9 +1077,19 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                         p.canToggleEdit != c.canToggleEdit,
                                 builder: (context, state) {
                                   if (!_isEditing) {
-                                    return _buildCompactMetadataStrip(
-                                      state,
-                                      displayOrder,
+                                    final currentOrder =
+                                        state.order ?? displayOrder;
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _buildCompactMetadataStrip(
+                                          state,
+                                          displayOrder,
+                                        ),
+                                        _buildFiscalDocumentCard(currentOrder),
+                                      ],
                                     );
                                   }
 
@@ -982,6 +1279,11 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                             _paymentStatusPaid,
                                     isLoyaltyEnabled:
                                         config.loyaltyGlobalEnabled,
+                                    taxAmount: order.taxAmount,
+                                    subtotalAmount: order.subtotalAmount,
+                                    currencySymbol: order.currencySymbol,
+                                    currencyCode: order.currencyCode,
+                                    exchangeRate: order.exchangeRate,
                                   );
                                 },
                               ),
