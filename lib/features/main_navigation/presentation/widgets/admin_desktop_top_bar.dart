@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
@@ -96,7 +97,7 @@ class AdminDesktopTopBar extends StatelessWidget {
 
           Tooltip(
             message: 'Buscar en el ERP (Atajo: ⌘K / /)',
-            child: InkWell(
+            child: _PressSink(
               onTap: () => AdminCommandPaletteDialog.show(context),
               borderRadius: BorderRadius.circular(12),
               child: Container(
@@ -164,10 +165,33 @@ class AdminDesktopTopBar extends StatelessWidget {
               final isCurrentlyDark =
                   Theme.of(context).brightness == Brightness.dark;
               return _TopBarIconButton(
-                icon:
+                // AnimatedSwitcher + rotación: el sol/luna sale girando y
+                // el nuevo icono entra girando desde el ángulo opuesto, en
+                // vez de reemplazarse de golpe.
+                iconWidget: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  transitionBuilder:
+                      (child, animation) => RotationTransition(
+                        turns: Tween<double>(
+                          begin: 0.75,
+                          end: 1,
+                        ).animate(animation),
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          ),
+                        ),
+                      ),
+                  child: Icon(
                     isCurrentlyDark
                         ? Icons.light_mode_outlined
                         : Icons.dark_mode_outlined,
+                    key: ValueKey(isCurrentlyDark),
+                    size: 19,
+                  ),
+                ),
                 tooltip:
                     isCurrentlyDark
                         ? 'Modo Claro Ejecutivo'
@@ -234,13 +258,27 @@ class AdminDesktopTopBar extends StatelessWidget {
                 top: 8,
                 right: 8,
                 child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                    // Pulso infinito sutil mientras haya notificaciones sin
+                    // leer — comunica "vivo" sin ser molesto.
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(1, 1),
+                      end: const Offset(1.35, 1.35),
+                      duration: 900.ms,
+                      curve: Curves.easeInOut,
+                    )
+                    .fadeOut(
+                      begin: 1,
+                      duration: 900.ms,
+                      curve: Curves.easeInOut,
+                    ),
               ),
             ],
           ),
@@ -346,53 +384,131 @@ class AdminDesktopTopBar extends StatelessWidget {
 }
 
 class _TopBarIconButton extends StatelessWidget {
-  final IconData icon;
+  /// Caso simple: un solo IconData estático.
+  final IconData? icon;
+
+  /// Caso avanzado (p. ej. el toggle de tema): un widget ya armado — típicamente
+  /// un AnimatedSwitcher — que reemplaza al Icon por defecto. Si se provee,
+  /// tiene prioridad sobre [icon].
+  final Widget? iconWidget;
   final String tooltip;
   final VoidCallback onTap;
 
   const _TopBarIconButton({
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.tooltip,
     required this.onTap,
-  });
+  }) : assert(icon != null || iconWidget != null, 'Provee icon o iconWidget');
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor =
+        isDark ? AppColors.darkTextSecondary : const Color(0xFF475569);
 
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          hoverColor:
-              isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-          child: Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color:
-                    isDark
-                        ? AppColors.darkBorderSubtle
-                        : const Color(0xFFE2E8F0),
-                width: 1,
+      child: _HoverScaleTopBar(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: onTap,
+            hoverColor:
+                isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+            child: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color:
+                      isDark
+                          ? AppColors.darkBorderSubtle
+                          : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(10),
               ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              size: 19,
-              color:
-                  isDark
-                      ? AppColors.darkTextSecondary
-                      : const Color(0xFF475569),
+              child: iconWidget ?? Icon(icon, size: 19, color: iconColor),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Feedback de hover/press (escala sutil) reutilizado por los botones e
+/// íconos del top bar, igual al usado en el sidebar.
+class _HoverScaleTopBar extends StatefulWidget {
+  final Widget child;
+  const _HoverScaleTopBar({required this.child});
+
+  @override
+  State<_HoverScaleTopBar> createState() => _HoverScaleTopBarState();
+}
+
+class _HoverScaleTopBarState extends State<_HoverScaleTopBar> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = _pressed ? 0.94 : (_hovered ? 1.05 : 1.0);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Listener(
+        onPointerDown: (_) => setState(() => _pressed = true),
+        onPointerUp: (_) => setState(() => _pressed = false),
+        onPointerCancel: (_) => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Envuelve el buscador: al presionar, el bar se "hunde" levemente (escala
+/// + sombra reducida) antes de abrir el command palette — refuerza la
+/// relación causal entre el clic y el modal que aparece.
+class _PressSink extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  final BorderRadius borderRadius;
+
+  const _PressSink({
+    required this.child,
+    required this.onTap,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_PressSink> createState() => _PressSinkState();
+}
+
+class _PressSinkState extends State<_PressSink> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: widget.borderRadius,
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

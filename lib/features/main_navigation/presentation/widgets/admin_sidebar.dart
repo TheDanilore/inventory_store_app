@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -31,6 +32,77 @@ class AdminSidebarItem {
 class SidebarNavigationMemory {
   static double scrollOffset = 0.0;
   static final Set<String> expandedGroups = {};
+}
+
+/// Envuelve el contenido que debe desaparecer cuando el sidebar se colapsa
+/// (etiquetas, badges, chevrons) y lo anima en sincronía con el ancho del
+/// panel: el ancho se contrae con [AnimatedAlign.widthFactor] mientras el
+/// contenido se desvanece y se desliza, en vez de hacer "pop" con un `if`.
+class _CollapsibleLabel extends StatelessWidget {
+  final bool collapsed;
+  final Widget child;
+  final Duration duration;
+
+  const _CollapsibleLabel({required this.collapsed, required this.child})
+    : duration = const Duration(milliseconds: 220);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: AnimatedAlign(
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.centerLeft,
+        widthFactor: collapsed ? 0.0 : 1.0,
+        child: child
+            .animate(target: collapsed ? 0 : 1)
+            .fadeIn(duration: (duration.inMilliseconds * 0.75).ms)
+            .slideX(
+              begin: -0.12,
+              end: 0,
+              duration: duration,
+              curve: Curves.easeOutCubic,
+            ),
+      ),
+    );
+  }
+}
+
+/// Da feedback táctil/puntero sutil (escala 1.0 → 1.02) a los items del
+/// sidebar en hover (desktop) o al presionar (touch), sin tocar la lógica
+/// de navegación del widget que envuelve.
+class _HoverScale extends StatefulWidget {
+  final Widget child;
+
+  const _HoverScale({required this.child});
+
+  @override
+  State<_HoverScale> createState() => _HoverScaleState();
+}
+
+class _HoverScaleState extends State<_HoverScale> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = _pressed ? 0.98 : (_hovered ? 1.02 : 1.0);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Listener(
+        onPointerDown: (_) => setState(() => _pressed = true),
+        onPointerUp: (_) => setState(() => _pressed = false),
+        onPointerCancel: (_) => setState(() => _pressed = false),
+        child: AnimatedScale(
+          scale: scale,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
 }
 
 class AdminSidebar extends StatefulWidget {
@@ -513,75 +585,92 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          hoverColor:
-              isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-          child: Container(
-            height: 38,
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isCollapsed ? 0 : 10,
-            ),
-            decoration:
-                isSelected
-                    ? BoxDecoration(
-                      color:
-                          isDark
-                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
-                              : const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
+      child: _HoverScale(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: onTap,
+            hoverColor:
+                isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: 38,
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.isCollapsed ? 0 : 10,
+              ),
+              decoration:
+                  isSelected
+                      ? BoxDecoration(
                         color:
                             isDark
-                                ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
-                                : const Color(0xFFBFDBFE),
-                      ),
-                    )
-                    : null,
-            child: ClipRect(
-              child: Row(
-                mainAxisAlignment:
-                    widget.isCollapsed
-                        ? MainAxisAlignment.center
-                        : MainAxisAlignment.start,
-                children: [
-                  Icon(
-                    icon,
-                    size: 19,
-                    color:
-                        isSelected
-                            ? const Color(0xFF3B82F6)
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF64748B)),
-                  ),
-                  if (!widget.isCollapsed) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                                ? const Color(
+                                  0xFF1E3A8A,
+                                ).withValues(alpha: 0.35)
+                                : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
                           color:
-                              isSelected
-                                  ? (isDark
-                                      ? const Color(0xFF93C5FD)
-                                      : const Color(0xFF1D4ED8))
-                                  : (isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF475569)),
+                              isDark
+                                  ? const Color(
+                                    0xFF3B82F6,
+                                  ).withValues(alpha: 0.4)
+                                  : const Color(0xFFBFDBFE),
                         ),
+                      )
+                      : const BoxDecoration(),
+              child: ClipRect(
+                child: Row(
+                  mainAxisAlignment:
+                      widget.isCollapsed
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.start,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 19,
+                      color:
+                          isSelected
+                              ? const Color(0xFF3B82F6)
+                              : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : const Color(0xFF64748B)),
+                    ),
+                    _CollapsibleLabel(
+                      collapsed: widget.isCollapsed,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(width: 12),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 170),
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                color:
+                                    isSelected
+                                        ? (isDark
+                                            ? const Color(0xFF93C5FD)
+                                            : const Color(0xFF1D4ED8))
+                                        : (isDark
+                                            ? AppColors.darkTextSecondary
+                                            : const Color(0xFF475569)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -657,94 +746,111 @@ class _AdminSidebarState extends State<AdminSidebar> {
                       ),
                     ),
                     child: Image.asset(
-                      'assets/logo_icon.png',
-                      fit: BoxFit.contain,
-                    ),
+                          'assets/logo_icon.png',
+                          fit: BoxFit.contain,
+                        )
+                        .animate(target: widget.isCollapsed ? 1 : 0)
+                        .rotate(
+                          begin: 0,
+                          end: 1,
+                          duration: 320.ms,
+                          curve: Curves.easeOutCubic,
+                        ),
                   ),
                 ),
               ),
             ),
-            if (!widget.isCollapsed) ...[
-              const SizedBox(width: 12),
-              Expanded(
-                child: BlocSelector<AppConfigCubit, AppConfigState, String>(
-                  selector:
-                      (state) =>
-                          state.businessInfo?.businessName ?? 'DANILORE ONE',
-                  builder: (context, name) {
-                    final isDefault =
-                        name.trim().isEmpty ||
-                        name == 'ERP Tienda' ||
-                        name == 'Mi Tienda' ||
-                        name.toUpperCase().contains('DANILORE');
+            _CollapsibleLabel(
+              collapsed: widget.isCollapsed,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 170),
+                    child: BlocSelector<AppConfigCubit, AppConfigState, String>(
+                      selector:
+                          (state) =>
+                              state.businessInfo?.businessName ??
+                              'DANILORE ONE',
+                      builder: (context, name) {
+                        final isDefault =
+                            name.trim().isEmpty ||
+                            name == 'ERP Tienda' ||
+                            name == 'Mi Tienda' ||
+                            name.toUpperCase().contains('DANILORE');
 
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isDefault)
-                          Row(
-                            children: [
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isDefault)
+                              Row(
+                                children: [
+                                  Text(
+                                    'DANILORE ',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          isDark
+                                              ? AppColors.darkTextPrimary
+                                              : const Color(0xFF0F172A),
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'ONE',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF3B82F6),
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
                               Text(
-                                'DANILORE ',
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                   color:
                                       isDark
                                           ? AppColors.darkTextPrimary
                                           : const Color(0xFF0F172A),
-                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const Text(
-                                'ONE',
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                isDefault
+                                    ? 'Todo tu negocio en un solo lugar'
+                                    : 'DANILORE ONE ERP',
                                 style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF3B82F6),
-                                  letterSpacing: 0.3,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextMuted
+                                          : const Color(0xFF64748B),
+                                  letterSpacing: -0.1,
                                 ),
                               ),
-                            ],
-                          )
-                        else
-                          Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  isDark
-                                      ? AppColors.darkTextPrimary
-                                      : const Color(0xFF0F172A),
                             ),
-                          ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            isDefault
-                                ? 'Todo tu negocio en un solo lugar'
-                                : 'DANILORE ONE ERP',
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w500,
-                              color:
-                                  isDark
-                                      ? AppColors.darkTextMuted
-                                      : const Color(0xFF64748B),
-                              letterSpacing: -0.1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
+            ),
+            if (!widget.isCollapsed) ...[
               const SizedBox(width: 4),
               Tooltip(
                 message: 'Colapsar menú',
@@ -874,111 +980,136 @@ class _AdminSidebarState extends State<AdminSidebar> {
         Widget tileContent(FollowLink? followLink) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: () {
-                  if (followLink != null) {
-                    followLink();
-                  } else {
-                    context.go(item.routePath);
-                  }
-                },
-                hoverColor:
-                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color:
-                        isActive
-                            ? (isDark
-                                ? const Color(0xFF1E293B)
-                                : const Color(0xFFEFF6FF))
-                            : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                    border:
-                        isActive
-                            ? Border.all(
-                              color:
-                                  isDark
-                                      ? const Color(0xFF334155)
-                                      : const Color(0xFFDBEAFE),
-                              width: 1,
-                            )
-                            : Border.all(color: Colors.transparent, width: 1),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: widget.isCollapsed ? 0 : 10,
-                  ),
-                  child: ClipRect(
-                    child: Row(
-                      mainAxisAlignment:
-                          widget.isCollapsed
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.start,
-                      children: [
-                        // Linear / Stripe Active Indicator Bar
-                        if (!widget.isCollapsed && isActive)
-                          Container(
-                            width: 3.5,
-                            height: 18,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6),
-                              borderRadius: BorderRadius.circular(3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF3B82F6,
-                                  ).withValues(alpha: 0.4),
-                                  blurRadius: 4,
+            child: _HoverScale(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    if (followLink != null) {
+                      followLink();
+                    } else {
+                      context.go(item.routePath);
+                    }
+                  },
+                  hoverColor:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color:
+                          isActive
+                              ? (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFEFF6FF))
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border:
+                          isActive
+                              ? Border.all(
+                                color:
+                                    isDark
+                                        ? const Color(0xFF334155)
+                                        : const Color(0xFFDBEAFE),
+                                width: 1,
+                              )
+                              : Border.all(color: Colors.transparent, width: 1),
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: widget.isCollapsed ? 0 : 10,
+                    ),
+                    child: ClipRect(
+                      child: Row(
+                        mainAxisAlignment:
+                            widget.isCollapsed
+                                ? MainAxisAlignment.center
+                                : MainAxisAlignment.start,
+                        children: [
+                          // Linear / Stripe Active Indicator Bar — entra con
+                          // un scaleY desde el centro en vez de aparecer de golpe.
+                          if (!widget.isCollapsed && isActive)
+                            Container(
+                                  width: 3.5,
+                                  height: 18,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3B82F6),
+                                    borderRadius: BorderRadius.circular(3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF3B82F6,
+                                        ).withValues(alpha: 0.4),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                .animate()
+                                .scaleY(
+                                  begin: 0,
+                                  end: 1,
+                                  duration: 180.ms,
+                                  curve: Curves.easeOutCubic,
+                                )
+                                .fadeIn(duration: 140.ms),
+                          Icon(
+                            item.icon,
+                            size: 20,
+                            color:
+                                isActive
+                                    ? (isDark
+                                        ? const Color(0xFF60A5FA)
+                                        : const Color(0xFF2563EB))
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : const Color(0xFF64748B)),
+                          ),
+                          _CollapsibleLabel(
+                            collapsed: widget.isCollapsed,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: 10),
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 160,
+                                  ),
+                                  child: Text(
+                                    item.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      letterSpacing: -0.2,
+                                      fontWeight:
+                                          isActive
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                      color:
+                                          isActive
+                                              ? (isDark
+                                                  ? const Color(0xFF93C5FD)
+                                                  : const Color(0xFF1E40AF))
+                                              : (isDark
+                                                  ? AppColors.darkTextSecondary
+                                                  : const Color(0xFF475569)),
+                                    ),
+                                  ),
                                 ),
+                                if (item.trailing != null) ...[
+                                  const SizedBox(width: 6),
+                                  item.trailing!,
+                                ],
                               ],
                             ),
                           ),
-                        Icon(
-                          item.icon,
-                          size: 20,
-                          color:
-                              isActive
-                                  ? (isDark
-                                      ? const Color(0xFF60A5FA)
-                                      : const Color(0xFF2563EB))
-                                  : (isDark
-                                      ? AppColors.darkTextSecondary
-                                      : const Color(0xFF64748B)),
-                        ),
-                        if (!widget.isCollapsed) ...[
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              item.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                letterSpacing: -0.2,
-                                fontWeight:
-                                    isActive
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                color:
-                                    isActive
-                                        ? (isDark
-                                            ? const Color(0xFF93C5FD)
-                                            : const Color(0xFF1E40AF))
-                                        : (isDark
-                                            ? AppColors.darkTextSecondary
-                                            : const Color(0xFF475569)),
-                              ),
-                            ),
-                          ),
-                          if (item.trailing != null) item.trailing!,
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -1029,20 +1160,31 @@ class _AdminSidebarState extends State<AdminSidebar> {
 
   Widget _buildBadge(int count) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.error,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+          key: ValueKey(count),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.error,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            count > 99 ? '99+' : '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        )
+        // Pequeño "pop" cada vez que cambia el número de pedidos pendientes
+        // (ValueKey fuerza a flutter_animate a re-disparar el efecto).
+        .animate()
+        .scale(
+          begin: const Offset(0.6, 0.6),
+          end: const Offset(1, 1),
+          duration: 220.ms,
+          curve: Curves.elasticOut,
+        )
+        .fadeIn(duration: 140.ms);
   }
 }
 
@@ -1378,32 +1520,57 @@ class _ExpandableSidebarGroupState extends State<_ExpandableSidebarGroup> {
             ),
           ),
         ),
-        AnimatedCrossFade(
-          duration: const Duration(milliseconds: 200),
-          crossFadeState:
-              isOpen ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          firstChild: const SizedBox.shrink(),
-          secondChild: Container(
-            margin: const EdgeInsets.only(left: 20, right: 8, bottom: 4),
-            padding: const EdgeInsets.only(left: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color:
-                      isDark
-                          ? AppColors.darkBorderSubtle
-                          : const Color(0xFFE2E8F0),
-                  width: 1.5,
-                ),
-              ),
-            ),
-            child: Column(
-              children:
-                  widget.item.children
-                      .map((sub) => _buildSidebarTile(context, sub))
-                      .toList(),
-            ),
-          ),
+        AnimatedSize(
+          // Abrir "con energía" (easeOutCubic), cerrar "recogido" y un poco
+          // más rápido (easeInCubic) — la asimetría es lo que hace que la
+          // interacción se sienta intencional y no mecánica.
+          duration: Duration(milliseconds: isOpen ? 220 : 160),
+          curve: isOpen ? Curves.easeOutCubic : Curves.easeInCubic,
+          alignment: Alignment.topCenter,
+          child:
+              !isOpen
+                  ? const SizedBox(width: double.infinity)
+                  : Container(
+                    margin: const EdgeInsets.only(
+                      left: 20,
+                      right: 8,
+                      bottom: 4,
+                    ),
+                    padding: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      children:
+                          widget.item.children
+                              .asMap()
+                              .entries
+                              .map(
+                                (e) => _buildSidebarTile(context, e.value)
+                                    .animate()
+                                    .fadeIn(
+                                      duration: 160.ms,
+                                      delay: (20 * e.key).ms,
+                                    )
+                                    .slideY(
+                                      begin: -0.15,
+                                      end: 0,
+                                      duration: 180.ms,
+                                      delay: (20 * e.key).ms,
+                                      curve: Curves.easeOutCubic,
+                                    ),
+                              )
+                              .toList(),
+                    ),
+                  ),
         ),
       ],
     );

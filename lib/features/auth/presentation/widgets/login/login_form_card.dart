@@ -4,7 +4,7 @@ import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
-import 'package:inventory_store_app/features/auth/presentation/widgets/login/liquid_light_button.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_button.dart';
 
 class LoginFormCard extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -332,7 +332,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         : const SizedBox(height: 20),
               ),
 
-              LiquidLightButton(
+              LoginButton(
                 isLoading: widget.isLoading,
                 isSuccess: widget.isSuccess,
                 isLoginMode: widget.isLoginMode,

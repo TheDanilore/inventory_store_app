@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -341,7 +342,7 @@ class _AppDrawerState extends State<AppDrawer> {
               child: ListView(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                children: [
+                children: _staggerDrawerChildren([
                   _buildSectionTitle('MENÚ PRINCIPAL'),
                   _buildItem(
                     context,
@@ -567,7 +568,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       },
                     ),
                   ),
-                ],
+                ]),
               ),
             ),
           ),
@@ -580,6 +581,32 @@ class _AppDrawerState extends State<AppDrawer> {
         ],
       ),
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Entrada en cascada
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Envuelve cada item visible del cuerpo del drawer para que entre con un
+  /// fade + slide-up escalonado al abrirse (efecto cascada). Como cada
+  /// widget conserva su posición/identidad en builds posteriores, el efecto
+  /// solo se dispara cuando el Drawer se monta por primera vez, no en cada
+  /// rebuild por cambios de estado (bloc, tema, etc).
+  List<Widget> _staggerDrawerChildren(List<Widget> children) {
+    const step = Duration(milliseconds: 22);
+    return [
+      for (var i = 0; i < children.length; i++)
+        children[i]
+            .animate()
+            .fadeIn(duration: 220.ms, delay: step * i)
+            .slideY(
+              begin: 0.14,
+              end: 0,
+              duration: 260.ms,
+              delay: step * i,
+              curve: Curves.easeOutCubic,
+            ),
+    ];
   }
 
   // ─────────────────────────────────────────────────────────────────────────

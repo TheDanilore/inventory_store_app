@@ -157,7 +157,7 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
       },
-      (user) async {
+      (user) {
         LoggerService.i(
           'Autenticación exitosa: ${user.fullName} (${user.role})',
           tag: 'AuthCubit',
@@ -165,12 +165,11 @@ class AuthCubit extends Cubit<AuthState> {
         emit(
           state.copyWith(
             viewState: ViewState.success,
+            authStatus: AuthStatus.authenticated,
             currentUser: user,
             clearErrorMessage: true,
           ),
         );
-        await Future.delayed(const Duration(milliseconds: 350));
-        emit(state.copyWith(authStatus: AuthStatus.authenticated));
       },
     );
   }
@@ -199,7 +198,7 @@ class AuthCubit extends Cubit<AuthState> {
           ),
         );
       },
-      (user) async {
+      (user) {
         LoggerService.i(
           'Registro y vinculación exitosa: ${user.fullName}',
           tag: 'AuthCubit',
@@ -207,12 +206,11 @@ class AuthCubit extends Cubit<AuthState> {
         emit(
           state.copyWith(
             viewState: ViewState.success,
+            authStatus: AuthStatus.authenticated,
             currentUser: user,
             clearErrorMessage: true,
           ),
         );
-        await Future.delayed(const Duration(milliseconds: 350));
-        emit(state.copyWith(authStatus: AuthStatus.authenticated));
       },
     );
   }
