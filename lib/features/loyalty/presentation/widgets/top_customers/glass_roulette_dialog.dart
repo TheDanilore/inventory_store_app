@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers/loyalty_top_customers_cubit.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/top_customers/winner_dialog.dart';
@@ -43,11 +42,7 @@ class _GlassRouletteDialogState extends State<GlassRouletteDialog> {
     final cubit = context.read<LoyaltyTopCustomersCubit>();
     cubit.stopSpinning();
 
-    if (!kIsWeb) {
-      if (await Vibration.hasVibrator()) {
-        Vibration.vibrate(duration: 500);
-      }
-    }
+    AppFeedbackService.vibrate(durationMs: 400, amplitude: 180);
 
     if (!mounted) return;
 

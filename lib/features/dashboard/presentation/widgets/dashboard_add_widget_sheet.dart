@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
@@ -170,9 +169,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
 
   void _handleToggle(DashboardWidgetItem item) {
     if (item.isComingSoon) return;
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 25, amplitude: 60);
-    }
+    AppFeedbackService.selectionClick();
     final nextState = !_currentVisible.contains(item.id);
     setState(() {
       if (nextState) {
@@ -185,9 +182,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
   }
 
   void _handleReset() {
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 40, amplitude: 90);
-    }
+    AppFeedbackService.mediumImpact();
     setState(() {
       _currentVisible =
           allAvailableWidgets

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/hardware_barcode_gun_detector.dart';
@@ -53,6 +54,8 @@ class _ScannerSettingsHubTabState extends State<ScannerSettingsHubTab> {
       averageSpeedMs: 14,
       suffix: 'Enter (0x0D)',
     );
+
+    AppFeedbackService.triggerFeedback();
 
     AppSnackbar.show(
       context,
@@ -782,9 +785,14 @@ class _ScannerSettingsHubTabState extends State<ScannerSettingsHubTab> {
                                     ),
                                     value: val,
                                     activeTrackColor: AppColors.teal,
-                                    onChanged:
-                                        BarcodeScannerHardwareService
-                                            .setHapticFeedback,
+                                    onChanged: (newVal) async {
+                                      await BarcodeScannerHardwareService.setHapticFeedback(
+                                        newVal,
+                                      );
+                                      if (newVal) {
+                                        AppFeedbackService.mediumImpact();
+                                      }
+                                    },
                                   );
                                 },
                               ),

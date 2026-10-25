@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/widgets/app_date_range_picker_modal.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
@@ -44,9 +43,7 @@ class DashboardExecutiveSubheader extends StatelessWidget {
     );
 
     if (picked != null) {
-      if (!kIsWeb) {
-        Vibration.vibrate(duration: 30, amplitude: 64);
-      }
+      AppFeedbackService.lightImpact();
       if (context.mounted) {
         context.read<DashboardCubit>().updateSalesFilter(
           SalesTimeFilter.custom,
@@ -276,9 +273,7 @@ class DashboardExecutiveSubheader extends StatelessWidget {
                 height: 38,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    if (!kIsWeb) {
-                      Vibration.vibrate(duration: 30, amplitude: 60);
-                    }
+                    AppFeedbackService.lightImpact();
                     context.read<DashboardCubit>().refresh();
                   },
                   style: OutlinedButton.styleFrom(
@@ -539,9 +534,7 @@ class DashboardExecutiveSubheader extends StatelessWidget {
               if (filter == SalesTimeFilter.custom) {
                 _openCustomDatePicker(context, state);
               } else {
-                if (!kIsWeb) {
-                  Vibration.vibrate(duration: 30, amplitude: 64);
-                }
+                AppFeedbackService.lightImpact();
                 context.read<DashboardCubit>().updateSalesFilter(filter);
               }
             },

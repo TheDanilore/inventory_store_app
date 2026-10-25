@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
@@ -284,9 +283,7 @@ class _AccountsTabState extends State<AccountsTab> {
                       isLoading
                           ? null
                           : () {
-                            if (!kIsWeb) {
-                              Vibration.vibrate(duration: 50, amplitude: 128);
-                            }
+                            AppFeedbackService.mediumImpact();
                             AccountFormSheet.show(context);
                           },
                   backgroundColor: AppColors.primary,

@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
@@ -291,9 +290,7 @@ class DashboardBentoGrid extends StatelessWidget {
         final widgetId = details.data;
         if (!visibleWidgets.contains(widgetId)) {
           onToggleWidget(widgetId, true);
-          if (!kIsWeb) {
-            Vibration.vibrate(duration: 40);
-          }
+          AppFeedbackService.mediumImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Widget añadido al Dashboard con éxito'),

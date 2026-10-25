@@ -1,7 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 
@@ -129,9 +128,7 @@ class _AppDateRangePickerModalState extends State<AppDateRangePickerModal> {
   }
 
   void _triggerHaptic() {
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 25, amplitude: 60);
-    }
+    AppFeedbackService.selectionClick();
   }
 
   void _onDayTapped(DateTime day) {

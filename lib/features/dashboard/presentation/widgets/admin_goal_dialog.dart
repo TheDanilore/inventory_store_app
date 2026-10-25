@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -135,10 +134,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
         newValue == newValue.roundToDouble()
             ? newValue.toStringAsFixed(0)
             : newValue.toStringAsFixed(2);
-    // Solo vibrar si no es web para evitar MissingPluginException
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 50, amplitude: 128);
-    }
+    AppFeedbackService.mediumImpact();
   }
 
   Future<void> _saveGoal() async {
@@ -189,10 +185,7 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
         _isLoading = false;
         _justSaved = true;
       });
-      // Solo vibrar si no es web para evitar MissingPluginException
-      if (!kIsWeb) {
-        Vibration.vibrate(duration: 50, amplitude: 128);
-      }
+      AppFeedbackService.mediumImpact();
       await Future.delayed(const Duration(milliseconds: 550));
 
       if (!mounted) return;

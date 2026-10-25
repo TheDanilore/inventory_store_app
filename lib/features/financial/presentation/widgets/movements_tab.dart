@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
@@ -64,10 +63,7 @@ class _MovementsTabState extends State<MovementsTab> {
     MovementFilters filters,
     List<FinancialAccountEntity> accounts,
   ) {
-    // Solo vibrar si no es web para evitar MissingPluginException
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 50, amplitude: 128);
-    }
+    AppFeedbackService.mediumImpact();
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -611,9 +607,7 @@ class _MovementsTabState extends State<MovementsTab> {
                       isLoading
                           ? null
                           : () {
-                            if (!kIsWeb) {
-                              Vibration.vibrate(duration: 50, amplitude: 128);
-                            }
+                            AppFeedbackService.mediumImpact();
                             MovementFormSheet.show(context);
                           },
                   backgroundColor: AppColors.primary,

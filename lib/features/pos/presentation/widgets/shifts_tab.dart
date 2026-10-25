@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/features/pos/domain/entities/cash_shift_entity.dart';
@@ -304,10 +303,7 @@ class _ShiftsTabState extends State<ShiftsTab> {
                       isLoading
                           ? null
                           : () async {
-                            // Solo vibrar si no es web para evitar MissingPluginException
-                            if (!kIsWeb) {
-                              Vibration.vibrate(duration: 50, amplitude: 128);
-                            }
+                            AppFeedbackService.mediumImpact();
                             // Obtener cuentas de caja, temporalmente sin usar estado, o esperar que el cubit las provea.
                             // Wait, CashShiftsState doesn't expose cajaAccounts. Let's fetch them on demand or from cubit.
                             final availableAccounts =

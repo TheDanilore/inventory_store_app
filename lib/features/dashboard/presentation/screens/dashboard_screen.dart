@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -296,9 +295,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         child: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () async {
-            if (!kIsWeb) {
-              Vibration.vibrate(duration: 50, amplitude: 128);
-            }
+            AppFeedbackService.mediumImpact();
             await context.read<DashboardCubit>().refresh();
           },
           child: BlocBuilder<DashboardCubit, DashboardState>(

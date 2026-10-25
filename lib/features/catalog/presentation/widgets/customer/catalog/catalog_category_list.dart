@@ -1,7 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/customer_catalog/customer_catalog_cubit.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
@@ -42,7 +41,7 @@ class CatalogCategoryList extends StatelessWidget {
               icon: Icons.dashboard_outlined,
               isSelected: isSelected,
               onTap: () {
-                if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 64);
+                AppFeedbackService.lightImpact();
                 cubit.selectCategory(null);
               },
             );
@@ -58,7 +57,7 @@ class CatalogCategoryList extends StatelessWidget {
             icon: icon,
             isSelected: isSelected,
             onTap: () {
-              if (!kIsWeb) Vibration.vibrate(duration: 30, amplitude: 64);
+              AppFeedbackService.lightImpact();
               cubit.selectCategory(catId);
             },
           );

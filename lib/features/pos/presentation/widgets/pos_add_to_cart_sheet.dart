@@ -1,9 +1,8 @@
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
@@ -451,10 +450,7 @@ class _PosAddToCartSheetState extends State<PosAddToCartSheet> {
                 onTap:
                     loadedState.canSell
                         ? () {
-                          // Solo vibrar si no es web para evitar MissingPluginException
-                          if (!kIsWeb) {
-                            Vibration.vibrate(duration: 50, amplitude: 128);
-                          }
+                          AppFeedbackService.mediumImpact();
 
                           final selVar = loadedState.selectedVariant;
                           if (selVar == null &&

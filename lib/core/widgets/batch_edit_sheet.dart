@@ -5,10 +5,9 @@
 // • Desktop / Tablet: Diálogo centrado Pro-Tool estilo Linear/Stripe, bordes simétricos (20dp),
 //   cabecera con botón 'X', atajos de teclado (Esc, Enter, Ctrl+R), barra de progreso FEFO y edición inline.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
@@ -121,10 +120,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
   bool get _isValid => _totalAssigned == widget.totalRequired;
 
   void _vibrate({int duration = 50, int amplitude = 128}) {
-    // Solo vibrar si no es web para evitar MissingPluginException
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: duration, amplitude: amplitude);
-    }
+    AppFeedbackService.vibrate(durationMs: duration, amplitude: amplitude);
   }
 
   void _resetToFefo() {
@@ -160,10 +156,7 @@ class _BatchEditSheetState extends State<BatchEditSheet> {
 
   void _onConfirm() {
     if (!_isValid) return;
-    // Solo vibrar si no es web para evitar MissingPluginException
-    if (!kIsWeb) {
-      Vibration.vibrate(duration: 50, amplitude: 128);
-    }
+    AppFeedbackService.mediumImpact();
     Navigator.pop(context, List.of(_batches));
   }
 
