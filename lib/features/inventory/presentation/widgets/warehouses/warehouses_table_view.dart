@@ -10,6 +10,8 @@ class WarehousesTableView extends StatelessWidget {
   final ValueChanged<WarehouseEntity> onEdit;
   final ValueChanged<WarehouseEntity> onDelete;
   final void Function(WarehouseEntity warehouse, bool newStatus) onToggleStatus;
+  final ValueChanged<WarehouseEntity>? onViewStock;
+  final ValueChanged<WarehouseEntity>? onViewOperations;
 
   const WarehousesTableView({
     super.key,
@@ -17,6 +19,8 @@ class WarehousesTableView extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleStatus,
+    this.onViewStock,
+    this.onViewOperations,
   });
 
   @override
@@ -37,7 +41,7 @@ class WarehousesTableView extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          const minWidth = 840.0;
+          const minWidth = 900.0;
           final tableWidth =
               constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
 
@@ -98,7 +102,7 @@ class WarehousesTableView extends StatelessWidget {
                           ),
                         ),
                         SizedBox(
-                          width: 110,
+                          width: 176,
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: Text(
@@ -135,6 +139,8 @@ class WarehousesTableView extends StatelessWidget {
                         onEdit: () => onEdit(wh),
                         onDelete: () => onDelete(wh),
                         onToggleStatus: (val) => onToggleStatus(wh, val),
+                        onViewStock: () => onViewStock?.call(wh),
+                        onViewOperations: () => onViewOperations?.call(wh),
                       );
                     },
                   ),
@@ -154,6 +160,8 @@ class _WarehouseTableRow extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<bool> onToggleStatus;
+  final VoidCallback? onViewStock;
+  final VoidCallback? onViewOperations;
 
   const _WarehouseTableRow({
     super.key,
@@ -161,6 +169,8 @@ class _WarehouseTableRow extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleStatus,
+    this.onViewStock,
+    this.onViewOperations,
   });
 
   @override
@@ -320,10 +330,44 @@ class _WarehouseTableRowState extends State<_WarehouseTableRow> {
 
                   // --- Columna: Acciones ---
                   SizedBox(
-                    width: 110,
+                    width: 176,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.inventory_2_outlined,
+                            size: 18,
+                          ),
+                          tooltip: 'Ver Stock del almacén',
+                          color: AppColors.primary,
+                          onPressed: widget.onViewStock,
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.primaryLight.withValues(
+                              alpha: 0.4,
+                            ),
+                            hoverColor: AppColors.primaryLight,
+                            padding: const EdgeInsets.all(7),
+                            minimumSize: const Size(32, 32),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.point_of_sale_rounded,
+                            size: 18,
+                          ),
+                          tooltip: 'Cajas y Mostrador POS',
+                          color: const Color(0xFF0D9488),
+                          onPressed: widget.onViewOperations,
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFCCFBF1),
+                            hoverColor: const Color(0xFF99F6E4),
+                            padding: const EdgeInsets.all(7),
+                            minimumSize: const Size(32, 32),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           tooltip: 'Editar almacén',

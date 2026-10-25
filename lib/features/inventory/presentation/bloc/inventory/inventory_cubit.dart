@@ -77,10 +77,12 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> initStockTab({
     String? initialSearch,
     String? initialStatusFilter,
+    String? initialWarehouseId,
   }) async {
     final requestId = ++_stockRequestId;
     final sanitizedSearch = initialSearch?.trim() ?? '';
     final sanitizedStatus = initialStatusFilter?.trim() ?? '';
+    final sanitizedWarehouse = initialWarehouseId?.trim();
     final isInitial = state is! InventoryLoaded;
     if (isInitial) {
       emit(const InventoryLoading());
@@ -93,6 +95,10 @@ class InventoryCubit extends Cubit<InventoryState> {
       emit(
         currentState.copyWith(
           isSearchingStock: true,
+          selectedWarehouseId:
+              sanitizedWarehouse != null && sanitizedWarehouse.isNotEmpty
+                  ? sanitizedWarehouse
+                  : currentState.selectedWarehouseId,
           stockSearchText:
               sanitizedSearch.isNotEmpty
                   ? sanitizedSearch
@@ -111,6 +117,11 @@ class InventoryCubit extends Cubit<InventoryState> {
         defaultStatusFilter:
             sanitizedStatus.isNotEmpty ? sanitizedStatus : null,
       );
+      if (sanitizedWarehouse != null && sanitizedWarehouse.isNotEmpty) {
+        currentState = currentState.copyWith(
+          selectedWarehouseId: sanitizedWarehouse,
+        );
+      }
       if (sanitizedSearch.isNotEmpty) {
         currentState = currentState.copyWith(stockSearchText: sanitizedSearch);
       }
@@ -183,10 +194,22 @@ class InventoryCubit extends Cubit<InventoryState> {
 
       if (requestId != _stockRequestId) return;
 
+      String selectedWhName = currentState.selectedWarehouseName;
+      if (currentState.selectedWarehouseId != null) {
+        final match =
+            warehouses
+                .where((w) => w.id == currentState.selectedWarehouseId)
+                .firstOrNull;
+        if (match != null) {
+          selectedWhName = match.name;
+        }
+      }
+
       emit(
         currentState.copyWith(
           categories: categoriesNames,
           warehouses: warehouses,
+          selectedWarehouseName: selectedWhName,
           globalTotalVariants: metrics['totalVariants'] ?? 0,
           globalTotalStock: metrics['totalStock'] ?? 0,
           globalLowStockCount: metrics['lowStockCount'] ?? 0,

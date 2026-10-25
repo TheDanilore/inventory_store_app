@@ -84,6 +84,7 @@ class InventoryRoutes {
         final search = state.uri.queryParameters['search'];
         final filter = state.uri.queryParameters['filter'];
         final tabStr = state.uri.queryParameters['tab'];
+        final warehouseId = state.uri.queryParameters['warehouseId'];
         final tabIndex = tabStr == 'batches' || tabStr == '1' ? 1 : 0;
         return BlocProvider(
           create: (_) {
@@ -91,6 +92,7 @@ class InventoryRoutes {
             cubit.initStockTab(
               initialSearch: search,
               initialStatusFilter: filter,
+              initialWarehouseId: warehouseId,
             );
             if (tabIndex == 1) {
               cubit.initBatchesTab();
@@ -100,6 +102,7 @@ class InventoryRoutes {
           child: InventoryScreen(
             initialSearch: search,
             initialStatusFilter: filter,
+            initialWarehouseId: warehouseId,
             initialTabIndex: tabIndex,
           ),
         );

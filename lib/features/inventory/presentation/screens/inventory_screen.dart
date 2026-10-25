@@ -24,6 +24,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 class InventoryScreen extends StatefulWidget {
   final String? initialSearch;
   final String? initialStatusFilter;
+  final String? initialWarehouseId;
   final int? initialTabIndex;
   final bool isEmbedded;
 
@@ -31,6 +32,7 @@ class InventoryScreen extends StatefulWidget {
     super.key,
     this.initialSearch,
     this.initialStatusFilter,
+    this.initialWarehouseId,
     this.initialTabIndex,
     this.isEmbedded = false,
   });

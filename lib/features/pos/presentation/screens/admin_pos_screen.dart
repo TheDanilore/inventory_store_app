@@ -62,7 +62,9 @@ extension ProductToCartExtension on ProductEntity {
 }
 
 class AdminPosScreen extends StatefulWidget {
-  const AdminPosScreen({super.key});
+  final String? initialWarehouseId;
+
+  const AdminPosScreen({super.key, this.initialWarehouseId});
 
   @override
   State<AdminPosScreen> createState() => _AdminPosScreenState();
@@ -104,9 +106,15 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       // Previene que en mobile la cabecera quede sin almacenes ni turno al no montarse DesktopPosPanel.
       final posCubit = context.read<PosCubit>();
       final authUser = context.read<AuthCubit>().state.currentUser;
+      final targetWarehouseId =
+          widget.initialWarehouseId ?? authUser?.warehouseId;
+
       if (posCubit.state.warehouses.isEmpty ||
           posCubit.state.accounts.isEmpty) {
-        posCubit.initPosData(preferredWarehouseId: authUser?.warehouseId);
+        posCubit.initPosData(preferredWarehouseId: targetWarehouseId);
+      } else if (widget.initialWarehouseId != null &&
+          widget.initialWarehouseId != posCubit.state.selectedWarehouseId) {
+        posCubit.setWarehouse(widget.initialWarehouseId);
       }
 
       // Asegurar que la configuración global de negocio (fidelidad, etc.) esté cargada
@@ -130,6 +138,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         HardwareKeyboard.instance.addHandler(_handleGlobalHardwareKey);
       } else {
         HardwareKeyboard.instance.removeHandler(_handleGlobalHardwareKey);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminPosScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialWarehouseId != null &&
+        widget.initialWarehouseId != oldWidget.initialWarehouseId) {
+      final posCubit = context.read<PosCubit>();
+      if (posCubit.state.selectedWarehouseId != widget.initialWarehouseId) {
+        posCubit.setWarehouse(widget.initialWarehouseId);
       }
     }
   }

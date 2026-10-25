@@ -9,6 +9,8 @@ class WarehouseCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<bool> onToggleStatus;
+  final VoidCallback? onViewStock;
+  final VoidCallback? onViewOperations;
 
   const WarehouseCard({
     super.key,
@@ -16,6 +18,8 @@ class WarehouseCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleStatus,
+    this.onViewStock,
+    this.onViewOperations,
   });
 
   @override
@@ -159,7 +163,84 @@ class WarehouseCard extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
+
+                // ── Accesos Operativos Rápidos ────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: onViewStock,
+                        borderRadius: BorderRadius.circular(9),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 15,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                'Ver Stock',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        onTap: onViewOperations,
+                        borderRadius: BorderRadius.circular(9),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.point_of_sale_rounded,
+                                size: 15,
+                                color: AppColors.textPrimary,
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                'Cajas / POS',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 const SizedBox(height: 8),
 

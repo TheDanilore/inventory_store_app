@@ -12,8 +12,10 @@ import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_state.dart';
+import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_form_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouse_operations_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_skeleton.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouses/warehouses_table_view.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -209,6 +211,14 @@ class _WarehousesManagementScreenState
     if (confirm != true) return;
     if (!mounted) return;
     await cubit.deleteWarehouse(warehouse.id);
+  }
+
+  void _handleViewStock(WarehouseEntity warehouse) {
+    context.push('/inventory?warehouseId=${warehouse.id}');
+  }
+
+  void _handleViewOperations(WarehouseEntity warehouse) {
+    WarehouseOperationsSheet.show(context, warehouse);
   }
 
   @override
@@ -415,13 +425,16 @@ class _WarehousesManagementScreenState
                                                     val,
                                                   );
                                                 },
+                                                onViewStock: _handleViewStock,
+                                                onViewOperations:
+                                                    _handleViewOperations,
                                               ),
                                             )
                                             : SliverGrid(
                                               gridDelegate:
                                                   const SliverGridDelegateWithMaxCrossAxisExtent(
                                                     maxCrossAxisExtent: 440,
-                                                    mainAxisExtent: 178,
+                                                    mainAxisExtent: 230,
                                                     crossAxisSpacing: 14,
                                                     mainAxisSpacing: 14,
                                                   ),
@@ -451,6 +464,14 @@ class _WarehousesManagementScreenState
                                                       val,
                                                     );
                                                   },
+                                                  onViewStock:
+                                                      () =>
+                                                          _handleViewStock(wh),
+                                                  onViewOperations:
+                                                      () =>
+                                                          _handleViewOperations(
+                                                            wh,
+                                                          ),
                                                 );
                                               }, childCount: warehouses.length),
                                             ),
