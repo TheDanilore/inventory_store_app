@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
@@ -8,9 +7,8 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
-import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/notifications/notification_bell.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
   final bool isSidebarCollapsed;
@@ -161,104 +159,54 @@ class AdminDesktopTopBar extends StatelessWidget {
               actions!.where((a) => !_isRefreshWidget(a)).isNotEmpty)
             const SizedBox(width: 12),
 
-          // ── Theme Mode Toggle (Eclipse Morphing + Circular Wave) ───
+          // ── Theme Mode Toggle ───────────────────────────────────────
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, themeMode) {
               final isCurrentlyDark =
                   Theme.of(context).brightness == Brightness.dark;
-              return ThemeEclipseButton(
-                isDark: isCurrentlyDark,
-                size: 38,
+              return _TopBarIconButton(
+                // AnimatedSwitcher + rotación: el sol/luna sale girando y
+                // el nuevo icono entra girando desde el ángulo opuesto, en
+                // vez de reemplazarse de golpe.
+                iconWidget: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  transitionBuilder:
+                      (child, animation) => RotationTransition(
+                        turns: Tween<double>(
+                          begin: 0.75,
+                          end: 1,
+                        ).animate(animation),
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: animation,
+                            child: child,
+                          ),
+                        ),
+                      ),
+                  child: Icon(
+                    isCurrentlyDark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    key: ValueKey(isCurrentlyDark),
+                    size: 19,
+                  ),
+                ),
                 tooltip:
                     isCurrentlyDark
-                        ? 'Cambiar a Modo Claro'
-                        : 'Cambiar a Modo Oscuro',
-                onTapWithOrigin: (origin) {
-                  ThemeCircularWave.switchTheme(context, origin: origin);
+                        ? 'Modo Claro Ejecutivo'
+                        : 'Modo Oscuro Midnight Slate',
+                onTap: () {
+                  context.read<ThemeCubit>().toggleTheme();
                 },
               );
             },
           ),
           const SizedBox(width: 10),
 
-          // ── Notifications Icon with Unread Dot ────────────────────
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              _TopBarIconButton(
-                icon: Icons.notifications_none_rounded,
-                tooltip: 'Notificaciones',
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder:
-                        (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          title: const Row(
-                            children: [
-                              Icon(
-                                Icons.notifications_active_outlined,
-                                size: 22,
-                                color: Color(0xFF2563EB),
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                'Centro de Notificaciones',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
-                          ),
-                          content: const Text(
-                            'Todas tus alertas de inventario y pedidos están al día.\n\nEl sistema monitoriza en tiempo real el stock crítico.',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('Entendido'),
-                            ),
-                          ],
-                        ),
-                  );
-                },
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                    )
-                    // Pulso infinito sutil mientras haya notificaciones sin
-                    // leer — comunica "vivo" sin ser molesto.
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(
-                      begin: const Offset(1, 1),
-                      end: const Offset(1.35, 1.35),
-                      duration: 900.ms,
-                      curve: Curves.easeInOut,
-                    )
-                    .fadeOut(
-                      begin: 1,
-                      duration: 900.ms,
-                      curve: Curves.easeInOut,
-                    ),
-              ),
-            ],
-          ),
+          // ── Notificaciones reales (conteo + panel) ────────────────
+          // Requiere NotificationsCubit provisto por encima del shell.
+          const NotificationBell(),
           const SizedBox(width: 10),
 
           // ── Settings Dropdown ─────────────────────────────────────

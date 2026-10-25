@@ -760,94 +760,96 @@ class _AdminSidebarState extends State<AdminSidebar> {
                 ),
               ),
             ),
-            _CollapsibleLabel(
-              collapsed: widget.isCollapsed,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(width: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 170),
-                    child: BlocSelector<AppConfigCubit, AppConfigState, String>(
-                      selector:
-                          (state) =>
-                              state.businessInfo?.businessName ??
-                              'DANILORE ONE',
-                      builder: (context, name) {
-                        final isDefault =
-                            name.trim().isEmpty ||
-                            name == 'ERP Tienda' ||
-                            name == 'Mi Tienda' ||
-                            name.toUpperCase().contains('DANILORE');
+            Flexible(
+              child: _CollapsibleLabel(
+                collapsed: widget.isCollapsed,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child:
+                          BlocSelector<AppConfigCubit, AppConfigState, String>(
+                            selector:
+                                (state) =>
+                                    state.businessInfo?.businessName ??
+                                    'DANILORE ONE',
+                            builder: (context, name) {
+                              final isDefault =
+                                  name.trim().isEmpty ||
+                                  name == 'ERP Tienda' ||
+                                  name == 'Mi Tienda' ||
+                                  name.toUpperCase().contains('DANILORE');
 
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (isDefault)
-                              Row(
+                              return Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'DANILORE ',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w800,
-                                      color:
-                                          isDark
-                                              ? AppColors.darkTextPrimary
-                                              : const Color(0xFF0F172A),
-                                      letterSpacing: 0.3,
+                                  if (isDefault)
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'DANILORE ',
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w800,
+                                            color:
+                                                isDark
+                                                    ? AppColors.darkTextPrimary
+                                                    : const Color(0xFF0F172A),
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'ONE',
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF3B82F6),
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            isDark
+                                                ? AppColors.darkTextPrimary
+                                                : const Color(0xFF0F172A),
+                                      ),
                                     ),
-                                  ),
-                                  const Text(
-                                    'ONE',
-                                    style: TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF3B82F6),
-                                      letterSpacing: 0.3,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      isDefault
+                                          ? 'Todo tu negocio en un solo lugar'
+                                          : 'DANILORE ONE ERP',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w500,
+                                        color:
+                                            isDark
+                                                ? AppColors.darkTextMuted
+                                                : const Color(0xFF64748B),
+                                        letterSpacing: -0.1,
+                                      ),
                                     ),
                                   ),
                                 ],
-                              )
-                            else
-                              Text(
-                                name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      isDark
-                                          ? AppColors.darkTextPrimary
-                                          : const Color(0xFF0F172A),
-                                ),
-                              ),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                isDefault
-                                    ? 'Todo tu negocio en un solo lugar'
-                                    : 'DANILORE ONE ERP',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                  color:
-                                      isDark
-                                          ? AppColors.darkTextMuted
-                                          : const Color(0xFF64748B),
-                                  letterSpacing: -0.1,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                              );
+                            },
+                          ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             if (!widget.isCollapsed) ...[
@@ -1069,43 +1071,43 @@ class _AdminSidebarState extends State<AdminSidebar> {
                                         ? AppColors.darkTextSecondary
                                         : const Color(0xFF64748B)),
                           ),
-                          _CollapsibleLabel(
-                            collapsed: widget.isCollapsed,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const SizedBox(width: 10),
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 160,
-                                  ),
-                                  child: Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      letterSpacing: -0.2,
-                                      fontWeight:
-                                          isActive
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                      color:
-                                          isActive
-                                              ? (isDark
-                                                  ? const Color(0xFF93C5FD)
-                                                  : const Color(0xFF1E40AF))
-                                              : (isDark
-                                                  ? AppColors.darkTextSecondary
-                                                  : const Color(0xFF475569)),
+                          Flexible(
+                            child: _CollapsibleLabel(
+                              collapsed: widget.isCollapsed,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        letterSpacing: -0.2,
+                                        fontWeight:
+                                            isActive
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                        color:
+                                            isActive
+                                                ? (isDark
+                                                    ? const Color(0xFF93C5FD)
+                                                    : const Color(0xFF1E40AF))
+                                                : (isDark
+                                                    ? AppColors
+                                                        .darkTextSecondary
+                                                    : const Color(0xFF475569)),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (item.trailing != null) ...[
-                                  const SizedBox(width: 6),
-                                  item.trailing!,
+                                  if (item.trailing != null) ...[
+                                    const SizedBox(width: 6),
+                                    item.trailing!,
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
                         ],
