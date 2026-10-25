@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -43,14 +44,13 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _fadeCtrl.forward();
 
-    // Animación suave de entrada única con bajo costo computacional
     _blobCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1400),
     );
     _blobAnim = Tween<double>(
-      begin: 0.95,
-      end: 1.05,
+      begin: 0.96,
+      end: 1.04,
     ).animate(CurvedAnimation(parent: _blobCtrl, curve: Curves.easeInOutSine));
     _blobCtrl.forward();
   }
@@ -117,7 +117,6 @@ class _LoginScreenState extends State<LoginScreen>
             type: SnackbarType.error,
           );
         } else if (state.viewState == ViewState.success) {
-          // Permite al gestor de contraseñas capturar usuario y contraseña correctamente
           TextInput.finishAutofillContext(shouldSave: true);
           _blobCtrl.stop();
           if (!state.isLoginMode) {
@@ -127,8 +126,6 @@ class _LoginScreenState extends State<LoginScreen>
               type: SnackbarType.success,
             );
           }
-          // Nota: La redirección se gestiona de forma centralizada por
-          // GoRouterRefreshStream en AppRouter para respetar deep links y evitar carreras.
         }
       },
       builder: (context, state) {
@@ -149,35 +146,46 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Layout Desktop: Split-Screen Auth (50% Hero Panel / 50% Auth Form) ──────
+  // ── Layout Desktop: Split-Screen Auth (50% Hero 3D / 50% Auth Form) ──────
   Widget _buildDesktopSplitLayout(BuildContext context, AuthState state) {
     return Row(
       children: [
-        // Lado Izquierdo: Hero Panel de Marca (50%)
+        // Lado Izquierdo: Hero Panel de Marca con Arte 3D (50%)
         Expanded(
           flex: 1,
           child: Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, Color(0xFF0F3460)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              gradient: RadialGradient(
+                center: Alignment(-0.2, -0.3),
+                radius: 1.4,
+                colors: [
+                  Color(0xFF22243D), // Navy azulado iluminado
+                  Color(0xFF141525), // Navy profundo
+                  Color(0xFF0C0D17), // Charcoal oscuro
+                ],
+                stops: [0.0, 0.6, 1.0],
               ),
             ),
             child: Stack(
               children: [
+                // Orbe de luz ambiental decorativo de fondo
                 Positioned(
-                  top: -100,
-                  left: -100,
+                  top: -80,
+                  left: -80,
                   child: RepaintBoundary(
                     child: AnimatedBuilder(
                       animation: _blobAnim,
                       child: Container(
-                        width: 380,
-                        height: 380,
+                        width: 440,
+                        height: 440,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.05),
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                              Colors.transparent,
+                            ],
+                          ),
                         ),
                       ),
                       builder: (context, child) {
@@ -189,58 +197,171 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(60.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.storefront_rounded,
-                          size: 42,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Gestión Inteligente de Inventario y Ventas',
-                        style: TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -0.8,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Accede al panel de control centralizado para administrar catálogo, pedidos, POS y reportes financieros en tiempo real.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      Row(
+
+                // Contenido Hero centrado y elegante
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 56.0,
+                      vertical: 40.0,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 580),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildFeatureBadge('Control de Stock'),
-                          const SizedBox(width: 12),
-                          _buildFeatureBadge('Caja POS'),
-                          const SizedBox(width: 12),
-                          _buildFeatureBadge('Fidelización'),
+                          // Composición 3D Hero Artwork
+                          Center(
+                            child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 310,
+                                    maxWidth: 360,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF3B82F6,
+                                        ).withValues(alpha: 0.20),
+                                        blurRadius: 40,
+                                        spreadRadius: 2,
+                                        offset: const Offset(0, 16),
+                                      ),
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.50,
+                                        ),
+                                        blurRadius: 30,
+                                        offset: const Offset(0, 18),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(28),
+                                    child: Stack(
+                                      children: [
+                                        Image.asset(
+                                          'assets/images/login_hero_3d.jpg',
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Container(
+                                                    color: Colors.white10,
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                          24,
+                                                        ),
+                                                    child: const Icon(
+                                                      Icons.storefront_rounded,
+                                                      size: 80,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                        ),
+                                        // Sutil viñeta y resplandor de borde
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              28,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.18,
+                                              ),
+                                              width: 1.2,
+                                            ),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.transparent,
+                                                Colors.black.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .animate()
+                                .fadeIn(duration: 700.ms, curve: Curves.easeOut)
+                                .scale(
+                                  begin: const Offset(0.92, 0.92),
+                                  end: const Offset(1.0, 1.0),
+                                  duration: 800.ms,
+                                  curve: Curves.easeOutBack,
+                                ),
+                          ),
+                          const SizedBox(height: 36),
+
+                          // Título Principal Hero
+                          const Text(
+                                'Gestión Inteligente de Inventario y Ventas',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.9,
+                                  height: 1.2,
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(delay: 200.ms, duration: 500.ms)
+                              .slideY(
+                                begin: 0.15,
+                                end: 0,
+                                curve: Curves.easeOutCubic,
+                              ),
+                          const SizedBox(height: 14),
+
+                          // Subtítulo
+                          Text(
+                                'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.white.withValues(alpha: 0.82),
+                                  height: 1.5,
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(delay: 300.ms, duration: 500.ms)
+                              .slideY(
+                                begin: 0.15,
+                                end: 0,
+                                curve: Curves.easeOutCubic,
+                              ),
+                          const SizedBox(height: 28),
+
+                          // Badges Glassmorphic
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
+                              _buildFeatureBadge(
+                                'Control de Stock',
+                                Icons.inventory_2_outlined,
+                                delayMs: 400,
+                              ),
+                              _buildFeatureBadge(
+                                'Caja POS',
+                                Icons.point_of_sale_rounded,
+                                delayMs: 480,
+                              ),
+                              _buildFeatureBadge(
+                                'Fidelización',
+                                Icons.loyalty_outlined,
+                                delayMs: 560,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -252,7 +373,14 @@ class _LoginScreenState extends State<LoginScreen>
         Expanded(
           flex: 1,
           child: Container(
-            color: AppColors.background,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              gradient: LinearGradient(
+                colors: [Color(0xFFFFFFFF), AppColors.background],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
             child: Stack(
               children: [
                 Positioned(top: 24, left: 24, child: _buildBackButton(context)),
@@ -260,7 +388,10 @@ class _LoginScreenState extends State<LoginScreen>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 440),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(32),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 32,
+                      ),
                       child: FadeTransition(
                         opacity: _fadeAnim,
                         child: Column(
@@ -299,22 +430,28 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Layout Móvil / Tablet: 1 Columna Centrada ─────────────────────────────
+  // ── Layout Móvil / Tablet: 1 Columna Centrada con Fondo Ambiental ─────────
   Widget _buildMobileLayout(BuildContext context, AuthState state) {
     return Stack(
       children: [
+        // Orbe superior derecho iluminado suavemente
         Positioned(
-          top: -80,
-          right: -80,
+          top: -100,
+          right: -90,
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _blobAnim,
               child: Container(
-                width: 260,
-                height: 260,
+                width: 320,
+                height: 320,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.06),
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
               builder: (context, child) {
@@ -323,18 +460,24 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
         ),
+        // Orbe inferior izquierdo con acento suave
         Positioned(
-          top: 40,
-          left: -60,
+          bottom: 20,
+          left: -80,
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _blobAnim,
               child: Container(
-                width: 180,
-                height: 180,
+                width: 240,
+                height: 240,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.accent.withValues(alpha: 0.05),
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.accent.withValues(alpha: 0.08),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
               builder: (context, child) {
@@ -361,16 +504,19 @@ class _LoginScreenState extends State<LoginScreen>
               Expanded(
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 450),
+                    constraints: const BoxConstraints(maxWidth: 440),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 8,
+                      ),
                       child: FadeTransition(
                         opacity: _fadeAnim,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             LoginHeaderSection(isLoginMode: state.isLoginMode),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 28),
                             LoginFormCard(
                               formKey: _formKey,
                               nameController: _nameController,
@@ -387,7 +533,7 @@ class _LoginScreenState extends State<LoginScreen>
                               isLoading: state.viewState == ViewState.loading,
                               onToggle: () => _onToggleMode(state.isLoginMode),
                             ),
-                            const SizedBox(height: 32),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
@@ -430,23 +576,45 @@ class _LoginScreenState extends State<LoginScreen>
     return const _MobileBackButton();
   }
 
-  Widget _buildFeatureBadge(String label) {
+  Widget _buildFeatureBadge(
+    String label,
+    IconData icon, {
+    required int delayMs,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.9)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        )
+        .animate()
+        .fadeIn(delay: Duration(milliseconds: delayMs), duration: 400.ms)
+        .slideX(begin: -0.1, end: 0, curve: Curves.easeOutCubic);
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -196,8 +197,19 @@ class _LoginFormCardState extends State<LoginFormCard> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: AutofillGroup(
         child: Form(
@@ -205,68 +217,85 @@ class _LoginFormCardState extends State<LoginFormCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!widget.isLoginMode) ...[
-                AppTextField(
-                  controller: widget.nameController,
-                  label: 'Nombre completo',
-                  icon: Icons.person_outline_rounded,
-                  keyboardType: TextInputType.name,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  autofillHints: const [AutofillHints.name],
-                  validator: _validateName,
-                ),
-                const SizedBox(height: 14),
-              ],
+              // Transición suave de acordeón para el campo de Nombre al cambiar de modo
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeInOutCubic,
+                child:
+                    !widget.isLoginMode
+                        ? Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: AppTextField(
+                                controller: widget.nameController,
+                                label: 'Nombre completo',
+                                icon: Icons.person_outline_rounded,
+                                keyboardType: TextInputType.name,
+                                textCapitalization: TextCapitalization.words,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.name],
+                                validator: _validateName,
+                              )
+                              .animate()
+                              .fadeIn(duration: 300.ms)
+                              .slideY(begin: -0.1, end: 0),
+                        )
+                        : const SizedBox.shrink(),
+              ),
 
               AppTextField(
-                controller: widget.emailController,
-                label: 'Correo electrónico',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [
-                  AutofillHints.username,
-                  AutofillHints.email,
-                ],
-                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                validator: _validateEmail,
-              ),
+                    controller: widget.emailController,
+                    label: 'Correo electrónico',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                    validator: _validateEmail,
+                  )
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 120.ms)
+                  .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
               const SizedBox(height: 14),
 
               ValueListenableBuilder<bool>(
-                valueListenable: _obscurePasswordNotifier,
-                builder: (context, obscure, _) {
-                  return AppTextField(
-                    controller: widget.passwordController,
-                    label: 'Contraseña',
-                    icon: Icons.lock_outline_rounded,
-                    textInputAction: TextInputAction.done,
-                    autofillHints: [
-                      widget.isLoginMode
-                          ? AutofillHints.password
-                          : AutofillHints.newPassword,
-                    ],
-                    onFieldSubmitted:
-                        widget.isLoading
-                            ? null
-                            : (_) => widget.onAuthenticate(),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: AppColors.textSecondary,
-                        size: 20,
-                      ),
-                      onPressed:
-                          () => _obscurePasswordNotifier.value = !obscure,
-                    ),
-                    obscureText: obscure,
-                    validator: _validatePassword,
-                  );
-                },
-              ),
+                    valueListenable: _obscurePasswordNotifier,
+                    builder: (context, obscure, _) {
+                      return AppTextField(
+                        controller: widget.passwordController,
+                        label: 'Contraseña',
+                        icon: Icons.lock_outline_rounded,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: [
+                          widget.isLoginMode
+                              ? AutofillHints.password
+                              : AutofillHints.newPassword,
+                        ],
+                        onFieldSubmitted:
+                            widget.isLoading
+                                ? null
+                                : (_) => widget.onAuthenticate(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: AppColors.textSecondary,
+                            size: 20,
+                          ),
+                          onPressed:
+                              () => _obscurePasswordNotifier.value = !obscure,
+                        ),
+                        obscureText: obscure,
+                        validator: _validatePassword,
+                      );
+                    },
+                  )
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 200.ms)
+                  .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
 
               if (widget.isLoginMode) ...[
                 Align(
@@ -277,7 +306,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 4,
+                        vertical: 6,
                       ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -291,17 +320,20 @@ class _LoginFormCardState extends State<LoginFormCard> {
                       ),
                     ),
                   ),
-                ),
+                ).animate().fadeIn(duration: 350.ms, delay: 260.ms),
                 const SizedBox(height: 8),
               ] else ...[
-                const SizedBox(height: 22),
+                const SizedBox(height: 20),
               ],
 
               _SubmitButton(
-                isLoading: widget.isLoading,
-                isLoginMode: widget.isLoginMode,
-                onPressed: widget.onAuthenticate,
-              ),
+                    isLoading: widget.isLoading,
+                    isLoginMode: widget.isLoginMode,
+                    onPressed: widget.onAuthenticate,
+                  )
+                  .animate()
+                  .fadeIn(duration: 400.ms, delay: 300.ms)
+                  .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
             ],
           ),
         ),
@@ -344,38 +376,59 @@ class _SubmitButtonState extends State<_SubmitButton> {
               ? null
               : () => setState(() => _isButtonPressed = false),
       child: AnimatedScale(
-        scale: _isButtonPressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        child: SizedBox(
+        scale: _isButtonPressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: Container(
           height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppColors.radius),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E2038), AppColors.primary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
           child: ElevatedButton(
             onPressed: widget.isLoading ? null : widget.onPressed,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
               foregroundColor: Colors.white,
-              elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppColors.radius),
               ),
             ),
-            child:
-                widget.isLoading
-                    ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child:
+                  widget.isLoading
+                      ? const SizedBox(
+                        key: ValueKey('spinner'),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                      : Text(
+                        widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
+                        key: ValueKey(widget.isLoginMode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                    )
-                    : Text(
-                      widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
+            ),
           ),
         ),
       ),

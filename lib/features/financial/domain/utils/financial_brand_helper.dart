@@ -900,8 +900,6 @@ class FinancialBrandHelper {
           ),
         );
 
-
-
       case FinancialBrandType.posNiubiz:
         return _buildImageBadge(
           assetPath: 'assets/icons/banks/pos_niubiz.png',
