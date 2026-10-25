@@ -96,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen>
     if (!currentIsLoginMode) {
       _nameController.clear();
     }
-    _fadeCtrl.forward(from: 0);
   }
 
   @override
@@ -130,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen>
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: const Color(0xFFF8FAFC),
           body: LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth >= 1024;
@@ -156,14 +155,14 @@ class _LoginScreenState extends State<LoginScreen>
           child: Container(
             decoration: const BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(-0.2, -0.3),
-                radius: 1.4,
+                center: Alignment(0.0, -0.2),
+                radius: 1.3,
                 colors: [
-                  Color(0xFF22243D), // Navy azulado iluminado
-                  Color(0xFF141525), // Navy profundo
-                  Color(0xFF0C0D17), // Charcoal oscuro
+                  Color(0xFF1E2138), // Navy azulado iluminado
+                  Color(0xFF111220), // Deep Navy
+                  Color(0xFF090A12), // Midnight Charcoal
                 ],
-                stops: [0.0, 0.6, 1.0],
+                stops: [0.0, 0.65, 1.0],
               ),
             ),
             child: Stack(
@@ -176,13 +175,13 @@ class _LoginScreenState extends State<LoginScreen>
                     child: AnimatedBuilder(
                       animation: _blobAnim,
                       child: Container(
-                        width: 440,
-                        height: 440,
+                        width: 480,
+                        height: 480,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                              const Color(0xFF3B82F6).withValues(alpha: 0.14),
                               Colors.transparent,
                             ],
                           ),
@@ -203,139 +202,113 @@ class _LoginScreenState extends State<LoginScreen>
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 56.0,
-                      vertical: 40.0,
+                      vertical: 36.0,
                     ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 580),
+                      constraints: const BoxConstraints(maxWidth: 560),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Composición 3D Hero Artwork
-                          Center(
-                            child: Container(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 310,
-                                    maxWidth: 360,
+                          // Pill Badge de la Plataforma
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF10B981),
+                                    shape: BoxShape.circle,
                                   ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(28),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF3B82F6,
-                                        ).withValues(alpha: 0.20),
-                                        blurRadius: 40,
-                                        spreadRadius: 2,
-                                        offset: const Offset(0, 16),
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.50,
-                                        ),
-                                        blurRadius: 30,
-                                        offset: const Offset(0, 18),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(28),
-                                    child: Stack(
-                                      children: [
-                                        Image.asset(
-                                          'assets/images/login_hero_3d.jpg',
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  Container(
-                                                    color: Colors.white10,
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          24,
-                                                        ),
-                                                    child: const Icon(
-                                                      Icons.storefront_rounded,
-                                                      size: 80,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                        ),
-                                        // Sutil viñeta y resplandor de borde
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              28,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.18,
-                                              ),
-                                              width: 1.2,
-                                            ),
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                              colors: [
-                                                Colors.transparent,
-                                                Colors.black.withValues(
-                                                  alpha: 0.35,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .animate()
-                                .fadeIn(duration: 700.ms, curve: Curves.easeOut)
-                                .scale(
-                                  begin: const Offset(0.92, 0.92),
-                                  end: const Offset(1.0, 1.0),
-                                  duration: 800.ms,
-                                  curve: Curves.easeOutBack,
                                 ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Danilore One · Plataforma Integral',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 36),
+                          const SizedBox(height: 24),
+
+                          // Composición 3D Hero Artwork integrada sin bordes toscos
+                          Center(
+                            child: ShaderMask(
+                              shaderCallback: (rect) {
+                                return const RadialGradient(
+                                  center: Alignment.center,
+                                  radius: 0.82,
+                                  colors: [
+                                    Colors.black,
+                                    Colors.black,
+                                    Colors.transparent,
+                                  ],
+                                  stops: [0.0, 0.65, 1.0],
+                                ).createShader(rect);
+                              },
+                              blendMode: BlendMode.dstIn,
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 340,
+                                  maxWidth: 440,
+                                ),
+                                child: Image.asset(
+                                  'assets/images/login_hero_3d.jpg',
+                                  fit: BoxFit.contain,
+                                  errorBuilder:
+                                      (context, error, stackTrace) =>
+                                          const Icon(
+                                            Icons.storefront_rounded,
+                                            size: 90,
+                                            color: Colors.white,
+                                          ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
 
                           // Título Principal Hero
                           const Text(
-                                'Gestión Inteligente de Inventario y Ventas',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: -0.9,
-                                  height: 1.2,
-                                ),
-                              )
-                              .animate()
-                              .fadeIn(delay: 200.ms, duration: 500.ms)
-                              .slideY(
-                                begin: 0.15,
-                                end: 0,
-                                curve: Curves.easeOutCubic,
-                              ),
-                          const SizedBox(height: 14),
+                            'Gestión Inteligente de Inventario y Ventas',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: -0.8,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
 
                           // Subtítulo
                           Text(
-                                'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                  height: 1.5,
-                                ),
-                              )
-                              .animate()
-                              .fadeIn(delay: 300.ms, duration: 500.ms)
-                              .slideY(
-                                begin: 0.15,
-                                end: 0,
-                                curve: Curves.easeOutCubic,
-                              ),
-                          const SizedBox(height: 28),
+                            'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: Colors.white.withValues(alpha: 0.80),
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
 
                           // Badges Glassmorphic
                           Wrap(
@@ -345,17 +318,17 @@ class _LoginScreenState extends State<LoginScreen>
                               _buildFeatureBadge(
                                 'Control de Stock',
                                 Icons.inventory_2_outlined,
-                                delayMs: 400,
+                                delayMs: 100,
                               ),
                               _buildFeatureBadge(
                                 'Caja POS',
                                 Icons.point_of_sale_rounded,
-                                delayMs: 480,
+                                delayMs: 180,
                               ),
                               _buildFeatureBadge(
                                 'Fidelización',
                                 Icons.loyalty_outlined,
-                                delayMs: 560,
+                                delayMs: 260,
                               ),
                             ],
                           ),
@@ -373,14 +346,7 @@ class _LoginScreenState extends State<LoginScreen>
         Expanded(
           flex: 1,
           child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              gradient: LinearGradient(
-                colors: [Color(0xFFFFFFFF), AppColors.background],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
+            color: const Color(0xFFF8FAFC),
             child: Stack(
               children: [
                 Positioned(top: 24, left: 24, child: _buildBackButton(context)),
@@ -392,32 +358,29 @@ class _LoginScreenState extends State<LoginScreen>
                         horizontal: 36,
                         vertical: 32,
                       ),
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            LoginHeaderSection(isLoginMode: state.isLoginMode),
-                            const SizedBox(height: 28),
-                            LoginFormCard(
-                              formKey: _formKey,
-                              nameController: _nameController,
-                              emailController: _emailController,
-                              passwordController: _passwordController,
-                              isLoginMode: state.isLoginMode,
-                              isLoading: state.viewState == ViewState.loading,
-                              onAuthenticate:
-                                  () => _authenticate(state.isLoginMode),
-                            ),
-                            const SizedBox(height: 20),
-                            LoginToggleMode(
-                              isLoginMode: state.isLoginMode,
-                              isLoading: state.viewState == ViewState.loading,
-                              onToggle: () => _onToggleMode(state.isLoginMode),
-                            ),
-                          ],
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          LoginHeaderSection(isLoginMode: state.isLoginMode),
+                          const SizedBox(height: 26),
+                          LoginFormCard(
+                            formKey: _formKey,
+                            nameController: _nameController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            isLoginMode: state.isLoginMode,
+                            isLoading: state.viewState == ViewState.loading,
+                            onAuthenticate:
+                                () => _authenticate(state.isLoginMode),
+                          ),
+                          const SizedBox(height: 20),
+                          LoginToggleMode(
+                            isLoginMode: state.isLoginMode,
+                            isLoading: state.viewState == ViewState.loading,
+                            onToggle: () => _onToggleMode(state.isLoginMode),
+                          ),
+                        ],
                       ),
                     ),
                   ),

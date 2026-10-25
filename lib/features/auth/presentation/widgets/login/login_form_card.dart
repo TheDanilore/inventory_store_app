@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -197,17 +196,17 @@ class _LoginFormCardState extends State<LoginFormCard> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -217,123 +216,124 @@ class _LoginFormCardState extends State<LoginFormCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Transición suave de acordeón para el campo de Nombre al cambiar de modo
+              // Acordeón ultra-fluido para el campo de Nombre sin parpadeos
               AnimatedSize(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeInOutCubic,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
                 child:
                     !widget.isLoginMode
                         ? Padding(
                           padding: const EdgeInsets.only(bottom: 14),
                           child: AppTextField(
-                                controller: widget.nameController,
-                                label: 'Nombre completo',
-                                icon: Icons.person_outline_rounded,
-                                keyboardType: TextInputType.name,
-                                textCapitalization: TextCapitalization.words,
-                                textInputAction: TextInputAction.next,
-                                autofillHints: const [AutofillHints.name],
-                                validator: _validateName,
-                              )
-                              .animate()
-                              .fadeIn(duration: 300.ms)
-                              .slideY(begin: -0.1, end: 0),
+                            controller: widget.nameController,
+                            label: 'Nombre completo',
+                            icon: Icons.person_outline_rounded,
+                            keyboardType: TextInputType.name,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.name],
+                            validator: _validateName,
+                          ),
                         )
                         : const SizedBox.shrink(),
               ),
 
               AppTextField(
-                    controller: widget.emailController,
-                    label: 'Correo electrónico',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    autofillHints: const [
-                      AutofillHints.username,
-                      AutofillHints.email,
-                    ],
-                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                    validator: _validateEmail,
-                  )
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 120.ms)
-                  .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
+                controller: widget.emailController,
+                label: 'Correo electrónico',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                validator: _validateEmail,
+              ),
               const SizedBox(height: 14),
 
               ValueListenableBuilder<bool>(
-                    valueListenable: _obscurePasswordNotifier,
-                    builder: (context, obscure, _) {
-                      return AppTextField(
-                        controller: widget.passwordController,
-                        label: 'Contraseña',
-                        icon: Icons.lock_outline_rounded,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: [
-                          widget.isLoginMode
-                              ? AutofillHints.password
-                              : AutofillHints.newPassword,
-                        ],
-                        onFieldSubmitted:
-                            widget.isLoading
-                                ? null
-                                : (_) => widget.onAuthenticate(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: AppColors.textSecondary,
-                            size: 20,
-                          ),
-                          onPressed:
-                              () => _obscurePasswordNotifier.value = !obscure,
-                        ),
-                        obscureText: obscure,
-                        validator: _validatePassword,
-                      );
-                    },
-                  )
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 200.ms)
-                  .slideY(begin: 0.12, end: 0, curve: Curves.easeOutCubic),
+                valueListenable: _obscurePasswordNotifier,
+                builder: (context, obscure, _) {
+                  return AppTextField(
+                    controller: widget.passwordController,
+                    label: 'Contraseña',
+                    icon: Icons.lock_outline_rounded,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: [
+                      widget.isLoginMode
+                          ? AutofillHints.password
+                          : AutofillHints.newPassword,
+                    ],
+                    onFieldSubmitted:
+                        widget.isLoading
+                            ? null
+                            : (_) => widget.onAuthenticate(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      onPressed:
+                          () => _obscurePasswordNotifier.value = !obscure,
+                    ),
+                    obscureText: obscure,
+                    validator: _validatePassword,
+                  );
+                },
+              ),
 
-              if (widget.isLoginMode) ...[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed:
-                        widget.isLoading ? null : _showForgotPasswordDialog,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text(
-                      '¿Olvidaste tu contraseña?',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ).animate().fadeIn(duration: 350.ms, delay: 260.ms),
-                const SizedBox(height: 8),
-              ] else ...[
-                const SizedBox(height: 20),
-              ],
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child:
+                    widget.isLoginMode
+                        ? Column(
+                          children: [
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed:
+                                    widget.isLoading
+                                        ? null
+                                        : _showForgotPasswordDialog,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  '¿Olvidaste tu contraseña?',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        )
+                        : const SizedBox(height: 20),
+              ),
 
               _SubmitButton(
-                    isLoading: widget.isLoading,
-                    isLoginMode: widget.isLoginMode,
-                    onPressed: widget.onAuthenticate,
-                  )
-                  .animate()
-                  .fadeIn(duration: 400.ms, delay: 300.ms)
-                  .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
+                isLoading: widget.isLoading,
+                isLoginMode: widget.isLoginMode,
+                onPressed: widget.onAuthenticate,
+              ),
             ],
           ),
         ),

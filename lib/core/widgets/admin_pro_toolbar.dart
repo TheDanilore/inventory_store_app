@@ -82,6 +82,12 @@ class AdminFilterGroup<T> {
   final T defaultValue;
   final ValueChanged<T> onSelected;
 
+  /// Forma en que se presenta el filtro en el BottomSheet móvil:
+  /// - [AdminFilterDisplayType.auto]: si tiene <= 4 opciones usa chips, si tiene más usa select.
+  /// - [AdminFilterDisplayType.chips]: siempre chips.
+  /// - [AdminFilterDisplayType.select]: siempre menú/select desplegable.
+  final AdminFilterDisplayType displayType;
+
   const AdminFilterGroup({
     required this.title,
     required this.options,
@@ -89,9 +95,24 @@ class AdminFilterGroup<T> {
     required this.defaultValue,
     required this.onSelected,
     this.icon,
+    this.displayType = AdminFilterDisplayType.auto,
   });
 
   bool get isActive => selected != defaultValue;
+
+  /// Invoca [onSelected] de forma segura evitando problemas de covarianza
+  /// en tipos de funciones Dart cuando el grupo está tipado como [dynamic].
+  void select(dynamic value) {
+    onSelected(value as T);
+  }
+
+  /// Restablece el filtro al valor por defecto.
+  void reset() {
+    onSelected(defaultValue);
+  }
+
+  /// Comprueba si la opción dada está actualmente seleccionada.
+  bool isSelected(dynamic value) => selected == value;
 
   String get selectedLabel {
     for (final o in options) {
@@ -99,6 +120,18 @@ class AdminFilterGroup<T> {
     }
     return title;
   }
+}
+
+/// Modo de visualización de un grupo de filtros en el modal bottom sheet de móvil.
+enum AdminFilterDisplayType {
+  /// Si tiene <= 4 opciones se muestra como chips horizontales; si tiene más, como select desplegable.
+  auto,
+
+  /// Siempre como chips envueltos (Wrap). Ideal para opciones cortas y rápidas (ej. Estado, Stock).
+  chips,
+
+  /// Siempre como selector desplegable estilizado. Ideal para listas largas (ej. Categorías, Marcas, Ordenar por).
+  select,
 }
 
 /// Toolbar Pro Unificado de alto rendimiento y diseño consistente para pantallas administrativas.
@@ -240,7 +273,12 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   @override
   void didUpdateWidget(covariant AdminProToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _filtersSnapshot.value = _FiltersSnapshot.from(widget);
+    final next = _FiltersSnapshot.from(widget);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _filtersSnapshot.value = next;
+      }
+    });
   }
 
   int get _effectiveActiveFilters =>
@@ -1442,7 +1480,7 @@ class _AdminFilterDropdown extends StatelessWidget {
           color: isDark ? AppColors.darkBorder : AppColors.border,
         ),
       ),
-      onSelected: (i) => group.onSelected(group.options[i].value),
+      onSelected: (i) => group.select(group.options[i].value),
       itemBuilder:
           (_) => [
             for (var i = 0; i < group.options.length; i++)
@@ -1548,7 +1586,7 @@ class _AdminFiltersSheet extends StatelessWidget {
       return;
     }
     for (final g in s.groups) {
-      if (g.isActive) g.onSelected(g.defaultValue);
+      if (g.isActive) g.reset();
     }
   }
 
@@ -1683,39 +1721,191 @@ class _FilterGroupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool useSelect =
+        group.displayType == AdminFilterDisplayType.select ||
+        (group.displayType == AdminFilterDisplayType.auto &&
+            group.options.length > 4);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            group.title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
             children: [
-              for (final o in group.options)
-                _FilterChip(
-                  option: o,
-                  selected: o.value == group.selected,
-                  isDark: isDark,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    group.onSelected(o.value);
-                  },
+              Text(
+                group.title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: AppColors.textMuted,
                 ),
+              ),
+              if (group.isActive) ...[
+                const SizedBox(width: 6),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppColors.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ],
           ),
+          const SizedBox(height: 8),
+          if (useSelect)
+            _AdminFilterSelectField(group: group, isDark: isDark)
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final o in group.options)
+                  _FilterChip(
+                    option: o,
+                    selected: group.isSelected(o.value),
+                    isDark: isDark,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      group.select(o.value);
+                    },
+                  ),
+              ],
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Selector desplegable moderno y estilizado para móvil cuando una lista de filtros
+/// tiene muchas opciones (ej. Categorías con 10+ elementos) evitando un muro de chips.
+class _AdminFilterSelectField extends StatelessWidget {
+  final AdminFilterGroup<dynamic> group;
+  final bool isDark;
+
+  const _AdminFilterSelectField({required this.group, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final active = group.isActive;
+    final accent = isDark ? const Color(0xFF60A5FA) : AppColors.primary;
+
+    return PopupMenuButton<int>(
+      tooltip: 'Seleccionar ${group.title}',
+      offset: const Offset(0, 48),
+      color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      onSelected: (i) {
+        HapticFeedback.selectionClick();
+        group.select(group.options[i].value);
+      },
+      itemBuilder:
+          (ctx) => [
+            for (var i = 0; i < group.options.length; i++)
+              PopupMenuItem<int>(
+                value: i,
+                child: Row(
+                  children: [
+                    Icon(
+                      group.isSelected(group.options[i].value)
+                          ? Icons.check_circle_rounded
+                          : (group.options[i].icon ?? Icons.circle_outlined),
+                      size: 18,
+                      color:
+                          group.isSelected(group.options[i].value)
+                              ? accent
+                              : (group.options[i].color ??
+                                  AppColors.textSecondary),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        group.options[i].label,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight:
+                              group.isSelected(group.options[i].value)
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                          color:
+                              group.isSelected(group.options[i].value)
+                                  ? (isDark
+                                      ? Colors.white
+                                      : AppColors.textPrimary)
+                                  : (group.options[i].color ??
+                                      (isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color:
+              active
+                  ? accent.withValues(alpha: isDark ? 0.16 : 0.08)
+                  : (isDark
+                      ? AppColors.darkSurfaceElevated
+                      : AppColors.background),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                active
+                    ? accent
+                    : (isDark ? AppColors.darkBorder : AppColors.border),
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            if (group.icon != null) ...[
+              Icon(
+                group.icon,
+                size: 18,
+                color: active ? accent : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                group.selectedLabel,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  color:
+                      active
+                          ? (isDark ? accent : AppColors.primary)
+                          : (isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 20,
+              color: active ? accent : AppColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }
