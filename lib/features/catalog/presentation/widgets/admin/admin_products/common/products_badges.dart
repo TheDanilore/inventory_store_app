@@ -16,13 +16,29 @@ class ProductStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor =
         isActive
-            ? AppColors.successLight.withValues(alpha: 0.7)
-            : AppColors.slateLight.withValues(alpha: 0.5);
+            ? (isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.45)
+                : AppColors.successLight.withValues(alpha: 0.7))
+            : (isDark
+                ? const Color(0xFF1E293B)
+                : AppColors.slateLight.withValues(alpha: 0.5));
     final textColor =
-        isActive ? AppColors.successDark : AppColors.textSecondary;
-    final dotColor = isActive ? AppColors.success : AppColors.textMuted;
+        isActive
+            ? (isDark ? const Color(0xFF34D399) : AppColors.successDark)
+            : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary);
+    final dotColor =
+        isActive
+            ? (isDark ? const Color(0xFF10B981) : AppColors.success)
+            : (isDark ? AppColors.darkTextMuted : AppColors.textMuted);
+    final borderColor =
+        isActive
+            ? (isDark
+                ? const Color(0xFF059669).withValues(alpha: 0.4)
+                : AppColors.success.withValues(alpha: 0.3))
+            : (isDark ? AppColors.darkBorder : AppColors.border);
 
     return Tooltip(
       message: isActive ? 'Clic para desactivar' : 'Clic para activar',
@@ -40,12 +56,7 @@ class ProductStatusPill extends StatelessWidget {
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color:
-                    isActive
-                        ? AppColors.success.withValues(alpha: 0.3)
-                        : AppColors.border,
-              ),
+              border: Border.all(color: borderColor),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -84,6 +95,7 @@ class ProductStockBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOut = stock <= 0;
     final isLow = stock > 0 && stock <= 5;
 
@@ -94,21 +106,39 @@ class ProductStockBadge extends StatelessWidget {
     final String text;
 
     if (isOut) {
-      bgColor = AppColors.danger.withValues(alpha: 0.08);
-      textColor = AppColors.danger;
-      borderColor = AppColors.danger.withValues(alpha: 0.25);
+      bgColor =
+          isDark
+              ? const Color(0xFF7F1D1D).withValues(alpha: 0.25)
+              : AppColors.danger.withValues(alpha: 0.08);
+      textColor = isDark ? const Color(0xFFF87171) : AppColors.danger;
+      borderColor =
+          isDark
+              ? const Color(0xFFDC2626).withValues(alpha: 0.4)
+              : AppColors.danger.withValues(alpha: 0.25);
       iconData = Icons.highlight_off_rounded;
       text = 'Agotado';
     } else if (isLow) {
-      bgColor = AppColors.warning.withValues(alpha: 0.1);
-      textColor = AppColors.warningDark;
-      borderColor = AppColors.warning.withValues(alpha: 0.3);
+      bgColor =
+          isDark
+              ? const Color(0xFF78350F).withValues(alpha: 0.3)
+              : AppColors.warning.withValues(alpha: 0.1);
+      textColor = isDark ? const Color(0xFFFBBF24) : AppColors.warningDark;
+      borderColor =
+          isDark
+              ? const Color(0xFFD97706).withValues(alpha: 0.4)
+              : AppColors.warning.withValues(alpha: 0.3);
       iconData = Icons.warning_amber_rounded;
       text = 'Bajo ($stock)';
     } else {
-      bgColor = AppColors.teal.withValues(alpha: 0.1);
-      textColor = AppColors.tealDark;
-      borderColor = AppColors.teal.withValues(alpha: 0.25);
+      bgColor =
+          isDark
+              ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+              : AppColors.teal.withValues(alpha: 0.1);
+      textColor = isDark ? const Color(0xFF34D399) : AppColors.tealDark;
+      borderColor =
+          isDark
+              ? const Color(0xFF059669).withValues(alpha: 0.4)
+              : AppColors.teal.withValues(alpha: 0.25);
       iconData = Icons.check_circle_outline_rounded;
       text = '$stock unid.';
     }

@@ -265,7 +265,7 @@ class _SortFilterChip extends StatelessWidget {
           color:
               _isCustom
                   ? (isDark
-                      ? AppColors.primary.withValues(alpha: 0.2)
+                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
                       : AppColors.primaryLight)
                   : (isDark
                       ? AppColors.darkSurfaceElevated
@@ -273,7 +273,7 @@ class _SortFilterChip extends StatelessWidget {
           border: Border.all(
             color:
                 _isCustom
-                    ? AppColors.primary
+                    ? (isDark ? const Color(0xFF3B82F6) : AppColors.primary)
                     : (isDark ? AppColors.darkBorder : AppColors.border),
             width: _isCustom ? 1.2 : 1,
           ),
@@ -287,7 +287,7 @@ class _SortFilterChip extends StatelessWidget {
               size: 16,
               color:
                   _isCustom
-                      ? AppColors.primary
+                      ? (isDark ? const Color(0xFF60A5FA) : AppColors.primary)
                       : (isDark
                           ? AppColors.darkTextSecondary
                           : AppColors.textSecondary),
@@ -300,7 +300,7 @@ class _SortFilterChip extends StatelessWidget {
                 fontWeight: _isCustom ? FontWeight.w600 : FontWeight.w500,
                 color:
                     _isCustom
-                        ? AppColors.primary
+                        ? (isDark ? const Color(0xFF93C5FD) : AppColors.primary)
                         : (isDark
                             ? AppColors.darkTextPrimary
                             : AppColors.textPrimary),
@@ -312,7 +312,7 @@ class _SortFilterChip extends StatelessWidget {
               size: 16,
               color:
                   _isCustom
-                      ? AppColors.primary
+                      ? (isDark ? const Color(0xFF60A5FA) : AppColors.primary)
                       : (isDark
                           ? AppColors.darkTextMuted
                           : AppColors.textMuted),
@@ -370,7 +370,7 @@ class _CategoryFilterChip extends StatelessWidget {
             color:
                 isSelected
                     ? (isDark
-                        ? AppColors.primary.withValues(alpha: 0.2)
+                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
                         : AppColors.primaryLight)
                     : (isDark
                         ? AppColors.darkSurfaceElevated
@@ -378,7 +378,7 @@ class _CategoryFilterChip extends StatelessWidget {
             border: Border.all(
               color:
                   isSelected
-                      ? AppColors.primary
+                      ? (isDark ? const Color(0xFF3B82F6) : AppColors.primary)
                       : (isDark ? AppColors.darkBorder : AppColors.border),
               width: isSelected ? 1.2 : 1,
             ),
@@ -392,7 +392,7 @@ class _CategoryFilterChip extends StatelessWidget {
                 size: 15,
                 color:
                     isSelected
-                        ? AppColors.primary
+                        ? (isDark ? const Color(0xFF60A5FA) : AppColors.primary)
                         : (isDark
                             ? AppColors.darkTextSecondary
                             : AppColors.textSecondary),
@@ -407,7 +407,9 @@ class _CategoryFilterChip extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color:
                       isSelected
-                          ? AppColors.primary
+                          ? (isDark
+                              ? const Color(0xFF93C5FD)
+                              : AppColors.primary)
                           : (isDark
                               ? AppColors.darkTextPrimary
                               : AppColors.textPrimary),
@@ -423,15 +425,17 @@ class _CategoryFilterChip extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(
-                        alpha: isDark ? 0.3 : 0.15,
-                      ),
+                      color:
+                          isDark
+                              ? const Color(0xFF1E3A8A).withValues(alpha: 0.5)
+                              : AppColors.primary.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 13,
-                      color: AppColors.primary,
+                      color:
+                          isDark ? const Color(0xFF93C5FD) : AppColors.primary,
                     ),
                   ),
                 )
@@ -894,7 +898,7 @@ class _StatusFilterChip extends StatelessWidget {
           color:
               _hasFilter
                   ? (isDark
-                      ? AppColors.primary.withValues(alpha: 0.2)
+                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
                       : AppColors.primaryLight)
                   : (isDark
                       ? AppColors.darkSurfaceElevated
@@ -902,7 +906,7 @@ class _StatusFilterChip extends StatelessWidget {
           border: Border.all(
             color:
                 _hasFilter
-                    ? AppColors.primary
+                    ? (isDark ? const Color(0xFF3B82F6) : AppColors.primary)
                     : (isDark ? AppColors.darkBorder : AppColors.border),
             width: _hasFilter ? 1.2 : 1,
           ),
@@ -943,7 +947,7 @@ class _StatusFilterChip extends StatelessWidget {
                 fontWeight: _hasFilter ? FontWeight.w600 : FontWeight.w500,
                 color:
                     _hasFilter
-                        ? AppColors.primary
+                        ? (isDark ? const Color(0xFF93C5FD) : AppColors.primary)
                         : (isDark
                             ? AppColors.darkTextPrimary
                             : AppColors.textPrimary),
@@ -959,15 +963,16 @@ class _StatusFilterChip extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(
-                      alpha: isDark ? 0.3 : 0.15,
-                    ),
+                    color:
+                        isDark
+                            ? const Color(0xFF1E3A8A).withValues(alpha: 0.5)
+                            : AppColors.primary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.close_rounded,
                     size: 13,
-                    color: AppColors.primary,
+                    color: isDark ? const Color(0xFF93C5FD) : AppColors.primary,
                   ),
                 ),
               )
@@ -1385,7 +1390,9 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
     return Material(
       color:
           isSelected
-              ? AppColors.primary.withValues(alpha: isDark ? 0.15 : 0.05)
+              ? (isDark
+                  ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
+                  : AppColors.primary.withValues(alpha: 0.05))
               : Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -1400,7 +1407,9 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                   size: 18,
                   color:
                       isSelected
-                          ? AppColors.primary
+                          ? (isDark
+                              ? const Color(0xFF60A5FA)
+                              : AppColors.primary)
                           : (isDark
                               ? AppColors.darkTextMuted
                               : AppColors.textMuted),
@@ -1415,7 +1424,9 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                           isSelected ? FontWeight.w600 : FontWeight.w400,
                       color:
                           isSelected
-                              ? AppColors.primary
+                              ? (isDark
+                                  ? const Color(0xFF93C5FD)
+                                  : AppColors.primary)
                               : (isDark
                                   ? AppColors.darkTextPrimary
                                   : AppColors.textPrimary),
@@ -1423,10 +1434,10 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                   ),
                 ),
                 if (isSelected)
-                  const Icon(
+                  Icon(
                     Icons.check_rounded,
                     size: 18,
-                    color: AppColors.primary,
+                    color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
                   ),
               ],
             ),

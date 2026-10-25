@@ -799,10 +799,10 @@ class CatalogSideInspector extends StatelessWidget {
                 product.name.trim().isNotEmpty
                     ? product.name.trim()[0].toUpperCase()
                     : 'P',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
+                  color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
                 ),
               ),
             ),

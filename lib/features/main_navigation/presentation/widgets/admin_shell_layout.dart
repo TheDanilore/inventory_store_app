@@ -8,9 +8,6 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_desktop_top_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/notifications/notification_bell.dart';
-import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
-import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
-import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_offline_banner.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/app_drawer.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -578,28 +575,6 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
                                     const SizedBox(width: 6),
                                   ],
 
-                                  BlocBuilder<ThemeCubit, ThemeMode>(
-                                    builder: (context, themeMode) {
-                                      final isCurrentlyDark =
-                                          Theme.of(context).brightness ==
-                                          Brightness.dark;
-                                      return ThemeEclipseButton(
-                                        isDark: isCurrentlyDark,
-                                        size: 38,
-                                        tooltip:
-                                            isCurrentlyDark
-                                                ? 'Modo Claro Ejecutivo'
-                                                : 'Modo Oscuro Midnight Slate',
-                                        onTapWithOrigin: (origin) {
-                                          ThemeCircularWave.switchTheme(
-                                            context,
-                                            origin: origin,
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(width: 6),
 
                                   const NotificationBell(),
                                   const SizedBox(width: 6),

@@ -706,7 +706,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                               size: 18,
                               color:
                                   !widget.isTableView
-                                      ? AppColors.primary
+                                      ? (isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : AppColors.primary)
                                       : (isDark
                                           ? AppColors.darkTextMuted
                                           : AppColors.textMuted),
@@ -753,7 +755,9 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                               size: 18,
                               color:
                                   widget.isTableView
-                                      ? AppColors.primary
+                                      ? (isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : AppColors.primary)
                                       : (isDark
                                           ? AppColors.darkTextMuted
                                           : AppColors.textMuted),
@@ -794,7 +798,8 @@ class _CatalogHeaderState extends State<CatalogHeader> {
               ElevatedButton.icon(
                 onPressed: widget.onAddProduct,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor:
+                      isDark ? const Color(0xFF2563EB) : AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(

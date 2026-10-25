@@ -49,19 +49,22 @@ class AppTableShimmer extends StatelessWidget {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final border = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
         final tableWidth =
             constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
 
         return Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: const [
+            border: Border.all(color: border),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x050F172A),
+                color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                    .withValues(alpha: isDark ? 0.2 : 0.03),
                 blurRadius: 4,
-                offset: Offset(0, 1),
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -80,10 +83,13 @@ class AppTableShimmer extends StatelessWidget {
                       horizontal: 18,
                       vertical: 13,
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF8FAFC),
                       border: Border(
-                        bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                        bottom: BorderSide(color: border),
                       ),
                     ),
                     child: const Row(
@@ -118,10 +124,10 @@ class AppTableShimmer extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: rowCount,
                     separatorBuilder:
-                        (_, _) => const Divider(
+                        (_, _) => Divider(
                           height: 1,
                           thickness: 1,
-                          color: Color(0xFFF1F5F9),
+                          color: border,
                         ),
                     itemBuilder: (context, index) {
                       return Padding(

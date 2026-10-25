@@ -10,13 +10,14 @@ class CatalogAddProductFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
       message: 'Agregar producto (N)',
       child: Material(
-        color: AppColors.primary,
+        color: isDark ? const Color(0xFF2563EB) : AppColors.primary,
         borderRadius: BorderRadius.circular(16),
         elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.25),
+        shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.25),
         child: InkWell(
           onTap: () {
             AppFeedbackService.lightImpact();

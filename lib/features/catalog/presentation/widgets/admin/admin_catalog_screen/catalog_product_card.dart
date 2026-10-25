@@ -166,7 +166,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
               border: Border.all(
                 color:
                     widget.isSelected
-                        ? AppColors.primary
+                        ? (isDark ? const Color(0xFF3B82F6) : AppColors.primary)
                         : (isDesactivado
                             ? (isDark
                                 ? AppColors.darkBorder.withValues(alpha: 0.5)

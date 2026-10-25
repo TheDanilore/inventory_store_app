@@ -83,14 +83,23 @@ class ProductMonogramAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final monogram = getProductMonogram(name);
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color:
+            isDark
+                ? const Color(0xFF1E293B)
+                : AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(size > 44 ? 14 : 8),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
+        border: Border.all(
+          color:
+              isDark
+                  ? const Color(0xFF334155)
+                  : AppColors.primary.withValues(alpha: 0.12),
+        ),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -98,7 +107,7 @@ class ProductMonogramAvatar extends StatelessWidget {
         style: TextStyle(
           fontSize: size * 0.38,
           fontWeight: FontWeight.w700,
-          color: AppColors.primary,
+          color: isDark ? const Color(0xFF94A3B8) : AppColors.primary,
           letterSpacing: 0.5,
         ),
       ),

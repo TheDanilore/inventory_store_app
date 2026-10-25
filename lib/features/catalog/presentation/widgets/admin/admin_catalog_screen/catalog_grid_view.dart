@@ -64,28 +64,39 @@ class CatalogGridScrollView extends StatelessWidget {
         if (headerSliver != null) headerSliver!,
         if (chipsSliver != null) chipsSliver!,
         SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: [
-                Text(
-                  'Mostrando ${effectiveTotal == 0 ? 0 : start}-$end de $effectiveTotal',
-                  style: const TextStyle(
-                    fontSize: 13, // Aumentado a 13px (prominente)
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+          child: Builder(
+            builder: (context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'Mostrando ${effectiveTotal == 0 ? 0 : start}-$end de $effectiveTotal',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Pág. ${effectiveTotal == 0 ? 1 : currentPage + 1} / $totalPages',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  'Pág. ${effectiveTotal == 0 ? 1 : currentPage + 1} / $totalPages',
-                  style: const TextStyle(
-                    fontSize: 11, // Reducido a 11px (secundario)
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ),
         Builder(
@@ -139,30 +150,43 @@ class CatalogGridScrollView extends StatelessWidget {
         ),
         if (totalPages > 1)
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppColors.cardShadow(opacity: 0.03),
-                ),
-                child: AdminPageBlocks(
-                  currentPage: currentPage,
-                  totalPages: totalPages,
-                  onPageChanged: onPageChanged,
-                  totalItems: effectiveTotal,
-                  itemsPerPage: pageSize,
-                  availableItemsPerPage: const [10, 20, 24, 50, 100],
-                  onItemsPerPageChanged: onPageSizeChanged,
-                  itemName: 'productos',
-                ),
-              ),
+            child: Builder(
+              builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? AppColors.darkSurface
+                              : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
+                      boxShadow:
+                          isDark
+                              ? AppColors.darkCardShadow(opacity: 0.15)
+                              : AppColors.cardShadow(opacity: 0.03),
+                    ),
+                    child: AdminPageBlocks(
+                      currentPage: currentPage,
+                      totalPages: totalPages,
+                      onPageChanged: onPageChanged,
+                      totalItems: effectiveTotal,
+                      itemsPerPage: pageSize,
+                      availableItemsPerPage: const [10, 20, 24, 50, 100],
+                      onItemsPerPageChanged: onPageSizeChanged,
+                      itemName: 'productos',
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         SliverToBoxAdapter(child: SizedBox(height: bottomPadding + 16)),

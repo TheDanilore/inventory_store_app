@@ -44,6 +44,20 @@ class _AppShimmerState extends State<AppShimmer>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final shimmerColors =
+        isDark
+            ? const [
+              Color(0xFF1E293B),
+              Color(0xFF334155),
+              Color(0xFF1E293B),
+            ]
+            : [
+              Colors.grey.shade200,
+              Colors.grey.shade100,
+              Colors.grey.shade200,
+            ];
+
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -60,11 +74,7 @@ class _AppShimmerState extends State<AppShimmer>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               stops: const [0.1, 0.5, 0.9],
-              colors: [
-                Colors.grey.shade200,
-                Colors.grey.shade100,
-                Colors.grey.shade200,
-              ],
+              colors: shimmerColors,
               transform: _SlidingGradientTransform(
                 slidePercent: _animation.value,
               ),
