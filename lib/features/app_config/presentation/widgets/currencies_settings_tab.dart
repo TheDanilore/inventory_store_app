@@ -36,79 +36,104 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
       builder: (context, state) {
         final currencies = state.currencies;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
-          children: [
-            // Banner de Garantía de Inmutabilidad Histórica y Kárdex
-            _buildInfoBanner(widget.isDark),
-            const SizedBox(height: 16),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+            final horizontalPadding = isMobile ? 12.0 : 20.0;
 
-            // Encabezado con acción de refrescar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return ListView(
+              padding: EdgeInsets.fromLTRB(0, 16, 0, isMobile ? 40 : 80),
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Monedas del Sistema ERP',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            widget.isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF0F172A),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Configura tipos de cambio sugeridos y estado de divisas',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color:
-                            widget.isDark
-                                ? AppColors.darkTextSecondary
-                                : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  onPressed:
-                      () => context.read<AppConfigCubit>().loadCurrencies(
-                        force: true,
-                      ),
-                  tooltip: 'Refrescar monedas',
-                  icon: const Icon(Icons.refresh_rounded, size: 20),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Banner de Garantía de Inmutabilidad Histórica y Kárdex
+                          _buildInfoBanner(widget.isDark),
+                          const SizedBox(height: 16),
 
-            if (currencies.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color:
-                        widget.isDark
-                            ? const Color(0xFF60A5FA)
-                            : const Color(0xFF2563EB),
+                          // Encabezado con acción de refrescar
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Monedas del Sistema ERP',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          widget.isDark
+                                              ? AppColors.darkTextPrimary
+                                              : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Configura tipos de cambio sugeridos y estado de divisas',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color:
+                                          widget.isDark
+                                              ? AppColors.darkTextSecondary
+                                              : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              IconButton(
+                                onPressed:
+                                    () => context
+                                        .read<AppConfigCubit>()
+                                        .loadCurrencies(force: true),
+                                tooltip: 'Refrescar monedas',
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          if (currencies.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(32.0),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color:
+                                      widget.isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : const Color(0xFF2563EB),
+                                ),
+                              ),
+                            )
+                          else
+                            ...currencies.map((currency) {
+                              return _buildCurrencyCard(
+                                context,
+                                currency: currency,
+                                isDark: widget.isDark,
+                                canEdit: canEdit,
+                              );
+                            }),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              )
-            else
-              ...currencies.map((currency) {
-                return _buildCurrencyCard(
-                  context,
-                  currency: currency,
-                  isDark: widget.isDark,
-                  canEdit: canEdit,
-                );
-              }),
-          ],
+              ],
+            );
+          },
         );
       },
     );

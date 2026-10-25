@@ -21,7 +21,7 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/financi
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/scanner_settings_hub_tab.dart';
+import 'package:inventory_store_app/features/app_config/presentation/widgets/scanner_settings_hub_tab.dart';
 
 /// Pantalla completa de Configuración del ERP (Linear / Apple HIG Style)
 /// Totalmente configurable e interactiva (Vibración, Sonido, Impresora POS, Puntos, Monedas, Empresa).
@@ -292,46 +292,79 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
 
           return Container(
             color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Hero Banner Header ──────────────────────────────
-                    _buildHeroHeader(context, isDark, isDesktop),
-
-                    // ── Segmented Navigation Bar ────────────────────────
-                    _buildSegmentedTabBar(context, isDark),
-
-                    // ── Content Area ────────────────────────────────────
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildBusinessView(context, isDark),
-                          CurrenciesSettingsTab(isDark: isDark),
-                          _buildAppearanceView(context, isDark),
-                          _buildFinancialAccountsView(context, isDark),
-                          _buildLoyaltyPointsView(context, isDark),
-                          _buildPrinterView(context, isDark),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            child: ScannerSettingsHubTab(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Hero Banner Header (Centrado a 1200) ────────────────────
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: _buildHeroHeader(context, isDark, isDesktop),
+                  ),
                 ),
-              ),
+
+                // ── Segmented Navigation Bar (Centrado a 1200) ──────────────
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: _buildSegmentedTabBar(context, isDark),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // ── Content Area (Full width -> Scrollbar pegado a la derecha) ─
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildBusinessView(context, isDark),
+                      CurrenciesSettingsTab(isDark: isDark),
+                      _buildAppearanceView(context, isDark),
+                      _buildFinancialAccountsView(context, isDark),
+                      _buildLoyaltyPointsView(context, isDark),
+                      _buildPrinterView(context, isDark),
+                      const ScannerSettingsHubTab(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },
       ),
+    );
+  }
+
+  /// Helper que envuelve cada vista de configuración para que el ListView ocupe
+  /// todo el ancho (scrollbar pegado a la derecha) mientras el contenido se centra a 1200px.
+  Widget _buildSettingsScrollContent({
+    required bool isDark,
+    required List<Widget> children,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final horizontalPadding = isMobile ? 12.0 : 20.0;
+
+        return ListView(
+          padding: EdgeInsets.fromLTRB(0, 4, 0, isMobile ? 40 : 60),
+          children: [
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: children,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -471,7 +504,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         physics: const BouncingScrollPhysics(),
         labelColor: Colors.white,
         unselectedLabelColor:
-            isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B),
+            isDark ? AppColors.darkTextPrimary : const Color(0xFF334155),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
@@ -488,7 +521,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         unselectedLabelStyle: const TextStyle(
           fontSize: 13,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
         tabs:
             _tabs.map((tab) {
@@ -523,8 +556,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         final logoUrl = _logoUrlCtrl.text.trim();
         final supabaseUrl = state.connectionUrl ?? 'https://*.supabase.co';
 
-        return ListView(
-          padding: const EdgeInsets.all(20),
+        return _buildSettingsScrollContent(
+          isDark: isDark,
           children: [
             // ── Card 1: Identidad de Marca y Logotipo Comercial ─────────────
             _buildSectionCard(
@@ -979,8 +1012,16 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
               subtitle: 'Conexión activa con el backend Supabase Multi-Tenant',
               action: OutlinedButton.icon(
                 icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                label: const Text('Cambiar Servidor (Multi-Tenant)'),
+                label: const Text(
+                  'Cambiar Servidor (Multi-Tenant)',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                  backgroundColor: const Color(
+                    0xFF2563EB,
+                  ).withValues(alpha: 0.08),
+                  side: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -1097,8 +1138,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
 
   // ── Tab 2: Apariencia & Interacción ───────────────────────────────────────
   Widget _buildAppearanceView(BuildContext context, bool isDark) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
+    return _buildSettingsScrollContent(
+      isDark: isDark,
       children: [
         // ── Tema visual ──
         _buildSectionCard(
@@ -1417,8 +1458,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   .where((a) => a.currencyCode.toUpperCase() == 'USD')
                   .fold<double>(0.0, (sum, a) => sum + a.balance);
 
-              return ListView(
-                padding: const EdgeInsets.all(20),
+              return _buildSettingsScrollContent(
+                isDark: isDark,
                 children: [
                   // ── Sección 1: Cuentas y Cajas Registradas ────────────────
                   _buildSectionCard(
@@ -1436,17 +1477,18 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                         OutlinedButton.icon(
                           onPressed: () => context.go('/financial-accounts'),
                           icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                          label: const Text('Ver Tesorería'),
+                          label: const Text(
+                            'Ver Tesorería',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor:
-                                isDark
-                                    ? Colors.white70
-                                    : const Color(0xFF334155),
-                            side: BorderSide(
-                              color:
-                                  isDark
-                                      ? AppColors.darkBorder
-                                      : const Color(0xFFCBD5E1),
+                            foregroundColor: const Color(0xFF2563EB),
+                            backgroundColor: const Color(
+                              0xFF2563EB,
+                            ).withValues(alpha: 0.08),
+                            side: const BorderSide(
+                              color: Color(0xFF2563EB),
+                              width: 1.2,
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -2272,8 +2314,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         final isCustomerVisible =
             state.businessInfo?.loyaltyCustomerVisible ?? false;
 
-        return ListView(
-          padding: const EdgeInsets.all(20),
+        return _buildSettingsScrollContent(
+          isDark: isDark,
           children: [
             _buildSectionCard(
               context,
@@ -2606,8 +2648,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
         final address = info?.address ?? 'Virtual';
         final phone = info?.phone ?? '';
 
-        return ListView(
-          padding: const EdgeInsets.all(20),
+        return _buildSettingsScrollContent(
+          isDark: isDark,
           children: [
             _buildSectionCard(
               context,
@@ -2777,37 +2819,48 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                   : const Color(0xFFE2E8F0),
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.copy_rounded,
-                            color: Color(0xFF64748B),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Copias del Comprobante',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
+                      child: LayoutBuilder(
+                        builder: (context, boxConstraints) {
+                          final isNarrow = boxConstraints.maxWidth < 460;
+                          final infoCol = Row(
+                            children: [
+                              const Icon(
+                                Icons.copy_rounded,
+                                color: Color(0xFF2563EB),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Copias del Comprobante',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      '1 copia para el cliente, o 2 para control interno de almacén/cocina',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(height: 2),
-                                Text(
-                                  '1 copia para el cliente, o 2 para control interno de almacén/cocina',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ],
+                          );
+
+                          final segButton = SegmentedButton<int>(
+                            style: SegmentedButton.styleFrom(
+                              selectedBackgroundColor: const Color(0xFF2563EB),
+                              selectedForegroundColor: Colors.white,
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
                             ),
-                          ),
-                          SegmentedButton<int>(
                             segments: const [
                               ButtonSegment(value: 1, label: Text('1 Copia')),
                               ButtonSegment(value: 2, label: Text('2 Copias')),
@@ -2818,8 +2871,30 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                 PosPrinterSettingsService.setCopies(set.first);
                               }
                             },
-                          ),
-                        ],
+                          );
+
+                          if (isNarrow) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                infoCol,
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: segButton,
+                                ),
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            children: [
+                              Expanded(child: infoCol),
+                              const SizedBox(width: 12),
+                              segButton,
+                            ],
+                          );
+                        },
                       ),
                     );
                   },
@@ -2887,9 +2962,23 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                       const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: OutlinedButton.icon(
+                        child: FilledButton.icon(
                           icon: const Icon(Icons.save_rounded, size: 16),
-                          label: const Text('Guardar Mensaje'),
+                          label: const Text(
+                            'Guardar Mensaje',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                           onPressed: () async {
                             await PosPrinterSettingsService.setFooterMessage(
                               _printerFooterCtrl.text.trim(),
@@ -2922,45 +3011,51 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                       color: const Color(0xFF2563EB).withValues(alpha: 0.25),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.print_outlined,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Laboratorio de Calibración Térmica',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
-                              ),
+                  child: LayoutBuilder(
+                    builder: (context, boxConstraints) {
+                      final isNarrow = boxConstraints.maxWidth < 480;
+
+                      final iconAndText = Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Envía un ticket de prueba para validar alineación, corte y nitidez.',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: AppColors.textSecondary,
-                              ),
+                            child: const Icon(
+                              Icons.print_outlined,
+                              color: Colors.white,
+                              size: 24,
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      FilledButton.icon(
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Laboratorio de Calibración Térmica',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Envía un ticket de prueba para validar alineación, corte y nitidez.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+
+                      final printBtn = FilledButton.icon(
                         icon:
                             _isPrintingTestTicket
                                 ? const SizedBox(
@@ -2976,9 +3071,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                           _isPrintingTestTicket
                               ? 'Enviando...'
                               : 'Imprimir Prueba',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -3023,8 +3120,27 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                     ),
                                   );
                                 },
-                      ),
-                    ],
+                      );
+
+                      if (isNarrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            iconAndText,
+                            const SizedBox(height: 14),
+                            SizedBox(width: double.infinity, child: printBtn),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: iconAndText),
+                          const SizedBox(width: 12),
+                          printBtn,
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
