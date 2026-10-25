@@ -8,6 +8,8 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
+import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
@@ -159,45 +161,20 @@ class AdminDesktopTopBar extends StatelessWidget {
               actions!.where((a) => !_isRefreshWidget(a)).isNotEmpty)
             const SizedBox(width: 12),
 
-          // ── Theme Mode Toggle ───────────────────────────────────────
+          // ── Theme Mode Toggle (Eclipse Morphing + Circular Wave) ───
           BlocBuilder<ThemeCubit, ThemeMode>(
             builder: (context, themeMode) {
               final isCurrentlyDark =
                   Theme.of(context).brightness == Brightness.dark;
-              return _TopBarIconButton(
-                // AnimatedSwitcher + rotación: el sol/luna sale girando y
-                // el nuevo icono entra girando desde el ángulo opuesto, en
-                // vez de reemplazarse de golpe.
-                iconWidget: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  transitionBuilder:
-                      (child, animation) => RotationTransition(
-                        turns: Tween<double>(
-                          begin: 0.75,
-                          end: 1,
-                        ).animate(animation),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(
-                            scale: animation,
-                            child: child,
-                          ),
-                        ),
-                      ),
-                  child: Icon(
-                    isCurrentlyDark
-                        ? Icons.light_mode_outlined
-                        : Icons.dark_mode_outlined,
-                    key: ValueKey(isCurrentlyDark),
-                    size: 19,
-                  ),
-                ),
+              return ThemeEclipseButton(
+                isDark: isCurrentlyDark,
+                size: 38,
                 tooltip:
                     isCurrentlyDark
-                        ? 'Modo Claro Ejecutivo'
-                        : 'Modo Oscuro Midnight Slate',
-                onTap: () {
-                  context.read<ThemeCubit>().toggleTheme();
+                        ? 'Cambiar a Modo Claro'
+                        : 'Cambiar a Modo Oscuro',
+                onTapWithOrigin: (origin) {
+                  ThemeCircularWave.switchTheme(context, origin: origin);
                 },
               );
             },

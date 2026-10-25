@@ -22,6 +22,7 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/financi
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/scanner_settings_hub_tab.dart';
 
 /// Pantalla completa de Configuración del ERP (Linear / Apple HIG Style)
@@ -1187,101 +1188,127 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                       direction: isWide ? Axis.horizontal : Axis.vertical,
                       children:
                           options.map((opt) {
-                            final card = InkWell(
-                              onTap: () {
-                                context.read<ThemeCubit>().setThemeMode(
-                                  opt.mode,
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color:
-                                      opt.isSelected
-                                          ? (isDark
-                                              ? const Color(
-                                                0xFF1E3A8A,
-                                              ).withValues(alpha: 0.35)
-                                              : const Color(0xFFEFF6FF))
-                                          : (isDark
-                                              ? const Color(0xFF111827)
-                                              : Colors.white),
+                            final card = Builder(
+                              builder: (itemCtx) {
+                                return InkWell(
+                                  onTap: () {
+                                    AppFeedbackService.vibrate(
+                                      durationMs: 35,
+                                      amplitude: 90,
+                                    );
+                                    final renderBox =
+                                        itemCtx.findRenderObject()
+                                            as RenderBox?;
+                                    Offset? origin;
+                                    if (renderBox != null &&
+                                        renderBox.hasSize) {
+                                      origin = renderBox.localToGlobal(
+                                        renderBox.size.center(Offset.zero),
+                                      );
+                                    }
+                                    ThemeCircularWave.switchTheme(
+                                      context,
+                                      origin: origin,
+                                      targetMode: opt.mode,
+                                    );
+                                  },
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color:
-                                        opt.isSelected
-                                            ? const Color(0xFF3B82F6)
-                                            : (isDark
-                                                ? AppColors.darkBorderSubtle
-                                                : const Color(0xFFE2E8F0)),
-                                    width: opt.isSelected ? 2 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      opt.icon,
-                                      size: 22,
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
                                       color:
                                           opt.isSelected
-                                              ? const Color(0xFF3B82F6)
+                                              ? (isDark
+                                                  ? const Color(
+                                                    0xFF1E3A8A,
+                                                  ).withValues(alpha: 0.35)
+                                                  : const Color(0xFFEFF6FF))
                                               : (isDark
-                                                  ? AppColors.darkTextSecondary
-                                                  : const Color(0xFF64748B)),
+                                                  ? const Color(0xFF111827)
+                                                  : Colors.white),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            opt.isSelected
+                                                ? const Color(0xFF3B82F6)
+                                                : (isDark
+                                                    ? AppColors.darkBorderSubtle
+                                                    : const Color(0xFFE2E8F0)),
+                                        width: opt.isSelected ? 2 : 1,
+                                      ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            opt.title,
-                                            style: TextStyle(
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w700,
-                                              color:
-                                                  opt.isSelected
-                                                      ? (isDark
-                                                          ? const Color(
-                                                            0xFF93C5FD,
-                                                          )
-                                                          : const Color(
-                                                            0xFF1E40AF,
-                                                          ))
-                                                      : (isDark
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          opt.icon,
+                                          size: 22,
+                                          color:
+                                              opt.isSelected
+                                                  ? const Color(0xFF3B82F6)
+                                                  : (isDark
+                                                      ? AppColors
+                                                          .darkTextSecondary
+                                                      : const Color(
+                                                        0xFF64748B,
+                                                      )),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                opt.title,
+                                                style: TextStyle(
+                                                  fontSize: 13.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      opt.isSelected
+                                                          ? (isDark
+                                                              ? const Color(
+                                                                0xFF93C5FD,
+                                                              )
+                                                              : const Color(
+                                                                0xFF1E40AF,
+                                                              ))
+                                                          : (isDark
+                                                              ? AppColors
+                                                                  .darkTextPrimary
+                                                              : const Color(
+                                                                0xFF0F172A,
+                                                              )),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                opt.subtitle,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color:
+                                                      isDark
                                                           ? AppColors
-                                                              .darkTextPrimary
+                                                              .darkTextMuted
                                                           : const Color(
-                                                            0xFF0F172A,
-                                                          )),
-                                            ),
+                                                            0xFF64748B,
+                                                          ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            opt.subtitle,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color:
-                                                  isDark
-                                                      ? AppColors.darkTextMuted
-                                                      : const Color(0xFF64748B),
-                                            ),
+                                        ),
+                                        if (opt.isSelected)
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 18,
+                                            color: Color(0xFF3B82F6),
                                           ),
-                                        ],
-                                      ),
+                                      ],
                                     ),
-                                    if (opt.isSelected)
-                                      const Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 18,
-                                        color: Color(0xFF3B82F6),
-                                      ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                );
+                              },
                             );
 
                             if (isWide) {

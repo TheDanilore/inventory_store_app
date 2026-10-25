@@ -16,6 +16,7 @@ import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/core/localization/app_localizations.dart';
+import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
 import 'package:inventory_store_app/core/widgets/fatal_error_app.dart';
 import 'dart:developer' as developer;
 
@@ -112,6 +113,12 @@ class MyApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) {
+              return ThemeCircularWave(
+                key: ThemeCircularWave.waveKey,
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             routerConfig: router,
           );
         },
