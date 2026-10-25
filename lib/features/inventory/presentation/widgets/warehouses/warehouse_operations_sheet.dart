@@ -241,7 +241,7 @@ class WarehouseOperationsSheet extends StatelessWidget {
                 actionLabel: 'Ver stock',
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.push('/inventory?warehouseId=${wh.id}');
+                  context.go('/inventory?warehouseId=${wh.id}');
                 },
               ),
               const SizedBox(height: 10),
@@ -256,7 +256,7 @@ class WarehouseOperationsSheet extends StatelessWidget {
                 actionLabel: 'Abrir POS',
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.push('/pos?warehouseId=${wh.id}');
+                  context.go('/pos?warehouseId=${wh.id}');
                 },
               ),
               const SizedBox(height: 10),
@@ -272,7 +272,7 @@ class WarehouseOperationsSheet extends StatelessWidget {
                 actionLabel: 'Ver turnos',
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.push('/all-cash-shifts');
+                  context.go('/all-cash-shifts');
                 },
               ),
               const SizedBox(height: 10),
@@ -288,7 +288,7 @@ class WarehouseOperationsSheet extends StatelessWidget {
                 actionLabel: 'Ver cuentas',
                 onTap: () {
                   Navigator.of(context).pop();
-                  context.push('/financial-accounts');
+                  context.go('/financial-accounts');
                 },
               ),
             ],

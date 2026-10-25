@@ -88,9 +88,7 @@ class AppTableShimmer extends StatelessWidget {
                           isDark
                               ? AppColors.darkSurfaceElevated
                               : const Color(0xFFF8FAFC),
-                      border: Border(
-                        bottom: BorderSide(color: border),
-                      ),
+                      border: Border(bottom: BorderSide(color: border)),
                     ),
                     child: const Row(
                       children: [
@@ -124,11 +122,8 @@ class AppTableShimmer extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: rowCount,
                     separatorBuilder:
-                        (_, _) => Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: border,
-                        ),
+                        (_, _) =>
+                            Divider(height: 1, thickness: 1, color: border),
                     itemBuilder: (context, index) {
                       return Padding(
                         padding: const EdgeInsets.symmetric(

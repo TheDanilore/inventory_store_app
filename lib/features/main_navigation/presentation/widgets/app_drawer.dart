@@ -335,9 +335,10 @@ class _AppDrawerState extends State<AppDrawer> {
           Expanded(
             child: RawScrollbar(
               controller: _scrollController,
-              thumbColor: isDark
-                  ? AppColors.darkSidebarText.withValues(alpha: 0.3)
-                  : AppColors.sidebarText.withValues(alpha: 0.22),
+              thumbColor:
+                  isDark
+                      ? AppColors.darkSidebarText.withValues(alpha: 0.3)
+                      : AppColors.sidebarText.withValues(alpha: 0.22),
               radius: const Radius.circular(4),
               thickness: 4,
               padding: const EdgeInsets.only(right: 2),
@@ -620,16 +621,19 @@ class _AppDrawerState extends State<AppDrawer> {
     final active = _isItemActive(item.routePath, currentPath);
     final isDark = AppColors.isDark(context);
 
-    final itemBg = active ? AppColors.sideActiveBg(context) : Colors.transparent;
+    final itemBg =
+        active ? AppColors.sideActiveBg(context) : Colors.transparent;
     final itemBorder =
         active ? AppColors.sideActiveBorder(context) : Colors.transparent;
     final itemIndicator = AppColors.sideActiveIndicator(context);
-    final iconColor = active
-        ? (isDark ? const Color(0xFF60A5FA) : itemIndicator)
-        : AppColors.sideText(context);
-    final textColor = active
-        ? AppColors.sideTextActive(context)
-        : AppColors.txtPrimary(context);
+    final iconColor =
+        active
+            ? (isDark ? const Color(0xFF60A5FA) : itemIndicator)
+            : AppColors.sideText(context);
+    final textColor =
+        active
+            ? AppColors.sideTextActive(context)
+            : AppColors.txtPrimary(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -666,11 +670,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       ],
                     ),
                   ),
-                Icon(
-                  item.icon,
-                  color: iconColor,
-                  size: 21,
-                ),
+                Icon(item.icon, color: iconColor, size: 21),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -756,15 +756,18 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
     );
     final isDark = AppColors.isDark(context);
 
-    final headerTextColor = hasActiveChild
-        ? AppColors.sideTextActive(context)
-        : AppColors.txtPrimary(context);
-    final iconColor = hasActiveChild
-        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
-        : AppColors.sideText(context);
-    final chevronColor = isOpen
-        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
-        : AppColors.sideText(context);
+    final headerTextColor =
+        hasActiveChild
+            ? AppColors.sideTextActive(context)
+            : AppColors.txtPrimary(context);
+    final iconColor =
+        hasActiveChild
+            ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+            : AppColors.sideText(context);
+    final chevronColor =
+        isOpen
+            ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+            : AppColors.sideText(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -778,7 +781,9 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: _toggle,
-              splashColor: AppColors.sideActiveIndicator(context).withValues(alpha: 0.1),
+              splashColor: AppColors.sideActiveIndicator(
+                context,
+              ).withValues(alpha: 0.1),
               hoverColor: AppColors.sideHover(context),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 46),
@@ -788,11 +793,7 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      widget.item.icon,
-                      color: iconColor,
-                      size: 21,
-                    ),
+                    Icon(widget.item.icon, color: iconColor, size: 21),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -894,19 +895,15 @@ class _SubItemsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
-    final lineBorderColor = isDark
-        ? const Color(0xFF3B82F6).withValues(alpha: 0.45)
-        : const Color(0xFF2563EB).withValues(alpha: 0.35);
+    final lineBorderColor =
+        isDark
+            ? const Color(0xFF3B82F6).withValues(alpha: 0.45)
+            : const Color(0xFF2563EB).withValues(alpha: 0.35);
 
     return Container(
       margin: const EdgeInsets.only(left: 24, right: 12, bottom: 4),
       decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: lineBorderColor,
-            width: 2,
-          ),
-        ),
+        border: Border(left: BorderSide(color: lineBorderColor, width: 2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -928,19 +925,19 @@ class _SubItemTile extends StatelessWidget {
         currentPath.startsWith('${item.routePath}/');
     final isDark = AppColors.isDark(context);
 
-    final tileBg = active
-        ? AppColors.sideActiveBg(context)
-        : Colors.transparent;
-    final tileBorder = active
-        ? AppColors.sideActiveBorder(context)
-        : Colors.transparent;
+    final tileBg =
+        active ? AppColors.sideActiveBg(context) : Colors.transparent;
+    final tileBorder =
+        active ? AppColors.sideActiveBorder(context) : Colors.transparent;
     final indicatorColor = AppColors.sideActiveIndicator(context);
-    final iconColor = active
-        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
-        : (isDark ? AppColors.darkSidebarText : const Color(0xFF64748B));
-    final textColor = active
-        ? AppColors.sideTextActive(context)
-        : AppColors.txtPrimary(context);
+    final iconColor =
+        active
+            ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+            : (isDark ? AppColors.darkSidebarText : const Color(0xFF64748B));
+    final textColor =
+        active
+            ? AppColors.sideTextActive(context)
+            : AppColors.txtPrimary(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -971,11 +968,7 @@ class _SubItemTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                Icon(
-                  item.icon,
-                  color: iconColor,
-                  size: 19,
-                ),
+                Icon(item.icon, color: iconColor, size: 19),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

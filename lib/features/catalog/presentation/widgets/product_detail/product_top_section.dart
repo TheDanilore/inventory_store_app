@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 class ProductTopSection extends StatelessWidget {
   final String name;
   final String? sku;
+  final String? barcode;
   final String? brandName;
   final bool isActive;
   final int effectiveStock;
@@ -14,6 +15,7 @@ class ProductTopSection extends StatelessWidget {
     super.key,
     required this.name,
     this.sku,
+    this.barcode,
     this.brandName,
     required this.isActive,
     required this.effectiveStock,
@@ -106,6 +108,48 @@ class ProductTopSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   color: isDark ? const Color(0xFF94A3B8) : AppColors.textMuted,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            if (barcode != null && barcode!.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : AppColors.teal.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? AppColors.darkBorder
+                            : AppColors.teal.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.barcode_reader,
+                      size: 12,
+                      color:
+                          isDark ? const Color(0xFF5EEAD4) : AppColors.tealDark,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      barcode!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w700,
+                        color:
+                            isDark
+                                ? const Color(0xFF5EEAD4)
+                                : AppColors.tealDark,
+                      ),
+                    ),
+                  ],
                 ),
               ),
           ],

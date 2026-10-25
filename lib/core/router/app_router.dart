@@ -165,15 +165,23 @@ class _LazyBranchContainerState extends State<_LazyBranchContainer>
             // Cálculo direccional:
             // Saliente (se va):
             final double outgoingOpacity = (1.0 - t).clamp(0.0, 1.0);
-            final Offset outgoingSlide = goingToPos
-                ? Offset(-0.06 * t, 0.0) // ERP se desliza a la izquierda
-                : Offset(0.08 * t, 0.0);  // POS se desliza a la derecha
+            final Offset outgoingSlide =
+                goingToPos
+                    ? Offset(-0.06 * t, 0.0) // ERP se desliza a la izquierda
+                    : Offset(0.08 * t, 0.0); // POS se desliza a la derecha
 
             // Entrante (aparece):
             final double incomingOpacity = t.clamp(0.0, 1.0);
-            final Offset incomingSlide = goingToPos
-                ? Offset(0.08 * (1.0 - t), 0.0)  // POS entra desde la derecha
-                : Offset(-0.06 * (1.0 - t), 0.0); // ERP regresa desde la izquierda
+            final Offset incomingSlide =
+                goingToPos
+                    ? Offset(
+                      0.08 * (1.0 - t),
+                      0.0,
+                    ) // POS entra desde la derecha
+                    : Offset(
+                      -0.06 * (1.0 - t),
+                      0.0,
+                    ); // ERP regresa desde la izquierda
 
             return Stack(
               fit: StackFit.expand,
@@ -183,10 +191,7 @@ class _LazyBranchContainerState extends State<_LazyBranchContainer>
                   if (_activated[i] &&
                       i != widget.currentIndex &&
                       i != _previousIndex)
-                    Offstage(
-                      offstage: true,
-                      child: widget.children[i],
-                    ),
+                    Offstage(offstage: true, child: widget.children[i]),
 
                 // 2. Branch saliente (en el fondo, ignorando toques)
                 if (_activated[_previousIndex])
@@ -440,7 +445,7 @@ class AppRouter {
                               if (auth.state.currentUser == null) {
                                 context.go('/login');
                               } else {
-                                context.push('/profile');
+                                context.go('/profile');
                               }
                             },
                           ),

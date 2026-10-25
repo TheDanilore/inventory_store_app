@@ -57,7 +57,8 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
     return widget.variants.where((v) {
       final labelMatches = v.label.toLowerCase().contains(q);
       final skuMatches = v.sku?.toLowerCase().contains(q) ?? false;
-      return labelMatches || skuMatches;
+      final barcodeMatches = v.barcode?.toLowerCase().contains(q) ?? false;
+      return labelMatches || skuMatches || barcodeMatches;
     }).toList();
   }
 
@@ -426,16 +427,50 @@ class _ProductVariantMatrixState extends State<ProductVariantMatrix> {
                                 ),
                               ),
 
-                              // SKU
+                              // SKU & Barcode
                               Expanded(
                                 flex: 3,
-                                child: Text(
-                                  v.sku ?? '—',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    fontFamily: 'monospace',
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      v.sku ?? '—',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontFamily: 'monospace',
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (v.barcode != null &&
+                                        v.barcode!.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.barcode_reader,
+                                            size: 11,
+                                            color: AppColors.tealDark,
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Flexible(
+                                            child: Text(
+                                              v.barcode!,
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                color: AppColors.tealDark,
+                                                fontFamily: 'monospace',
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
 

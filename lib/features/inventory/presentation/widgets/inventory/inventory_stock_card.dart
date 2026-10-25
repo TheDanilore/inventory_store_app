@@ -203,6 +203,9 @@ class InventoryStockCard extends StatelessWidget {
                                   item.sku!.trim().isNotEmpty &&
                                   item.sku!.trim() != 'N/A')
                                 'SKU: ${item.sku}',
+                              if (item.barcode != null &&
+                                  item.barcode!.trim().isNotEmpty)
+                                'Barras: ${item.barcode}',
                             ].join(' · '),
                             style: TextStyle(
                               fontSize: 12,

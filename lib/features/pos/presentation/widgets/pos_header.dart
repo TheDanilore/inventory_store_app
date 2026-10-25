@@ -1495,7 +1495,7 @@ class PosHeader extends StatelessWidget {
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
-                onTap: () => context.push('/settings?tab=5'),
+                onTap: () => context.go('/settings?tab=5'),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   height: 42,

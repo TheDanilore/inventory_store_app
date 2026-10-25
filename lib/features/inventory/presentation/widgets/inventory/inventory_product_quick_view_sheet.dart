@@ -142,6 +142,10 @@ class _InventoryProductQuickViewContentState
     return _activeVariant?.sku ?? widget.item.sku;
   }
 
+  String? get _activeVariantBarcode {
+    return _activeVariant?.barcode ?? widget.item.barcode;
+  }
+
   double get _activeVariantSalePrice {
     return _activeVariant?.salePrice ?? widget.item.salePrice;
   }
@@ -282,6 +286,7 @@ class _InventoryProductQuickViewContentState
                 productName: item.productName,
                 variantName: _activeVariantTitle,
                 sku: _activeVariantSku,
+                barcode: _activeVariantBarcode,
               ),
         ),
         // Badge de Almacén Activo
@@ -590,6 +595,61 @@ class _InventoryProductQuickViewContentState
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'monospace',
                                       color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        // Código de Barras Chip interactivo
+                        if (_activeVariantBarcode != null &&
+                            _activeVariantBarcode!.isNotEmpty)
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: _activeVariantBarcode!),
+                              );
+                              AppFeedbackService.lightImpact();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Código de barras copiado al portapapeles',
+                                  ),
+                                  duration: Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.teal.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.teal.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.barcode_reader,
+                                    size: 12,
+                                    color: AppColors.tealDark,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _activeVariantBarcode!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'monospace',
+                                      color: AppColors.tealDark,
                                     ),
                                   ),
                                 ],
@@ -1033,6 +1093,7 @@ class _InventoryProductQuickViewContentState
                   return _VariantRowItem(
                     title: displayTitle,
                     sku: v.sku,
+                    barcode: v.barcode,
                     salePrice: v.salePrice ?? item.salePrice,
                     unitCost: v.unitCost ?? item.unitCost,
                     stock: vStock,
@@ -1317,6 +1378,7 @@ class _InventoryProductQuickViewContentState
 class _VariantRowItem extends StatelessWidget {
   final String title;
   final String? sku;
+  final String? barcode;
   final double salePrice;
   final double unitCost;
   final int stock;
@@ -1328,6 +1390,7 @@ class _VariantRowItem extends StatelessWidget {
   const _VariantRowItem({
     required this.title,
     this.sku,
+    this.barcode,
     required this.salePrice,
     required this.unitCost,
     required this.stock,
@@ -1437,16 +1500,48 @@ class _VariantRowItem extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if (sku != null && sku!.isNotEmpty && title != sku)
+                  if ((sku != null && sku!.isNotEmpty && title != sku) ||
+                      (barcode != null && barcode!.isNotEmpty))
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        'SKU: $sku',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                          fontFamily: 'monospace',
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (sku != null && sku!.isNotEmpty && title != sku)
+                            Text(
+                              'SKU: $sku',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          if (barcode != null && barcode!.isNotEmpty) ...[
+                            if (sku != null && sku!.isNotEmpty && title != sku)
+                              const Text(
+                                ' · ',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            const Icon(
+                              Icons.barcode_reader,
+                              size: 11,
+                              color: AppColors.tealDark,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              barcode!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.tealDark,
+                                fontFamily: 'monospace',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                 ],

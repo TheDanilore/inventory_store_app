@@ -163,7 +163,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
     var query = _supabase
         .from('product_variants')
         .select('''
-      id, sku, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, reorder_point,
+      id, sku, barcode, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, reorder_point,
       variant_attribute_values(attribute_values(value)),
       products!inner(
         id, name, product_type, uses_batches, stock_control,
@@ -186,7 +186,10 @@ class InventoryRepositoryImpl implements InventoryRepository {
           .ilike('name', '%$cleanSearch%');
       final pIds = (matchingProducts as List).map((e) => e['id']).toList();
 
-      final orConditions = ['sku.ilike.%$cleanSearch%'];
+      final orConditions = [
+        'sku.ilike.%$cleanSearch%',
+        'barcode.ilike.%$cleanSearch%',
+      ];
       if (pIds.isNotEmpty) {
         orConditions.add('product_id.in.(${pIds.join(',')})');
       }
@@ -314,6 +317,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
                   productName: prod['name'] as String,
                   variantAttrs: attrsText.isNotEmpty ? attrsText : '',
                   sku: variant['sku'] as String?,
+                  barcode: variant['barcode'] as String?,
                   usesBatches: usesBatches,
                   imageUrl: finalImageUrl,
                 );
@@ -341,6 +345,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
           wholesaleMinQty: variantWholesaleMinQty,
           variantId: variantId,
           sku: variant['sku'] as String?,
+          barcode: variant['barcode'] as String?,
           attrsText: attrsText.isNotEmpty ? attrsText : '',
           imageUrl: finalImageUrl,
           reorderPoint: reorderPoint,
@@ -372,7 +377,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       id, batch_number, expiry_date, available_quantity,
       variant_id, warehouse_id, product_id, supplier_id,
       products(id, name, uses_batches, product_images(image_url, is_main, variant_id)),
-      product_variants(id, sku, variant_attribute_values(attribute_values(value))),
+      product_variants(id, sku, barcode, variant_attribute_values(attribute_values(value))),
       warehouses(name),
       suppliers(name)
     ''')
@@ -392,7 +397,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final matchingVariants = await _supabase
           .from('product_variants')
           .select('id')
-          .ilike('sku', '%$search%');
+          .or('sku.ilike.%$search%,barcode.ilike.%$search%');
       final vIds = (matchingVariants as List).map((e) => e['id']).toList();
 
       final orConditions = ['batch_number.ilike.%$search%'];
@@ -486,6 +491,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
           productName: prod?['name'] as String?,
           variantAttrs: attrsText.isNotEmpty ? attrsText : '',
           sku: variant?['sku'] as String?,
+          barcode: variant?['barcode'] as String?,
           usesBatches: true,
           imageUrl: finalImageUrl,
         ),
@@ -736,7 +742,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
         final chunk = await _supabase
             .from('product_variants')
             .select('''
-          id, sku, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, reorder_point,
+          id, sku, barcode, sale_price, unit_cost, wholesale_price, wholesale_min_quantity, reorder_point,
           variant_attribute_values(attribute_values(value)),
           products!inner(
             id, name, product_type, uses_batches, stock_control,
@@ -822,6 +828,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
                     productName: prod['name'] as String,
                     variantAttrs: attrsText.isNotEmpty ? attrsText : '',
                     sku: variant['sku'] as String?,
+                    barcode: variant['barcode'] as String?,
                     usesBatches: usesBatches,
                   );
                 })
@@ -848,6 +855,7 @@ class InventoryRepositoryImpl implements InventoryRepository {
             wholesaleMinQty: variantWholesaleMinQty,
             variantId: variantId,
             sku: variant['sku'] as String?,
+            barcode: variant['barcode'] as String?,
             attrsText: attrsText.isNotEmpty ? attrsText : '',
             imageUrl: null,
             reorderPoint: reorderPoint,

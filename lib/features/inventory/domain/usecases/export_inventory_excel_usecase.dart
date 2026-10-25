@@ -95,7 +95,7 @@ String _generateInventoryCsvString(_ExportData data) {
   if (data.mode == InventoryExportMode.consolidated) {
     // ── MODO 1: CONSOLIDADO GENERAL ──
     buffer.writeln(
-      'Producto,Variante,SKU,Categoría,Tipo,P. Venta (S/),Costo Ref. (S/),Margen (%),Stock Consolidado,Estado Stock,Punto Reorden,Control Lotes',
+      'Producto,Variante,SKU,Código de Barras,Categoría,Tipo,P. Venta (S/),Costo Ref. (S/),Margen (%),Stock Consolidado,Estado Stock,Punto Reorden,Control Lotes',
     );
 
     for (final item in data.items) {
@@ -114,6 +114,7 @@ String _generateInventoryCsvString(_ExportData data) {
         _escapeCsv(item.productName),
         _escapeCsv(item.attrsText),
         _escapeCsv(item.sku ?? 'Sin SKU'),
+        _escapeCsv(item.barcode ?? 'Sin código'),
         _escapeCsv(item.category),
         item.productType == 'good' ? 'Bien/Físico' : 'Servicio/Digital',
         item.salePrice.toStringAsFixed(2),
@@ -129,7 +130,7 @@ String _generateInventoryCsvString(_ExportData data) {
   } else {
     // ── MODO 2: DESGLOSADO POR ALMACÉN Y LOTES ──
     buffer.writeln(
-      'Producto,Variante,SKU,Categoría,Almacén,Stock en Almacén,Lote,F. Vencimiento,Proveedor,P. Venta (S/),Costo Unit. (S/),Valor Inventario (S/)',
+      'Producto,Variante,SKU,Código de Barras,Categoría,Almacén,Stock en Almacén,Lote,F. Vencimiento,Proveedor,P. Venta (S/),Costo Unit. (S/),Valor Inventario (S/)',
     );
 
     for (final item in data.items) {
@@ -139,6 +140,7 @@ String _generateInventoryCsvString(_ExportData data) {
           _escapeCsv(item.productName),
           _escapeCsv(item.attrsText),
           _escapeCsv(item.sku ?? 'Sin SKU'),
+          _escapeCsv(item.barcode ?? 'Sin código'),
           _escapeCsv(item.category),
           data.isSpecificWarehouse
               ? _escapeCsv(data.warehouseName)
@@ -159,6 +161,7 @@ String _generateInventoryCsvString(_ExportData data) {
             _escapeCsv(item.productName),
             _escapeCsv(item.attrsText),
             _escapeCsv(item.sku ?? 'Sin SKU'),
+            _escapeCsv(item.barcode ?? 'Sin código'),
             _escapeCsv(item.category),
             _escapeCsv(b.warehouseName ?? data.warehouseName),
             b.availableQuantity.toString(),

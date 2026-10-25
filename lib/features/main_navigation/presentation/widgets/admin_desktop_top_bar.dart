@@ -169,10 +169,7 @@ class AdminDesktopTopBar extends StatelessWidget {
               return ThemeEclipseButton(
                 isDark: isCurrentlyDark,
                 size: 38,
-                tooltip:
-                    isCurrentlyDark
-                        ? 'Modo Claro'
-                        : 'Modo Oscuro',
+                tooltip: isCurrentlyDark ? 'Modo Claro' : 'Modo Oscuro',
                 onTapWithOrigin: (origin) {
                   ThemeCircularWave.switchTheme(context, origin: origin);
                 },
@@ -202,7 +199,7 @@ class AdminDesktopTopBar extends StatelessWidget {
             tooltip: 'Opciones de perfil',
             offset: const Offset(0, 48),
             onSelected: (value) {
-              if (value == 'profile') context.push('/profile');
+              if (value == 'profile') context.go('/profile');
               if (value == 'business') context.go('/business-info');
               if (value == 'logout') context.read<AuthCubit>().logout();
             },

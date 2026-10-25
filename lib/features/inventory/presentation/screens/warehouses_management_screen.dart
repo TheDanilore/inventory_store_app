@@ -214,7 +214,7 @@ class _WarehousesManagementScreenState
   }
 
   void _handleViewStock(WarehouseEntity warehouse) {
-    context.push('/inventory?warehouseId=${warehouse.id}');
+    context.go('/inventory?warehouseId=${warehouse.id}');
   }
 
   void _handleViewOperations(WarehouseEntity warehouse) {

@@ -171,6 +171,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
       productName: item.productName,
       variantName: item.attrsText,
       sku: item.sku,
+      barcode: item.barcode,
     );
   }
 

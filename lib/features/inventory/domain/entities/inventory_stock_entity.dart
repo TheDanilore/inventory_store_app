@@ -12,6 +12,7 @@ class InventoryBatchItem {
   final String? productName;
   final String? variantAttrs;
   final String? sku;
+  final String? barcode;
   final bool usesBatches;
   final String? imageUrl;
 
@@ -33,6 +34,7 @@ class InventoryBatchItem {
     this.productName,
     this.variantAttrs,
     this.sku,
+    this.barcode,
     required this.usesBatches,
     this.imageUrl,
     this.status = 'sin_vencimiento',
@@ -79,6 +81,7 @@ class InventoryStockItem {
   final int wholesaleMinQty;
   final String variantId;
   final String? sku;
+  final String? barcode;
   final String attrsText;
   final String? imageUrl;
   final int reorderPoint;
@@ -99,6 +102,7 @@ class InventoryStockItem {
     required this.wholesaleMinQty,
     required this.variantId,
     this.sku,
+    this.barcode,
     required this.attrsText,
     this.imageUrl,
     required this.reorderPoint,

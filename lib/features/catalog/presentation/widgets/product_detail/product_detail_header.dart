@@ -9,6 +9,7 @@ class ProductDetailHeader extends StatelessWidget {
   final bool isActive;
   final int effectiveStock;
   final String? sku;
+  final String? barcode;
   final VoidCallback onExportPdf;
   final VoidCallback? onShowQr;
   final bool isMobile;
@@ -21,6 +22,7 @@ class ProductDetailHeader extends StatelessWidget {
     required this.isActive,
     required this.effectiveStock,
     this.sku,
+    this.barcode,
     required this.onExportPdf,
     this.onShowQr,
     this.isMobile = false,
@@ -233,6 +235,32 @@ class ProductDetailHeader extends StatelessWidget {
                           child: _buildMetaChip(
                             icon: Icons.qr_code_rounded,
                             label: 'SKU: $sku',
+                          ),
+                        ),
+                      ),
+                    if (barcode != null && barcode!.isNotEmpty)
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: barcode!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Código de barras "$barcode" copiado',
+                              ),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              width: 320,
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(6),
+                        child: Tooltip(
+                          message: 'Clic para copiar Código de Barras',
+                          child: _buildMetaChip(
+                            icon: Icons.barcode_reader,
+                            label: barcode!,
+                            color: AppColors.tealDark,
+                            bgColor: AppColors.teal.withValues(alpha: 0.08),
                           ),
                         ),
                       ),

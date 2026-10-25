@@ -234,7 +234,7 @@ class ProductQuickViewContent extends StatelessWidget {
                   onPressed: () {
                     Navigator.pop(context);
                     final q = Uri.encodeComponent(p.name.trim());
-                    context.push('/inventory?search=$q');
+                    context.go('/inventory?search=$q');
                   },
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,

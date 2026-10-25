@@ -235,63 +235,116 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
         // 2. SKU / Categoría
         AdminTableColumn<InventoryStockItem>(
           id: 'sku',
-          label: 'SKU / CATEGORÍA',
-          fixedWidth: 170,
+          label: 'SKU / CÓDIGO',
+          fixedWidth: 185,
           isSortable: true,
-          tooltip: 'Código SKU y categoría asignada',
+          tooltip: 'Código SKU, código de barras y categoría asignada',
           cellBuilder: (context, item) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (item.sku?.isNotEmpty == true)
-                  InkWell(
-                    onTap: () => _copyToClipboard(context, item.sku!, 'SKU'),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: InventoryPalette.of(context).subtle,
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (item.sku?.isNotEmpty == true)
+                      InkWell(
+                        onTap:
+                            () => _copyToClipboard(context, item.sku!, 'SKU'),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: InventoryPalette.of(context).borderStrong,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: InventoryPalette.of(context).subtle,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: InventoryPalette.of(context).borderStrong,
+                            ),
+                          ),
+                          child: Text(
+                            item.sku!,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10.5,
+                              color: InventoryPalette.of(context).textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: InventoryPalette.of(context).subtle,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Sin SKU',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: InventoryPalette.of(context).textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        item.sku!,
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: InventoryPalette.of(context).textPrimary,
+                    if (item.barcode?.isNotEmpty == true)
+                      InkWell(
+                        onTap:
+                            () => _copyToClipboard(
+                              context,
+                              item.barcode!,
+                              'Código de barras',
+                            ),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.teal.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.barcode_reader,
+                                size: 10,
+                                color: AppColors.tealDark,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                item.barcode!,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                  color: AppColors.tealDark,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: InventoryPalette.of(context).subtle,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Sin SKU',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: InventoryPalette.of(context).textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Text(
                   item.category,

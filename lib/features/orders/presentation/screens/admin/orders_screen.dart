@@ -491,269 +491,266 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final ordersBody = LayoutBuilder(
       builder: (context, constraints) {
         return BlocConsumer<OrdersCubit, OrdersState>(
-              listener: (context, state) {
-                if (_pendingTargetOrderId != null) {
-                  _resolveTargetOrder(state.orders, isWide);
-                }
-              },
-              buildWhen:
-                  (p, c) =>
-                      p.orders != c.orders ||
-                      p.isLoading != c.isLoading ||
-                      p.errorMessage != c.errorMessage ||
-                      p.isBackgroundLoading != c.isBackgroundLoading ||
-                      p.processingOrders != c.processingOrders ||
-                      p.generatingPdfOrderId != c.generatingPdfOrderId ||
-                      p.statusFilter != c.statusFilter ||
-                      p.paymentStatusFilter != c.paymentStatusFilter ||
-                      p.startDate != c.startDate ||
-                      p.endDate != c.endDate ||
-                      p.searchQuery != c.searchQuery ||
-                      p.customerIdFilter != c.customerIdFilter ||
-                      p.currentPage != c.currentPage ||
-                      p.totalPages != c.totalPages,
-              builder: (context, state) {
-                final cubit = context.read<OrdersCubit>();
+          listener: (context, state) {
+            if (_pendingTargetOrderId != null) {
+              _resolveTargetOrder(state.orders, isWide);
+            }
+          },
+          buildWhen:
+              (p, c) =>
+                  p.orders != c.orders ||
+                  p.isLoading != c.isLoading ||
+                  p.errorMessage != c.errorMessage ||
+                  p.isBackgroundLoading != c.isBackgroundLoading ||
+                  p.processingOrders != c.processingOrders ||
+                  p.generatingPdfOrderId != c.generatingPdfOrderId ||
+                  p.statusFilter != c.statusFilter ||
+                  p.paymentStatusFilter != c.paymentStatusFilter ||
+                  p.startDate != c.startDate ||
+                  p.endDate != c.endDate ||
+                  p.searchQuery != c.searchQuery ||
+                  p.customerIdFilter != c.customerIdFilter ||
+                  p.currentPage != c.currentPage ||
+                  p.totalPages != c.totalPages,
+          builder: (context, state) {
+            final cubit = context.read<OrdersCubit>();
 
-                OrderEntity? currentSelectedOrder;
-                if (_pendingTargetOrderId == null) {
-                  if (state.orders.isNotEmpty && _selectedOrder != null) {
-                    final index = state.orders.indexWhere(
-                      (o) => o.id == _selectedOrder!.id,
-                    );
-                    if (index != -1) {
-                      currentSelectedOrder = state.orders[index];
-                    } else {
-                      currentSelectedOrder = _selectedOrder;
-                    }
-                  } else {
-                    currentSelectedOrder = _selectedOrder;
-                  }
+            OrderEntity? currentSelectedOrder;
+            if (_pendingTargetOrderId == null) {
+              if (state.orders.isNotEmpty && _selectedOrder != null) {
+                final index = state.orders.indexWhere(
+                  (o) => o.id == _selectedOrder!.id,
+                );
+                if (index != -1) {
+                  currentSelectedOrder = state.orders[index];
                 } else {
                   currentSelectedOrder = _selectedOrder;
                 }
+              } else {
+                currentSelectedOrder = _selectedOrder;
+              }
+            } else {
+              currentSelectedOrder = _selectedOrder;
+            }
 
-                final displayOrders =
-                    (currentSelectedOrder != null &&
-                            !state.orders.any(
-                              (o) => o.id == currentSelectedOrder!.id,
-                            ))
-                        ? [currentSelectedOrder, ...state.orders]
-                        : state.orders;
+            final displayOrders =
+                (currentSelectedOrder != null &&
+                        !state.orders.any(
+                          (o) => o.id == currentSelectedOrder!.id,
+                        ))
+                    ? [currentSelectedOrder, ...state.orders]
+                    : state.orders;
 
-                return RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: () async => cubit.refresh(),
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      if (state.isBackgroundLoading)
-                        const SliverToBoxAdapter(
-                          child: LinearProgressIndicator(
-                            color: AppColors.teal,
-                            minHeight: 2,
-                          ),
-                        ),
+            return RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async => cubit.refresh(),
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  if (state.isBackgroundLoading)
+                    const SliverToBoxAdapter(
+                      child: LinearProgressIndicator(
+                        color: AppColors.teal,
+                        minHeight: 2,
+                      ),
+                    ),
 
-                      // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
-                      SliverToBoxAdapter(
-                        child: AdminPageHeader(
-                          title:
-                              widget.customTitle ??
-                              (widget.isEmbedded
-                                  ? 'Historial de Ventas POS'
-                                  : 'Gestión de Pedidos'),
-                          subtitle:
-                              widget.isEmbedded
-                                  ? 'Consulta comprobantes emitidos, audita productos y reimprime tickets'
-                                  : 'Gestiona los pedidos de tus clientes, su estado y pagos',
-                          isDesktop: isWide,
-                          actions: [
-                            if (widget.onOpenCashShifts != null)
-                              OutlinedButton.icon(
-                                onPressed: widget.onOpenCashShifts,
-                                icon: const Icon(
-                                  Icons.point_of_sale_rounded,
-                                  size: 16,
-                                ),
-                                label: const Text('Turnos de Caja'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor:
-                                      isDark
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                  side: BorderSide(
-                                    color:
-                                        isDark
-                                            ? AppColors.darkBorder
-                                            : AppColors.border,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
+                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                  SliverToBoxAdapter(
+                    child: AdminPageHeader(
+                      title:
+                          widget.customTitle ??
+                          (widget.isEmbedded
+                              ? 'Historial de Ventas POS'
+                              : 'Gestión de Pedidos'),
+                      subtitle:
+                          widget.isEmbedded
+                              ? 'Consulta comprobantes emitidos, audita productos y reimprime tickets'
+                              : 'Gestiona los pedidos de tus clientes, su estado y pagos',
+                      isDesktop: isWide,
+                      actions: [
+                        if (widget.onOpenCashShifts != null)
+                          OutlinedButton.icon(
+                            onPressed: widget.onOpenCashShifts,
+                            icon: const Icon(
+                              Icons.point_of_sale_rounded,
+                              size: 16,
+                            ),
+                            label: const Text('Turnos de Caja'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor:
+                                  isDark ? Colors.white : AppColors.textPrimary,
+                              side: BorderSide(
+                                color:
+                                    isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.border,
                               ),
-                          ],
-                        ),
-                      ),
-
-                      // --- 1. BENTO KPI BAR ---
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: _OrdersBentoKpiBar(
-                            pageOrdersCount: state.orders.length,
-                            totalRecords: state.totalRecords,
-                            pageTotalAmount: state.totalAmountCurrentPage,
-                            pendingCount: state.pendingCountCurrentPage,
-                            pendingDebt: state.pendingDebtCurrentPage,
-                            isWide: isWide,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
+                  ),
 
-                      // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
-                      SliverToBoxAdapter(
-                        child: AdminProToolbar(
-                          isDesktop: width >= 1024,
-                          searchController: _searchCtrl,
-                          searchFocusNode: _searchFocusNode,
-                          searchHint: 'Buscar por cliente o ID de pedido...',
-                          onSearchChanged: _onSearchChanged,
-                          onClearSearch: () {
-                            _searchCtrl.clear();
-                            cubit.setSearchQuery('');
+                  // --- 1. BENTO KPI BAR ---
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _OrdersBentoKpiBar(
+                        pageOrdersCount: state.orders.length,
+                        totalRecords: state.totalRecords,
+                        pageTotalAmount: state.totalAmountCurrentPage,
+                        pendingCount: state.pendingCountCurrentPage,
+                        pendingDebt: state.pendingDebtCurrentPage,
+                        isWide: isWide,
+                      ),
+                    ),
+                  ),
+
+                  // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
+                  SliverToBoxAdapter(
+                    child: AdminProToolbar(
+                      isDesktop: width >= 1024,
+                      searchController: _searchCtrl,
+                      searchFocusNode: _searchFocusNode,
+                      searchHint: 'Buscar por cliente o ID de pedido...',
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: () {
+                        _searchCtrl.clear();
+                        cubit.setSearchQuery('');
+                      },
+                      filterGroups: [
+                        AdminFilterGroup<String>(
+                          title: 'Estado',
+                          icon: Icons.filter_list_rounded,
+                          selected: state.statusFilter,
+                          defaultValue: 'ALL',
+                          onSelected: cubit.setStatusFilter,
+                          options: const [
+                            AdminFilterOption(
+                              value: 'ALL',
+                              label: 'Todos',
+                              icon: Icons.list_alt_rounded,
+                            ),
+                            AdminFilterOption(
+                              value: 'PENDING',
+                              label: 'Pendientes',
+                              icon: Icons.hourglass_top_rounded,
+                              color: AppColors.warningDark,
+                            ),
+                            AdminFilterOption(
+                              value: 'COMPLETED',
+                              label: 'Completados',
+                              icon: Icons.check_circle_rounded,
+                              color: AppColors.tealDark,
+                            ),
+                            AdminFilterOption(
+                              value: 'CANCELLED',
+                              label: 'Cancelados',
+                              icon: Icons.cancel_rounded,
+                              color: AppColors.danger,
+                            ),
+                            AdminFilterOption(
+                              value: 'RETURNED',
+                              label: 'Devueltos',
+                              icon: Icons.assignment_return_rounded,
+                              color: Colors.purple,
+                            ),
+                          ],
+                        ),
+                        AdminFilterGroup<String>(
+                          title: 'Cobros',
+                          icon: Icons.payments_outlined,
+                          selected: state.paymentStatusFilter,
+                          defaultValue: 'ALL',
+                          onSelected: cubit.setPaymentStatusFilter,
+                          options: const [
+                            AdminFilterOption(value: 'ALL', label: 'Todos'),
+                            AdminFilterOption(
+                              value: 'CREDIT',
+                              label: 'A crédito',
+                              color: AppColors.warningDark,
+                            ),
+                            AdminFilterOption(
+                              value: 'PAID',
+                              label: 'Pagados',
+                              color: AppColors.tealDark,
+                            ),
+                            AdminFilterOption(
+                              value: 'PENDING',
+                              label: 'Por cobrar',
+                            ),
+                            AdminFilterOption(
+                              value: 'PARTIAL',
+                              label: 'Parciales',
+                            ),
+                          ],
+                        ),
+                      ],
+                      // Fecha: vive en el sheet móvil y como filtro en desktop
+                      mobileExtraFilters: [
+                        DateFilterCalendar(
+                          height: 40,
+                          borderRadius: BorderRadius.circular(10),
+                          dateRange:
+                              state.startDate != null && state.endDate != null
+                                  ? DateTimeRange(
+                                    start: state.startDate!,
+                                    end: state.endDate!,
+                                  )
+                                  : null,
+                          onDateRangeSelected: (picked) {
+                            cubit.setDateRange(picked.start, picked.end);
                           },
-                          filterGroups: [
-                            AdminFilterGroup<String>(
-                              title: 'Estado',
-                              icon: Icons.filter_list_rounded,
-                              selected: state.statusFilter,
-                              defaultValue: 'ALL',
-                              onSelected: cubit.setStatusFilter,
-                              options: const [
-                                AdminFilterOption(
-                                  value: 'ALL',
-                                  label: 'Todos',
-                                  icon: Icons.list_alt_rounded,
-                                ),
-                                AdminFilterOption(
-                                  value: 'PENDING',
-                                  label: 'Pendientes',
-                                  icon: Icons.hourglass_top_rounded,
-                                  color: AppColors.warningDark,
-                                ),
-                                AdminFilterOption(
-                                  value: 'COMPLETED',
-                                  label: 'Completados',
-                                  icon: Icons.check_circle_rounded,
-                                  color: AppColors.tealDark,
-                                ),
-                                AdminFilterOption(
-                                  value: 'CANCELLED',
-                                  label: 'Cancelados',
-                                  icon: Icons.cancel_rounded,
-                                  color: AppColors.danger,
-                                ),
-                                AdminFilterOption(
-                                  value: 'RETURNED',
-                                  label: 'Devueltos',
-                                  icon: Icons.assignment_return_rounded,
-                                  color: Colors.purple,
-                                ),
-                              ],
-                            ),
-                            AdminFilterGroup<String>(
-                              title: 'Cobros',
-                              icon: Icons.payments_outlined,
-                              selected: state.paymentStatusFilter,
-                              defaultValue: 'ALL',
-                              onSelected: cubit.setPaymentStatusFilter,
-                              options: const [
-                                AdminFilterOption(value: 'ALL', label: 'Todos'),
-                                AdminFilterOption(
-                                  value: 'CREDIT',
-                                  label: 'A crédito',
-                                  color: AppColors.warningDark,
-                                ),
-                                AdminFilterOption(
-                                  value: 'PAID',
-                                  label: 'Pagados',
-                                  color: AppColors.tealDark,
-                                ),
-                                AdminFilterOption(
-                                  value: 'PENDING',
-                                  label: 'Por cobrar',
-                                ),
-                                AdminFilterOption(
-                                  value: 'PARTIAL',
-                                  label: 'Parciales',
-                                ),
-                              ],
-                            ),
-                          ],
-                          // Fecha: vive en el sheet móvil y como filtro en desktop
-                          mobileExtraFilters: [
-                            DateFilterCalendar(
-                              height: 40,
-                              borderRadius: BorderRadius.circular(10),
-                              dateRange:
-                                  state.startDate != null &&
-                                          state.endDate != null
-                                      ? DateTimeRange(
-                                        start: state.startDate!,
-                                        end: state.endDate!,
-                                      )
-                                      : null,
-                              onDateRangeSelected: (picked) {
-                                cubit.setDateRange(picked.start, picked.end);
-                              },
-                              onClear: () {
-                                cubit.setDateRange(null, null);
-                              },
-                            ),
-                          ],
-                          activeFiltersCount:
-                              (state.statusFilter != 'ALL' ? 1 : 0) +
-                              (state.paymentStatusFilter != 'ALL' ? 1 : 0) +
-                              (state.startDate != null ? 1 : 0),
-                          onClearFilters: () {
-                            cubit.setStatusFilter('ALL');
-                            cubit.setPaymentStatusFilter('ALL');
+                          onClear: () {
                             cubit.setDateRange(null, null);
                           },
-                          viewToggleConfig: AdminProViewToggleConfig(
-                            isTableView: _isTableView,
-                            onToggleTableView:
-                                (val) => setState(() => _isTableView = val),
-                          ),
-                          onRefresh: () => cubit.refresh(),
                         ),
+                      ],
+                      activeFiltersCount:
+                          (state.statusFilter != 'ALL' ? 1 : 0) +
+                          (state.paymentStatusFilter != 'ALL' ? 1 : 0) +
+                          (state.startDate != null ? 1 : 0),
+                      onClearFilters: () {
+                        cubit.setStatusFilter('ALL');
+                        cubit.setPaymentStatusFilter('ALL');
+                        cubit.setDateRange(null, null);
+                      },
+                      viewToggleConfig: AdminProViewToggleConfig(
+                        isTableView: _isTableView,
+                        onToggleTableView:
+                            (val) => setState(() => _isTableView = val),
                       ),
-
-                      // --- 3. LISTADO O TABLA PRO ---
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                        sliver: _buildListOrTableSliver(
-                          state,
-                          cubit,
-                          isWide,
-                          isLoyaltyEnabled,
-                          currentSelectedOrder,
-                          displayOrders,
-                        ),
-                      ),
-
-                      // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
-                      _buildPaginationSliver(context, state, cubit),
-                    ],
+                      onRefresh: () => cubit.refresh(),
+                    ),
                   ),
-                );
-              },
+
+                  // --- 3. LISTADO O TABLA PRO ---
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    sliver: _buildListOrTableSliver(
+                      state,
+                      cubit,
+                      isWide,
+                      isLoyaltyEnabled,
+                      currentSelectedOrder,
+                      displayOrders,
+                    ),
+                  ),
+
+                  // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
+                  _buildPaginationSliver(context, state, cubit),
+                ],
+              ),
             );
           },
         );
+      },
+    );
 
     return Focus(
       focusNode: _screenFocusNode,
@@ -763,9 +760,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
           widget.isEmbedded
               ? Material(
                 color:
-                    isDark
-                        ? AppColors.darkBackground
-                        : const Color(0xFFF8FAFC),
+                    isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
                 child: ordersBody,
               )
               : AdminLayout(

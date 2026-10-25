@@ -178,6 +178,12 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
           cellBuilder: (context, product) {
             final activeIngredient = widget.matchedIngredients[product.id];
             final variantCount = product.productVariants.length;
+            final defaultVariant = product.defaultVariant;
+            final skuText = defaultVariant?.sku;
+            final barcodeText = defaultVariant?.barcode;
+            final hasCodes =
+                (skuText != null && skuText.isNotEmpty) ||
+                (barcodeText != null && barcodeText.isNotEmpty);
 
             return Row(
               children: [
@@ -290,6 +296,50 @@ class _ProductsDesktopTableState extends State<ProductsDesktopTable> {
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
+                          ),
+                        ),
+                      if (hasCodes)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (skuText != null && skuText.isNotEmpty)
+                                Text(
+                                  'SKU: $skuText',
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontFamily: 'monospace',
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              if (barcodeText != null &&
+                                  barcodeText.isNotEmpty) ...[
+                                if (skuText != null && skuText.isNotEmpty)
+                                  const Text(
+                                    ' · ',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                const Icon(
+                                  Icons.barcode_reader,
+                                  size: 11,
+                                  color: AppColors.tealDark,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  barcodeText,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontFamily: 'monospace',
+                                    color: AppColors.tealDark,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                     ],

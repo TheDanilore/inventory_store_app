@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 
 /// Panel lateral de inspección rápida (Master-Detail) para Desktop/Tablet
@@ -10,7 +11,7 @@ class CatalogSideInspector extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onClose;
   final VoidCallback onEdit;
-  final VoidCallback onAddToCart;
+  final VoidCallback onViewDetail;
   final Future<void> Function() onToggleActive;
   final bool isMobileSheet;
 
@@ -19,7 +20,7 @@ class CatalogSideInspector extends StatelessWidget {
     required this.product,
     required this.onClose,
     required this.onEdit,
-    required this.onAddToCart,
+    required this.onViewDetail,
     required this.onToggleActive,
     this.isMobileSheet = false,
   });
@@ -29,7 +30,7 @@ class CatalogSideInspector extends StatelessWidget {
     BuildContext context, {
     required ProductEntity product,
     required VoidCallback onEdit,
-    required VoidCallback onAddToCart,
+    required VoidCallback onViewDetail,
     required Future<void> Function() onToggleActive,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -89,9 +90,9 @@ class CatalogSideInspector extends StatelessWidget {
                               Navigator.of(ctx).pop();
                               onEdit();
                             },
-                            onAddToCart: () {
+                            onViewDetail: () {
                               Navigator.of(ctx).pop();
-                              onAddToCart();
+                              onViewDetail();
                             },
                             onToggleActive: onToggleActive,
                             isMobileSheet: true,
@@ -110,7 +111,7 @@ class CatalogSideInspector extends StatelessWidget {
     BuildContext context, {
     required ProductEntity product,
     required VoidCallback onEdit,
-    required VoidCallback onAddToCart,
+    required VoidCallback onViewDetail,
     required Future<void> Function() onToggleActive,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -135,9 +136,9 @@ class CatalogSideInspector extends StatelessWidget {
                     Navigator.of(ctx).pop();
                     onEdit();
                   },
-                  onAddToCart: () {
+                  onViewDetail: () {
                     Navigator.of(ctx).pop();
-                    onAddToCart();
+                    onViewDetail();
                   },
                   onToggleActive: onToggleActive,
                   isMobileSheet: false,
@@ -531,45 +532,56 @@ class CatalogSideInspector extends StatelessWidget {
               // Variantes (conteo rápido)
               if (product.productVariants.length > 1) ...[
                 const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark ? AppColors.darkSurfaceElevated : Colors.white,
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: onViewDetail,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.border,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.layers_outlined,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${product.productVariants.length} variantes configuradas',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color:
-                              isDark
-                                  ? AppColors.darkTextPrimary
-                                  : AppColors.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 18,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
                         color:
                             isDark
-                                ? AppColors.darkTextMuted
-                                : AppColors.textMuted,
+                                ? AppColors.darkSurfaceElevated
+                                : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark ? AppColors.darkBorder : AppColors.border,
+                        ),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.layers_outlined,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${product.productVariants.length} variantes configuradas',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color:
+                                isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.textMuted,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -579,7 +591,7 @@ class CatalogSideInspector extends StatelessWidget {
 
         // ── Barra Inferior de Acciones ──────────────────────────────────────
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkSurface : Colors.white,
             border: Border(
@@ -592,35 +604,39 @@ class CatalogSideInspector extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Botón primario: Editar
+              // Botón primario: Ver Ficha del Producto
               ElevatedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_rounded, size: 16),
+                onPressed: onViewDetail,
+                icon: const Icon(Icons.assignment_outlined, size: 17),
                 label: const Text(
-                  'Editar Producto Completo',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  'Ver Ficha del Producto',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  minimumSize: const Size.fromHeight(46),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
-              // Botones secundarios en fila
+              // Botones secundarios en fila (Editar y Activar/Desactivar)
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: onAddToCart,
-                      icon: const Icon(Icons.point_of_sale_rounded, size: 16),
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 15),
                       label: const Text(
-                        'Vender en POS',
+                        'Editar',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -629,21 +645,23 @@ class CatalogSideInspector extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor:
                             isDark
-                                ? const Color(0xFF34D399)
-                                : AppColors.tealDark,
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF2563EB),
                         side: BorderSide(
                           color:
                               isDark
                                   ? const Color(
-                                    0xFF059669,
-                                  ).withValues(alpha: 0.5)
-                                  : const Color(0xFF99F6E4),
+                                    0xFF3B82F6,
+                                  ).withValues(alpha: 0.4)
+                                  : const Color(0xFFBFDBFE),
                         ),
                         backgroundColor:
                             isDark
-                                ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                                : AppColors.tealLight.withValues(alpha: 0.4),
-                        minimumSize: const Size.fromHeight(42),
+                                ? const Color(
+                                  0xFF1E3A8A,
+                                ).withValues(alpha: 0.25)
+                                : const Color(0xFFEFF6FF),
+                        minimumSize: const Size.fromHeight(40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -658,7 +676,7 @@ class CatalogSideInspector extends StatelessWidget {
                         product.isActive
                             ? Icons.visibility_off_rounded
                             : Icons.check_circle_outline_rounded,
-                        size: 16,
+                        size: 15,
                       ),
                       label: Text(
                         product.isActive ? 'Desactivar' : 'Activar',
@@ -698,7 +716,7 @@ class CatalogSideInspector extends StatelessWidget {
                                     : AppColors.successLight.withValues(
                                       alpha: 0.3,
                                     )),
-                        minimumSize: const Size.fromHeight(42),
+                        minimumSize: const Size.fromHeight(40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -708,6 +726,8 @@ class CatalogSideInspector extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
+
+              // Código QR
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -723,11 +743,12 @@ class CatalogSideInspector extends StatelessWidget {
                       productName: product.name,
                       variantName: firstVariant?.label,
                       sku: firstVariant?.sku,
+                      barcode: firstVariant?.barcode,
                     );
                   },
                   icon: const Icon(
                     Icons.qr_code_2_rounded,
-                    size: 16,
+                    size: 15,
                     color: AppColors.primary,
                   ),
                   label: const Text(
@@ -742,7 +763,7 @@ class CatalogSideInspector extends StatelessWidget {
                     side: BorderSide(
                       color: isDark ? AppColors.darkBorder : AppColors.border,
                     ),
-                    minimumSize: const Size.fromHeight(40),
+                    minimumSize: const Size.fromHeight(38),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -783,44 +804,11 @@ class CatalogSideInspector extends StatelessWidget {
   }
 
   Widget _buildPlaceholder(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceHighlight : Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                product.name.trim().isNotEmpty
-                    ? product.name.trim()[0].toUpperCase()
-                    : 'P',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFF60A5FA) : AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Sin imagen disponible',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color:
-                  isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
+    return ProductImagePlaceholder(
+      productName: product.name,
+      categoryName: product.categoryName,
+      isDark: isDark,
+      borderRadius: 16,
     );
   }
 

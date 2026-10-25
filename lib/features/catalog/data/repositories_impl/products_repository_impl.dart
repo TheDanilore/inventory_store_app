@@ -106,8 +106,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     try {
       String variantSelect =
           forCustomer
-              ? 'product_variants(id, product_id, sku, sale_price, is_active)'
-              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active)';
+              ? 'product_variants(id, product_id, sku, sale_price, is_active, variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))'
+              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))';
       final bool isInStockFilter = stockFilter == CatalogStockFilter.inStock;
       // OJO: se deben traer TODAS las columnas del lote, no solo
       // available_quantity. El stock por variante se calcula en la UI

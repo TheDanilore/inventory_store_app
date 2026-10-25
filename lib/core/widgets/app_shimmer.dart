@@ -47,11 +47,7 @@ class _AppShimmerState extends State<AppShimmer>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final shimmerColors =
         isDark
-            ? const [
-              Color(0xFF1E293B),
-              Color(0xFF334155),
-              Color(0xFF1E293B),
-            ]
+            ? const [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF1E293B)]
             : [
               Colors.grey.shade200,
               Colors.grey.shade100,

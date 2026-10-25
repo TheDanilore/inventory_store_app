@@ -61,6 +61,8 @@ class ProductQuickViewVariantCard extends StatelessWidget {
     final sku = variant.sku?.trim();
     final showSku =
         sku != null && sku.isNotEmpty && sku != 'N/A' && sku != title;
+    final barcode = variant.barcode?.trim();
+    final hasBarcode = barcode != null && barcode.isNotEmpty;
 
     final stock = _variantStock();
     final isOut = stock != null && stock <= 0;
@@ -108,15 +110,47 @@ class ProductQuickViewVariantCard extends StatelessWidget {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                if (showSku)
+                if (showSku || hasBarcode)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      'SKU: $sku',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showSku)
+                          Text(
+                            'SKU: $sku',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        if (hasBarcode) ...[
+                          if (showSku)
+                            const Text(
+                              ' · ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          const Icon(
+                            Icons.barcode_reader,
+                            size: 11,
+                            color: AppColors.tealDark,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            barcode,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontFamily: 'monospace',
+                              color: AppColors.tealDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 if (stock != null) ...[

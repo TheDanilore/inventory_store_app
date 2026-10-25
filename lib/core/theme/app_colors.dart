@@ -54,7 +54,9 @@ class AppColors {
   static const Color darkSidebarBg = Color(0xFF0F172A); // Slate 900
   static const Color darkSidebarBorder = Color(0xFF1E293B);
   static const Color darkSidebarText = Color(0xFF94A3B8); // Slate 400
-  static const Color darkSidebarTextActive = Color(0xFF93C5FD); // Blue 300 legible y suave
+  static const Color darkSidebarTextActive = Color(
+    0xFF93C5FD,
+  ); // Blue 300 legible y suave
   static const Color darkSidebarActiveBg = Color(0xFF1E293B); // Slate 800
   static const Color darkSidebarActiveBorder = Color(0xFF334155); // Slate 700
   static const Color darkSidebarActiveIndicator = Color(0xFF3B82F6); // Blue 500

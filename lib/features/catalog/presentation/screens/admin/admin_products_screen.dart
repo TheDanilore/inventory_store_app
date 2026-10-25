@@ -295,6 +295,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       productName: product.name,
       variantName: firstVariant?.label,
       sku: firstVariant?.sku,
+      barcode: firstVariant?.barcode,
     );
   }
 

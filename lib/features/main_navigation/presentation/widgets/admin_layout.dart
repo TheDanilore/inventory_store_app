@@ -145,7 +145,7 @@ class _AdminLayoutState extends State<AdminLayout> {
     if (user == null) {
       context.go('/login');
     } else {
-      context.push('/profile');
+      context.go('/profile');
     }
   }
 
@@ -371,7 +371,6 @@ class _AdminLayoutState extends State<AdminLayout> {
                             ),
                             const SizedBox(width: 6),
                           ],
-
 
                           const NotificationBell(),
                           const SizedBox(width: 6),

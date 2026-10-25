@@ -92,6 +92,10 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
     context.go(uri, extra: product != null ? {'productToEdit': product} : null);
   }
 
+  void _navigateToProductDetail(ProductEntity product) {
+    context.push('/product/${product.id}', extra: product);
+  }
+
   void _handleProductInteraction({
     required BuildContext context,
     required ProductEntity product,
@@ -109,13 +113,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         context,
         product: product,
         onEdit: () => _navigateToProductForm(product: product),
-        onAddToCart: () {
-          if (widget.onAddToCart != null) {
-            widget.onAddToCart!(product);
-          } else {
-            PosAddToCartSheet.show(context, product);
-          }
-        },
+        onViewDetail: () => _navigateToProductDetail(product),
         onToggleActive: () => _toggleProductoActivo(product, cubit),
       );
     } else if (isTablet) {
@@ -123,13 +121,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
         context,
         product: product,
         onEdit: () => _navigateToProductForm(product: product),
-        onAddToCart: () {
-          if (widget.onAddToCart != null) {
-            widget.onAddToCart!(product);
-          } else {
-            PosAddToCartSheet.show(context, product);
-          }
-        },
+        onViewDetail: () => _navigateToProductDetail(product),
         onToggleActive: () => _toggleProductoActivo(product, cubit),
       );
     } else {
@@ -593,13 +585,8 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                       onEdit:
                           () =>
                               _navigateToProductForm(product: _selectedProduct),
-                      onAddToCart: () {
-                        if (widget.onAddToCart != null) {
-                          widget.onAddToCart!(_selectedProduct!);
-                        } else {
-                          PosAddToCartSheet.show(context, _selectedProduct!);
-                        }
-                      },
+                      onViewDetail:
+                          () => _navigateToProductDetail(_selectedProduct!),
                       onToggleActive:
                           () => _toggleProductoActivo(_selectedProduct!, cubit),
                     ),

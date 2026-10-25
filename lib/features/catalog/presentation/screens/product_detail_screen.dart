@@ -219,6 +219,7 @@ class _ProductDetailScreenContentState
       productName: product.name,
       variantName: _selectedVariant?.label,
       sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
+      barcode: _selectedVariant?.barcode ?? product.defaultVariant?.barcode,
     );
   }
 
@@ -1238,6 +1239,8 @@ class _ProductDetailScreenContentState
             isActive: _isActive,
             effectiveStock: _effectiveStock,
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
+            barcode:
+                _selectedVariant?.barcode ?? product.defaultVariant?.barcode,
             onExportPdf: _exportPdf,
             onShowQr: _showQrCode,
             isMobile: false,
@@ -1521,6 +1524,8 @@ class _ProductDetailScreenContentState
             isActive: _isActive,
             effectiveStock: _effectiveStock,
             sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
+            barcode:
+                _selectedVariant?.barcode ?? product.defaultVariant?.barcode,
             onExportPdf: _exportPdf,
             onShowQr: _showQrCode,
             isMobile: false,
@@ -1652,7 +1657,9 @@ class _ProductDetailScreenContentState
           // Título, SKU, Rating, Estado
           ProductTopSection(
             name: product.name,
-            sku: _selectedVariant?.sku,
+            sku: _selectedVariant?.sku ?? product.defaultVariant?.sku,
+            barcode:
+                _selectedVariant?.barcode ?? product.defaultVariant?.barcode,
             brandName: product.brandName,
             isActive: _isActive,
             effectiveStock: _effectiveStock,
