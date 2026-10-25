@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/app_config/domain/entities/business_info_entity.dart';
 import 'package:inventory_store_app/features/app_config/presentation/widgets/change_connection_dialog.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
 import 'package:inventory_store_app/core/services/pos_printer_settings_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -1331,7 +1332,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   onChanged: (val) async {
                     await BarcodeScannerHardwareService.setHapticFeedback(val);
                     if (val) {
-                      HapticFeedback.mediumImpact();
+                      AppFeedbackService.vibrate(
+                        durationMs: 70,
+                        amplitude: 160,
+                      );
                     }
                   },
                   trailingAction:
@@ -1346,7 +1350,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                               visualDensity: VisualDensity.compact,
                               foregroundColor: const Color(0xFF2563EB),
                             ),
-                            onPressed: () => HapticFeedback.heavyImpact(),
+                            onPressed:
+                                () => AppFeedbackService.vibrate(
+                                  durationMs: 90,
+                                  amplitude: 200,
+                                ),
                           )
                           : null,
                 );
@@ -1369,7 +1377,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                   onChanged: (val) async {
                     await BarcodeScannerHardwareService.setSoundBeep(val);
                     if (val) {
-                      SystemSound.play(SystemSoundType.click);
+                      AppFeedbackService.playBeep();
                     }
                   },
                   trailingAction:
@@ -1387,8 +1395,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                               visualDensity: VisualDensity.compact,
                               foregroundColor: const Color(0xFF10B981),
                             ),
-                            onPressed:
-                                () => SystemSound.play(SystemSoundType.click),
+                            onPressed: () => AppFeedbackService.playBeep(),
                           )
                           : null,
                 );

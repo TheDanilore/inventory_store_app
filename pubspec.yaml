@@ -118,6 +118,7 @@ flutter:
     - assets/icons/
     - assets/icons/banks/
     - assets/icons/brands/
+    - assets/sounds/
     # - env.json
 
 flutter_launcher_icons:

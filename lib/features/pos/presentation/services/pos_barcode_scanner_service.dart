@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
@@ -277,8 +277,7 @@ class PosBarcodeScannerService {
       );
 
       cartCubit.addItem(cartItem);
-      HapticFeedback.lightImpact();
-      SystemSound.play(SystemSoundType.click);
+      AppFeedbackService.triggerFeedback();
 
       AppSnackbar.show(
         context,

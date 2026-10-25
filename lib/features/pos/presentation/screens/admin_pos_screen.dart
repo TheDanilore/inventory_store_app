@@ -13,6 +13,7 @@ import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.d
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
@@ -360,8 +361,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
     final cartCubit = context.read<CartCubit>();
 
-    HapticFeedback.mediumImpact();
-    SystemSound.play(SystemSoundType.click);
+    AppFeedbackService.triggerFeedback();
 
     AppSnackbar.show(
       context,

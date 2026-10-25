@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Modelo que representa un equipo escáner / lector físico o integrado.
@@ -247,12 +247,7 @@ class BarcodeScannerHardwareService {
 
   /// Emite feedback háptico y sonoro si están habilitados en los ajustes.
   static void triggerScanFeedback() {
-    if (hapticNotifier.value) {
-      HapticFeedback.lightImpact();
-    }
-    if (soundBeepNotifier.value) {
-      SystemSound.play(SystemSoundType.click);
-    }
+    AppFeedbackService.triggerFeedback();
   }
 
   /// Modifica el ajuste de adición automática.

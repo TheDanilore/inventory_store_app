@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/camera_stream_stopper.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -267,8 +268,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
       if (!mounted || _isClosing) return;
 
       if (result != null) {
-        HapticFeedback.lightImpact();
-        SystemSound.play(SystemSoundType.click);
+        AppFeedbackService.triggerFeedback();
 
         if (widget.continuousMode || widget.onContinuousScan != null) {
           // Modo Rápido / Continuo: agrega a la lista y se mantiene escaneando
@@ -1441,8 +1441,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
 
       // Si se resolvió variante única o el producto tiene una sola variante
       if (result.isDirectMatch && result.variant != null) {
-        HapticFeedback.heavyImpact();
-        SystemSound.play(SystemSoundType.click);
+        AppFeedbackService.triggerFeedback();
 
         final scanResult = PosScanResult(
           product: result.product,
