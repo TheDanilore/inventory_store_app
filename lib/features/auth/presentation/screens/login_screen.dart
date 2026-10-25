@@ -34,6 +34,10 @@ class _LoginScreenState extends State<LoginScreen>
   late final AnimationController _blobCtrl;
   late final Animation<double> _blobAnim;
 
+  late final AnimationController _portalCtrl;
+  late final Animation<double> _portalScaleAnim;
+  late final Animation<double> _portalOpacityAnim;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +57,20 @@ class _LoginScreenState extends State<LoginScreen>
       end: 1.04,
     ).animate(CurvedAnimation(parent: _blobCtrl, curve: Curves.easeInOutSine));
     _blobCtrl.forward();
+
+    _portalCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+    _portalScaleAnim = Tween<double>(begin: 1.0, end: 1.04).animate(
+      CurvedAnimation(parent: _portalCtrl, curve: Curves.easeInOutCubic),
+    );
+    _portalOpacityAnim = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _portalCtrl,
+        curve: const Interval(0.35, 1.0, curve: Curves.easeIn),
+      ),
+    );
   }
 
   @override
@@ -62,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen>
     _passwordController.dispose();
     _fadeCtrl.dispose();
     _blobCtrl.dispose();
+    _portalCtrl.dispose();
     super.dispose();
   }
 
@@ -118,6 +137,7 @@ class _LoginScreenState extends State<LoginScreen>
         } else if (state.viewState == ViewState.success) {
           TextInput.finishAutofillContext(shouldSave: true);
           _blobCtrl.stop();
+          _portalCtrl.forward();
           if (!state.isLoginMode) {
             AppSnackbar.show(
               context,
@@ -210,45 +230,6 @@ class _LoginScreenState extends State<LoginScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Pill Badge de la Plataforma
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.16),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF10B981),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Danilore One · Plataforma Integral',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
                           // Composición 3D Hero Artwork integrada sin bordes toscos
                           Center(
                             child: ShaderMask(
@@ -351,36 +332,49 @@ class _LoginScreenState extends State<LoginScreen>
               children: [
                 Positioned(top: 24, left: 24, child: _buildBackButton(context)),
                 Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 36,
-                        vertical: 32,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          LoginHeaderSection(isLoginMode: state.isLoginMode),
-                          const SizedBox(height: 26),
-                          LoginFormCard(
-                            formKey: _formKey,
-                            nameController: _nameController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            isLoginMode: state.isLoginMode,
-                            isLoading: state.viewState == ViewState.loading,
-                            onAuthenticate:
-                                () => _authenticate(state.isLoginMode),
-                          ),
-                          const SizedBox(height: 20),
-                          LoginToggleMode(
-                            isLoginMode: state.isLoginMode,
-                            isLoading: state.viewState == ViewState.loading,
-                            onToggle: () => _onToggleMode(state.isLoginMode),
-                          ),
-                        ],
+                  child: AnimatedBuilder(
+                    animation: _portalCtrl,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _portalScaleAnim.value,
+                        child: Opacity(
+                          opacity: _portalOpacityAnim.value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 36,
+                          vertical: 32,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            LoginHeaderSection(isLoginMode: state.isLoginMode),
+                            const SizedBox(height: 26),
+                            LoginFormCard(
+                              formKey: _formKey,
+                              nameController: _nameController,
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              isSuccess: state.viewState == ViewState.success,
+                              onAuthenticate:
+                                  () => _authenticate(state.isLoginMode),
+                            ),
+                            const SizedBox(height: 20),
+                            LoginToggleMode(
+                              isLoginMode: state.isLoginMode,
+                              isLoading: state.viewState == ViewState.loading,
+                              onToggle: () => _onToggleMode(state.isLoginMode),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -466,38 +460,54 @@ class _LoginScreenState extends State<LoginScreen>
 
               Expanded(
                 child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            LoginHeaderSection(isLoginMode: state.isLoginMode),
-                            const SizedBox(height: 28),
-                            LoginFormCard(
-                              formKey: _formKey,
-                              nameController: _nameController,
-                              emailController: _emailController,
-                              passwordController: _passwordController,
-                              isLoginMode: state.isLoginMode,
-                              isLoading: state.viewState == ViewState.loading,
-                              onAuthenticate:
-                                  () => _authenticate(state.isLoginMode),
-                            ),
-                            const SizedBox(height: 20),
-                            LoginToggleMode(
-                              isLoginMode: state.isLoginMode,
-                              isLoading: state.viewState == ViewState.loading,
-                              onToggle: () => _onToggleMode(state.isLoginMode),
-                            ),
-                            const SizedBox(height: 24),
-                          ],
+                  child: AnimatedBuilder(
+                    animation: _portalCtrl,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _portalScaleAnim.value,
+                        child: Opacity(
+                          opacity: _portalOpacityAnim.value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 8,
+                        ),
+                        child: FadeTransition(
+                          opacity: _fadeAnim,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              LoginHeaderSection(
+                                isLoginMode: state.isLoginMode,
+                              ),
+                              const SizedBox(height: 28),
+                              LoginFormCard(
+                                formKey: _formKey,
+                                nameController: _nameController,
+                                emailController: _emailController,
+                                passwordController: _passwordController,
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                isSuccess: state.viewState == ViewState.success,
+                                onAuthenticate:
+                                    () => _authenticate(state.isLoginMode),
+                              ),
+                              const SizedBox(height: 20),
+                              LoginToggleMode(
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                onToggle:
+                                    () => _onToggleMode(state.isLoginMode),
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+                          ),
                         ),
                       ),
                     ),

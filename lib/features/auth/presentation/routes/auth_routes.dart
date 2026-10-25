@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -22,7 +23,30 @@ class AuthRoutes {
             },
           ),
     ),
-    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(
+      path: '/login',
+      pageBuilder:
+          (context, state) => CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: const LoginScreen(),
+            transitionDuration: const Duration(milliseconds: 450),
+            reverseTransitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder: (
+              context,
+              animation,
+              secondaryAnimation,
+              child,
+            ) {
+              return FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+                child: child,
+              );
+            },
+          ),
+    ),
     GoRoute(
       path: '/reset-password',
       builder: (context, state) => const ResetPasswordScreen(),

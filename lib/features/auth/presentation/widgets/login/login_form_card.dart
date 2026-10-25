@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/liquid_light_button.dart';
 
 class LoginFormCard extends StatefulWidget {
   final GlobalKey<FormState> formKey;
@@ -12,6 +13,7 @@ class LoginFormCard extends StatefulWidget {
   final TextEditingController passwordController;
   final bool isLoginMode;
   final bool isLoading;
+  final bool isSuccess;
   final VoidCallback onAuthenticate;
 
   const LoginFormCard({
@@ -22,6 +24,7 @@ class LoginFormCard extends StatefulWidget {
     required this.passwordController,
     required this.isLoginMode,
     required this.isLoading,
+    this.isSuccess = false,
     required this.onAuthenticate,
   });
 
@@ -329,106 +332,13 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         : const SizedBox(height: 20),
               ),
 
-              _SubmitButton(
+              LiquidLightButton(
                 isLoading: widget.isLoading,
+                isSuccess: widget.isSuccess,
                 isLoginMode: widget.isLoginMode,
                 onPressed: widget.onAuthenticate,
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SubmitButton extends StatefulWidget {
-  final bool isLoading;
-  final bool isLoginMode;
-  final VoidCallback onPressed;
-
-  const _SubmitButton({
-    required this.isLoading,
-    required this.isLoginMode,
-    required this.onPressed,
-  });
-
-  @override
-  State<_SubmitButton> createState() => _SubmitButtonState();
-}
-
-class _SubmitButtonState extends State<_SubmitButton> {
-  bool _isButtonPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown:
-          widget.isLoading
-              ? null
-              : (_) => setState(() => _isButtonPressed = true),
-      onTapUp:
-          widget.isLoading
-              ? null
-              : (_) => setState(() => _isButtonPressed = false),
-      onTapCancel:
-          widget.isLoading
-              ? null
-              : () => setState(() => _isButtonPressed = false),
-      child: AnimatedScale(
-        scale: _isButtonPressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppColors.radius),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E2038), AppColors.primary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: ElevatedButton(
-            onPressed: widget.isLoading ? null : widget.onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppColors.radius),
-              ),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child:
-                  widget.isLoading
-                      ? const SizedBox(
-                        key: ValueKey('spinner'),
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                      : Text(
-                        widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
-                        key: ValueKey(widget.isLoginMode),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-            ),
           ),
         ),
       ),
