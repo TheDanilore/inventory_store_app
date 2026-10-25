@@ -22,6 +22,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/inve
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_breakpoints.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 
 class InventoryStockTab extends StatefulWidget {
   final String? initialSearch;
@@ -82,7 +83,7 @@ class _InventoryStockTabState extends State<InventoryStockTab>
         res.variant?.sku ?? res.product.defaultVariant?.sku ?? res.product.name;
     _searchCtrl.text = targetCode;
     context.read<InventoryCubit>().setStockSearch(targetCode);
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     AppSnackbar.show(
       context,
       message:

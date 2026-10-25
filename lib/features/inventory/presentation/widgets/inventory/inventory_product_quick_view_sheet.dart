@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
@@ -350,7 +351,7 @@ class _InventoryProductQuickViewContentState
 
                     return InkWell(
                       onTap: () {
-                        HapticFeedback.selectionClick();
+                        AppFeedbackService.selectionClick();
                         setState(() => _activeVariantId = v.id);
                       },
                       borderRadius: BorderRadius.circular(20),
@@ -553,7 +554,7 @@ class _InventoryProductQuickViewContentState
                               Clipboard.setData(
                                 ClipboardData(text: _activeVariantSku!),
                               );
-                              HapticFeedback.lightImpact();
+                              AppFeedbackService.lightImpact();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('SKU copiado al portapapeles'),
@@ -1038,7 +1039,7 @@ class _InventoryProductQuickViewContentState
                     isActive: v.isActive,
                     isSelected: isSelected,
                     onSelect: () {
-                      HapticFeedback.selectionClick();
+                      AppFeedbackService.selectionClick();
                       setState(() => _activeVariantId = v.id);
                     },
                     onOpenKardex: () {

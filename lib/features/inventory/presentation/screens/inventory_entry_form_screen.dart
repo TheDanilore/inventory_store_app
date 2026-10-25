@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
@@ -212,7 +212,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
           (targetVariant == null || item.variantId == targetVariant.id),
     );
 
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
     if (existingIndex != -1) {
       final currentItem = cubit.state.items[existingIndex];
       cubit.updateItemQuantity(existingIndex, currentItem.quantity + 1);
@@ -250,7 +250,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
     if (index < 0 || index >= items.length) return;
     final removed = items[index];
 
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     cubit.removeItem(index);
 
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -901,7 +901,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
               ],
               selected: {cubit.state.paymentMode},
               onSelectionChanged: (selection) {
-                HapticFeedback.selectionClick();
+                AppFeedbackService.selectionClick();
                 cubit.setPaymentMode(selection.first);
               },
               style: SegmentedButton.styleFrom(
@@ -1736,7 +1736,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: () async {
-                        HapticFeedback.lightImpact();
+                        AppFeedbackService.lightImpact();
                         final picked = await showDatePicker(
                           context: context,
                           initialDate:
@@ -1794,7 +1794,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                             if (selectedExpiry != null)
                               GestureDetector(
                                 onTap: () {
-                                  HapticFeedback.lightImpact();
+                                  AppFeedbackService.lightImpact();
                                   setDialogState(() => selectedExpiry = null);
                                 },
                                 child: const Icon(

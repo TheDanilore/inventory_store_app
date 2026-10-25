@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_cubit.dart';
@@ -87,7 +88,7 @@ class _CategoriesManagementScreenState
     bool val,
     CategoriesCubit cubit,
   ) async {
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     if (!val) {
       final confirm = await AppConfirmDialog.show(
         context,
@@ -1008,7 +1009,7 @@ class _RowIconBtn extends StatelessWidget {
       child: IconButton(
         icon: Icon(icon, color: color, size: 19),
         onPressed: () {
-          HapticFeedback.selectionClick();
+          AppFeedbackService.selectionClick();
           onTap();
         },
         padding: const EdgeInsets.all(8),

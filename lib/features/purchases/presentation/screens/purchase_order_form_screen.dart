@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/financial/data/models/financial_account_model.dart';
@@ -221,7 +222,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
           (targetVariant == null || item.variantId == targetVariant.id),
     );
 
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
     if (existingIndex != -1) {
       final currentItem = viewModel.items[existingIndex];
       viewModel.updateItemQuantity(existingIndex, currentItem.quantity + 1);

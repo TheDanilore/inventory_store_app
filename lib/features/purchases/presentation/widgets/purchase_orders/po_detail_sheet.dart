@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
@@ -196,7 +197,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
 
   /// Confirmación para marcar como enviada con feedback háptico y diálogo.
   Future<void> _confirmMarkSent() async {
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     final confirmed = await AppConfirmDialog.show(
       context,
       title: 'Marcar como Enviada',
@@ -213,7 +214,7 @@ class _PODetailSheetState extends State<PODetailSheet> {
 
   /// Confirmación de cancelación con feedback háptico y diálogo.
   Future<void> _confirmCancelOrder() async {
-    HapticFeedback.heavyImpact();
+    AppFeedbackService.heavyImpact();
     final confirmed = await AppConfirmDialog.show(
       context,
       title: 'Anular Orden',

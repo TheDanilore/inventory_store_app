@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
@@ -137,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen>
         } else if (state.viewState == ViewState.success) {
           TextInput.finishAutofillContext(shouldSave: true);
           _blobCtrl.stop();
-          HapticFeedback.lightImpact();
+          AppFeedbackService.lightImpact();
           _portalCtrl.forward();
           if (!state.isLoginMode) {
             AppSnackbar.show(

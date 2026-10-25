@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/attribute_search_dialog.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -711,7 +712,7 @@ class _VariantDraftCardState extends State<VariantDraftCard> {
                                         if (code != null && code.isNotEmpty) {
                                           barcodeCtrl.text = code;
                                           _onFieldChanged();
-                                          HapticFeedback.lightImpact();
+                                          AppFeedbackService.lightImpact();
                                         }
                                       },
                                     ),

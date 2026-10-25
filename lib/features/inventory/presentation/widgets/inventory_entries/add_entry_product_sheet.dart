@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -231,7 +232,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   }
 
   void _stepQuantity(int delta) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     final double base = _quantity > 0 ? _quantity : 0.0;
     double next = base + delta;
     if (next < 1) next = 1;
@@ -247,7 +248,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   }
 
   void _fail(String message) {
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
     setState(() => _formError = message);
   }
 
@@ -319,7 +320,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
     if (item == null) return;
 
     if (keepOpen && widget.onAddAndContinue != null) {
-      HapticFeedback.mediumImpact();
+      AppFeedbackService.mediumImpact();
       widget.onAddAndContinue!(item);
       setState(() {
         _selectedProduct = null;
@@ -338,7 +339,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       return;
     }
 
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
     Navigator.pop(context, item);
   }
 
@@ -589,7 +590,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             imageUrl: _resolveCurrentImageUrl(),
             usesBatches: product.usesBatches == true,
             onChange: () {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               _onProductChanged(null);
             },
           ),
@@ -739,7 +740,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                   )
                                   : null,
                           onTap: () {
-                            HapticFeedback.lightImpact();
+                            AppFeedbackService.lightImpact();
                             onSelected(p);
                           },
                         );
@@ -819,7 +820,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                 )
                 .toList(),
         onChanged: (val) {
-          HapticFeedback.lightImpact();
+          AppFeedbackService.lightImpact();
           _onVariantChanged(val);
         },
       );
@@ -836,7 +837,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
               selected: selected,
               showCheckmark: false,
               onSelected: (_) {
-                HapticFeedback.selectionClick();
+                AppFeedbackService.selectionClick();
                 _onVariantChanged(v);
               },
               selectedColor: AppColors.primary,
@@ -1090,7 +1091,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
                                   ],
                                 ),
                                 onTap: () {
-                                  HapticFeedback.lightImpact();
+                                  AppFeedbackService.lightImpact();
                                   onSelected(option);
                                 },
                               );
@@ -1117,7 +1118,7 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
           value: _expiryDate,
           onPick: (d) => setState(() => _expiryDate = d),
           onClear: () {
-            HapticFeedback.lightImpact();
+            AppFeedbackService.lightImpact();
             setState(() => _expiryDate = null);
           },
         ),
@@ -1635,7 +1636,7 @@ class _DatePickerField extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
-          HapticFeedback.lightImpact();
+          AppFeedbackService.lightImpact();
           final picked = await showDatePicker(
             context: context,
             initialDate: value ?? DateTime.now().add(const Duration(days: 30)),

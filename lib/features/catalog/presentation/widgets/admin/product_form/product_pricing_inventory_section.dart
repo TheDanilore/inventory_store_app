@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_text_field.dart';
@@ -441,7 +442,7 @@ class _ProductPricingInventorySectionState
                                         barcode: code,
                                       ),
                                     );
-                                    HapticFeedback.lightImpact();
+                                    AppFeedbackService.lightImpact();
                                   }
                                 },
                               ),
@@ -599,7 +600,7 @@ class _ProductPricingInventorySectionState
                                       barcode: code,
                                     ),
                                   );
-                                  HapticFeedback.lightImpact();
+                                  AppFeedbackService.lightImpact();
                                 }
                               },
                             ),

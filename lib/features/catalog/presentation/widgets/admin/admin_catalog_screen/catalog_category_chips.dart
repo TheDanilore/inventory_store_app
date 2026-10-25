@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
@@ -339,7 +339,7 @@ class _CategoryFilterChip extends StatelessWidget {
   });
 
   void _openPicker(BuildContext context) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     _SearchableItemPicker.show(
       context: context,
       title: 'Categoría',
@@ -417,7 +417,7 @@ class _CategoryFilterChip extends StatelessWidget {
               if (isSelected)
                 GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppFeedbackService.lightImpact();
                     onSelected(null);
                   },
                   child: Container(
@@ -464,7 +464,7 @@ class _BrandFilterChip extends StatelessWidget {
   });
 
   void _openPicker(BuildContext context) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     _SearchableItemPicker.show(
       context: context,
       title: 'Marca',
@@ -542,7 +542,7 @@ class _BrandFilterChip extends StatelessWidget {
               if (isSelected)
                 GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppFeedbackService.lightImpact();
                     onSelected(null);
                   },
                   child: Container(
@@ -750,7 +750,7 @@ class _StockFilterChip extends StatelessWidget {
             if (_hasFilter)
               GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  AppFeedbackService.lightImpact();
                   onChanged(CatalogStockFilter.all);
                 },
                 child: Container(
@@ -953,7 +953,7 @@ class _StatusFilterChip extends StatelessWidget {
             if (_hasFilter)
               GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  AppFeedbackService.lightImpact();
                   onChanged(null);
                 },
                 child: Container(
@@ -1004,7 +1004,7 @@ class _ClearAllFiltersChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.mediumImpact();
+          AppFeedbackService.mediumImpact();
           onClear();
         },
         borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -1202,7 +1202,7 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
               if (widget.selectedId != null)
                 TextButton(
                   onPressed: () {
-                    HapticFeedback.lightImpact();
+                    AppFeedbackService.lightImpact();
                     widget.onSelected(null);
                     Navigator.of(context).pop();
                   },
@@ -1328,7 +1328,7 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                   icon: Icons.all_inclusive_rounded,
                   isDark: isDark,
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppFeedbackService.selectionClick();
                     widget.onSelected(null);
                     Navigator.of(context).pop();
                   },
@@ -1345,7 +1345,7 @@ class _SearchableItemPickerState extends State<_SearchableItemPicker> {
                 icon: widget.defaultIcon,
                 isDark: isDark,
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppFeedbackService.selectionClick();
                   widget.onSelected(item.id);
                   Navigator.of(context).pop();
                 },

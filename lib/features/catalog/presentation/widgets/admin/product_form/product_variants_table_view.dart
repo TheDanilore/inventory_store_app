@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
@@ -927,7 +927,7 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                             widget.onUpdate(
                               widget.draft.copyWith(barcode: code),
                             );
-                            HapticFeedback.lightImpact();
+                            AppFeedbackService.lightImpact();
                           }
                         },
                         borderRadius: BorderRadius.circular(4),
@@ -969,7 +969,7 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                             widget.onUpdate(
                               widget.draft.copyWith(barcode: code),
                             );
-                            HapticFeedback.lightImpact();
+                            AppFeedbackService.lightImpact();
                           }
                         },
                         borderRadius: BorderRadius.circular(4),
@@ -1055,7 +1055,7 @@ class _VariantTableRowState extends State<_VariantTableRow> {
                       );
                       if (code != null && code.isNotEmpty) {
                         widget.onUpdate(widget.draft.copyWith(barcode: code));
-                        HapticFeedback.lightImpact();
+                        AppFeedbackService.lightImpact();
                       }
                     },
                     icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),

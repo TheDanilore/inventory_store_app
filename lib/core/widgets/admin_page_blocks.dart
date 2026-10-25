@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
@@ -170,7 +171,7 @@ class AdminPageBlocks extends StatelessWidget {
             label: 'Anterior',
             enabled: canPrev,
             onTap: () {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               onPageChanged(effectiveCurrentPage - 1);
             },
           ),
@@ -330,7 +331,7 @@ class AdminPageBlocks extends StatelessWidget {
             isTrailingIcon: true,
             enabled: canNext,
             onTap: () {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               onPageChanged(effectiveCurrentPage + 1);
             },
           ),

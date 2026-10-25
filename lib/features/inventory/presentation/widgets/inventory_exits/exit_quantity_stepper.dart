@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Formatea una cantidad: "5" si es entera, "2.5" si tiene decimales.
@@ -97,7 +98,7 @@ class _ExitQuantityStepperState extends State<ExitQuantityStepper> {
     final p = _parse(raw);
     if (p == null || p <= 0) return;
     if (widget.max > 0 && p > widget.max) {
-      HapticFeedback.mediumImpact();
+      AppFeedbackService.mediumImpact();
       _setText(widget.max);
       setState(() => _overMax = true);
       widget.onChanged(widget.max);
@@ -108,7 +109,7 @@ class _ExitQuantityStepperState extends State<ExitQuantityStepper> {
   }
 
   void _step(int delta) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     var next = widget.value + delta;
     if (next < 1) next = 1;
     var over = false;

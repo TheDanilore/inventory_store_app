@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_cart_fab.dart';
 
@@ -19,7 +19,7 @@ class CatalogAddProductFab extends StatelessWidget {
         shadowColor: Colors.black.withValues(alpha: 0.25),
         child: InkWell(
           onTap: () {
-            HapticFeedback.lightImpact();
+            AppFeedbackService.lightImpact();
             onTap();
           },
           borderRadius: BorderRadius.circular(16),

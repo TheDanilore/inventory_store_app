@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
@@ -153,7 +152,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
             }
           },
           onLongPress: () {
-            HapticFeedback.mediumImpact();
+            AppFeedbackService.mediumImpact();
           },
           child: Ink(
             decoration: BoxDecoration(

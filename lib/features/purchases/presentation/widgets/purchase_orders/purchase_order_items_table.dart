@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 
@@ -149,7 +150,7 @@ class PurchaseOrderItemsTable extends StatelessWidget {
                 if (onScanBarcode != null) ...[
                   OutlinedButton.icon(
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppFeedbackService.lightImpact();
                       onScanBarcode!();
                     },
                     icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
@@ -280,7 +281,7 @@ class PurchaseOrderItemsTable extends StatelessWidget {
                   if (onScanBarcode != null)
                     OutlinedButton.icon(
                       onPressed: () {
-                        HapticFeedback.lightImpact();
+                        AppFeedbackService.lightImpact();
                         onScanBarcode!();
                       },
                       icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),

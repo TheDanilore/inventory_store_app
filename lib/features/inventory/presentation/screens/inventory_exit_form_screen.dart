@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -181,7 +181,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
         unitCost: variantModel.unitCost ?? 0.0,
       );
       cubit.addItem(exitItem);
-      HapticFeedback.mediumImpact();
+      AppFeedbackService.mediumImpact();
       AppSnackbar.show(
         context,
         message: 'Agregado a salida: "${product.name}"',
@@ -197,7 +197,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
     if (index < 0 || index >= items.length) return;
     final removed = items[index];
 
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     cubit.removeItem(index);
 
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -634,7 +634,7 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                     selected: selected,
                     showCheckmark: false,
                     onSelected: (_) {
-                      HapticFeedback.selectionClick();
+                      AppFeedbackService.selectionClick();
                       cubit.selectReason(e.key);
                     },
                     selectedColor: AppColors.primary,

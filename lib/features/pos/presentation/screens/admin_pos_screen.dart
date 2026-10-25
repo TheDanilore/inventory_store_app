@@ -809,7 +809,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
               );
             } else if (state.items.isNotEmpty) {
               // Un item ha sido agregado exitosamente: feedback táctil sin saturar con SnackBars
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
             }
           },
           child: FocusScope(

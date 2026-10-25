@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/exit_quantity_stepper.dart';
@@ -199,7 +199,7 @@ class InventoryExitItemsTable extends StatelessWidget {
                 if (onScanBarcode != null) ...[
                   OutlinedButton.icon(
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppFeedbackService.lightImpact();
                       onScanBarcode!();
                     },
                     icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
@@ -608,7 +608,7 @@ class _EmptyState extends StatelessWidget {
                 if (onScan != null)
                   OutlinedButton.icon(
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppFeedbackService.lightImpact();
                       onScan!();
                     },
                     icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),

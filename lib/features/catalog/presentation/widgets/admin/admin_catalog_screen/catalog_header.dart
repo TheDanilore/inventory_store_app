@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
@@ -555,7 +555,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                         tooltip: 'Escanear código (QR / Barras)',
                         splashRadius: 18,
                         onPressed: () {
-                          HapticFeedback.lightImpact();
+                          AppFeedbackService.lightImpact();
                           widget.onScanBarcode!();
                         },
                       ),
@@ -564,7 +564,7 @@ class _CatalogHeaderState extends State<CatalogHeader> {
                     padding: const EdgeInsets.only(right: 4),
                     child: FilledButton.icon(
                       onPressed: () {
-                        HapticFeedback.lightImpact();
+                        AppFeedbackService.lightImpact();
                         _executeSearch(widget.searchController.text);
                       },
                       icon: const Icon(Icons.search_rounded, size: 16),

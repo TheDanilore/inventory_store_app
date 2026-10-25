@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 
@@ -93,7 +94,7 @@ class _EntryItemCardState extends State<EntryItemCard> {
   }
 
   void _step(int delta) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     final next = widget.item.quantity + delta;
     if (next < 1) return;
     widget.onUpdateQuantity(next);

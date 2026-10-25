@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
@@ -24,7 +24,7 @@ class PosCartFab extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             onTap: () async {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               await context.push('/pos');
             },
             borderRadius: BorderRadius.circular(16),

@@ -3,8 +3,8 @@ import 'dart:developer' as developer;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
@@ -291,7 +291,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
   }
 
   void _fail(String message) {
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
     setState(() => _formError = message);
   }
 
@@ -353,7 +353,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
     final item = _buildItem(state);
     if (item == null) return;
 
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
 
     if (keepOpen && widget.onAddAndContinue != null) {
       widget.onAddAndContinue!(item);
@@ -585,7 +585,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             imageUrl: _resolveCurrentImageUrl(),
             usesBatches: product.usesBatches == true,
             onChange: () {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               _onProductChanged(null);
             },
           ),
@@ -629,7 +629,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
             }, const Iterable<ProductModel>.empty());
           },
           onSelected: (p) {
-            HapticFeedback.lightImpact();
+            AppFeedbackService.lightImpact();
             _onProductChanged(p);
           },
           fieldViewBuilder: (
@@ -738,7 +738,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                                   )
                                   : null,
                           onTap: () {
-                            HapticFeedback.lightImpact();
+                            AppFeedbackService.lightImpact();
                             onSelected(p);
                           },
                         );
@@ -813,7 +813,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
                 .toList(),
         onChanged: (val) {
           if (val == null) return;
-          HapticFeedback.lightImpact();
+          AppFeedbackService.lightImpact();
           _onVariantChanged(val);
         },
       );
@@ -830,7 +830,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
               selected: selected,
               showCheckmark: false,
               onSelected: (_) {
-                HapticFeedback.selectionClick();
+                AppFeedbackService.selectionClick();
                 _onVariantChanged(v);
               },
               selectedColor: AppColors.primary,
@@ -908,7 +908,7 @@ class _AddExitProductSheetState extends State<AddExitProductSheet> {
               onTap:
                   remaining > 0
                       ? () {
-                        HapticFeedback.selectionClick();
+                        AppFeedbackService.selectionClick();
                         _selectBatch(b);
                       }
                       : null,

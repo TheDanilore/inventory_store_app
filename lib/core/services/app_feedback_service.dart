@@ -23,44 +23,69 @@ class AppFeedbackService {
     return _audioPlayer!;
   }
 
+  static bool? _hasVibrator;
+  static bool? _hasCustomAmplitude;
+
   /// Emite una vibración real utilizando el servicio de hardware `Vibrator` en móviles,
   /// con fallback seguro a `HapticFeedback` si no hay motor disponible o en Web.
-  static Future<void> vibrate({
-    int durationMs = 65,
-    int amplitude = 140,
-  }) async {
-    try {
-      if (!kIsWeb) {
-        final hasVibrator = await Vibration.hasVibrator();
-        if (hasVibrator == true) {
-          final hasCustomAmplitude =
-              await Vibration.hasCustomVibrationsSupport();
-          if (hasCustomAmplitude == true) {
-            await Vibration.vibrate(
-              duration: durationMs,
-              amplitude: amplitude.clamp(1, 255),
-            );
-            return;
-          } else {
-            await Vibration.vibrate(duration: durationMs);
-            return;
-          }
+  static Future<void> vibrate({int durationMs = 30, int amplitude = 64}) async {
+    if (kIsWeb) {
+      try {
+        if (durationMs > 50) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.lightImpact();
         }
+      } catch (_) {}
+      return;
+    }
+
+    try {
+      _hasVibrator ??= await Vibration.hasVibrator();
+      if (_hasVibrator == true) {
+        _hasCustomAmplitude ??= await Vibration.hasCustomVibrationsSupport();
+        if (_hasCustomAmplitude == true) {
+          await Vibration.vibrate(
+            duration: durationMs,
+            amplitude: amplitude.clamp(1, 255),
+          );
+        } else {
+          await Vibration.vibrate(duration: durationMs);
+        }
+        return;
       }
     } catch (e) {
-      debugPrint(
-        '[AppFeedbackService] Fallback de vibración a HapticFeedback: $e',
-      );
+      debugPrint('[AppFeedbackService] Fallback de vibración: $e');
     }
 
     // Fallback a nivel de framework
     try {
-      if (durationMs > 100) {
-        await HapticFeedback.heavyImpact();
-      } else {
+      if (durationMs > 50) {
         await HapticFeedback.mediumImpact();
+      } else {
+        await HapticFeedback.lightImpact();
       }
     } catch (_) {}
+  }
+
+  /// Vibración ligera (30ms, amp 64) para toques, botones y navegación.
+  static void lightImpact() {
+    vibrate(durationMs: 30, amplitude: 64);
+  }
+
+  /// Vibración media (50ms, amp 128) para confirmaciones, botones principales y escaneo.
+  static void mediumImpact() {
+    vibrate(durationMs: 50, amplitude: 128);
+  }
+
+  /// Vibración fuerte (70ms, amp 160) para advertencias, eliminaciones y operaciones críticas.
+  static void heavyImpact() {
+    vibrate(durationMs: 70, amplitude: 160);
+  }
+
+  /// Micro-vibración de selección (25ms, amp 60) para dropdowns, pestañas y chips.
+  static void selectionClick() {
+    vibrate(durationMs: 25, amplitude: 60);
   }
 
   /// Reproduce un tono de Bip real de escáner / caja registradora

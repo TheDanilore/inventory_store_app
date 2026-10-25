@@ -20,6 +20,7 @@ import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class KardexScreen extends StatefulWidget {
@@ -104,7 +105,7 @@ class _KardexScreenState extends State<KardexScreen> {
   }
 
   void _onSelectMovement(KardexMovementEntity item, bool isDesktop) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     if (isDesktop) {
       setState(() {
         if (_selectedMovement?.id == item.id) {

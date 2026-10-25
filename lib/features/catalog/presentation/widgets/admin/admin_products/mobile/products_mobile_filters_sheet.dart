@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
@@ -80,7 +80,7 @@ class _FiltersContent extends StatelessWidget {
                     if (activeCount > 0)
                       TextButton(
                         onPressed: () {
-                          HapticFeedback.selectionClick();
+                          AppFeedbackService.selectionClick();
                           cubit.setCategory(null);
                           cubit.setStockFilter(CatalogStockFilter.all);
                           cubit.setFilterIsActive(null);
@@ -265,7 +265,7 @@ class _Chips<T> extends StatelessWidget {
             selected: selected == value,
             showCheckmark: false,
             onSelected: (_) {
-              HapticFeedback.selectionClick();
+              AppFeedbackService.selectionClick();
               onSelected(value);
             },
             labelStyle: TextStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Configuración para la acción principal del toolbar (CTA).
@@ -389,7 +390,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     // 3. Atajo [R] o [Alt+R] -> Refrescar datos
     if (event.logicalKey == LogicalKeyboardKey.keyR) {
       if (widget.onRefresh != null) {
-        HapticFeedback.selectionClick();
+        AppFeedbackService.selectionClick();
         widget.onRefresh!();
         return true;
       }
@@ -398,7 +399,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     // 4. Atajo [N] o [Alt+N] -> Acción principal (Crear)
     if (event.logicalKey == LogicalKeyboardKey.keyN) {
       if (widget.primaryAction != null) {
-        HapticFeedback.lightImpact();
+        AppFeedbackService.lightImpact();
         widget.primaryAction!.onPressed();
         return true;
       }
@@ -407,7 +408,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
     // 5. Atajo [V] o [Alt+V] -> Alternar vista Tabla / Tarjetas
     if (event.logicalKey == LogicalKeyboardKey.keyV) {
       if (widget.viewToggleConfig != null) {
-        HapticFeedback.selectionClick();
+        AppFeedbackService.selectionClick();
         widget.viewToggleConfig!.onToggleTableView(
           !widget.viewToggleConfig!.isTableView,
         );
@@ -500,7 +501,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                         tooltip: widget.scanBarcodeTooltip,
                         splashRadius: 18,
                         onPressed: () {
-                          HapticFeedback.lightImpact();
+                          AppFeedbackService.lightImpact();
                           widget.onScanBarcode!();
                         },
                       ),
@@ -684,7 +685,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                       tooltip: widget.scanBarcodeTooltip,
                       splashRadius: 20,
                       onPressed: () {
-                        HapticFeedback.lightImpact();
+                        AppFeedbackService.lightImpact();
                         widget.onScanBarcode!();
                       },
                     ),
@@ -698,7 +699,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                     tooltip: 'Buscar',
                     splashRadius: 20,
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppFeedbackService.lightImpact();
                       _executeSearch();
                     },
                   ),
@@ -743,7 +744,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppFeedbackService.selectionClick();
                   config.onToggleTableView(true);
                 },
                 borderRadius: BorderRadius.circular(7),
@@ -792,7 +793,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
               waitDuration: const Duration(milliseconds: 300),
               child: InkWell(
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppFeedbackService.selectionClick();
                   config.onToggleTableView(false);
                 },
                 borderRadius: BorderRadius.circular(7),
@@ -863,7 +864,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         child: FilledButton.icon(
           onPressed: () {
             if (isMobile) {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
             }
             action.onPressed();
           },
@@ -926,7 +927,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           ),
           child: IconButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              AppFeedbackService.lightImpact();
               _openFilters();
             },
             icon: Icon(
@@ -1401,7 +1402,7 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
   void _handleTap() {
     if (widget.onRefresh == null) return;
     _animCtrl.forward(from: 0.0);
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     widget.onRefresh!();
   }
 
@@ -1580,7 +1581,7 @@ class _AdminFiltersSheet extends StatelessWidget {
   });
 
   void _clear(_FiltersSnapshot s) {
-    HapticFeedback.selectionClick();
+    AppFeedbackService.selectionClick();
     if (onClearAll != null) {
       onClearAll!();
       return;
@@ -1769,7 +1770,7 @@ class _FilterGroupSection extends StatelessWidget {
                     selected: group.isSelected(o.value),
                     isDark: isDark,
                     onTap: () {
-                      HapticFeedback.selectionClick();
+                      AppFeedbackService.selectionClick();
                       group.select(o.value);
                     },
                   ),
@@ -1805,7 +1806,7 @@ class _AdminFilterSelectField extends StatelessWidget {
         ),
       ),
       onSelected: (i) {
-        HapticFeedback.selectionClick();
+        AppFeedbackService.selectionClick();
         group.select(group.options[i].value);
       },
       itemBuilder:

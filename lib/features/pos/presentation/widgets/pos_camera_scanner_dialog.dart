@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -247,10 +246,10 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     _lastDetectionTime = now;
 
     setState(() => _isResolving = true);
-    HapticFeedback.mediumImpact();
+    AppFeedbackService.mediumImpact();
 
     if (widget.returnRawCode) {
-      HapticFeedback.lightImpact();
+      AppFeedbackService.lightImpact();
       final rawResult = PosScanResult(
         product: ProductEntity(id: '', name: trimmed),
         rawCode: trimmed,
@@ -1115,7 +1114,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
               children: [
                 InkWell(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppFeedbackService.lightImpact();
                     widget.cartCubit?.updateQuantity(
                       item.cartKey,
                       item.quantity - 1,
@@ -1146,7 +1145,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                 ),
                 InkWell(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppFeedbackService.lightImpact();
                     widget.cartCubit?.updateQuantity(
                       item.cartKey,
                       item.quantity + 1,
@@ -1349,7 +1348,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
       child: InkWell(
         onTap: () {
           if (_scannerMode == mode) return;
-          HapticFeedback.selectionClick();
+          AppFeedbackService.selectionClick();
           setState(() {
             _scannerMode = mode;
             _pendingAmbiguousResult = null;
@@ -1420,7 +1419,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
       if (pickedFile == null) return;
 
       setState(() => _isOcrProcessing = true);
-      HapticFeedback.mediumImpact();
+      AppFeedbackService.mediumImpact();
 
       final result = await ProductOcrScannerService.recognizeFromImageFile(
         pickedFile.path,
@@ -1489,7 +1488,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
         }
       } else {
         // Ambigüedad en variantes: mostrar selector rápido sobre la cámara
-        HapticFeedback.mediumImpact();
+        AppFeedbackService.mediumImpact();
         setState(() {
           _pendingAmbiguousResult = result;
         });

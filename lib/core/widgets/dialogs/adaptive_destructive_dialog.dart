@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 /// Modal de confirmación destructiva camaleónico (Vercel / Supabase Style).
@@ -111,7 +112,7 @@ class _AdaptiveDestructiveDialogState extends State<AdaptiveDestructiveDialog> {
 
       if (matches && !_hasTriggeredHaptic) {
         _hasTriggeredHaptic = true;
-        HapticFeedback.mediumImpact();
+        AppFeedbackService.mediumImpact();
       } else if (!matches) {
         _hasTriggeredHaptic = false;
       }

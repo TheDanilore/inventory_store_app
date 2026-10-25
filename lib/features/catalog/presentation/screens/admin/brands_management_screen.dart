@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -65,7 +66,7 @@ class _BrandsManagementScreenState extends State<BrandsManagementScreen> {
     bool val,
     BrandsCubit cubit,
   ) async {
-    HapticFeedback.lightImpact();
+    AppFeedbackService.lightImpact();
     if (!val) {
       final confirm = await AppConfirmDialog.show(
         context,
