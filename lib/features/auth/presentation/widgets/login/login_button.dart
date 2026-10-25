@@ -39,21 +39,28 @@ class _LoginButtonState extends State<LoginButton> {
           height: 52,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppColors.radius),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E2038), AppColors.primary],
+            gradient: LinearGradient(
+              colors:
+                  widget.isSuccess
+                      ? const [Color(0xFF059669), Color(0xFF10B981)]
+                      : const [Color(0xFF1E2038), AppColors.primary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.25),
+                color: (widget.isSuccess
+                        ? const Color(0xFF10B981)
+                        : AppColors.primary)
+                    .withValues(alpha: widget.isSuccess ? 0.35 : 0.25),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
           child: ElevatedButton(
-            onPressed: widget.isLoading ? null : widget.onPressed,
+            onPressed:
+                widget.isLoading || widget.isSuccess ? null : widget.onPressed,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
@@ -63,9 +70,32 @@ class _LoginButtonState extends State<LoginButton> {
               ),
             ),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 220),
               child:
-                  widget.isLoading
+                  widget.isSuccess
+                      ? const Row(
+                        key: ValueKey('success_state'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            '¡Acceso Autorizado!',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      )
+                      : widget.isLoading
                       ? const SizedBox(
                         key: ValueKey('loading_spinner'),
                         width: 22,

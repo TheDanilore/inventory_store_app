@@ -271,7 +271,28 @@ class AppRouter {
                   routes: [
                     GoRoute(
                       path: '/',
-                      builder: (context, state) => const DashboardScreen(),
+                      pageBuilder:
+                          (context, state) => CustomTransitionPage<void>(
+                            key: state.pageKey,
+                            child: const DashboardScreen(),
+                            transitionDuration: const Duration(
+                              milliseconds: 400,
+                            ),
+                            transitionsBuilder: (
+                              context,
+                              animation,
+                              secondaryAnimation,
+                              child,
+                            ) {
+                              return FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic,
+                                ),
+                                child: child,
+                              );
+                            },
+                          ),
                     ),
                     GoRoute(
                       path: '/catalog',

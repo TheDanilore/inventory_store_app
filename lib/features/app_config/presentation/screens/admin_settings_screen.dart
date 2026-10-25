@@ -679,6 +679,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen>
                                   ),
                                   style: FilledButton.styleFrom(
                                     visualDensity: VisualDensity.compact,
+                                    backgroundColor: const Color(0xFF2563EB),
+                                    foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
                                       vertical: 8,

@@ -165,13 +165,33 @@ class AuthCubit extends Cubit<AuthState> {
         emit(
           state.copyWith(
             viewState: ViewState.success,
-            authStatus: AuthStatus.authenticated,
             currentUser: user,
             clearErrorMessage: true,
           ),
         );
+
+        // Timer de seguridad: asegura que la sesión se confirme si la UI no llama completeLogin
+        Future.delayed(const Duration(milliseconds: 1400), () {
+          if (!isClosed &&
+              state.authStatus != AuthStatus.authenticated &&
+              state.currentUser != null) {
+            completeLogin();
+          }
+        });
       },
     );
+  }
+
+  /// Disparado tras la animación de salida en la pantalla de Login para transicionar al ERP/POS
+  void completeLogin() {
+    if (state.currentUser != null &&
+        state.authStatus != AuthStatus.authenticated) {
+      LoggerService.i(
+        'Completando transición a sesión autenticada',
+        tag: 'AuthCubit',
+      );
+      emit(state.copyWith(authStatus: AuthStatus.authenticated));
+    }
   }
 
   Future<void> register(String email, String password, String fullName) async {
@@ -206,11 +226,18 @@ class AuthCubit extends Cubit<AuthState> {
         emit(
           state.copyWith(
             viewState: ViewState.success,
-            authStatus: AuthStatus.authenticated,
             currentUser: user,
             clearErrorMessage: true,
           ),
         );
+
+        Future.delayed(const Duration(milliseconds: 1400), () {
+          if (!isClosed &&
+              state.authStatus != AuthStatus.authenticated &&
+              state.currentUser != null) {
+            completeLogin();
+          }
+        });
       },
     );
   }
