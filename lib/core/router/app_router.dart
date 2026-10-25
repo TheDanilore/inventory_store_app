@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/router/go_router_refresh_stream.dart';
@@ -44,13 +45,20 @@ final GlobalKey<NavigatorState> _posNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'pos_shell',
 );
 
-/// IndexedStack con montaje LAZY por branch.
+/// Contenedor de branches con transición direccional "Seamless Morph & Slide" (Opción 1)
+/// y montaje perezoso (Lazy) por branch.
 ///
-/// Garantías:
+/// Características:
 /// - Branch 0 (ERP) se monta inmediatamente al iniciar la app.
 /// - Branch 1 (POS) solo se monta cuando el usuario navega a /pos por primera vez.
-/// - A partir de la primera visita, ambos branches permanecen vivos (0ms en transiciones).
-/// - Evita consultas Supabase innecesarias al arrancar (PosCubit no llama initPosData hasta visitar /pos).
+/// - Transición direccional fluida y coordinada (280ms, Curves.easeInOutCubic):
+///   * De ERP a POS (0 -> 1): ERP se desliza sutilmente a la izquierda (-6%) y se desvanece;
+///     POS entra desde la derecha (+8%) y se ilumina.
+///   * De POS a ERP (1 -> 0): POS se desliza hacia la derecha (+8%) y se desvanece;
+///     ERP reaparece regresando desde la izquierda (-6%).
+/// - Cero solapamientos ni transparencias fantasma: ambos branches cuentan con fondos sólidos opacos
+///   y ClipRect estricto, previniendo artefactos visuales o doble exposición.
+/// - Retención de estado completa: los branches inactivos se preservan intactos mediante Offstage.
 class _LazyBranchContainer extends StatefulWidget {
   final int currentIndex;
   final List<Widget> children;
@@ -64,16 +72,43 @@ class _LazyBranchContainer extends StatefulWidget {
   State<_LazyBranchContainer> createState() => _LazyBranchContainerState();
 }
 
-class _LazyBranchContainerState extends State<_LazyBranchContainer> {
+class _LazyBranchContainerState extends State<_LazyBranchContainer>
+    with SingleTickerProviderStateMixin {
   late final List<bool> _activated;
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  int _previousIndex = 0;
+  bool _isTransitioning = false;
 
   @override
   void initState() {
     super.initState();
+    _previousIndex = widget.currentIndex;
     _activated = List.generate(
       widget.children.length,
       (i) => i == widget.currentIndex,
     );
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutCubic,
+    );
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (mounted) {
+          setState(() {
+            _isTransitioning = false;
+            _previousIndex = widget.currentIndex;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -82,16 +117,110 @@ class _LazyBranchContainerState extends State<_LazyBranchContainer> {
     if (!_activated[widget.currentIndex]) {
       setState(() => _activated[widget.currentIndex] = true);
     }
+
+    if (widget.currentIndex != old.currentIndex) {
+      _previousIndex = old.currentIndex;
+      _isTransitioning = true;
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return IndexedStack(
-      index: widget.currentIndex,
-      children: [
-        for (int i = 0; i < widget.children.length; i++)
-          if (_activated[i]) widget.children[i] else const SizedBox.shrink(),
-      ],
+    final bgColor = AppColors.bg(context);
+    final bool goingToPos = widget.currentIndex > _previousIndex;
+
+    return ClipRect(
+      child: ColoredBox(
+        color: bgColor,
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, _) {
+            final t = _isTransitioning ? _animation.value : 1.0;
+
+            // Vistas en reposo (sin animación activa)
+            if (!_isTransitioning) {
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  for (int i = 0; i < widget.children.length; i++)
+                    if (_activated[i])
+                      Offstage(
+                        offstage: i != widget.currentIndex,
+                        child: ColoredBox(
+                          color: bgColor,
+                          child: widget.children[i],
+                        ),
+                      ),
+                ],
+              );
+            }
+
+            // Cálculo direccional:
+            // Saliente (se va):
+            final double outgoingOpacity = (1.0 - t).clamp(0.0, 1.0);
+            final Offset outgoingSlide = goingToPos
+                ? Offset(-0.06 * t, 0.0) // ERP se desliza a la izquierda
+                : Offset(0.08 * t, 0.0);  // POS se desliza a la derecha
+
+            // Entrante (aparece):
+            final double incomingOpacity = t.clamp(0.0, 1.0);
+            final Offset incomingSlide = goingToPos
+                ? Offset(0.08 * (1.0 - t), 0.0)  // POS entra desde la derecha
+                : Offset(-0.06 * (1.0 - t), 0.0); // ERP regresa desde la izquierda
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. Branches completamente inactivos (preservan estado en Offstage)
+                for (int i = 0; i < widget.children.length; i++)
+                  if (_activated[i] &&
+                      i != widget.currentIndex &&
+                      i != _previousIndex)
+                    Offstage(
+                      offstage: true,
+                      child: widget.children[i],
+                    ),
+
+                // 2. Branch saliente (en el fondo, ignorando toques)
+                if (_activated[_previousIndex])
+                  IgnorePointer(
+                    ignoring: true,
+                    child: SlideTransition(
+                      position: AlwaysStoppedAnimation(outgoingSlide),
+                      child: Opacity(
+                        opacity: outgoingOpacity,
+                        child: ColoredBox(
+                          color: bgColor,
+                          child: widget.children[_previousIndex],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 3. Branch entrante (en el frente, con opacidad suave)
+                if (_activated[widget.currentIndex])
+                  SlideTransition(
+                    position: AlwaysStoppedAnimation(incomingSlide),
+                    child: Opacity(
+                      opacity: incomingOpacity,
+                      child: ColoredBox(
+                        color: bgColor,
+                        child: widget.children[widget.currentIndex],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -293,7 +422,10 @@ class AppRouter {
                                   parent: animation,
                                   curve: Curves.easeOutCubic,
                                 ),
-                                child: child,
+                                child: ColoredBox(
+                                  color: AppColors.bg(context),
+                                  child: child,
+                                ),
                               );
                             },
                           ),

@@ -171,8 +171,8 @@ class AdminDesktopTopBar extends StatelessWidget {
                 size: 38,
                 tooltip:
                     isCurrentlyDark
-                        ? 'Modo Claro Ejecutivo'
-                        : 'Modo Oscuro Midnight Slate',
+                        ? 'Modo Claro'
+                        : 'Modo Oscuro',
                 onTapWithOrigin: (origin) {
                   ThemeCircularWave.switchTheme(context, origin: origin);
                 },

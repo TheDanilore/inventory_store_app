@@ -567,7 +567,12 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     );
 
     if (shouldExit == true && mounted) {
-      context.go('/');
+      // Breve pausa (90ms) para asegurar que el dismiss del diálogo modal
+      // complete su desmontaje visual antes del slide direccional al ERP.
+      await Future.delayed(const Duration(milliseconds: 90));
+      if (mounted) {
+        context.go('/');
+      }
     }
   }
 
