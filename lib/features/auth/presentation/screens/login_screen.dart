@@ -60,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     _portalCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 350),
     );
     _portalScaleAnim = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(parent: _portalCtrl, curve: Curves.easeInOutCubic),

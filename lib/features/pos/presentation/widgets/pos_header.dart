@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
@@ -450,6 +451,38 @@ class PosHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     _buildWarehouseSelector(ctx, state),
+                    const SizedBox(height: 20),
+                    const Divider(color: AppColors.divider, height: 1),
+                    const SizedBox(height: 14),
+
+                    // ── Botón Cerrar Sesión ─────────────────────────────────
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        backgroundColor: AppColors.error.withValues(
+                          alpha: 0.06,
+                        ),
+                        side: BorderSide(
+                          color: AppColors.error.withValues(alpha: 0.25),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _confirmAndLogout(context);
+                      },
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text(
+                        'Cerrar Sesión',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -458,6 +491,19 @@ class PosHeader extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _confirmAndLogout(BuildContext context) async {
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que deseas salir y cerrar tu sesión?',
+      confirmText: 'Cerrar Sesión',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed == true && context.mounted) {
+      await context.read<AuthCubit>().logout();
+    }
   }
 
   Widget _buildShiftIndicator(
@@ -1018,69 +1064,133 @@ class PosHeader extends StatelessWidget {
                 : names[0][0].toUpperCase())
             : 'U';
 
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 1),
+    return PopupMenuButton<String>(
+      tooltip: 'Opciones de Usuario ($fullName)',
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-            backgroundImage:
-                avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : null,
-            child:
-                avatarUrl == null || avatarUrl.isEmpty
-                    ? Text(
-                      initials,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    )
-                    : null,
-          ),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 130),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    height: 1.15,
+      onSelected: (val) {
+        if (val == 'logout') {
+          _confirmAndLogout(context);
+        }
+      },
+      itemBuilder:
+          (ctx) => [
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fullName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                Text(
-                  roleDisplay,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                    height: 1.15,
+                  Text(
+                    roleDisplay,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const PopupMenuDivider(),
+            const PopupMenuItem<String>(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+                  SizedBox(width: 10),
+                  Text(
+                    'Cerrar Sesión',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              backgroundImage:
+                  avatarUrl != null && avatarUrl.isNotEmpty
+                      ? NetworkImage(avatarUrl)
+                      : null,
+              child:
+                  avatarUrl == null || avatarUrl.isEmpty
+                      ? Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      )
+                      : null,
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 130),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fullName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      height: 1.15,
+                    ),
+                  ),
+                  Text(
+                    roleDisplay,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.arrow_drop_down_rounded,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -169,7 +169,7 @@ class AuthCubit extends Cubit<AuthState> {
             clearErrorMessage: true,
           ),
         );
-        await Future.delayed(const Duration(milliseconds: 650));
+        await Future.delayed(const Duration(milliseconds: 350));
         emit(state.copyWith(authStatus: AuthStatus.authenticated));
       },
     );
@@ -211,7 +211,7 @@ class AuthCubit extends Cubit<AuthState> {
             clearErrorMessage: true,
           ),
         );
-        await Future.delayed(const Duration(milliseconds: 650));
+        await Future.delayed(const Duration(milliseconds: 350));
         emit(state.copyWith(authStatus: AuthStatus.authenticated));
       },
     );
