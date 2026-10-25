@@ -64,6 +64,33 @@ class ProductEntity {
     return prices.first;
   }
 
+  /// Obtiene el stock disponible en un almacén específico.
+  /// Si [warehouseId] es nulo o vacío, o no se controla stock, retorna el stock adecuado.
+  int getStockForWarehouse(String? warehouseId, {String? variantId}) {
+    if (!stockControl) return 999999;
+    if (warehouseId == null || warehouseId.isEmpty) {
+      if (variantId != null && warehouseStockBatches.isNotEmpty) {
+        final batches = warehouseStockBatches.where(
+          (b) => b.variantId == variantId,
+        );
+        return batches.fold<int>(
+          0,
+          (sum, b) => sum + b.availableQuantity.toInt(),
+        );
+      }
+      return totalStock;
+    }
+    if (warehouseStockBatches.isEmpty) {
+      return 0;
+    }
+    final batches = warehouseStockBatches.where((b) {
+      final matchVariant = variantId == null || b.variantId == variantId;
+      final matchWh = b.warehouseId == warehouseId;
+      return matchVariant && matchWh;
+    });
+    return batches.fold<int>(0, (sum, b) => sum + b.availableQuantity.toInt());
+  }
+
   const ProductEntity({
     required this.id,
     required this.name,

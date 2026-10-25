@@ -49,7 +49,7 @@ Future<void> main() async {
     );
 
     // Inicialización del contenedor de dependencias (GetIt)
-    initDI();
+    initDI(prefs);
 
     // Captura de rutas profundas (Deep Linking) de forma segura
     AppRouter.captureInitialRoute();

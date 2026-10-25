@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
 
 import 'package:inventory_store_app/core/services/logger_service.dart';
@@ -111,6 +113,40 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     _clienteCtrl.clear();
     _puntosCtrl.text = '0';
     if (mounted) setState(() {});
+  }
+
+  Future<void> _updateCartItemsStockForWarehouse(String warehouseId) async {
+    final cartCubit = context.read<CartCubit>();
+    final items = cartCubit.state.items.values.toList();
+    if (items.isEmpty) return;
+
+    final variantIds =
+        items
+            .where((i) => i.variantId != null && i.variantId!.isNotEmpty)
+            .map((i) => i.variantId!)
+            .toSet()
+            .toList();
+
+    if (variantIds.isEmpty) return;
+
+    final repo = sl<ProductsRepository>();
+    final res = await repo.fetchVariantStockByVariantIds(
+      variantIds,
+      warehouseId: warehouseId,
+    );
+
+    res.fold(
+      (failure) {
+        LoggerService.e(
+          'Error al verificar stock de carrito por almacén: ${failure.message}',
+          tag: 'DesktopPosPanel',
+          error: failure.message,
+        );
+      },
+      (stockMap) {
+        cartCubit.updateBatchAvailableStock(stockMap);
+      },
+    );
   }
 
   /// Invocado externamente (ej: atajo de teclado F2) para iniciar el cobro sin usar el mouse.
@@ -687,7 +723,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                   }
                 }
               },
-              onWarehouseChanged: (v) => posCubit.setWarehouse(v),
+              onWarehouseChanged: (v) {
+                posCubit.setWarehouse(v);
+                if (v != null) {
+                  _updateCartItemsStockForWarehouse(v);
+                }
+              },
               onAccountChanged: (v) {
                 posCubit.setSelectedAccountId(v);
               },

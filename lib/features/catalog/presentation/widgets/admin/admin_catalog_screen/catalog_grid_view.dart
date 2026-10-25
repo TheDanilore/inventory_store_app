@@ -24,6 +24,7 @@ class CatalogGridScrollView extends StatelessWidget {
   final Widget? chipsSliver;
   final bool isPosMode;
   final String? selectedProductId;
+  final String? warehouseId;
 
   const CatalogGridScrollView({
     super.key,
@@ -44,6 +45,7 @@ class CatalogGridScrollView extends StatelessWidget {
     this.bottomPadding = 0,
     this.isPosMode = false,
     this.selectedProductId,
+    this.warehouseId,
   });
 
   @override
@@ -124,6 +126,7 @@ class CatalogGridScrollView extends StatelessWidget {
                             : null,
                     isFullPosMode: isPosMode,
                     isSelected: selectedProductId == product.id,
+                    warehouseId: warehouseId,
                     highlightIngredient:
                         searchByIngredient
                             ? matchedIngredients[product.id]

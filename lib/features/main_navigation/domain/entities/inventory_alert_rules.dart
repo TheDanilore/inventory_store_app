@@ -76,6 +76,7 @@ class InventoryAlertConfig {
   final int repeatedExpiryThreshold;
   final int repeatedExpiryWindowDays;
   final String inventoryRoute;
+  final String exitsRoute;
 
   const InventoryAlertConfig({
     this.defaultLowStockThreshold = 3,
@@ -84,6 +85,7 @@ class InventoryAlertConfig {
     this.repeatedExpiryThreshold = 2,
     this.repeatedExpiryWindowDays = 180,
     this.inventoryRoute = '/inventory',
+    this.exitsRoute = '/inventory-exits/form',
   });
 }
 
@@ -124,7 +126,8 @@ class InventoryAlertEvaluator {
             title: 'Sin stock: ${v.displayName}',
             message: 'Se agotó el stock. Repón para no perder ventas.',
             action: SuggestedAction.reorder,
-            routePath: config.inventoryRoute,
+            routePath:
+                '${config.inventoryRoute}?search=${Uri.encodeComponent(v.productName)}',
             payload: {'variantId': v.variantId},
             createdAt: ts,
           ),
@@ -140,7 +143,8 @@ class InventoryAlertEvaluator {
                 'Quedan ${v.totalStock} unid. (mínimo: $threshold'
                 '${v.reorderPoint == null ? ', por defecto' : ''}).',
             action: SuggestedAction.reorder,
-            routePath: config.inventoryRoute,
+            routePath:
+                '${config.inventoryRoute}?search=${Uri.encodeComponent(v.productName)}',
             payload: {'variantId': v.variantId},
             createdAt: ts,
           ),
@@ -166,7 +170,7 @@ class InventoryAlertEvaluator {
                 'Lote ${l.lotCode} venció hace ${-days} día(s) con '
                 '${l.quantity} unid. Retíralo de la venta y regístralo como merma.',
             action: SuggestedAction.writeOff,
-            routePath: config.inventoryRoute,
+            routePath: config.exitsRoute,
             payload: {'lotId': l.lotId, 'variantId': l.variantId},
             createdAt: ts,
           ),
@@ -183,7 +187,8 @@ class InventoryAlertEvaluator {
                 'Lote ${l.lotCode} · ${l.quantity} unid. Dale salida ya: '
                 'promoción o descuento para evitar la merma.',
             action: SuggestedAction.discount,
-            routePath: config.inventoryRoute,
+            routePath:
+                '${config.inventoryRoute}?tab=batches&filter=crítico&search=${Uri.encodeComponent(l.lotCode)}',
             payload: {'lotId': l.lotId, 'variantId': l.variantId},
             createdAt: ts,
           ),
@@ -199,7 +204,8 @@ class InventoryAlertEvaluator {
                 'Lote ${l.lotCode} vence en $days días (${l.quantity} unid.). '
                 'Prioriza su salida (FEFO).',
             action: SuggestedAction.review,
-            routePath: config.inventoryRoute,
+            routePath:
+                '${config.inventoryRoute}?tab=batches&filter=próximo&search=${Uri.encodeComponent(l.lotCode)}',
             payload: {'lotId': l.lotId, 'variantId': l.variantId},
             createdAt: ts,
           ),
@@ -222,7 +228,8 @@ class InventoryAlertEvaluator {
                 '${config.repeatedExpiryWindowDays} días. Rota poco: reduce el '
                 'pedido o descontinúalo.',
             action: SuggestedAction.discontinue,
-            routePath: config.inventoryRoute,
+            routePath:
+                '${config.inventoryRoute}?search=${Uri.encodeComponent(v.productName)}',
             payload: {'variantId': v.variantId},
             createdAt: ts,
           ),

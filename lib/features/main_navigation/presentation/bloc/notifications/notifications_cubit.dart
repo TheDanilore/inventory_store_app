@@ -11,7 +11,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   final InventoryAlertSource _source;
   final InventoryAlertEvaluator _evaluator;
-  final SharedPreferences _prefs;
+  SharedPreferences? _prefs;
   final Duration refreshEvery;
 
   Timer? _timer;
@@ -19,7 +19,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   NotificationsCubit({
     required InventoryAlertSource source,
-    required SharedPreferences prefs,
+    SharedPreferences? prefs,
     InventoryAlertEvaluator evaluator = const InventoryAlertEvaluator(),
     this.refreshEvery = const Duration(minutes: 10),
   }) : _source = source,
@@ -29,9 +29,10 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   /// Llamar una vez que el usuario esté autenticado (p. ej. al montar el shell).
   Future<void> start() async {
-    _dismissed = (_prefs.getStringList(_dismissedKey) ?? []).toSet();
+    _prefs ??= await SharedPreferences.getInstance();
+    _dismissed = (_prefs?.getStringList(_dismissedKey) ?? []).toSet();
     emit(
-      state.copyWith(readIds: (_prefs.getStringList(_readKey) ?? []).toSet()),
+      state.copyWith(readIds: (_prefs?.getStringList(_readKey) ?? []).toSet()),
     );
     await refresh();
     _timer?.cancel();
@@ -56,8 +57,8 @@ class NotificationsCubit extends Cubit<NotificationsState> {
       final liveIds = all.map((n) => n.id).toSet();
       _dismissed = _dismissed.intersection(liveIds);
       final read = state.readIds.intersection(liveIds);
-      await _prefs.setStringList(_dismissedKey, _dismissed.toList());
-      await _prefs.setStringList(_readKey, read.toList());
+      await _prefs?.setStringList(_dismissedKey, _dismissed.toList());
+      await _prefs?.setStringList(_readKey, read.toList());
 
       if (!isClosed) {
         emit(NotificationsState(items: visible, readIds: read, loading: false));
@@ -70,19 +71,19 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   Future<void> markRead(String id) async {
     final read = {...state.readIds, id};
-    await _prefs.setStringList(_readKey, read.toList());
+    await _prefs?.setStringList(_readKey, read.toList());
     emit(state.copyWith(readIds: read));
   }
 
   Future<void> markAllRead() async {
     final read = state.items.map((n) => n.id).toSet();
-    await _prefs.setStringList(_readKey, read.toList());
+    await _prefs?.setStringList(_readKey, read.toList());
     emit(state.copyWith(readIds: read));
   }
 
   Future<void> dismiss(String id) async {
     _dismissed = {..._dismissed, id};
-    await _prefs.setStringList(_dismissedKey, _dismissed.toList());
+    await _prefs?.setStringList(_dismissedKey, _dismissed.toList());
     emit(state.copyWith(items: state.items.where((n) => n.id != id).toList()));
   }
 

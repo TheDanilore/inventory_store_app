@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/utils/brand_logo_helper.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
@@ -17,6 +19,7 @@ class AdminProductCard extends StatefulWidget {
   final String? highlightIngredient;
   final bool isFullPosMode;
   final bool isSelected;
+  final String? warehouseId;
 
   const AdminProductCard({
     super.key,
@@ -28,6 +31,7 @@ class AdminProductCard extends StatefulWidget {
     this.highlightIngredient,
     this.isFullPosMode = false,
     this.isSelected = false,
+    this.warehouseId,
   });
 
   @override
@@ -95,8 +99,13 @@ class _AdminProductCardState extends State<AdminProductCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isAgotado =
-        widget.product.stockControl && widget.product.totalStock <= 0;
+    final int effectiveStock =
+        widget.isFullPosMode &&
+                widget.warehouseId != null &&
+                widget.warehouseId!.isNotEmpty
+            ? widget.product.getStockForWarehouse(widget.warehouseId)
+            : widget.product.totalStock;
+    final isAgotado = widget.product.stockControl && effectiveStock <= 0;
     final isDesactivado = !widget.product.isActive;
     final activeIng =
         (widget.highlightIngredient != null &&
@@ -125,8 +134,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
             if (widget.onTap != null) {
               widget.onTap!();
             } else if (widget.isFullPosMode) {
-              if (!isAgotado && !isDesactivado) {
-                HapticFeedback.lightImpact();
+              if (isAgotado) {
+                AppSnackbar.show(
+                  context,
+                  message:
+                      '${widget.product.name} no tiene stock disponible en este almacén.',
+                  type: SnackbarType.warning,
+                );
+              } else if (!isDesactivado) {
+                AppFeedbackService.triggerFeedback();
                 widget.onSale();
               }
             } else {
@@ -337,8 +353,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           top: 8,
                           right: 8,
                           child: Semantics(
-                            label:
-                                '${widget.product.totalStock} unidades en stock',
+                            label: '$effectiveStock unidades en stock',
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               padding: const EdgeInsets.symmetric(
@@ -346,9 +361,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: _stockBadgeColor(
-                                  widget.product.totalStock,
-                                ),
+                                color: _stockBadgeColor(effectiveStock),
                                 borderRadius: BorderRadius.circular(6),
                                 boxShadow: [
                                   BoxShadow(
@@ -359,7 +372,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                                 ],
                               ),
                               child: Text(
-                                '${widget.product.totalStock}',
+                                '$effectiveStock',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,

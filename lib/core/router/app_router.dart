@@ -27,6 +27,7 @@ import 'package:inventory_store_app/features/purchases/presentation/routes/purch
 import 'package:inventory_store_app/features/roles/presentation/routes/roles_routes.dart';
 import 'package:inventory_store_app/features/users/presentation/routes/users_routes.dart';
 import 'package:inventory_store_app/features/catalog/presentation/screens/admin/admin_catalog_screen.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/bloc/notifications/notifications_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_shell_layout.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -252,6 +253,9 @@ class AppRouter {
                   ),
                   BlocProvider(create: (_) => sl<PosCubit>()),
                   BlocProvider(create: (_) => sl<CashShiftsCubit>()),
+                  BlocProvider(
+                    create: (_) => sl<NotificationsCubit>()..start(),
+                  ),
                 ],
                 child: AppPopScope(child: navigationShell),
               ),

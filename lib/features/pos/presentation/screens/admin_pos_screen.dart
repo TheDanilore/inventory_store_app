@@ -37,12 +37,14 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
+import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
 extension ProductToCartExtension on ProductEntity {
-  CartItemEntity toCartItem() {
+  CartItemEntity toCartItem({int? warehouseStock}) {
     final variant = defaultVariant;
     final cartKey = variant?.id ?? id;
+    final effectiveStock = warehouseStock ?? totalStock;
     return CartItemEntity(
       productId: id,
       productName: name,
@@ -52,7 +54,8 @@ extension ProductToCartExtension on ProductEntity {
       quantity: 1,
       unitPrice: displaySalePrice ?? 0.0,
       unitCost: variant?.unitCost ?? 0.0,
-      availableStock: stockControl ? totalStock : CartItemEntity.unlimitedStock,
+      availableStock:
+          stockControl ? effectiveStock : CartItemEntity.unlimitedStock,
       usesBatches: usesBatches,
       wholesalePrice: variant?.wholesalePrice,
       sku: variant?.sku,
@@ -579,25 +582,83 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   Future<void> _irAVenta(ProductEntity product) async {
+    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
+
     // Si el producto no tiene variantes o tiene solo 1 (la default):
     // Flujo POS de Alta Velocidad (1-Click): se agrega directo a la caja sin abrir modal.
     if (product.productVariants.length <= 1) {
-      if (product.stockControl && product.totalStock <= 0) {
-        AppSnackbar.show(
-          context,
-          message: '${product.name} está agotado',
-          type: SnackbarType.warning,
-        );
-        return;
-      }
+      final targetVariant = product.defaultVariant;
+      final variantId = targetVariant?.id;
+      final cartKey = variantId ?? product.id;
       final cart = context.read<CartCubit>();
-      cart.addItem(product.toCartItem());
-      HapticFeedback.lightImpact();
+
+      // Validar control de stock por almacén activo
+      if (product.stockControl) {
+        if (warehouseId == null || warehouseId.isEmpty) {
+          AppSnackbar.show(
+            context,
+            message: 'Selecciona un almacén antes de agregar productos a caja.',
+            type: SnackbarType.warning,
+          );
+          return;
+        }
+
+        // 1. Obtener stock disponible en el almacén activo
+        int warehouseStock = product.getStockForWarehouse(
+          warehouseId,
+          variantId: variantId,
+        );
+
+        // Fallback: Si no vinieron lotes precargados pero hay totalStock registrado
+        if (warehouseStock <= 0 &&
+            product.warehouseStockBatches.isEmpty &&
+            product.totalStock > 0 &&
+            variantId != null) {
+          final repoRes = await sl<ProductsRepository>()
+              .fetchVariantStockByVariantIds([
+                variantId,
+              ], warehouseId: warehouseId);
+          if (!mounted) return;
+          repoRes.fold((_) {}, (map) {
+            warehouseStock = map[variantId] ?? 0;
+          });
+        }
+
+        // 2. Si no hay stock disponible en este almacén
+        if (warehouseStock <= 0) {
+          AppSnackbar.show(
+            context,
+            message:
+                '${product.name} no tiene stock disponible en este almacén.',
+            type: SnackbarType.warning,
+          );
+          return;
+        }
+
+        // 3. Validar contra lo que ya está en el carrito
+        final existingItem = cart.state.items[cartKey];
+        final inCartQty = existingItem?.quantity ?? 0;
+        if (inCartQty + 1 > warehouseStock) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Stock insuficiente en este almacén (Disponibles: $warehouseStock${inCartQty > 0 ? ', ya en caja: $inCartQty' : ''}).',
+            type: SnackbarType.warning,
+          );
+          return;
+        }
+
+        cart.addItem(product.toCartItem(warehouseStock: warehouseStock));
+      } else {
+        // Sin control de stock (servicios, intangibles)
+        cart.addItem(product.toCartItem());
+      }
+
+      AppFeedbackService.triggerFeedback();
       return;
     }
 
     // Si tiene múltiples variantes (> 1), se abre el modal
-    final warehouseId = context.read<PosCubit>().state.selectedWarehouseId;
     PosAddToCartSheet.show(context, product, warehouseId: warehouseId);
   }
 
@@ -809,25 +870,34 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                   Widget catalogContent = Column(
                     children: [
                       Expanded(
-                        child: BlocBuilder<
-                          AdminCatalogCubit,
-                          AdminCatalogState
-                        >(
-                          buildWhen:
-                              (prev, current) =>
-                                  prev.products != current.products ||
-                                  prev.catalogState != current.catalogState ||
-                                  prev.errorMessage != current.errorMessage,
-                          builder:
-                              (context, state) => _buildMainContent(
-                                context,
-                                context.read<AdminCatalogCubit>(),
-                                state,
-                                headerSliver: _buildCatalogHeaderSliver(
-                                  context,
-                                ),
-                                chipsSliver: _buildCategoryChipsSliver(context),
-                              ),
+                        child: BlocSelector<PosCubit, PosState, String?>(
+                          selector: (posState) => posState.selectedWarehouseId,
+                          builder: (context, selectedWarehouseId) {
+                            return BlocBuilder<
+                              AdminCatalogCubit,
+                              AdminCatalogState
+                            >(
+                              buildWhen:
+                                  (prev, current) =>
+                                      prev.products != current.products ||
+                                      prev.catalogState !=
+                                          current.catalogState ||
+                                      prev.errorMessage != current.errorMessage,
+                              builder:
+                                  (context, state) => _buildMainContent(
+                                    context,
+                                    context.read<AdminCatalogCubit>(),
+                                    state,
+                                    warehouseId: selectedWarehouseId,
+                                    headerSliver: _buildCatalogHeaderSliver(
+                                      context,
+                                    ),
+                                    chipsSliver: _buildCategoryChipsSliver(
+                                      context,
+                                    ),
+                                  ),
+                            );
+                          },
                         ),
                       ),
                       BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
@@ -1116,6 +1186,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     BuildContext context,
     AdminCatalogCubit cubit,
     AdminCatalogState state, {
+    String? warehouseId,
     required Widget headerSliver,
     required Widget chipsSliver,
   }) {
@@ -1202,6 +1273,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       matchedIngredients: state.matchedIngredients,
       bottomPadding: MediaQuery.of(context).size.width >= 800 ? 24 : 100,
       isPosMode: true,
+      warehouseId: warehouseId,
       onEdit: (product) {}, // No permitimos editar en modo caja
       headerSliver: headerSliver,
       chipsSliver: chipsSliver,

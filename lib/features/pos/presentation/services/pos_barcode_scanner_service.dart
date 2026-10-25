@@ -200,30 +200,26 @@ class PosBarcodeScannerService {
       final targetVariant = variant ?? product.defaultVariant;
 
       // Calcular stock disponible real para la variante y/o almacén seleccionado
-      int availableStock = product.totalStock;
-      if (product.warehouseStockBatches.isNotEmpty) {
-        if (targetVariant != null) {
-          final batches = product.warehouseStockBatches.where((b) {
-            final matchVariant = b.variantId == targetVariant.id;
-            final matchWh =
-                warehouseId == null ||
-                warehouseId.isEmpty ||
-                b.warehouseId == warehouseId;
-            return matchVariant && matchWh;
-          });
-          availableStock = batches.fold<int>(
-            0,
-            (sum, b) => sum + b.availableQuantity.toInt(),
-          );
-        } else if (warehouseId != null && warehouseId.isNotEmpty) {
-          final batches = product.warehouseStockBatches.where(
-            (b) => b.warehouseId == warehouseId,
-          );
-          availableStock = batches.fold<int>(
-            0,
-            (sum, b) => sum + b.availableQuantity.toInt(),
-          );
-        }
+      int availableStock = product.getStockForWarehouse(
+        warehouseId,
+        variantId: targetVariant?.id,
+      );
+
+      // Fallback remoto si no vinieron lotes precargados pero hay totalStock registrado
+      if (availableStock <= 0 &&
+          product.warehouseStockBatches.isEmpty &&
+          product.totalStock > 0 &&
+          targetVariant != null &&
+          warehouseId != null &&
+          warehouseId.isNotEmpty) {
+        final repoRes = await sl<ProductsRepository>()
+            .fetchVariantStockByVariantIds([
+              targetVariant.id,
+            ], warehouseId: warehouseId);
+        if (!context.mounted) return false;
+        repoRes.fold((_) {}, (map) {
+          availableStock = map[targetVariant.id] ?? 0;
+        });
       }
 
       // Verificar control de stock si aplica
@@ -234,7 +230,25 @@ class PosBarcodeScannerService {
                 : '';
         AppSnackbar.show(
           context,
-          message: '${product.name}$variantText está agotado.',
+          message:
+              '${product.name}$variantText no tiene stock disponible en este almacén.',
+          type: SnackbarType.warning,
+        );
+        return false;
+      }
+
+      final cartKey = targetVariant?.id ?? product.id;
+      final existingItem = cartCubit.state.items[cartKey];
+      final currentInCart = existingItem?.quantity ?? 0;
+      if (product.stockControl && currentInCart + 1 > availableStock) {
+        final variantText =
+            targetVariant != null && targetVariant.shortLabel.isNotEmpty
+                ? ' (${targetVariant.shortLabel})'
+                : '';
+        AppSnackbar.show(
+          context,
+          message:
+              'Stock insuficiente en este almacén para ${product.name}$variantText (Disponibles: $availableStock${currentInCart > 0 ? ', ya en caja: $currentInCart' : ''}).',
           type: SnackbarType.warning,
         );
         return false;
@@ -251,7 +265,6 @@ class PosBarcodeScannerService {
         return false;
       }
 
-      final cartKey = targetVariant?.id ?? product.id;
       final cartItem = CartItemEntity(
         productId: product.id,
         productName: product.name,

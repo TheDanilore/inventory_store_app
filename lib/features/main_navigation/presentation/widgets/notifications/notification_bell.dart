@@ -181,7 +181,10 @@ class _NotificationPanel extends StatelessWidget {
             shadowColor: Colors.black.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(16),
             child: Container(
-              width: 400,
+              width: (MediaQuery.sizeOf(context).width - 32).clamp(
+                280.0,
+                400.0,
+              ),
               constraints: const BoxConstraints(maxHeight: 560),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
