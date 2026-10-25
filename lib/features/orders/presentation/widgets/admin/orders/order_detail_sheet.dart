@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_item_e
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
+import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
@@ -445,6 +446,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
     IconData paymentIcon;
     Color paymentColor;
+    final upperMethod = safePaymentMethod.toUpperCase();
     if (state.accounts.any((a) => a['name'] == safePaymentMethod)) {
       final accType =
           state.accounts.firstWhere(
@@ -469,6 +471,20 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           paymentIcon = Icons.wallet_rounded;
           paymentColor = const Color(0xFF6B7280);
       }
+    } else if (upperMethod.contains('YAPE') || upperMethod.contains('PLIN')) {
+      paymentIcon = Icons.smartphone_rounded;
+      paymentColor = const Color(0xFF7C3AED);
+    } else if (upperMethod.contains('BCP') ||
+        upperMethod.contains('BBVA') ||
+        upperMethod.contains('INTERBANK') ||
+        upperMethod.contains('BANCO') ||
+        upperMethod.contains('TRANSFERENCIA')) {
+      paymentIcon = Icons.account_balance_rounded;
+      paymentColor = const Color(0xFF2563EB);
+    } else if (upperMethod.contains('EFECTIVO') ||
+        upperMethod.contains('CAJA')) {
+      paymentIcon = Icons.point_of_sale_rounded;
+      paymentColor = const Color(0xFFF59E0B);
     } else {
       paymentIcon =
           safePaymentMethod == 'CRÉDITO'
@@ -696,7 +712,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
-                                  'Op: ${order.paymentReference!.trim()}',
+                                  'Nº Op: ${order.paymentReference!.trim()}',
                                   style: const TextStyle(
                                     fontSize: 10.5,
                                     fontFamily: 'monospace',
@@ -934,6 +950,51 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
               ],
             ),
           ],
+          if (order.paymentReference != null &&
+              order.paymentReference!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.tag_rounded,
+                  size: 12,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Nº Operación / Voucher: ${order.paymentReference!.trim()}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'monospace',
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(
+                      ClipboardData(text: order.paymentReference!.trim()),
+                    );
+                    AppSnackbar.show(
+                      context,
+                      message:
+                          'Nº Operación ${order.paymentReference!.trim()} copiado',
+                      type: SnackbarType.info,
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(2.0),
+                    child: Icon(
+                      Icons.copy_rounded,
+                      size: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -969,11 +1030,23 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                   : (isDesktopOrDialog
                       ? double.infinity
                       : MediaQuery.of(context).size.height * 0.9),
-          decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(
+                isDesktopOrDialog || widget.isEmbedded ? 0 : 24,
+              ),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: SafeArea(
             top: false,
             child: Column(
               children: [
+                if (!widget.isEmbedded && !isDesktopOrDialog)
+                  const AppSheetDragHandle(
+                    padding: EdgeInsets.only(top: 10, bottom: 4),
+                  ),
                 Expanded(
                   child:
                       (rootState.isLoading && rootState.order == null)

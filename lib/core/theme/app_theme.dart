@@ -242,6 +242,12 @@ class AppTheme {
           color: AppColors.textSecondary,
         ),
       ),
+
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: AppColors.sidebarBg,
+        scrimColor: Colors.black45,
+        elevation: 0,
+      ),
     );
   }
 
@@ -461,6 +467,12 @@ class AppTheme {
           fontSize: 15,
           color: AppColors.darkTextSecondary,
         ),
+      ),
+
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: AppColors.darkSidebarBg,
+        scrimColor: Colors.black54,
+        elevation: 0,
       ),
     );
   }

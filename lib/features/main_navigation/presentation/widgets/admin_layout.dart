@@ -242,6 +242,10 @@ class _AdminLayoutState extends State<AdminLayout> {
             onCustomBack: widget.onBack,
             child: Scaffold(
               backgroundColor: AppColors.bg(context),
+              drawerScrimColor:
+                  isDark
+                      ? Colors.black.withValues(alpha: 0.65)
+                      : Colors.black45,
               endDrawer:
                   widget.showDrawerButton
                       ? const AppDrawer(isAdmin: true)
@@ -332,12 +336,15 @@ class _AdminLayoutState extends State<AdminLayout> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      const Text(
+                                      Text(
                                         'ONE',
                                         style: TextStyle(
                                           fontSize: 16.5,
                                           fontWeight: FontWeight.w900,
-                                          color: Color(0xFF2563EB),
+                                          color:
+                                              isDark
+                                                  ? const Color(0xFF60A5FA)
+                                                  : const Color(0xFF2563EB),
                                           letterSpacing: -0.5,
                                         ),
                                       ),

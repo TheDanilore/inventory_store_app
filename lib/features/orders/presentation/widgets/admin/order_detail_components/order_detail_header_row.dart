@@ -66,6 +66,12 @@ class OrderDetailHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final shortId =
         orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
+    final bool hasDocNumber =
+        documentNumber != null && documentNumber!.trim().isNotEmpty;
+    final bool hasDocType =
+        documentType != null &&
+        documentType!.trim().isNotEmpty &&
+        documentType!.toUpperCase() != 'NINGUNO';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,14 +143,20 @@ class OrderDetailHeaderRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (documentNumber != null &&
-                      documentNumber!.trim().isNotEmpty) ...[
+                  if (hasDocNumber || hasDocType) ...[
                     MouseRegion(
-                      cursor: SystemMouseCursors.click,
+                      cursor:
+                          hasDocNumber
+                              ? SystemMouseCursors.click
+                              : SystemMouseCursors.basic,
                       child: GestureDetector(
                         onTap:
-                            () =>
-                                _copyDocNumber(context, documentNumber!.trim()),
+                            hasDocNumber
+                                ? () => _copyDocNumber(
+                                  context,
+                                  documentNumber!.trim(),
+                                )
+                                : null,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -184,10 +196,12 @@ class OrderDetailHeaderRow extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                documentNumber!.trim(),
+                                hasDocNumber
+                                    ? documentNumber!.trim()
+                                    : _formatDocType(documentType),
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontFamily: 'monospace',
+                                  fontFamily: hasDocNumber ? 'monospace' : null,
                                   fontWeight: FontWeight.w800,
                                   color:
                                       (documentType?.toUpperCase() == 'FACTURA')
@@ -198,21 +212,24 @@ class OrderDetailHeaderRow extends StatelessWidget {
                                               : const Color(0xFF047857)),
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '(${_formatDocType(documentType)})',
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      (documentType?.toUpperCase() == 'FACTURA')
-                                          ? const Color(0xFF7E22CE)
-                                          : ((documentType?.toUpperCase() ==
-                                                  'BOLETA')
-                                              ? const Color(0xFF1D4ED8)
-                                              : const Color(0xFF047857)),
+                              if (hasDocNumber) ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  '(${_formatDocType(documentType)})',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        (documentType?.toUpperCase() ==
+                                                'FACTURA')
+                                            ? const Color(0xFF7E22CE)
+                                            : ((documentType?.toUpperCase() ==
+                                                    'BOLETA')
+                                                ? const Color(0xFF1D4ED8)
+                                                : const Color(0xFF047857)),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),

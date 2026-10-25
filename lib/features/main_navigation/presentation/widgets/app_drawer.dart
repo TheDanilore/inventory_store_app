@@ -314,11 +314,11 @@ class _AppDrawerState extends State<AppDrawer> {
     final canViewSettings = can(AppPermissions.settingsView);
 
     return Drawer(
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.background,
+      backgroundColor: AppColors.sideBg(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.zero,
+          topLeft: Radius.circular(24),
+          bottomLeft: Radius.circular(24),
         ),
       ),
       child: Column(
@@ -335,7 +335,9 @@ class _AppDrawerState extends State<AppDrawer> {
           Expanded(
             child: RawScrollbar(
               controller: _scrollController,
-              thumbColor: AppColors.textMuted.withValues(alpha: 0.22),
+              thumbColor: isDark
+                  ? AppColors.darkSidebarText.withValues(alpha: 0.3)
+                  : AppColors.sidebarText.withValues(alpha: 0.22),
               radius: const Radius.circular(4),
               thickness: 4,
               padding: const EdgeInsets.only(right: 2),
@@ -343,7 +345,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: _staggerDrawerChildren([
-                  _buildSectionTitle('MENÚ PRINCIPAL'),
+                  _buildSectionTitle(context, 'MENÚ PRINCIPAL'),
                   _buildItem(
                     context,
                     _DrawerItem(
@@ -373,7 +375,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   // ── GESTIÓN COMERCIAL ──────────────────────────────
                   if (hasCommercialSection) ...[
                     const _SectionDivider(),
-                    _buildSectionTitle('GESTIÓN COMERCIAL'),
+                    _buildSectionTitle(context, 'GESTIÓN COMERCIAL'),
                   ],
 
                   if (canViewOrders)
@@ -515,7 +517,7 @@ class _AppDrawerState extends State<AppDrawer> {
                         children: [
                           if (hasErpSection) ...[
                             const _SectionDivider(),
-                            _buildSectionTitle('CONFIGURACIÓN ERP'),
+                            _buildSectionTitle(context, 'CONFIGURACIÓN ERP'),
                           ],
                           if (mastersChildren.isNotEmpty)
                             _ExpandableDrawerGroup(
@@ -542,7 +544,7 @@ class _AppDrawerState extends State<AppDrawer> {
 
                   // ── SISTEMA & SOPORTE ──────────────────────────────
                   const _SectionDivider(),
-                  _buildSectionTitle('SISTEMA & SOPORTE'),
+                  _buildSectionTitle(context, 'SISTEMA & SOPORTE'),
                   if (canViewSettings)
                     _buildItem(
                       context,
@@ -576,7 +578,7 @@ class _AppDrawerState extends State<AppDrawer> {
           // ─────────────────────────────────────────
           // PIE (perfil siempre visible)
           // ─────────────────────────────────────────
-          const Divider(height: 1),
+          Divider(height: 1, color: AppColors.sideBorder(context)),
           _DrawerFooter(isAdmin: isAdmin),
         ],
       ),
@@ -616,26 +618,35 @@ class _AppDrawerState extends State<AppDrawer> {
   Widget _buildItem(BuildContext context, _DrawerItem item) {
     final currentPath = GoRouterState.of(context).uri.path;
     final active = _isItemActive(item.routePath, currentPath);
+    final isDark = AppColors.isDark(context);
+
+    final itemBg = active ? AppColors.sideActiveBg(context) : Colors.transparent;
+    final itemBorder =
+        active ? AppColors.sideActiveBorder(context) : Colors.transparent;
+    final itemIndicator = AppColors.sideActiveIndicator(context);
+    final iconColor = active
+        ? (isDark ? const Color(0xFF60A5FA) : itemIndicator)
+        : AppColors.sideText(context);
+    final textColor = active
+        ? AppColors.sideTextActive(context)
+        : AppColors.txtPrimary(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Material(
-        color: active ? const Color(0xFFEFF6FF) : Colors.transparent,
+        color: itemBg,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: item.onTap,
-          splashColor: const Color(0xFFDBEAFE),
-          hoverColor: const Color(0xFFF1F5F9),
+          splashColor: itemIndicator.withValues(alpha: 0.12),
+          hoverColor: AppColors.sideHover(context),
           child: Container(
             constraints: const BoxConstraints(minHeight: 46),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border:
-                  active
-                      ? Border.all(color: const Color(0xFFDBEAFE), width: 1)
-                      : Border.all(color: Colors.transparent, width: 1),
+              border: Border.all(color: itemBorder, width: 1),
             ),
             child: Row(
               children: [
@@ -645,16 +656,19 @@ class _AppDrawerState extends State<AppDrawer> {
                     height: 18,
                     margin: const EdgeInsets.only(right: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
+                      color: itemIndicator,
                       borderRadius: BorderRadius.circular(3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: itemIndicator.withValues(alpha: 0.4),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 Icon(
                   item.icon,
-                  color:
-                      active
-                          ? const Color(0xFF2563EB)
-                          : const Color(0xFF64748B),
+                  color: iconColor,
                   size: 21,
                 ),
                 const SizedBox(width: 12),
@@ -662,10 +676,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   child: Text(
                     item.title,
                     style: TextStyle(
-                      color:
-                          active
-                              ? const Color(0xFF1E40AF)
-                              : const Color(0xFF0F172A),
+                      color: textColor,
                       fontSize: 14,
                       letterSpacing: -0.2,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
@@ -743,6 +754,17 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
     final isOpen = DrawerNavigationMemory.expandedGroups.contains(
       widget.item.title,
     );
+    final isDark = AppColors.isDark(context);
+
+    final headerTextColor = hasActiveChild
+        ? AppColors.sideTextActive(context)
+        : AppColors.txtPrimary(context);
+    final iconColor = hasActiveChild
+        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+        : AppColors.sideText(context);
+    final chevronColor = isOpen
+        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+        : AppColors.sideText(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -756,8 +778,8 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: _toggle,
-              splashColor: AppColors.primary.withValues(alpha: 0.1),
-              hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+              splashColor: AppColors.sideActiveIndicator(context).withValues(alpha: 0.1),
+              hoverColor: AppColors.sideHover(context),
               child: Container(
                 constraints: const BoxConstraints(minHeight: 46),
                 padding: const EdgeInsets.symmetric(
@@ -768,10 +790,7 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                   children: [
                     Icon(
                       widget.item.icon,
-                      color:
-                          hasActiveChild
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                      color: iconColor,
                       size: 21,
                     ),
                     const SizedBox(width: 12),
@@ -779,10 +798,7 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                       child: Text(
                         widget.item.title,
                         style: TextStyle(
-                          color:
-                              hasActiveChild
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
+                          color: headerTextColor,
                           fontSize: 14,
                           letterSpacing: -0.2,
                           fontWeight:
@@ -797,10 +813,7 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
                       duration: const Duration(milliseconds: 220),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
-                        color:
-                            isOpen
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
+                        color: chevronColor,
                         size: 20,
                       ),
                     ),
@@ -832,18 +845,18 @@ class _ExpandableDrawerGroupState extends State<_ExpandableDrawerGroup> {
 // Utilidades de UI
 // ─────────────────────────────────────────────────────────────────────────
 
-Widget _buildSectionTitle(String title) {
+Widget _buildSectionTitle(BuildContext context, String title) {
   return Center(
     child: Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Text(
         title,
         textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: AppColors.textMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
+        style: TextStyle(
+          color: AppColors.sideSectionHeader(context),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
         ),
       ),
     ),
@@ -880,12 +893,17 @@ class _SubItemsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+    final lineBorderColor = isDark
+        ? const Color(0xFF3B82F6).withValues(alpha: 0.45)
+        : const Color(0xFF2563EB).withValues(alpha: 0.35);
+
     return Container(
       margin: const EdgeInsets.only(left: 24, right: 12, bottom: 4),
       decoration: BoxDecoration(
         border: Border(
           left: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.35),
+            color: lineBorderColor,
             width: 2,
           ),
         ),
@@ -908,31 +926,38 @@ class _SubItemTile extends StatelessWidget {
     final active =
         currentPath == item.routePath ||
         currentPath.startsWith('${item.routePath}/');
+    final isDark = AppColors.isDark(context);
+
+    final tileBg = active
+        ? AppColors.sideActiveBg(context)
+        : Colors.transparent;
+    final tileBorder = active
+        ? AppColors.sideActiveBorder(context)
+        : Colors.transparent;
+    final indicatorColor = AppColors.sideActiveIndicator(context);
+    final iconColor = active
+        ? (isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB))
+        : (isDark ? AppColors.darkSidebarText : const Color(0xFF64748B));
+    final textColor = active
+        ? AppColors.sideTextActive(context)
+        : AppColors.txtPrimary(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Material(
-        color:
-            active
-                ? AppColors.primary.withValues(alpha: 0.09)
-                : Colors.transparent,
+        color: tileBg,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: item.onTap,
-          splashColor: AppColors.primary.withValues(alpha: 0.12),
-          hoverColor: AppColors.primaryLight.withValues(alpha: 0.4),
+          splashColor: indicatorColor.withValues(alpha: 0.12),
+          hoverColor: AppColors.sideHover(context),
           child: Container(
             constraints: const BoxConstraints(minHeight: 40),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border:
-                  active
-                      ? Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.16),
-                        width: 1,
-                      )
-                      : Border.all(color: Colors.transparent, width: 1),
+              border: Border.all(color: tileBorder, width: 1),
             ),
             child: Row(
               children: [
@@ -942,16 +967,13 @@ class _SubItemTile extends StatelessWidget {
                     height: 16,
                     margin: const EdgeInsets.only(right: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: indicatorColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 Icon(
                   item.icon,
-                  color:
-                      active
-                          ? AppColors.primary
-                          : AppColors.primary.withValues(alpha: 0.7),
+                  color: iconColor,
                   size: 19,
                 ),
                 const SizedBox(width: 10),
@@ -959,7 +981,7 @@ class _SubItemTile extends StatelessWidget {
                   child: Text(
                     item.title,
                     style: TextStyle(
-                      color: active ? AppColors.primary : AppColors.textPrimary,
+                      color: textColor,
                       fontSize: 13.5,
                       letterSpacing: -0.2,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
@@ -986,16 +1008,14 @@ class _DrawerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final headerBg = isDark ? AppColors.darkSurface : Colors.white;
-    final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
+    final isDark = AppColors.isDark(context);
+    final headerBg = AppColors.sideBg(context);
+    final borderColor = AppColors.sideBorder(context);
     final logoBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
     final logoBorder =
         isDark ? const Color(0xFF334155) : const Color(0xFFDBEAFE);
-    final titleColor =
-        isDark ? AppColors.darkTextPrimary : const Color(0xFF0F172A);
-    final subtitleColor =
-        isDark ? AppColors.darkTextSecondary : const Color(0xFF64748B);
+    final titleColor = AppColors.txtPrimary(context);
+    final subtitleColor = AppColors.txtSecondary(context);
 
     return Container(
       padding: EdgeInsets.only(
@@ -1129,9 +1149,13 @@ class _SectionDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Divider(indent: 24, endIndent: 24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Divider(
+        indent: 24,
+        endIndent: 24,
+        color: AppColors.sideBorder(context),
+      ),
     );
   }
 }
@@ -1146,13 +1170,11 @@ class _DrawerFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final footerBg = isDark ? AppColors.darkSurface : AppColors.background;
-    final borderColor = isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0);
-    final textPrimary =
-        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final isDark = AppColors.isDark(context);
+    final footerBg = AppColors.sideBg(context);
+    final borderColor = AppColors.sideBorder(context);
+    final textPrimary = AppColors.txtPrimary(context);
+    final textSecondary = AppColors.txtSecondary(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -1183,6 +1205,7 @@ class _DrawerFooter extends StatelessWidget {
                     Navigator.pop(context);
                     context.go('/profile');
                   },
+                  hoverColor: AppColors.sideHover(context),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -1192,9 +1215,10 @@ class _DrawerFooter extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
+                          backgroundColor:
+                              isDark
+                                  ? const Color(0xFF1E293B)
+                                  : AppColors.primary.withValues(alpha: 0.1),
                           backgroundImage:
                               data.avatarUrl != null &&
                                       data.avatarUrl!.isNotEmpty
@@ -1206,9 +1230,12 @@ class _DrawerFooter extends StatelessWidget {
                                   : null,
                           child:
                               data.avatarUrl == null
-                                  ? const Icon(
+                                  ? Icon(
                                     Icons.person_rounded,
-                                    color: AppColors.primary,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF60A5FA)
+                                            : AppColors.primary,
                                     size: 20,
                                   )
                                   : null,
@@ -1242,9 +1269,12 @@ class _DrawerFooter extends StatelessWidget {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.logout_rounded,
-                            color: AppColors.error,
+                            color:
+                                isDark
+                                    ? const Color(0xFFF87171)
+                                    : AppColors.error,
                             size: 20,
                           ),
                           tooltip: 'Cerrar Sesión',

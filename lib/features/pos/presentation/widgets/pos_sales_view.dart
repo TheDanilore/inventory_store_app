@@ -201,36 +201,19 @@ class _PosSalesViewState extends State<PosSalesView> {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder:
-          (ctx) => Container(
-            height: MediaQuery.of(ctx).size.height * 0.90,
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 40,
-                  height: 4.5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: OrderDetailSheet(
-                    order: order,
-                    onPop: (_) => Navigator.of(ctx).pop(),
-                    onOrderUpdated: (updated) {
-                      context.read<PosCubit>().fetchRecentOrders(
-                        forceRefresh: true,
-                      );
-                    },
-                  ),
-                ),
-              ],
+          (ctx) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.90,
+              child: OrderDetailSheet(
+                order: order,
+                onPop: (_) => Navigator.of(ctx).pop(),
+                onOrderUpdated: (updated) {
+                  context.read<PosCubit>().fetchRecentOrders(
+                    forceRefresh: true,
+                  );
+                },
+              ),
             ),
           ),
     );

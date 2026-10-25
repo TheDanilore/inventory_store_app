@@ -417,6 +417,10 @@ class _AdminShellLayoutState extends State<AdminShellLayout> {
                     onCustomBack: header.onBack,
                     child: Scaffold(
                       backgroundColor: AppColors.bg(context),
+                      drawerScrimColor:
+                          isDark
+                              ? Colors.black.withValues(alpha: 0.65)
+                              : Colors.black45,
                       endDrawer:
                           header.showDrawerButton
                               ? const AppDrawer(isAdmin: true)

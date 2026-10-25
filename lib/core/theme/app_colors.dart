@@ -24,6 +24,7 @@ class AppColors {
   static const Color sidebarActiveBg = Color(
     0xFFEFF6FF,
   ); // Blue 50 cápsula activa suave
+  static const Color sidebarActiveBorder = Color(0xFFDBEAFE);
   static const Color sidebarActiveIndicator = Color(
     0xFF2563EB,
   ); // Blue 600 vibrante
@@ -53,8 +54,9 @@ class AppColors {
   static const Color darkSidebarBg = Color(0xFF0F172A); // Slate 900
   static const Color darkSidebarBorder = Color(0xFF1E293B);
   static const Color darkSidebarText = Color(0xFF94A3B8); // Slate 400
-  static const Color darkSidebarTextActive = Color(0xFF60A5FA); // Blue 400
+  static const Color darkSidebarTextActive = Color(0xFF93C5FD); // Blue 300 legible y suave
   static const Color darkSidebarActiveBg = Color(0xFF1E293B); // Slate 800
+  static const Color darkSidebarActiveBorder = Color(0xFF334155); // Slate 700
   static const Color darkSidebarActiveIndicator = Color(0xFF3B82F6); // Blue 500
   static const Color darkSidebarHover = Color(0xFF1E293B);
   static const Color darkSidebarSectionHeader = Color(0xFF64748B); // Slate 500
@@ -194,6 +196,27 @@ class AppColors {
 
   static Color sideBorder(BuildContext context) =>
       isDark(context) ? darkSidebarBorder : sidebarBorder;
+
+  static Color sideText(BuildContext context) =>
+      isDark(context) ? darkSidebarText : sidebarText;
+
+  static Color sideTextActive(BuildContext context) =>
+      isDark(context) ? darkSidebarTextActive : sidebarTextActive;
+
+  static Color sideActiveBg(BuildContext context) =>
+      isDark(context) ? darkSidebarActiveBg : sidebarActiveBg;
+
+  static Color sideActiveBorder(BuildContext context) =>
+      isDark(context) ? darkSidebarActiveBorder : sidebarActiveBorder;
+
+  static Color sideActiveIndicator(BuildContext context) =>
+      isDark(context) ? darkSidebarActiveIndicator : sidebarActiveIndicator;
+
+  static Color sideHover(BuildContext context) =>
+      isDark(context) ? darkSidebarHover : sidebarHover;
+
+  static Color sideSectionHeader(BuildContext context) =>
+      isDark(context) ? darkSidebarSectionHeader : sidebarSectionHeader;
 
   // --- 7. CONFIGURACIÓN DEL MATERIAL 3 ---
   static const ColorScheme colorScheme = ColorScheme.light(
