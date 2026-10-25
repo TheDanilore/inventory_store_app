@@ -33,10 +33,11 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sideba
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/features/inventory/presentation/screens/inventory_screen.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_sales_view.dart';
 import 'package:inventory_store_app/features/pos/presentation/screens/all_cash_shifts_screen.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
+import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
+import 'package:inventory_store_app/features/orders/presentation/screens/admin/orders_screen.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 
@@ -83,6 +84,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   int _selectedSidebarIndex = 0;
   InventoryCubit? _inventoryCubit;
   CashShiftsCubit? _cashShiftsCubit;
+  OrdersCubit? _ordersCubit;
   bool _isMountedReady = false;
   // Controla si el POS es el branch activo (evita que los shortcuts de hardware
   // intercepten teclas del ERP cuando el POS está en IndexedStack pero invisible).
@@ -187,6 +189,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
         context.read<InventoryCubit>().initStockTab();
         break;
       case 2:
+        _ordersCubit?.loadOrders(background: true);
         context.read<PosCubit>().fetchRecentOrders(forceRefresh: true);
         context.read<PosCubit>().fetchDailySalesSummary();
         break;
@@ -576,6 +579,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     }
     _inventoryCubit?.close();
     _cashShiftsCubit?.close();
+    _ordersCubit?.close();
     _searchCtrl.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -956,11 +960,17 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                       ),
                     );
                   } else if (_selectedSidebarIndex == 2) {
+                    _ordersCubit ??= sl<OrdersCubit>();
                     activeView = Expanded(
                       child: SafeArea(
                         bottom: false,
-                        child: PosSalesView(
-                          onOpenCashShifts: () => _onSidebarTabSelected(3),
+                        child: BlocProvider.value(
+                          value: _ordersCubit!,
+                          child: OrdersScreen(
+                            isEmbedded: true,
+                            customTitle: 'Historial de Ventas POS',
+                            onOpenCashShifts: () => _onSidebarTabSelected(3),
+                          ),
                         ),
                       ),
                     );

@@ -35,8 +35,16 @@ import 'package:inventory_store_app/features/orders/presentation/widgets/admin/o
 class OrdersScreen extends StatefulWidget {
   final String? customTitle;
   final String? targetOrderId;
+  final bool isEmbedded;
+  final VoidCallback? onOpenCashShifts;
 
-  const OrdersScreen({super.key, this.customTitle, this.targetOrderId});
+  const OrdersScreen({
+    super.key,
+    this.customTitle,
+    this.targetOrderId,
+    this.isEmbedded = false,
+    this.onOpenCashShifts,
+  });
 
   @override
   State<OrdersScreen> createState() => _OrdersScreenState();
@@ -94,7 +102,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
       _selectedOrder = order;
     });
 
-    if (updateUrl && mounted) {
+    if (updateUrl && !widget.isEmbedded && mounted) {
       final isWide = MediaQuery.sizeOf(context).width >= 640;
       if (isWide) {
         if (order != null) {
@@ -478,15 +486,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 640;
 
-    return Focus(
-      focusNode: _screenFocusNode,
-      onKeyEvent: _handleKeyEvent,
-      autofocus: true,
-      child: AdminLayout(
-        title: widget.customTitle ?? 'Gestión de Pedidos',
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return BlocConsumer<OrdersCubit, OrdersState>(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final ordersBody = LayoutBuilder(
+      builder: (context, constraints) {
+        return BlocConsumer<OrdersCubit, OrdersState>(
               listener: (context, state) {
                 if (_pendingTargetOrderId != null) {
                   _resolveTargetOrder(state.orders, isWide);
@@ -555,10 +559,42 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
                       SliverToBoxAdapter(
                         child: AdminPageHeader(
-                          title: 'Gestión de Pedidos',
+                          title:
+                              widget.customTitle ??
+                              (widget.isEmbedded
+                                  ? 'Historial de Ventas POS'
+                                  : 'Gestión de Pedidos'),
                           subtitle:
-                              'Gestiona los pedidos de tus clientes, su estado y pagos',
+                              widget.isEmbedded
+                                  ? 'Consulta comprobantes emitidos, audita productos y reimprime tickets'
+                                  : 'Gestiona los pedidos de tus clientes, su estado y pagos',
                           isDesktop: isWide,
+                          actions: [
+                            if (widget.onOpenCashShifts != null)
+                              OutlinedButton.icon(
+                                onPressed: widget.onOpenCashShifts,
+                                icon: const Icon(
+                                  Icons.point_of_sale_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text('Turnos de Caja'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor:
+                                      isDark
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
+                                  side: BorderSide(
+                                    color:
+                                        isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.border,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
 
@@ -717,8 +753,25 @@ class _OrdersScreenState extends State<OrdersScreen> {
               },
             );
           },
-        ),
-      ),
+        );
+
+    return Focus(
+      focusNode: _screenFocusNode,
+      onKeyEvent: _handleKeyEvent,
+      autofocus: true,
+      child:
+          widget.isEmbedded
+              ? Material(
+                color:
+                    isDark
+                        ? AppColors.darkBackground
+                        : const Color(0xFFF8FAFC),
+                child: ordersBody,
+              )
+              : AdminLayout(
+                title: widget.customTitle ?? 'Gestión de Pedidos',
+                body: ordersBody,
+              ),
     );
   }
 
