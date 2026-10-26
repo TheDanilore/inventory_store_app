@@ -196,31 +196,54 @@ class _LoginFormCardState extends State<LoginFormCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: widget.isFlat ? EdgeInsets.zero : const EdgeInsets.all(24),
       decoration:
           widget.isFlat
               ? null
-              : BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
+              : (isDark
+                  ? BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  )
+                  : BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  )),
       child: AutofillGroup(
         child: Form(
           key: widget.formKey,
@@ -236,78 +259,126 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     !widget.isLoginMode
                         ? Padding(
                           padding: const EdgeInsets.only(bottom: 14),
-                          child: _GlassField(
-                            controller: widget.nameController,
-                            label: 'Nombre completo',
-                            icon: Icons.person_outline_rounded,
-                            keyboardType: TextInputType.name,
-                            textCapitalization: TextCapitalization.words,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.name],
-                            validator: _validateName,
-                          ),
+                          child:
+                              isDark
+                                  ? _GlassField(
+                                    controller: widget.nameController,
+                                    label: 'Nombre completo',
+                                    icon: Icons.person_outline_rounded,
+                                    keyboardType: TextInputType.name,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [AutofillHints.name],
+                                    validator: _validateName,
+                                  )
+                                  : AppTextField(
+                                    controller: widget.nameController,
+                                    label: 'Nombre completo',
+                                    icon: Icons.person_outline_rounded,
+                                    keyboardType: TextInputType.name,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [AutofillHints.name],
+                                    validator: _validateName,
+                                  ),
                         )
                         : const SizedBox.shrink(),
               ),
 
-              _GlassField(
-                controller: widget.emailController,
-                label: 'Correo electrónico',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [
-                  AutofillHints.username,
-                  AutofillHints.email,
-                ],
-                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                validator: _validateEmail,
-              ),
+              isDark
+                  ? _GlassField(
+                    controller: widget.emailController,
+                    label: 'Correo electrónico',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                    validator: _validateEmail,
+                  )
+                  : AppTextField(
+                    controller: widget.emailController,
+                    label: 'Correo electrónico',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                    validator: _validateEmail,
+                  ),
               const SizedBox(height: 14),
 
               ValueListenableBuilder<bool>(
                 valueListenable: _obscurePasswordNotifier,
                 builder: (context, obscure, _) {
-                  return _GlassField(
-                    controller: widget.passwordController,
-                    label: 'Contraseña',
-                    icon: Icons.lock_outline_rounded,
-                    textInputAction: TextInputAction.done,
-                    autofillHints: [
-                      widget.isLoginMode
-                          ? AutofillHints.password
-                          : AutofillHints.newPassword,
-                    ],
-                    onFieldSubmitted:
-                        widget.isLoading
-                            ? null
-                            : (_) => widget.onAuthenticate(),
-                    suffixIcon: IconButton(
-                      icon: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        transitionBuilder:
-                            (child, anim) => ScaleTransition(
-                              scale: anim,
-                              child: FadeTransition(
-                                opacity: anim,
-                                child: child,
-                              ),
-                            ),
-                        child: Icon(
-                          obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          key: ValueKey<bool>(obscure),
-                          color: Colors.white.withValues(alpha: 0.62),
-                          size: 20,
-                        ),
+                  final suffix = IconButton(
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      transitionBuilder:
+                          (child, anim) => ScaleTransition(
+                            scale: anim,
+                            child: FadeTransition(opacity: anim, child: child),
+                          ),
+                      child: Icon(
+                        obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        key: ValueKey<bool>(obscure),
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.62)
+                                : AppColors.textSecondary,
+                        size: 20,
                       ),
-                      onPressed:
-                          () => _obscurePasswordNotifier.value = !obscure,
                     ),
-                    obscureText: obscure,
-                    validator: _validatePassword,
+                    onPressed: () => _obscurePasswordNotifier.value = !obscure,
                   );
+
+                  return isDark
+                      ? _GlassField(
+                        controller: widget.passwordController,
+                        label: 'Contraseña',
+                        icon: Icons.lock_outline_rounded,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: [
+                          widget.isLoginMode
+                              ? AutofillHints.password
+                              : AutofillHints.newPassword,
+                        ],
+                        onFieldSubmitted:
+                            widget.isLoading
+                                ? null
+                                : (_) => widget.onAuthenticate(),
+                        suffixIcon: suffix,
+                        obscureText: obscure,
+                        validator: _validatePassword,
+                      )
+                      : AppTextField(
+                        controller: widget.passwordController,
+                        label: 'Contraseña',
+                        icon: Icons.lock_outline_rounded,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: [
+                          widget.isLoginMode
+                              ? AutofillHints.password
+                              : AutofillHints.newPassword,
+                        ],
+                        onFieldSubmitted:
+                            widget.isLoading
+                                ? null
+                                : (_) => widget.onAuthenticate(),
+                        suffixIcon: suffix,
+                        obscureText: obscure,
+                        validator: _validatePassword,
+                      );
                 },
               ),
 
@@ -336,10 +407,13 @@ class _LoginFormCardState extends State<LoginFormCard> {
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: const Text(
+                                child: Text(
                                   '¿Olvidaste tu contraseña?',
                                   style: TextStyle(
-                                    color: Color(0xFF22D3EE),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF22D3EE)
+                                            : const Color(0xFF2563EB),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),

@@ -386,12 +386,16 @@ class AppRouter {
                   secondaryAnimation,
                   child,
                 ) {
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
                   return Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Respaldo azul marino = color final del login: el panel
-                      // aparece desde el mismo tono sin destello intermedio.
-                      const ColoredBox(color: Color(0xFF061426)),
+                      // Respaldo dinámico: en oscuro azul marino, en claro blanco
+                      // para que el panel aparezca sin destellos intermedios.
+                      ColoredBox(
+                        color: isDark ? const Color(0xFF061426) : Colors.white,
+                      ),
                       FadeTransition(
                         opacity: CurvedAnimation(
                           parent: animation,

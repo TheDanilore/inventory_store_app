@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class LoginToggleMode extends StatelessWidget {
   final bool isLoginMode;
@@ -16,16 +17,21 @@ class LoginToggleMode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
       child: Row(
-        key: ValueKey(isLoginMode),
+        key: ValueKey('${isDark ? 'dark' : 'light'}_$isLoginMode'),
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             isLoginMode ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? ',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.62),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.62)
+                      : AppColors.textSecondary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -36,12 +42,12 @@ class LoginToggleMode extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: _cyan,
+              foregroundColor: isDark ? _cyan : const Color(0xFF2563EB),
             ),
             child: Text(
               isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
-              style: const TextStyle(
-                color: _cyan,
+              style: TextStyle(
+                color: isDark ? _cyan : const Color(0xFF2563EB),
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.2,
