@@ -1,4 +1,4 @@
-import 'dart:ui' show lerpDouble;
+import 'dart:ui' show ImageFilter, lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
@@ -30,56 +30,96 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // ── Controladores de Animación ──────────────────────────────────────────
-  late final AnimationController _entranceCtrl;
-  late final Animation<double> _heroSlideAnim;
-  late final Animation<double> _sheetSlideAnim;
-  late final Animation<double> _fadeAnim;
+  // Curvas creadas con [_curve]; se liberan juntas en dispose().
+  final List<CurvedAnimation> _curved = [];
 
+  // ── 1. Entrada: una sola secuencia orquestada ───────────────────────────
+  late final AnimationController _entranceCtrl;
+  late final Animation<double> _heroAnim;
+  late final Animation<double> _sheetAnim;
+  late final Animation<double> _fadeAnim;
+  late final List<Animation<double>> _revealAnims; // header, form, toggle
+
+  // ── 2. Ambiente: luz que respira + arte 3D que flota ────────────────────
   late final AnimationController _blobCtrl;
   late final Animation<double> _blobAnim;
+  late final AnimationController _floatCtrl;
+  late final Animation<double> _floatAnim;
+  final ValueNotifier<Offset> _parallax = ValueNotifier<Offset>(Offset.zero);
 
-  late final AnimationController _sheetExpandCtrl;
-  late final Animation<double> _sheetExpandAnim;
+  // ── 3. Éxito: el sheet sube, el hero se vuelve vidrio blanco y aparece
+  //       la marca mientras se abre el panel. Todo cuelga de un controlador.
+  late final AnimationController _successCtrl;
+  late final Animation<double> _riseAnim; // sheet sube al tope (0 → 0.5)
+  late final Animation<double> _contentOutAnim; // formulario se disuelve
+  late final Animation<double> _frostAnim; // blur + velo translúcido
+  late final Animation<double> _logoAnim; // marca aparece
+  late final Animation<double> _progressAnim; // barra de progreso
+  late final Animation<double> _whitenAnim; // termina en blanco limpio
+
+  Animation<double> _curve(
+    AnimationController parent,
+    double begin,
+    double end,
+    Curve curve,
+  ) {
+    final anim = CurvedAnimation(
+      parent: parent,
+      curve: Interval(begin, end, curve: curve),
+    );
+    _curved.add(anim);
+    return anim;
+  }
 
   @override
   void initState() {
     super.initState();
 
-    // 1. Animación de Entrada Fluida (Hero desliza desde arriba, Sheet desliza desde abajo)
     _entranceCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 1100),
     );
-    _heroSlideAnim = Tween<double>(begin: -0.15, end: 0.0).animate(
-      CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOutCubic),
-    );
-    _sheetSlideAnim = Tween<double>(begin: 0.40, end: 0.0).animate(
-      CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOutCubic),
-    );
-    _fadeAnim = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
+    _heroAnim = _curve(_entranceCtrl, 0.0, 0.70, Curves.easeOutCubic);
+    _sheetAnim = _curve(_entranceCtrl, 0.0, 0.65, Curves.easeOutQuart);
+    _fadeAnim = _curve(_entranceCtrl, 0.0, 0.50, Curves.easeOut);
+    _revealAnims = [
+      for (var i = 0; i < 3; i++)
+        _curve(
+          _entranceCtrl,
+          0.32 + i * 0.10,
+          0.72 + i * 0.10,
+          Curves.easeOutCubic,
+        ),
+    ];
     _entranceCtrl.forward();
 
-    // 2. Respiración sutil continua de la luz ambiental decorativa
     _blobCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 4200),
     );
     _blobAnim = Tween<double>(
-      begin: 0.95,
-      end: 1.05,
-    ).animate(CurvedAnimation(parent: _blobCtrl, curve: Curves.easeInOutSine));
+      begin: 0.94,
+      end: 1.06,
+    ).animate(_curve(_blobCtrl, 0.0, 1.0, Curves.easeInOutSine));
     _blobCtrl.repeat(reverse: true);
 
-    // 3. Animación al Iniciar Sesión con Éxito (El bottom sheet sube hasta el tope cubriendo la pantalla)
-    _sheetExpandCtrl = AnimationController(
+    _floatCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 550),
+      duration: const Duration(milliseconds: 5600),
     );
-    _sheetExpandAnim = CurvedAnimation(
-      parent: _sheetExpandCtrl,
-      curve: Curves.easeInOutCubic,
+    _floatAnim = _curve(_floatCtrl, 0.0, 1.0, Curves.easeInOutSine);
+    _floatCtrl.repeat(reverse: true);
+
+    _successCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
     );
+    _riseAnim = _curve(_successCtrl, 0.00, 0.50, Curves.easeInOutCubic);
+    _contentOutAnim = _curve(_successCtrl, 0.00, 0.28, Curves.easeIn);
+    _frostAnim = _curve(_successCtrl, 0.10, 0.60, Curves.easeOut);
+    _logoAnim = _curve(_successCtrl, 0.50, 0.85, Curves.easeOutCubic);
+    _progressAnim = _curve(_successCtrl, 0.55, 1.00, Curves.easeInOut);
+    _whitenAnim = _curve(_successCtrl, 0.70, 1.00, Curves.easeInOut);
   }
 
   @override
@@ -87,9 +127,14 @@ class _LoginScreenState extends State<LoginScreen>
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    for (final c in _curved) {
+      c.dispose();
+    }
     _entranceCtrl.dispose();
     _blobCtrl.dispose();
-    _sheetExpandCtrl.dispose();
+    _floatCtrl.dispose();
+    _successCtrl.dispose();
+    _parallax.dispose();
     super.dispose();
   }
 
@@ -126,6 +171,21 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  /// Aparición escalonada de un bloque del formulario (fade + leve subida).
+  Widget _reveal(int index, Widget child) {
+    final anim = _revealAnims[index];
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.08),
+          end: Offset.zero,
+        ).animate(anim),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthCubit, AuthState>(
@@ -145,11 +205,10 @@ class _LoginScreenState extends State<LoginScreen>
           );
         } else if (state.viewState == ViewState.success) {
           TextInput.finishAutofillContext(shouldSave: true);
+          FocusManager.instance.primaryFocus?.unfocus();
           _blobCtrl.stop();
+          _floatCtrl.stop();
           AppFeedbackService.lightImpact();
-
-          // ── TRANSICIÓN AL LOGUEAR: El Sheet se eleva suavemente hasta el tope ──
-          _sheetExpandCtrl.forward();
 
           if (!state.isLoginMode) {
             AppSnackbar.show(
@@ -159,8 +218,9 @@ class _LoginScreenState extends State<LoginScreen>
             );
           }
 
-          // Esperar que complete la animación para transicionar sin saltos bruscos
-          await Future.delayed(const Duration(milliseconds: 580));
+          // Secuencia: botón verde → el formulario se disuelve → vidrio
+          // blanco con la marca → recién ahí se entrega el control al panel.
+          await _successCtrl.forward();
           if (context.mounted) {
             context.read<AuthCubit>().completeLogin();
           }
@@ -184,84 +244,156 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Layout Desktop: Split-Screen Auth (50% Hero 3D / 50% Auth Form) ──────
+  // ════════════════════════════════════════════════════════════════════════
+  //  DESKTOP: split-screen (Hero 3D con parallax / Formulario)
+  // ════════════════════════════════════════════════════════════════════════
   Widget _buildDesktopSplitLayout(BuildContext context, AuthState state) {
-    return AnimatedBuilder(
-      animation: _sheetExpandCtrl,
-      builder: (context, child) {
-        final scale = 1.0 + (_sheetExpandAnim.value * 0.02);
-        final opacity = (1.0 - _sheetExpandAnim.value * 0.9).clamp(0.0, 1.0);
-        return Transform.scale(
-          scale: scale,
-          child: Opacity(opacity: opacity, child: child),
-        );
-      },
-      child: FadeTransition(
-        opacity: _fadeAnim,
-        child: Row(
-          children: [
-            // Lado Izquierdo: Hero Panel de Marca con Arte 3D (50%)
-            Expanded(
-              flex: 1,
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(0.0, -0.2),
-                    radius: 1.3,
-                    colors: [
-                      Color(0xFF1E2138),
-                      Color(0xFF111220),
-                      Color(0xFF090A12),
-                    ],
-                    stops: [0.0, 0.65, 1.0],
-                  ),
+    return Stack(
+      children: [
+        // Contenido: al éxito se desenfoca y crece apenas
+        AnimatedBuilder(
+          animation: _successCtrl,
+          builder: (context, child) {
+            Widget result = Transform.scale(
+              scale: 1.0 + 0.015 * _riseAnim.value,
+              child: child,
+            );
+            final sigma = 16.0 * _frostAnim.value;
+            if (sigma > 0.01) {
+              result = ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                child: result,
+              );
+            }
+            return result;
+          },
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: Row(
+              children: [
+                Expanded(child: _buildDesktopHeroPanel()),
+                Expanded(child: _buildDesktopFormPanel(context, state)),
+              ],
+            ),
+          ),
+        ),
+
+        // Velo de vidrio blanco + marca (solo visible al iniciar sesión)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _successCtrl,
+              builder: (context, child) {
+                final alpha =
+                    0.78 * _frostAnim.value + 0.22 * _whitenAnim.value;
+                return ColoredBox(
+                  color: Colors.white.withValues(alpha: alpha),
+                  child: child,
+                );
+              },
+              child: Center(
+                child: _SuccessVeilContent(
+                  reveal: _logoAnim,
+                  progress: _progressAnim,
                 ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: -80,
-                      left: -80,
-                      child: RepaintBoundary(
-                        child: AnimatedBuilder(
-                          animation: _blobAnim,
-                          child: Container(
-                            width: 480,
-                            height: 480,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  const Color(
-                                    0xFF3B82F6,
-                                  ).withValues(alpha: 0.14),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeroPanel() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        return MouseRegion(
+          onHover: (e) {
+            _parallax.value = Offset(
+              (e.localPosition.dx / size.width - 0.5) * 2,
+              (e.localPosition.dy / size.height - 0.5) * 2,
+            );
+          },
+          onExit: (_) => _parallax.value = Offset.zero,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.0, -0.2),
+                radius: 1.3,
+                colors: [
+                  Color(0xFF1E2138),
+                  Color(0xFF111220),
+                  Color(0xFF090A12),
+                ],
+                stops: [0.0, 0.65, 1.0],
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: -80,
+                  left: -80,
+                  child: RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: _blobAnim,
+                      child: Container(
+                        width: 480,
+                        height: 480,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                              Colors.transparent,
+                            ],
                           ),
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _blobAnim.value,
-                              child: child,
-                            );
-                          },
                         ),
                       ),
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _blobAnim.value,
+                          child: child,
+                        );
+                      },
                     ),
-
-                    Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 56.0,
-                          vertical: 36.0,
-                        ),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 560),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Center(
+                  ),
+                ),
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 56.0,
+                      vertical: 36.0,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            // Parallax suave con el mouse + flotación lenta
+                            child: ValueListenableBuilder<Offset>(
+                              valueListenable: _parallax,
+                              builder: (context, p, child) {
+                                return AnimatedSlide(
+                                  offset: Offset(p.dx * 0.018, p.dy * 0.018),
+                                  duration: const Duration(milliseconds: 450),
+                                  curve: Curves.easeOutCubic,
+                                  child: child,
+                                );
+                              },
+                              child: AnimatedBuilder(
+                                animation: _floatAnim,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      lerpDouble(-6, 6, _floatAnim.value)!,
+                                    ),
+                                    child: child,
+                                  );
+                                },
                                 child: ShaderMask(
                                   shaderCallback: (rect) {
                                     return const RadialGradient(
@@ -295,373 +427,51 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 24),
-
-                              const Text(
-                                'Gestión Inteligente de Inventario y Ventas',
-                                style: TextStyle(
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  letterSpacing: -0.8,
-                                  height: 1.2,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-
-                              Text(
-                                'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
-                                style: TextStyle(
-                                  fontSize: 14.5,
-                                  color: Colors.white.withValues(alpha: 0.72),
-                                  height: 1.5,
-                                  letterSpacing: -0.1,
-                                ),
-                              ),
-                              const SizedBox(height: 28),
-
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  _buildFeatureBadge(
-                                    'Control de Stock',
-                                    Icons.inventory_2_outlined,
-                                    delayMs: 150,
-                                  ),
-                                  _buildFeatureBadge(
-                                    'Caja POS',
-                                    Icons.point_of_sale_rounded,
-                                    delayMs: 250,
-                                  ),
-                                  _buildFeatureBadge(
-                                    'Fidelización',
-                                    Icons.loyalty_outlined,
-                                    delayMs: 350,
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Lado Derecho: Formulario Autenticación (50%)
-            Expanded(
-              flex: 1,
-              child: Container(
-                color: Colors.white,
-                child: Stack(
-                  children: [
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: _buildBackButton(context),
-                        ),
-                      ),
-                    ),
-
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 36,
-                            vertical: 32,
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Gestión Inteligente de Inventario y Ventas',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: -0.8,
+                              height: 1.2,
+                            ),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                          const SizedBox(height: 12),
+                          Text(
+                            'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              color: Colors.white.withValues(alpha: 0.72),
+                              height: 1.5,
+                              letterSpacing: -0.1,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
                             children: [
-                              LoginHeaderSection(
-                                isLoginMode: state.isLoginMode,
+                              _buildFeatureBadge(
+                                'Control de Stock',
+                                Icons.inventory_2_outlined,
+                                delayMs: 450,
                               ),
-                              const SizedBox(height: 26),
-                              LoginFormCard(
-                                formKey: _formKey,
-                                nameController: _nameController,
-                                emailController: _emailController,
-                                passwordController: _passwordController,
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                isSuccess: state.viewState == ViewState.success,
-                                onAuthenticate:
-                                    () => _authenticate(state.isLoginMode),
+                              _buildFeatureBadge(
+                                'Caja POS',
+                                Icons.point_of_sale_rounded,
+                                delayMs: 550,
                               ),
-                              const SizedBox(height: 20),
-                              LoginToggleMode(
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                onToggle:
-                                    () => _onToggleMode(state.isLoginMode),
+                              _buildFeatureBadge(
+                                'Fidelización',
+                                Icons.loyalty_outlined,
+                                delayMs: 650,
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Layout Móvil: Hero Superior Visual 3D + Bottom Sheet Curvado con Elevación al Top ──
-  Widget _buildMobileLayout(BuildContext context, AuthState state) {
-    final mediaQuery = MediaQuery.of(context);
-    final screenHeight = mediaQuery.size.height;
-    final viewInsetsBottom = mediaQuery.viewInsets.bottom;
-    final isKeyboardOpen = viewInsetsBottom > 0;
-
-    // Altura del hero visual superior (36-40% de la pantalla)
-    final heroHeight = (screenHeight * 0.38).clamp(200.0, 320.0);
-    final restingSheetTop = isKeyboardOpen ? 64.0 : heroHeight;
-
-    return Stack(
-      children: [
-        // ── 1. ZONA HERO SUPERIOR: ARTE 3D + ATMÓSFERA TECH DE FONDO ──
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: heroHeight + 36,
-          child: AnimatedBuilder(
-            animation: _sheetExpandCtrl,
-            builder: (context, child) {
-              final heroOpacity = (1.0 - _sheetExpandAnim.value * 1.8).clamp(
-                0.0,
-                1.0,
-              );
-              return Opacity(opacity: heroOpacity, child: child);
-            },
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0.0, -0.2),
-                  radius: 1.25,
-                  colors: [
-                    Color(0xFF1E2138),
-                    Color(0xFF111220),
-                    Color(0xFF090A12),
-                  ],
-                  stops: [0.0, 0.65, 1.0],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  // Orbe ambiental con respiración
-                  Positioned(
-                    top: -60,
-                    right: -50,
-                    child: AnimatedBuilder(
-                      animation: _blobAnim,
-                      builder:
-                          (context, _) => Transform.scale(
-                            scale: _blobAnim.value,
-                            child: Container(
-                              width: 280,
-                              height: 280,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    const Color(
-                                      0xFF3B82F6,
-                                    ).withValues(alpha: 0.20),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                    ),
-                  ),
-
-                  // Arte 3D con animación de entrada (desliza hacia abajo suavemente)
-                  SafeArea(
-                    bottom: false,
-                    child: AnimatedBuilder(
-                      animation: _entranceCtrl,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, _heroSlideAnim.value * 60),
-                          child: Opacity(
-                            opacity: _fadeAnim.value,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: 20.0,
-                            top: 4.0,
-                          ),
-                          child: ShaderMask(
-                            shaderCallback: (rect) {
-                              return const RadialGradient(
-                                center: Alignment.center,
-                                radius: 0.82,
-                                colors: [
-                                  Colors.black,
-                                  Colors.black,
-                                  Colors.transparent,
-                                ],
-                                stops: [0.0, 0.68, 1.0],
-                              ).createShader(rect);
-                            },
-                            blendMode: BlendMode.dstIn,
-                            child: Image.asset(
-                              'assets/images/login_hero_3d.jpg',
-                              fit: BoxFit.contain,
-                              errorBuilder:
-                                  (context, error, stackTrace) => const Icon(
-                                    Icons.storefront_rounded,
-                                    size: 84,
-                                    color: Colors.white,
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Botón Volver con contraste oscuro
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                      child: _buildBackButton(context, isDark: true),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ── 2. BOTTOM SHEET CURVADO: ENTRADA Y ELEVACIÓN AL TOPE AL LOGUEAR ──
-        AnimatedBuilder(
-          animation: Listenable.merge([_sheetExpandCtrl, _entranceCtrl]),
-          builder: (context, child) {
-            // Animación de entrada inicial: sube desde la base
-            final entranceOffsetY = _sheetSlideAnim.value * screenHeight;
-
-            // Al iniciar sesión (éxito): se eleva fluidamente hasta el tope (0.0) cubriendo la pantalla
-            final currentTop =
-                lerpDouble(restingSheetTop, 0.0, _sheetExpandAnim.value)!;
-
-            // El radio de borde superior pasa de 32 a 0 al alcanzar la cima
-            final currentRadius =
-                lerpDouble(32.0, 0.0, _sheetExpandAnim.value)!;
-
-            return Positioned(
-              top: (currentTop + entranceOffsetY).clamp(0.0, screenHeight),
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(currentRadius),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.18),
-                      blurRadius: 32,
-                      offset: const Offset(0, -10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(currentRadius),
-                  ),
-                  child: child,
-                ),
-              ),
-            );
-          },
-          child: SafeArea(
-            top: _sheetExpandAnim.value > 0.4,
-            child: Column(
-              children: [
-                // Pill / Handle indicador superior del Sheet
-                AnimatedBuilder(
-                  animation: _sheetExpandCtrl,
-                  builder: (context, child) {
-                    final handleOpacity = (1.0 - _sheetExpandAnim.value * 2.5)
-                        .clamp(0.0, 1.0);
-                    return Opacity(opacity: handleOpacity, child: child);
-                  },
-                  child: Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 12, bottom: 8),
-                      width: 44,
-                      height: 4.5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCBD5E1),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Formulario escroleable dentro del Bottom Sheet
-                Expanded(
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 8,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Título y subtítulo elegantes (sin logo duplicado, el 3D está arriba)
-                          LoginHeaderSection(
-                            isLoginMode: state.isLoginMode,
-                            showLogo: false,
-                          ),
-                          const SizedBox(height: 22),
-
-                          // Formulario de credenciales plano integrado en el sheet
-                          LoginFormCard(
-                            formKey: _formKey,
-                            nameController: _nameController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            isLoginMode: state.isLoginMode,
-                            isLoading: state.viewState == ViewState.loading,
-                            isSuccess: state.viewState == ViewState.success,
-                            isFlat: true,
-                            onAuthenticate:
-                                () => _authenticate(state.isLoginMode),
-                          ),
-                          const SizedBox(height: 18),
-
-                          // Alternar entre Iniciar Sesión y Registro
-                          LoginToggleMode(
-                            isLoginMode: state.isLoginMode,
-                            isLoading: state.viewState == ViewState.loading,
-                            onToggle: () => _onToggleMode(state.isLoginMode),
-                          ),
-                          const SizedBox(height: 36),
                         ],
                       ),
                     ),
@@ -670,8 +480,419 @@ class _LoginScreenState extends State<LoginScreen>
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopFormPanel(BuildContext context, AuthState state) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, Color(0xFFF8FAFC)],
+        ),
+      ),
+      child: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _buildBackButton(context),
+              ),
+            ),
+          ),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 36,
+                  vertical: 32,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _reveal(
+                      0,
+                      LoginHeaderSection(isLoginMode: state.isLoginMode),
+                    ),
+                    const SizedBox(height: 26),
+                    _reveal(
+                      1,
+                      LoginFormCard(
+                        formKey: _formKey,
+                        nameController: _nameController,
+                        emailController: _emailController,
+                        passwordController: _passwordController,
+                        isLoginMode: state.isLoginMode,
+                        isLoading: state.viewState == ViewState.loading,
+                        isSuccess: state.viewState == ViewState.success,
+                        onAuthenticate: () => _authenticate(state.isLoginMode),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _reveal(
+                      2,
+                      LoginToggleMode(
+                        isLoginMode: state.isLoginMode,
+                        isLoading: state.viewState == ViewState.loading,
+                        onToggle: () => _onToggleMode(state.isLoginMode),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  MÓVIL: hero 3D + bottom sheet. Al éxito el sheet sube al tope y todo
+  //  se convierte en vidrio blanco esmerilado con la marca al centro.
+  // ════════════════════════════════════════════════════════════════════════
+  Widget _buildMobileLayout(BuildContext context, AuthState state) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final isKeyboardOpen = mediaQuery.viewInsets.bottom > 0;
+
+    final heroHeight = (screenHeight * 0.38).clamp(200.0, 320.0);
+    final restingSheetTop = isKeyboardOpen ? 64.0 : heroHeight;
+
+    // Contenido del sheet (formulario) – se construye una sola vez por estado
+    final sheetBody = Stack(
+      children: [
+        AnimatedBuilder(
+          animation: _contentOutAnim,
+          builder: (context, child) {
+            final t = _contentOutAnim.value;
+            return IgnorePointer(
+              ignoring: t > 0,
+              child: Opacity(
+                opacity: 1.0 - t,
+                child: Transform.scale(scale: 1.0 - 0.03 * t, child: child),
+              ),
+            );
+          },
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                // Handle del sheet
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 44,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 26,
+                      vertical: 8,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _reveal(
+                              0,
+                              LoginHeaderSection(
+                                isLoginMode: state.isLoginMode,
+                                showLogo: false,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            _reveal(
+                              1,
+                              LoginFormCard(
+                                formKey: _formKey,
+                                nameController: _nameController,
+                                emailController: _emailController,
+                                passwordController: _passwordController,
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                isSuccess: state.viewState == ViewState.success,
+                                isFlat: true,
+                                onAuthenticate:
+                                    () => _authenticate(state.isLoginMode),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            _reveal(
+                              2,
+                              LoginToggleMode(
+                                isLoginMode: state.isLoginMode,
+                                isLoading: state.viewState == ViewState.loading,
+                                onToggle:
+                                    () => _onToggleMode(state.isLoginMode),
+                              ),
+                            ),
+                            const SizedBox(height: 36),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Marca + progreso, aparece cuando el sheet ya cubre la pantalla
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Center(
+              child: _SuccessVeilContent(
+                reveal: _logoAnim,
+                progress: _progressAnim,
+              ),
+            ),
+          ),
         ),
       ],
+    );
+
+    return Stack(
+      children: [
+        // 1. HERO a pantalla completa: al éxito se desenfoca y crece
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: _successCtrl,
+            builder: (context, child) {
+              final f = _frostAnim.value;
+              Widget hero = Transform.scale(
+                scale: 1.0 + 0.14 * f,
+                child: child,
+              );
+              if (f > 0.01) {
+                hero = ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 26 * f, sigmaY: 26 * f),
+                  child: hero,
+                );
+              }
+              return hero;
+            },
+            child: _buildMobileHero(heroHeight, isKeyboardOpen),
+          ),
+        ),
+
+        // 2. Botón volver (se desvanece junto al formulario)
+        Positioned(
+          top: 0,
+          left: 0,
+          child: AnimatedBuilder(
+            animation: _contentOutAnim,
+            builder:
+                (context, child) =>
+                    Opacity(opacity: 1.0 - _contentOutAnim.value, child: child),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                child: _buildBackButton(context, isDark: true),
+              ),
+            ),
+          ),
+        ),
+
+        // 3. SHEET: entra desde abajo, sube al tope y se vuelve vidrio blanco
+        TweenAnimationBuilder<double>(
+          // El tope del sheet se anima al abrir/cerrar el teclado (sin saltos)
+          tween: Tween<double>(end: restingSheetTop),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          child: sheetBody,
+          builder: (context, restingTop, sheetChild) {
+            return AnimatedBuilder(
+              animation: Listenable.merge([_successCtrl, _entranceCtrl]),
+              child: sheetChild,
+              builder: (context, child) {
+                final entranceOffsetY =
+                    (1.0 - _sheetAnim.value) * screenHeight * 0.45;
+                final top = (lerpDouble(restingTop, 0.0, _riseAnim.value)! +
+                        entranceOffsetY)
+                    .clamp(0.0, screenHeight);
+                final radius = lerpDouble(32.0, 0.0, _riseAnim.value)!;
+                // Opaco en reposo → translúcido (vidrio) → blanco puro al final
+                final alpha =
+                    1.0 - 0.20 * _frostAnim.value + 0.20 * _whitenAnim.value;
+                final shadowAlpha = 0.18 * (1.0 - _riseAnim.value);
+
+                return Positioned(
+                  top: top,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(radius),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: shadowAlpha),
+                          blurRadius: 32,
+                          offset: const Offset(0, -10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(radius),
+                      ),
+                      child: ColoredBox(
+                        color: Colors.white.withValues(alpha: alpha),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileHero(double heroHeight, bool isKeyboardOpen) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0.0, -0.5),
+          radius: 1.25,
+          colors: [Color(0xFF1E2138), Color(0xFF111220), Color(0xFF090A12)],
+          stops: [0.0, 0.65, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Orbe azul con respiración
+          Positioned(
+            top: -60,
+            right: -50,
+            child: AnimatedBuilder(
+              animation: _blobAnim,
+              builder:
+                  (context, _) => Transform.scale(
+                    scale: _blobAnim.value,
+                    child: Container(
+                      width: 280,
+                      height: 280,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF3B82F6).withValues(alpha: 0.22),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+            ),
+          ),
+          // Orbe cian inferior: al desenfocarse da el tono "aurora" del vidrio
+          Positioned(
+            bottom: -90,
+            left: -70,
+            child: Container(
+              width: 320,
+              height: 320,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF22D3EE).withValues(alpha: 0.14),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Arte 3D: entra con escala + fade, luego flota
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: heroHeight + 36,
+            child: SafeArea(
+              bottom: false,
+              child: AnimatedOpacity(
+                opacity: isKeyboardOpen ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 250),
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_entranceCtrl, _floatCtrl]),
+                  builder: (context, child) {
+                    final h = _heroAnim.value;
+                    final bob = (_floatAnim.value - 0.5) * 8;
+                    return Opacity(
+                      opacity: h,
+                      child: Transform.translate(
+                        offset: Offset(0, (1.0 - h) * -40 + bob),
+                        child: Transform.scale(
+                          scale: 1.08 - 0.08 * h,
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20.0, top: 4.0),
+                      child: ShaderMask(
+                        shaderCallback: (rect) {
+                          return const RadialGradient(
+                            center: Alignment.center,
+                            radius: 0.82,
+                            colors: [
+                              Colors.black,
+                              Colors.black,
+                              Colors.transparent,
+                            ],
+                            stops: [0.0, 0.68, 1.0],
+                          ).createShader(rect);
+                        },
+                        blendMode: BlendMode.dstIn,
+                        child: Image.asset(
+                          'assets/images/login_hero_3d.jpg',
+                          fit: BoxFit.contain,
+                          errorBuilder:
+                              (context, error, stackTrace) => const Icon(
+                                Icons.storefront_rounded,
+                                size: 84,
+                                color: Colors.white,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -742,6 +963,79 @@ class _LoginScreenState extends State<LoginScreen>
         .animate()
         .fadeIn(delay: Duration(milliseconds: delayMs), duration: 400.ms)
         .slideX(begin: -0.1, end: 0, curve: Curves.easeOutCubic);
+  }
+}
+
+/// Marca + barra de progreso que aparecen sobre el vidrio blanco al iniciar
+/// sesión. Es el único "momento" de la transición: todo lo demás se calla.
+class _SuccessVeilContent extends StatelessWidget {
+  final Animation<double> reveal;
+  final Animation<double> progress;
+
+  const _SuccessVeilContent({required this.reveal, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([reveal, progress]),
+      builder: (context, _) {
+        final t = reveal.value;
+        if (t <= 0) return const SizedBox.shrink();
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, 12 * (1 - t)),
+            child: Transform.scale(
+              scale: 0.94 + 0.06 * t,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 190,
+                    height: 100,
+                    child: Image.asset(
+                      'assets/logo_full.png',
+                      fit: BoxFit.contain,
+                      errorBuilder:
+                          (context, error, stackTrace) => const Icon(
+                            Icons.storefront_rounded,
+                            size: 64,
+                            color: AppColors.primary,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Abriendo tu panel',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      width: 120,
+                      height: 3,
+                      child: LinearProgressIndicator(
+                        value: progress.value,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

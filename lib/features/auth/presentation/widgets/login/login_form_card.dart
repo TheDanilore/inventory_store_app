@@ -280,12 +280,24 @@ class _LoginFormCardState extends State<LoginFormCard> {
                             ? null
                             : (_) => widget.onAuthenticate(),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                        obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: AppColors.textSecondary,
-                        size: 20,
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        transitionBuilder:
+                            (child, anim) => ScaleTransition(
+                              scale: anim,
+                              child: FadeTransition(
+                                opacity: anim,
+                                child: child,
+                              ),
+                            ),
+                        child: Icon(
+                          obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          key: ValueKey<bool>(obscure),
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
                       ),
                       onPressed:
                           () => _obscurePasswordNotifier.value = !obscure,
@@ -324,7 +336,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                                 child: const Text(
                                   '¿Olvidaste tu contraseña?',
                                   style: TextStyle(
-                                    color: AppColors.primary,
+                                    color: Color(0xFF2563EB),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),

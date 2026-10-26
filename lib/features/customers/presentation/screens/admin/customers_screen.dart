@@ -27,7 +27,7 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 import 'package:url_launcher/url_launcher.dart';
 
 /// Ruta de la pantalla "Top Clientes" (ranking + ruleta de sorteo).
-const String kTopCustomersRoute = '/top-customers';
+const String kTopCustomersRoute = '/customers/top-customers';
 
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});

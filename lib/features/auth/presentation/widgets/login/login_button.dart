@@ -22,26 +22,39 @@ class LoginButton extends StatefulWidget {
 class _LoginButtonState extends State<LoginButton> {
   bool _isPressed = false;
 
+  bool get _locked => widget.isLoading || widget.isSuccess;
+
+  void _setPressed(bool value) {
+    if (_isPressed == value) return;
+    setState(() => _isPressed = value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown:
-          widget.isLoading ? null : (_) => setState(() => _isPressed = true),
-      onTapUp:
-          widget.isLoading ? null : (_) => setState(() => _isPressed = false),
-      onTapCancel:
-          widget.isLoading ? null : () => setState(() => _isPressed = false),
+    final success = widget.isSuccess;
+
+    // Listener (no GestureDetector): responde al instante, sin esperar el
+    // timeout de tap, y no compite con el botón interno.
+    return Listener(
+      onPointerDown: (_) {
+        if (!_locked) _setPressed(true);
+      },
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
       child: AnimatedScale(
-        scale: _isPressed ? 0.98 : 1.0,
+        scale: _isPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
-        child: Container(
+        child: AnimatedContainer(
+          // Al éxito el color migra a verde en lugar de cambiar de golpe
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
           height: 52,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppColors.radius),
             gradient: LinearGradient(
               colors:
-                  widget.isSuccess
+                  success
                       ? const [Color(0xFF059669), Color(0xFF10B981)]
                       : const [Color(0xFF1E2038), AppColors.primary],
               begin: Alignment.topLeft,
@@ -49,22 +62,21 @@ class _LoginButtonState extends State<LoginButton> {
             ),
             boxShadow: [
               BoxShadow(
-                color: (widget.isSuccess
-                        ? const Color(0xFF10B981)
-                        : AppColors.primary)
-                    .withValues(alpha: widget.isSuccess ? 0.35 : 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: (success ? const Color(0xFF10B981) : AppColors.primary)
+                    .withValues(alpha: success ? 0.35 : 0.25),
+                blurRadius: _isPressed ? 8 : 16,
+                offset: Offset(0, _isPressed ? 3 : 6),
               ),
             ],
           ),
           child: ElevatedButton(
-            onPressed:
-                widget.isLoading || widget.isSuccess ? null : widget.onPressed,
+            onPressed: _locked ? null : widget.onPressed,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
+              disabledBackgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
               foregroundColor: Colors.white,
+              disabledForegroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppColors.radius),
               ),
@@ -72,19 +84,28 @@ class _LoginButtonState extends State<LoginButton> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               child:
-                  widget.isSuccess
-                      ? const Row(
-                        key: ValueKey('success_state'),
+                  success
+                      ? Row(
+                        key: const ValueKey('success_state'),
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: Colors.white,
-                            size: 20,
+                          // El check "rebota" al aparecer
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.elasticOut,
+                            builder:
+                                (context, v, child) =>
+                                    Transform.scale(scale: v, child: child),
+                            child: const Icon(
+                              Icons.check_circle_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                          SizedBox(width: 8),
-                          Text(
+                          const SizedBox(width: 8),
+                          const Text(
                             '¡Acceso Autorizado!',
                             style: TextStyle(
                               fontSize: 15,
@@ -96,14 +117,32 @@ class _LoginButtonState extends State<LoginButton> {
                         ],
                       )
                       : widget.isLoading
-                      ? const SizedBox(
-                        key: ValueKey('loading_spinner'),
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
+                      ? Row(
+                        key: const ValueKey('loading_state'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            widget.isLoginMode
+                                ? 'Verificando…'
+                                : 'Creando cuenta…',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       )
                       : Text(
                         widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',

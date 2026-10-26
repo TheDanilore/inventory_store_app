@@ -25,14 +25,36 @@ abstract class ProductsRepository {
     CatalogStockFilter? stockFilter,
     CatalogSortOption? sortOption,
   });
+
+  /// Retorna datos cacheados de manera sincrónica (sin red).
+  /// Utilizado para Zero-Shimmer en Frame 0 al volver a la vista.
+  ({List<ProductEntity> products, int totalCount})? getCachedProducts({
+    String? searchQuery,
+    String? categoryId,
+    String? brandId,
+    bool? isActive,
+    bool searchByIngredient = false,
+    bool forCustomer = false,
+    int limit = 20,
+    int offset = 0,
+    CatalogStockFilter? stockFilter,
+    CatalogSortOption? sortOption,
+  });
+
   Future<Either<Failure, ProductEntity?>> getProductById(
     String id, {
     bool forceRefresh = false,
   });
   ProductEntity? getCachedProductById(String id);
+  List<Map<String, dynamic>>? getCachedActiveVariants(String productId);
+  List<Map<String, dynamic>>? getCachedBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  );
   Future<Either<Failure, Map<String, int>>> getProductStock({
     List<String>? productIds,
   });
+
   Future<Either<Failure, void>> setProductActive({
     required String productId,
     required bool isActive,

@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/catalog/data/models/product_variant
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/data/cache/catalog_lru_cache.dart';
 
 @LazySingleton(as: ProductsRepository)
 class ProductsRepositoryImpl implements ProductsRepository {
@@ -25,6 +26,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
   final Map<String, ({ProductEntity product, DateTime timestamp})>
   _productDetailCache = {};
   static const Duration _productCacheTtl = Duration(minutes: 5);
+
+  // L1 In-Memory Cache para variantes activas y lotes (5 min TTL)
+  final Map<String, ({List<Map<String, dynamic>> data, DateTime timestamp})>
+  _activeVariantsCache = {};
+  final Map<String, ({List<Map<String, dynamic>> data, DateTime timestamp})>
+  _batchesForVariantCache = {};
+  static const Duration _variantsBatchesCacheTtl = Duration(minutes: 5);
 
   ProductsRepositoryImpl(this._supabase);
 
@@ -267,6 +275,20 @@ class ProductsRepositoryImpl implements ProductsRepository {
         entities.sort((a, b) => b.totalStock.compareTo(a.totalStock));
       }
 
+      final cacheKey = CatalogLruCache.buildKey(
+        searchQuery: searchQuery,
+        categoryId: categoryId,
+        brandId: brandId,
+        isActive: isActive,
+        searchByIngredient: searchByIngredient,
+        forCustomer: forCustomer,
+        limit: limit,
+        offset: offset,
+        sortOption: sortOption,
+        stockFilter: stockFilter,
+      );
+      CatalogLruCache.instance.putPage(cacheKey, entities, response.count);
+
       return right((products: entities, totalCount: response.count));
     } catch (e, st) {
       return _handleError(e, st);
@@ -274,11 +296,65 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
+  ({List<ProductEntity> products, int totalCount})? getCachedProducts({
+    String? searchQuery,
+    String? categoryId,
+    String? brandId,
+    bool? isActive,
+    bool searchByIngredient = false,
+    bool forCustomer = false,
+    int limit = 20,
+    int offset = 0,
+    CatalogStockFilter? stockFilter,
+    CatalogSortOption? sortOption,
+  }) {
+    final key = CatalogLruCache.buildKey(
+      searchQuery: searchQuery,
+      categoryId: categoryId,
+      brandId: brandId,
+      isActive: isActive,
+      searchByIngredient: searchByIngredient,
+      forCustomer: forCustomer,
+      limit: limit,
+      offset: offset,
+      sortOption: sortOption,
+      stockFilter: stockFilter,
+    );
+    return CatalogLruCache.instance.getPage(key);
+  }
+
+  @override
   ProductEntity? getCachedProductById(String id) {
+    final cached = CatalogLruCache.instance.getProduct(id);
+    if (cached != null) return cached;
     final entry = _productDetailCache[id];
     if (entry != null &&
         DateTime.now().difference(entry.timestamp) < _productCacheTtl) {
       return entry.product;
+    }
+    return null;
+  }
+
+  @override
+  List<Map<String, dynamic>>? getCachedActiveVariants(String productId) {
+    final entry = _activeVariantsCache[productId];
+    if (entry != null &&
+        DateTime.now().difference(entry.timestamp) < _variantsBatchesCacheTtl) {
+      return entry.data;
+    }
+    return null;
+  }
+
+  @override
+  List<Map<String, dynamic>>? getCachedBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  ) {
+    final key = '$variantId:$warehouseId';
+    final entry = _batchesForVariantCache[key];
+    if (entry != null &&
+        DateTime.now().difference(entry.timestamp) < _variantsBatchesCacheTtl) {
+      return entry.data;
     }
     return null;
   }
@@ -306,11 +382,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       if (response == null) {
         _productDetailCache.remove(id);
+        CatalogLruCache.instance.invalidateProduct(id);
         return right(null);
       }
       final model = ProductModel.fromJson(response);
       final entity = model.toEntity();
       _productDetailCache[id] = (product: entity, timestamp: DateTime.now());
+      CatalogLruCache.instance.putProduct(id, entity);
       return right(entity);
     } catch (e, st) {
       return _handleError(e, st);
@@ -354,6 +432,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .update({'is_active': isActive})
           .eq('id', productId);
       _productDetailCache.remove(productId);
+      CatalogLruCache.instance.invalidateProduct(productId);
+      CatalogLruCache.instance.invalidateCatalog();
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -1193,7 +1273,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .eq('product_id', productId)
           .eq('is_active', true)
           .order('sku');
-      return right(List<Map<String, dynamic>>.from(response));
+      final list = List<Map<String, dynamic>>.from(response);
+      _activeVariantsCache[productId] = (data: list, timestamp: DateTime.now());
+      return right(list);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -1289,7 +1371,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, void>> clearCache() async {
-    // Implementación futura si hay caché local
+    _productDetailCache.clear();
+    _activeVariantsCache.clear();
+    _batchesForVariantCache.clear();
+    CatalogLruCache.instance.clear();
     return right(null);
   }
 
@@ -1471,7 +1556,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
       );
       if (payload.product.id.isNotEmpty) {
         _productDetailCache.remove(payload.product.id);
+        CatalogLruCache.instance.invalidateProduct(payload.product.id);
       }
+      CatalogLruCache.instance.invalidateCatalog();
       return right(null);
     } catch (e, st) {
       if (uploadedPaths.isNotEmpty) {
@@ -1519,7 +1606,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .gt('available_quantity', 0)
           .order('expiry_date', ascending: true, nullsFirst: false)
           .order('created_at', ascending: true);
-      return right(List<Map<String, dynamic>>.from(response));
+      final list = List<Map<String, dynamic>>.from(response);
+      _batchesForVariantCache['$variantId:$warehouseId'] = (
+        data: list,
+        timestamp: DateTime.now(),
+      );
+      return right(list);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -1654,6 +1746,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
       );
       final m = Map<String, dynamic>.from(res as Map);
       int n(String k) => ((m[k] ?? 0) as num).toInt();
+      CatalogLruCache.instance.clear();
+      _productDetailCache.clear();
       return right(
         ImportBatchResult(
           createdProducts: n('created_products'),
@@ -1674,6 +1768,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
         'delete_product_safely',
         params: {'p_product_id': id},
       );
+      _productDetailCache.remove(id);
+      CatalogLruCache.instance.invalidateProduct(id);
+      CatalogLruCache.instance.invalidateCatalog();
 
       final imageUrls =
           (response as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];

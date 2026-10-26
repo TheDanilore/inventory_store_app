@@ -375,23 +375,54 @@ class AppRouter {
         // BLoCs compartidos entre ambos branches (AdminCatalogCubit, CartCubit,
         // PosCubit, CashShiftsCubit) viven en el builder del StatefulShellRoute.
         StatefulShellRoute(
-          builder:
-              (context, state, navigationShell) => MultiBlocProvider(
-                providers: [
-                  BlocProvider(create: (_) => sl<SidebarBadgeCubit>()),
-                  BlocProvider(
-                    create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
-                  ),
-                  BlocProvider(
-                    create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
-                  ),
-                  BlocProvider(create: (_) => sl<PosCubit>()),
-                  BlocProvider(create: (_) => sl<CashShiftsCubit>()),
-                  BlocProvider(
-                    create: (_) => sl<NotificationsCubit>()..start(),
-                  ),
-                ],
-                child: AppPopScope(child: navigationShell),
+          // Fade de entrada del panel tras el login (reveal sobre el vidrio blanco).
+          pageBuilder:
+              (context, state, navigationShell) => CustomTransitionPage<void>(
+                key: state.pageKey,
+                transitionDuration: const Duration(milliseconds: 450),
+                transitionsBuilder: (
+                  context,
+                  animation,
+                  secondaryAnimation,
+                  child,
+                ) {
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Respaldo opaco: evita ver el fondo mientras el login se desvanece
+                      if (!isDark) const ColoredBox(color: Colors.white),
+                      FadeTransition(
+                        opacity: CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        ),
+                        child: ColoredBox(
+                          color: AppColors.bg(context),
+                          child: child,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+                child: MultiBlocProvider(
+                  providers: [
+                    BlocProvider(create: (_) => sl<SidebarBadgeCubit>()),
+                    BlocProvider(
+                      create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+                    ),
+                    BlocProvider(
+                      create: (_) => sl<CartCubit>()..initCart(cartType: 'pos'),
+                    ),
+                    BlocProvider(create: (_) => sl<PosCubit>()),
+                    BlocProvider(create: (_) => sl<CashShiftsCubit>()),
+                    BlocProvider(
+                      create: (_) => sl<NotificationsCubit>()..start(),
+                    ),
+                  ],
+                  child: AppPopScope(child: navigationShell),
+                ),
               ),
           navigatorContainerBuilder:
               (context, navigationShell, children) => _LazyBranchContainer(

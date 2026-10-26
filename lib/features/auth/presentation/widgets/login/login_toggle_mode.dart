@@ -35,12 +35,12 @@ class LoginToggleMode extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: AppColors.primary,
+              foregroundColor: const Color(0xFF2563EB),
             ),
             child: Text(
               isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
               style: const TextStyle(
-                color: AppColors.primary,
+                color: Color(0xFF2563EB),
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.2,
