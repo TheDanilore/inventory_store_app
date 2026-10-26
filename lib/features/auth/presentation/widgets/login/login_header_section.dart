@@ -3,8 +3,13 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 
 class LoginHeaderSection extends StatelessWidget {
   final bool isLoginMode;
+  final bool showLogo;
 
-  const LoginHeaderSection({super.key, required this.isLoginMode});
+  const LoginHeaderSection({
+    super.key,
+    required this.isLoginMode,
+    this.showLogo = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,23 +17,25 @@ class LoginHeaderSection extends StatelessWidget {
       child: Column(
         children: [
           // Contenedor del Logo
-          Container(
-            key: const ValueKey('danilore_one_logo_header'),
-            height: 105,
-            constraints: const BoxConstraints(maxWidth: 190),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            child: Image.asset(
-              'assets/logo_full.png',
-              fit: BoxFit.contain,
-              errorBuilder:
-                  (context, error, stackTrace) => const Icon(
-                    Icons.storefront_rounded,
-                    size: 64,
-                    color: AppColors.primary,
-                  ),
+          if (showLogo) ...[
+            Container(
+              key: const ValueKey('danilore_one_logo_header'),
+              height: 105,
+              constraints: const BoxConstraints(maxWidth: 190),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              child: Image.asset(
+                'assets/logo_full.png',
+                fit: BoxFit.contain,
+                errorBuilder:
+                    (context, error, stackTrace) => const Icon(
+                      Icons.storefront_rounded,
+                      size: 64,
+                      color: AppColors.primary,
+                    ),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
           // Título dinámico con transición suave al alternar login/registro
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),

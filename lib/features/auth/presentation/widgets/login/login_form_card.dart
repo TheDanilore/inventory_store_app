@@ -14,6 +14,7 @@ class LoginFormCard extends StatefulWidget {
   final bool isLoginMode;
   final bool isLoading;
   final bool isSuccess;
+  final bool isFlat;
   final VoidCallback onAuthenticate;
 
   const LoginFormCard({
@@ -25,6 +26,7 @@ class LoginFormCard extends StatefulWidget {
     required this.isLoginMode,
     required this.isLoading,
     this.isSuccess = false,
+    this.isFlat = false,
     required this.onAuthenticate,
   });
 
@@ -195,24 +197,26 @@ class _LoginFormCardState extends State<LoginFormCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
+      padding: widget.isFlat ? EdgeInsets.zero : const EdgeInsets.all(24),
+      decoration: widget.isFlat
+          ? null
+          : BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppColors.radiusXl),
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
       child: AutofillGroup(
         child: Form(
           key: widget.formKey,
