@@ -68,11 +68,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final cubit = context.read<OrdersCubit>();
-      if (cubit.state.orders.isEmpty ||
-          cubit.state.availableWarehouses.length <= 1) {
+      if (cubit.state.orders.isEmpty) {
         cubit.init();
       } else {
-        // Revalidación silenciosa en background (Stale-While-Revalidate)
+        // Revalidación silenciosa en background (Stale-While-Revalidate) sin shimmer
         cubit.loadOrders(background: true);
       }
     });
@@ -809,8 +808,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     List<OrderEntity> displayOrders,
   ) {
     final pageItems = displayOrders;
+    final hasCachedData = pageItems.isNotEmpty;
 
-    if (state.isLoading) {
+    // Zero-Shimmer Policy: Mostrar Shimmer SOLAMENTE en Cold Start si no hay datos en memoria/caché
+    if (state.isLoading && !hasCachedData) {
       if (_isTableView && isWide) {
         return const SliverToBoxAdapter(child: AppTableShimmer());
       }

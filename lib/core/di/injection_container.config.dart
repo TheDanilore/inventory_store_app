@@ -33,6 +33,8 @@ import '../../features/app_config/domain/usecases/save_business_info_uc.dart'
 import '../../features/app_config/domain/usecases/upload_logo_uc.dart' as _i217;
 import '../../features/app_config/presentation/bloc/app_config_cubit.dart'
     as _i556;
+import '../../features/app_config/presentation/bloc/system_diagnostics_cubit.dart'
+    as _i962;
 import '../../features/auth/data/repositories_impl/auth_repository_impl.dart'
     as _i710;
 import '../../features/auth/domain/repositories/auth_repository.dart' as _i787;
@@ -510,7 +512,7 @@ import '../../features/users/domain/usecases/delete_user_usecase.dart' as _i496;
 import '../../features/users/domain/usecases/export_users_csv_usecase.dart'
     as _i400;
 import '../../features/users/domain/usecases/get_global_users_count_usecase.dart'
-    as _i962;
+    as _i963;
 import '../../features/users/domain/usecases/get_user_by_id_usecase.dart'
     as _i342;
 import '../../features/users/domain/usecases/get_user_relations_usecase.dart'
@@ -548,6 +550,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i11.NetworkCubit>(() => _i11.NetworkCubit());
     gh.lazySingleton<_i141.LoggerService>(() => const _i141.LoggerService());
     gh.lazySingleton<_i735.ThemeCubit>(() => _i735.ThemeCubit());
+    gh.lazySingleton<_i962.SystemDiagnosticsCubit>(
+      () => _i962.SystemDiagnosticsCubit(),
+    );
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
       () => _i1021.ExportCustomersPdfUseCase(),
     );
@@ -887,7 +892,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i123.SupplierCreditsRepository>(),
       ),
     );
-    gh.factory<_i13.CustomersStatsCubit>(
+    gh.lazySingleton<_i13.CustomersStatsCubit>(
       () => _i13.CustomersStatsCubit(gh<_i1019.GetGlobalStatsUseCase>()),
     );
     gh.factory<_i138.InventoryEntriesCubit>(
@@ -915,8 +920,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i400.ExportUsersCsvUseCase>(
       () => _i400.ExportUsersCsvUseCase(gh<_i476.UsersRepository>()),
     );
-    gh.factory<_i962.GetGlobalUsersCountUseCase>(
-      () => _i962.GetGlobalUsersCountUseCase(gh<_i476.UsersRepository>()),
+    gh.factory<_i963.GetGlobalUsersCountUseCase>(
+      () => _i963.GetGlobalUsersCountUseCase(gh<_i476.UsersRepository>()),
     );
     gh.factory<_i342.GetUserByIdUseCase>(
       () => _i342.GetUserByIdUseCase(gh<_i476.UsersRepository>()),
@@ -1222,7 +1227,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i627.GetLoyaltyDashboardUC>(
       () => _i627.GetLoyaltyDashboardUC(gh<_i747.LoyaltyRepository>()),
     );
-    gh.factory<_i14.TopCustomersCubit>(
+    gh.lazySingleton<_i14.TopCustomersCubit>(
       () => _i14.TopCustomersCubit(gh<_i1019.GetTopCustomersUseCase>()),
     );
     gh.factory<_i587.UserDetailCubit>(
@@ -1511,12 +1516,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i451.UsersCubit>(
       () => _i451.UsersCubit(
         gh<_i499.GetUsersUseCase>(),
-        gh<_i962.GetGlobalUsersCountUseCase>(),
+        gh<_i963.GetGlobalUsersCountUseCase>(),
         gh<_i90.UpdateUserUseCase>(),
         gh<_i496.DeleteUserUseCase>(),
       ),
     );
-    gh.factory<_i70.CustomersCubit>(
+    gh.lazySingleton<_i70.CustomersCubit>(
       () => _i70.CustomersCubit(
         gh<_i1019.GetCustomersUseCase>(),
         gh<_i1021.ExportCustomersPdfUseCase>(),

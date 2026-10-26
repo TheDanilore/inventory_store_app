@@ -17,9 +17,9 @@ class CustomersRoutes {
       builder: (context, state) {
         return MultiBlocProvider(
           providers: [
-            BlocProvider(create: (_) => sl<CustomersCubit>()),
-            BlocProvider(create: (_) => sl<CustomersStatsCubit>()),
-            BlocProvider(create: (_) => sl<TopCustomersCubit>()),
+            BlocProvider.value(value: sl<CustomersCubit>()),
+            BlocProvider.value(value: sl<CustomersStatsCubit>()),
+            BlocProvider.value(value: sl<TopCustomersCubit>()),
           ],
           child: const CustomersScreen(),
         );

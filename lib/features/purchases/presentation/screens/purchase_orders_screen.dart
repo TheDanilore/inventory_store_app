@@ -543,7 +543,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     required BuildContext context,
     required PurchaseOrdersCubit cubit,
   }) {
-    if (viewModel.isLoading) {
+    final hasCachedOrders = filtered.isNotEmpty;
+    if (viewModel.isLoading && !hasCachedOrders) {
       if (_isTableView && isTablet) {
         return const SliverToBoxAdapter(child: AppTableShimmer());
       }

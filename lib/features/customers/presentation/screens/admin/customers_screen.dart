@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_cubit.dart';
@@ -16,16 +15,18 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/custome
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_stats_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers/top_customers_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/top_customers/top_customers_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/bento_metrics/customers_bento_metrics_bar.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/common/top_vip_widgets.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customers_table_view.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/inspector/customer_side_sheet_inspector.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/inspector/mobile_customer_action_sheet.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/skeletons/customers_skeletons.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Ruta de la pantalla "Top Clientes" (ranking + ruleta de sorteo).
-/// AJUSTA este valor al path real registrado en tu go_router.
 const String kTopCustomersRoute = '/top-customers';
 
 class CustomersScreen extends StatelessWidget {
@@ -71,7 +72,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _screenFocusNode.requestFocus();
-        _reloadAll();
+        _reloadAll(silent: true);
       }
     });
 
@@ -104,10 +105,21 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
   void _openTopCustomers() => context.push(kTopCustomersRoute);
 
-  void _reloadAll() {
-    context.read<CustomersCubit>().fetchCustomers(reset: true);
-    context.read<CustomersStatsCubit>().loadStats();
-    context.read<TopCustomersCubit>().loadTopCustomers();
+  /// Carga o revalida datos. Si ya hay datos en memoria (caché), no parpadea ni emite Shimmer.
+  void _reloadAll({bool silent = false}) {
+    final custCubit = context.read<CustomersCubit>();
+    final isAlreadyLoaded =
+        custCubit.state is CustomersLoaded &&
+        (custCubit.state as CustomersLoaded).hasCustomers;
+
+    custCubit.fetchCustomers(reset: true, silent: silent || isAlreadyLoaded);
+    context.read<CustomersStatsCubit>().loadStats(
+      silent: silent || isAlreadyLoaded,
+    );
+    context.read<TopCustomersCubit>().loadTopCustomers(
+      5,
+      silent || isAlreadyLoaded,
+    );
   }
 
   @override
@@ -307,7 +319,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       desktopWidth: drawerWidth,
       barrierLabel: 'Cerrar inspector',
       builder: (dialogContext) {
-        return _CustomerSideSheetInspector(
+        return CustomerSideSheetInspector(
           customer: customer,
           onClose: () => Navigator.of(dialogContext).maybePop(),
           onEdit: () {
@@ -336,7 +348,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder:
-          (sheetCtx) => _MobileCustomerActionSheet(
+          (sheetCtx) => MobileCustomerActionSheet(
             customer: customer,
             onOpenDetail: () {
               Navigator.of(sheetCtx).pop();
@@ -385,10 +397,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 8,
       items: [
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'inspector',
           child: Row(
-            children: const [
+            children: [
               Icon(
                 Icons.view_sidebar_rounded,
                 size: 18,
@@ -399,10 +411,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             ],
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'detail',
           child: Row(
-            children: const [
+            children: [
               Icon(
                 Icons.visibility_outlined,
                 size: 18,
@@ -413,10 +425,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             ],
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'edit',
           child: Row(
-            children: const [
+            children: [
               Icon(Icons.edit_outlined, size: 18, color: AppColors.slate),
               SizedBox(width: 10),
               Text('Editar datos', style: TextStyle(fontSize: 13)),
@@ -424,10 +436,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           ),
         ),
         if (customer.phone != null && customer.phone!.isNotEmpty) ...[
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'whatsapp',
             child: Row(
-              children: const [
+              children: [
                 Icon(
                   Icons.chat_bubble_outline_rounded,
                   size: 18,
@@ -438,10 +450,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               ],
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'copy_phone',
             child: Row(
-              children: const [
+              children: [
                 Icon(Icons.copy_rounded, size: 18, color: AppColors.slate),
                 SizedBox(width: 10),
                 Text('Copiar teléfono', style: TextStyle(fontSize: 13)),
@@ -451,10 +463,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         ],
         if (customer.documentNumber != null &&
             customer.documentNumber!.isNotEmpty)
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'copy_doc',
             child: Row(
-              children: const [
+              children: [
                 Icon(Icons.badge_outlined, size: 18, color: AppColors.slate),
                 SizedBox(width: 10),
                 Text('Copiar documento', style: TextStyle(fontSize: 13)),
@@ -577,7 +589,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                 _reloadAll();
               }
             },
-            // FAB solo visible en móvil cuando no se está buscando
             floatingActionButton:
                 (isMobile && _tabCtrl.index == 0 && _searchCtrl.text.isEmpty)
                     ? FloatingActionButton.extended(
@@ -604,7 +615,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                 controller: _scrollCtrl,
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
+                  // 0. CABECERA EJECUTIVA STRIPE / LINEAR
                   SliverToBoxAdapter(
                     child: AdminPageHeader(
                       title: 'Directorio de Clientes',
@@ -612,7 +623,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                           'Gestiona tus clientes, su información y datos de contacto',
                       isDesktop: isDesktop,
                       actions: [
-                        _TopClientsHeaderButton(onPressed: _openTopCustomers),
+                        TopClientsHeaderButton(onPressed: _openTopCustomers),
                         AdminHeaderButton.primary(
                           label: 'Nuevo Cliente',
                           icon: Icons.person_add_rounded,
@@ -623,9 +634,9 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     ),
                   ),
 
-                  // 1. FINTECH BENTO METRIC STRIP (Ultra-compacto y limpio)
+                  // 1. FINTECH BENTO METRIC STRIP (Ultra-compacto con Stale-While-Revalidate)
                   SliverToBoxAdapter(
-                    child: _CustomersBentoMetrics(
+                    child: CustomersBentoMetricsBar(
                       isMobile: isMobile,
                       isTablet: isTablet,
                     ),
@@ -665,7 +676,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                 _searchCtrl.clear();
                                 context.read<CustomersCubit>().search('');
                               },
-                              // Desktop/tablet: control segmentado existente.
                               filterWidgets: [
                                 _buildSegmentedFilter(
                                   totalCount: totalCount,
@@ -673,7 +683,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                   topCount: topCount,
                                 ),
                               ],
-                              // Móvil: el mismo filtro como chips en el sheet (estado en vivo).
                               filterGroups: [
                                 AdminFilterGroup<int>(
                                   title: 'Clientes',
@@ -735,12 +744,10 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                     },
                   ),
 
-                  // 2.b AVISO CONTEXTUAL: solo con el filtro "Top VIP" activo.
-                  // El filtro sigue siendo un filtro; desde aquí se salta al
-                  // ranking completo y a la ruleta de sorteo.
+                  // 2.b Aviso contextual cuando el filtro "Top VIP" está activo
                   if (_tabCtrl.index == 2)
                     SliverToBoxAdapter(
-                      child: _TopVipBanner(onOpen: _openTopCustomers),
+                      child: TopVipBanner(onOpen: _openTopCustomers),
                     ),
 
                   // 3. LISTADO / DATA TABLE PRO CON CARGA Y ORDENAMIENTO
@@ -772,8 +779,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       },
     );
   }
-
-  // ── 1. FINTECH BENTO METRIC STRIP COMPONENT ─────────────────────────────────
 
   Widget _buildSegmentedFilter({
     required int totalCount,
@@ -905,8 +910,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     );
   }
 
-  // ── 3. LIST / TABLE BUILDER ─────────────────────────────────────────────────
-
   Widget _buildContentSliver({
     required CustomersState state,
     required List<CustomerEntity> topList,
@@ -916,8 +919,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   }) {
     if (state is CustomersLoading) {
       return (isMobile || !_isTableView)
-          ? const _CustomersSkeleton()
-          : const _DesktopTableSkeleton();
+          ? const CustomersCardSkeleton()
+          : const DesktopTableSkeleton();
     } else if (state is CustomersLoaded) {
       final sortedList = _sortCustomers(state.customers, topList);
 
@@ -1107,930 +1110,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-// ── BENTO METRICS HEADER COMPONENT (Fintech Pro Look) ─────────────────────────
-
-class _CustomersBentoMetrics extends StatelessWidget {
-  final bool isMobile;
-  final bool isTablet;
-
-  const _CustomersBentoMetrics({
-    required this.isMobile,
-    required this.isTablet,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<CustomersStatsCubit, CustomersStatsState>(
-      builder: (context, state) {
-        final isLoading = state is CustomersStatsLoading;
-        final total =
-            state is CustomersStatsLoaded ? state.totalCustomersCount : 0;
-        final active =
-            state is CustomersStatsLoaded ? state.activeCustomersCount : 0;
-        final revenue =
-            state is CustomersStatsLoaded ? state.totalRevenue : 0.0;
-        final debt = state is CustomersStatsLoaded ? state.totalDebt : 0.0;
-        final activePct =
-            total > 0 ? ((active / total) * 100).toStringAsFixed(0) : '0';
-
-        return AdminKpiMetricsBar(
-          isLoading: isLoading,
-          isDesktop: !isMobile,
-          isMobileGrid: true,
-          padding: EdgeInsets.fromLTRB(16, isMobile ? 10 : 12, 16, 6),
-          items: [
-            AdminKpiItem(
-              title: 'TOTAL CLIENTES',
-              value: '$total',
-              subtitle: 'Directorio activo',
-              icon: Icons.people_alt_rounded,
-              accentColor: AppColors.primary,
-              gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
-              iconGradient: const [Color(0xFF334155), Color(0xFF1E293B)],
-              borderColor: const Color(0xFFE2E8F0),
-              glowColor: const Color(0x1F0F172A),
-            ),
-            AdminKpiItem(
-              title: 'CLIENTES ACTIVOS',
-              value: '$active',
-              subtitle: '$activePct% de cartera',
-              icon: Icons.verified_user_rounded,
-              accentColor: AppColors.successDark,
-              gradientColors: const [Colors.white, Color(0xFFECFDF5)],
-              iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
-              borderColor: const Color(0xFFA7F3D0),
-              glowColor: const Color(0x2E10B981),
-            ),
-            AdminKpiItem(
-              title: 'FACTURACIÓN',
-              value: _formatCompactMoney(revenue),
-              subtitle: 'Ingresos históricos',
-              icon: Icons.trending_up_rounded,
-              accentColor: AppColors.info,
-              gradientColors: const [Colors.white, Color(0xFFF0F9FF)],
-              iconGradient: const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
-              borderColor: const Color(0xFFBAE6FD),
-              glowColor: const Color(0x2E0EA5E9),
-            ),
-            AdminKpiItem(
-              title: 'CUENTAS POR COBRAR',
-              value: _formatCompactMoney(debt),
-              subtitle: debt > 0 ? 'Saldos pendientes' : 'Al día',
-              icon: Icons.account_balance_wallet_rounded,
-              accentColor: debt > 0 ? AppColors.danger : AppColors.tealDark,
-              gradientColors: [
-                Colors.white,
-                debt > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDFA),
-              ],
-              iconGradient:
-                  debt > 0
-                      ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-                      : const [Color(0xFF0D9488), Color(0xFF0F766E)],
-              borderColor:
-                  debt > 0 ? const Color(0xFFFECACA) : const Color(0xFF99F6E4),
-              glowColor:
-                  debt > 0 ? const Color(0x2EEF4444) : const Color(0x2E0D9488),
-              valueColor: debt > 0 ? AppColors.danger : AppColors.textPrimary,
-              isAlert: debt > 0,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  static String _formatCompactMoney(double value) {
-    if (value >= 1000000) {
-      return 'S/ ${(value / 1000000).toStringAsFixed(1)}M';
-    }
-    if (value >= 1000) {
-      return 'S/ ${(value / 1000).toStringAsFixed(1)}K';
-    }
-    return 'S/ ${value.toStringAsFixed(0)}';
-  }
-}
-
-// ── CUSTOMER SIDE SHEET INSPECTOR (Fintech / Stripe Pro Tool) ────────────────
-
-class _CustomerSideSheetInspector extends StatelessWidget {
-  final CustomerEntity customer;
-  final VoidCallback onClose;
-  final VoidCallback onEdit;
-  final VoidCallback onOpenFullDetail;
-  final ValueChanged<String> onWhatsApp;
-  final ValueChanged<String> onCall;
-  final void Function(String text, String label) onCopy;
-
-  const _CustomerSideSheetInspector({
-    required this.customer,
-    required this.onClose,
-    required this.onEdit,
-    required this.onOpenFullDetail,
-    required this.onWhatsApp,
-    required this.onCall,
-    required this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = customer;
-    final isUnlimited = c.creditLimit <= 0;
-    final availableCredit =
-        isUnlimited
-            ? double.infinity
-            : (c.creditLimit - c.currentDebt).clamp(0.0, double.infinity);
-    final creditUsageRatio =
-        (!isUnlimited && c.creditLimit > 0)
-            ? (c.currentDebt / c.creditLimit).clamp(0.0, 1.0)
-            : 0.0;
-
-    return DetailSheetFrame(
-      title: 'Ficha Rápida del Cliente',
-      leading: const Icon(
-        Icons.info_outline_rounded,
-        size: 20,
-        color: AppColors.primary,
-      ),
-      onClose: onClose,
-      bodyPadding: const EdgeInsets.all(20),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Profile Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-              boxShadow: AppColors.cardShadow(opacity: 0.02),
-            ),
-            child: Row(
-              children: [
-                _CustomerAvatarLarge(customer: c),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        c.fullName,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  c.isActive
-                                      ? AppColors.successLight
-                                      : AppColors.slateLight,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              c.isActive ? 'Activo' : 'Inactivo',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    c.isActive
-                                        ? AppColors.successDark
-                                        : AppColors.slate,
-                              ),
-                            ),
-                          ),
-                          if (c.currentDebt > 0) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.dangerLight,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'Con Saldo Deudor',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.danger,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Contact Details Box
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              children: [
-                _InspectorDetailRow(
-                  icon: Icons.badge_outlined,
-                  label: c.documentType ?? 'Documento',
-                  value: c.documentNumber ?? 'No registrado',
-                  onCopy:
-                      c.documentNumber != null
-                          ? () => onCopy(c.documentNumber!, 'Documento')
-                          : null,
-                ),
-                const Divider(height: 16, color: AppColors.divider),
-                _InspectorDetailRow(
-                  icon: Icons.phone_outlined,
-                  label: 'Teléfono',
-                  value: c.phone ?? 'No registrado',
-                  onCopy:
-                      c.phone != null
-                          ? () => onCopy(c.phone!, 'Teléfono')
-                          : null,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Financial Overview Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ESTADO DE CUENTA Y CRÉDITO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _BalanceMiniCard(
-                        title: 'Deuda Actual',
-                        value: 'S/ ${c.currentDebt.toStringAsFixed(2)}',
-                        isAlert: c.currentDebt > 0,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _BalanceMiniCard(
-                        title: 'Límite Crédito',
-                        value:
-                            isUnlimited
-                                ? 'Sin límite (∞)'
-                                : 'S/ ${c.creditLimit.toStringAsFixed(2)}',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _BalanceMiniCard(
-                        title: 'Crédito Disponible',
-                        value:
-                            isUnlimited
-                                ? 'Ilimitado'
-                                : 'S/ ${availableCredit.toStringAsFixed(2)}',
-                        isSuccess: isUnlimited || availableCredit > 0,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _BalanceMiniCard(
-                        title: 'Facturación Total',
-                        value: 'S/ ${c.totalRevenue.toStringAsFixed(2)}',
-                      ),
-                    ),
-                  ],
-                ),
-                if (!isUnlimited && c.creditLimit > 0) ...[
-                  const SizedBox(height: 14),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: creditUsageRatio,
-                      minHeight: 6,
-                      backgroundColor: AppColors.border,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        creditUsageRatio > 0.85
-                            ? AppColors.danger
-                            : (creditUsageRatio > 0.5
-                                ? AppColors.warning
-                                : AppColors.teal),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${(creditUsageRatio * 100).toStringAsFixed(0)}% del límite de crédito consumido',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Direct Contact Action Buttons
-          if (c.phone != null && c.phone!.isNotEmpty) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    icon: const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 16,
-                    ),
-                    label: const Text('WhatsApp'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () => onWhatsApp(c.phone!),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.phone_outlined, size: 16),
-                    label: const Text('Llamar'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () => onCall(c.phone!),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Action Buttons Full Detail & Edit
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Editar datos'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: onEdit,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                  label: const Text('Ficha completa'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: onOpenFullDetail,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BalanceMiniCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final bool isAlert;
-  final bool isSuccess;
-
-  const _BalanceMiniCard({
-    required this.title,
-    required this.value,
-    this.isAlert = false,
-    this.isSuccess = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Color valColor = AppColors.textPrimary;
-    if (isAlert) valColor = AppColors.danger;
-    if (isSuccess) valColor = AppColors.successDark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color:
-              isAlert
-                  ? AppColors.danger.withValues(alpha: 0.25)
-                  : AppColors.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: valColor,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InspectorDetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback? onCopy;
-
-  const _InspectorDetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        if (onCopy != null)
-          IconButton(
-            icon: const Icon(Icons.copy_rounded, size: 16),
-            tooltip: 'Copiar',
-            splashRadius: 16,
-            color: AppColors.textSecondary,
-            onPressed: onCopy,
-          ),
-      ],
-    );
-  }
-}
-
-// ── MOBILE BOTTOM SHEET (Apple HIG Style) ───────────────────────────────────
-
-class _MobileCustomerActionSheet extends StatelessWidget {
-  final CustomerEntity customer;
-  final VoidCallback onOpenDetail;
-  final VoidCallback onEdit;
-  final VoidCallback onWhatsApp;
-  final VoidCallback onCall;
-  final VoidCallback onCopyDoc;
-
-  const _MobileCustomerActionSheet({
-    required this.customer,
-    required this.onOpenDetail,
-    required this.onEdit,
-    required this.onWhatsApp,
-    required this.onCall,
-    required this.onCopyDoc,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = customer;
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag Handle
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // Header
-          Row(
-            children: [
-              _CustomerAvatarLarge(customer: c),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      c.fullName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      '${c.documentType ?? 'DOC'}: ${c.documentNumber ?? 'Sin documento'}',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 8),
-
-          // Acciones con target táctil mínimo de 48dp
-          ListTile(
-            leading: const Icon(
-              Icons.visibility_outlined,
-              color: AppColors.primary,
-            ),
-            title: const Text('Ver ficha y pedidos completos'),
-            onTap: onOpenDetail,
-          ),
-          if (c.phone != null && c.phone!.isNotEmpty) ...[
-            ListTile(
-              leading: const Icon(
-                Icons.chat_bubble_outline_rounded,
-                color: Color(0xFF25D366),
-              ),
-              title: const Text('Enviar mensaje de WhatsApp'),
-              subtitle: Text(c.phone!),
-              onTap: onWhatsApp,
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.phone_outlined,
-                color: AppColors.textPrimary,
-              ),
-              title: const Text('Llamar por teléfono'),
-              onTap: onCall,
-            ),
-          ],
-          if (c.documentNumber != null && c.documentNumber!.isNotEmpty)
-            ListTile(
-              leading: const Icon(
-                Icons.copy_rounded,
-                color: AppColors.textSecondary,
-              ),
-              title: const Text('Copiar número de documento'),
-              onTap: onCopyDoc,
-            ),
-          ListTile(
-            leading: const Icon(
-              Icons.edit_outlined,
-              color: AppColors.textSecondary,
-            ),
-            title: const Text('Editar información'),
-            onTap: onEdit,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── AVATARS Y UTILIDADES VISUALES ───────────────────────────────────────────
-
-class _CustomerAvatarLarge extends StatelessWidget {
-  final CustomerEntity customer;
-
-  const _CustomerAvatarLarge({required this.customer});
-
-  @override
-  Widget build(BuildContext context) {
-    if (customer.avatarUrl != null && customer.avatarUrl!.isNotEmpty) {
-      return CircleAvatar(
-        radius: 26,
-        backgroundColor: AppColors.background,
-        backgroundImage: CachedNetworkImageProvider(customer.avatarUrl!),
-      );
-    }
-
-    final color =
-        Colors.primaries[customer.fullName.length % Colors.primaries.length];
-
-    return CircleAvatar(
-      radius: 26,
-      backgroundColor: color.withValues(alpha: 0.15),
-      child: Text(
-        customer.fullName.isNotEmpty ? customer.fullName[0].toUpperCase() : '?',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
-      ),
-    );
-  }
-}
-
-// ── SKELETONS ADAPTATIVOS DE CARGA ──────────────────────────────────────────
-
-class _DesktopTableSkeleton extends StatelessWidget {
-  const _DesktopTableSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                color: AppColors.background,
-                child: Row(
-                  children: const [
-                    AppShimmer(width: 80, height: 12, borderRadius: 4),
-                    Spacer(),
-                    AppShimmer(width: 80, height: 12, borderRadius: 4),
-                  ],
-                ),
-              ),
-              ...List.generate(
-                7,
-                (index) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: AppColors.divider),
-                    ),
-                  ),
-                  child: Row(
-                    children: const [
-                      AppShimmer(width: 34, height: 34, borderRadius: 17),
-                      SizedBox(width: 12),
-                      AppShimmer(width: 160, height: 14, borderRadius: 4),
-                      Spacer(),
-                      AppShimmer(width: 90, height: 14, borderRadius: 4),
-                      SizedBox(width: 20),
-                      AppShimmer(width: 70, height: 20, borderRadius: 6),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CustomersSkeleton extends StatelessWidget {
-  const _CustomersSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate((context, index) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  AppShimmer(width: 48, height: 48, borderRadius: 24),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AppShimmer(width: 150, height: 16, borderRadius: 4),
-                        SizedBox(height: 8),
-                        AppShimmer(width: 100, height: 12, borderRadius: 4),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  AppShimmer(width: 60, height: 24, borderRadius: 12),
-                ],
-              ),
-            ),
-          );
-        }, childCount: 6),
-      ),
-    );
-  }
-}
-
-/// Botón secundario de la cabecera: acceso permanente al ranking y sorteo.
-class _TopClientsHeaderButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _TopClientsHeaderButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Tooltip(
-      message: 'Ranking de mejores clientes y sorteo',
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: const Icon(
-          Icons.emoji_events_rounded,
-          size: 18,
-          color: Color(0xFFF59E0B),
-        ),
-        label: const Text('Top clientes'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13.5,
-          ),
-          side: BorderSide(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Franja que aparece bajo la barra de filtros cuando "Top VIP" está activo.
-class _TopVipBanner extends StatelessWidget {
-  final VoidCallback onOpen;
-  const _TopVipBanner({required this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const amber = Color(0xFFF59E0B);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: amber.withValues(alpha: isDark ? 0.12 : 0.10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: amber.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            const Text('👑', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tus clientes VIP por facturación',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Mira el podio completo y sortea un premio entre ellos.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: onOpen,
-              icon: const Icon(Icons.casino_rounded, size: 18),
-              label: const Text('Ranking y sorteo'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFB45309),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12.5,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -663,7 +663,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       final ordersRes = await _supabase
           .from('orders')
           .select('total_amount')
-          .eq('status', 'COMPLETED');
+          .eq('status', 'COMPLETED')
+          .limit(1000);
 
       double totalRevenue = 0.0;
       for (var row in ordersRes) {
@@ -751,7 +752,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
       final ordersRes = await _supabase
           .from('orders')
           .select('customer_id, total_amount')
-          .eq('status', 'COMPLETED');
+          .eq('status', 'COMPLETED')
+          .limit(1500);
 
       final revMap = <String, double>{};
       final countMap = <String, int>{};

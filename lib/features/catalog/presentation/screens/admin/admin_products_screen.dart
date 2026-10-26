@@ -1213,8 +1213,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     AdminCatalogCubit cubit, {
     required bool isDesktop,
   }) {
-    if (state.catalogState == ViewState.loading ||
-        state.catalogState == ViewState.initial) {
+    final hasCachedProducts = state.products.isNotEmpty;
+    if ((state.catalogState == ViewState.loading ||
+            state.catalogState == ViewState.initial) &&
+        !hasCachedProducts) {
       return SliverToBoxAdapter(
         child:
             isDesktop

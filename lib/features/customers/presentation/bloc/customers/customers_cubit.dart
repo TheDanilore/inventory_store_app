@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/customers/domain/entities/customer_
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_state.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/export_customers_pdf_usecase.dart';
 
-@injectable
+@lazySingleton
 class CustomersCubit extends Cubit<CustomersState> {
   final GetCustomersUseCase _getCustomersUseCase;
   final ExportCustomersPdfUseCase _exportPdfUseCase;
@@ -22,6 +22,7 @@ class CustomersCubit extends Cubit<CustomersState> {
     bool reset = false,
     String? query,
     bool? showOnlyWithDebt,
+    bool silent = false,
   }) async {
     final currentState = state;
 
@@ -39,16 +40,22 @@ class CustomersCubit extends Cubit<CustomersState> {
     }
 
     if (reset) {
-      currentCustomers = [];
-      emit(CustomersLoading());
+      // Stale-While-Revalidate: si ya tenemos clientes en memoria y no cambió la búsqueda radicalmente,
+      // no mostramos skeleton/shimmer destructivo, sino refresco silencioso en background.
+      if (currentCustomers.isEmpty && !silent) {
+        emit(CustomersLoading());
+      } else if (currentState is CustomersLoaded) {
+        emit(currentState.copyWith(isRefreshing: true));
+      }
     } else {
       if (currentState is CustomersLoaded && currentState.hasReachedMax) return;
     }
 
     try {
+      final offset = reset ? 0 : currentCustomers.length;
       final newCustomers = await _getCustomersUseCase(
         limit: _limit,
-        offset: currentCustomers.length,
+        offset: offset,
         query: currentQuery,
         showOnlyWithDebt: currentDebtFilter,
       );
@@ -60,12 +67,18 @@ class CustomersCubit extends Cubit<CustomersState> {
           hasReachedMax: newCustomers.length < _limit,
           query: currentQuery,
           showOnlyWithDebt: currentDebtFilter,
+          isRefreshing: false,
         ),
       );
     } catch (e) {
-      final msg =
-          e is AppException ? e.message : 'Error al cargar clientes: $e';
-      emit(CustomersError(msg));
+      // Si ya hay clientes visibles, mantenemos los datos y no destruimos la UI con pantalla roja
+      if (currentCustomers.isNotEmpty && currentState is CustomersLoaded) {
+        emit(currentState.copyWith(isRefreshing: false));
+      } else {
+        final msg =
+            e is AppException ? e.message : 'Error al cargar clientes: $e';
+        emit(CustomersError(msg));
+      }
     }
   }
 

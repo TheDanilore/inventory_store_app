@@ -829,7 +829,8 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
     required bool isLoading,
     required bool isTablet,
   }) {
-    if (isLoading) {
+    final hasCachedEntries = displayEntries.isNotEmpty;
+    if (isLoading && !hasCachedEntries) {
       if (_isTableView && isTablet) {
         return const SliverToBoxAdapter(child: AppTableShimmer());
       }

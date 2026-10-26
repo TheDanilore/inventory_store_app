@@ -17,25 +17,31 @@ class CustomersLoaded extends CustomersState {
   final bool hasReachedMax;
   final String query;
   final bool showOnlyWithDebt;
+  final bool isRefreshing;
 
   const CustomersLoaded({
     required this.customers,
     required this.hasReachedMax,
     this.query = '',
     this.showOnlyWithDebt = false,
+    this.isRefreshing = false,
   });
+
+  bool get hasCustomers => customers.isNotEmpty;
 
   CustomersLoaded copyWith({
     List<CustomerEntity>? customers,
     bool? hasReachedMax,
     String? query,
     bool? showOnlyWithDebt,
+    bool? isRefreshing,
   }) {
     return CustomersLoaded(
       customers: customers ?? this.customers,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       query: query ?? this.query,
       showOnlyWithDebt: showOnlyWithDebt ?? this.showOnlyWithDebt,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
@@ -45,6 +51,7 @@ class CustomersLoaded extends CustomersState {
     hasReachedMax,
     query,
     showOnlyWithDebt,
+    isRefreshing,
   ];
 }
 
