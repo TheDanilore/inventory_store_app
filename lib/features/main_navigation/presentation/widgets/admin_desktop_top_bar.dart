@@ -12,6 +12,7 @@ import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart'
 import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/notifications/notification_bell.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_pos_button.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
   final bool isSidebarCollapsed;
@@ -203,10 +204,23 @@ class AdminDesktopTopBar extends StatelessWidget {
           PopupMenuButton<String>(
             tooltip: 'Opciones de perfil',
             offset: const Offset(0, 48),
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'profile') context.go('/profile');
               if (value == 'business') context.go('/business-info');
-              if (value == 'logout') context.read<AuthCubit>().logout();
+              if (value == 'logout') {
+                final confirmed = await AppConfirmDialog.show(
+                  context,
+                  icon: Icons.logout_rounded,
+                  title: 'Cerrar Sesión',
+                  message:
+                      '¿Estás seguro de que deseas salir y cerrar tu sesión?',
+                  confirmText: 'Cerrar Sesión',
+                  confirmColor: AppColors.error,
+                );
+                if (confirmed == true && context.mounted) {
+                  await context.read<AuthCubit>().logout();
+                }
+              }
             },
             itemBuilder: (ctx) {
               final authState = context.read<AuthCubit>().state;

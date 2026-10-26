@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
@@ -471,44 +472,19 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
     final isCashier = _isCashierOnly;
 
     if (isCashier) {
-      final shouldLogout = await showDialog<bool>(
-        context: context,
-        builder:
-            (dialogCtx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Row(
-                children: [
-                  Icon(
-                    Icons.power_settings_new_rounded,
-                    color: AppColors.error,
-                  ),
-                  SizedBox(width: 8),
-                  Text('¿Cerrar Sesión de Caja?'),
-                ],
-              ),
-              content: Text(
-                isShiftOpen
-                    ? 'Atención: Tu turno de caja aún se encuentra ABIERTO.\n\nTe recomendamos realizar el arqueo y cierre de turno en la pestaña "Turnos" antes de retirarte.\n\n¿Deseas cerrar tu sesión ahora?'
-                    : (hasItems
-                        ? 'Tienes productos en la caja actual.\n\n¿Estás seguro de que deseas cerrar tu sesión?'
-                        : '¿Estás seguro de que deseas cerrar tu sesión de cajero?'),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx, false),
-                  child: const Text('Permanecer en Caja'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                  ),
-                  onPressed: () => Navigator.pop(dialogCtx, true),
-                  child: const Text('Cerrar Sesión'),
-                ),
-              ],
-            ),
+      final shouldLogout = await AppConfirmDialog.show(
+        context,
+        icon: Icons.power_settings_new_rounded,
+        title: 'Cerrar Sesión de Caja',
+        message:
+            isShiftOpen
+                ? 'Atención: Tu turno de caja aún se encuentra ABIERTO.\n\nTe recomendamos realizar el arqueo y cierre de turno en la pestaña "Turnos" antes de retirarte.\n\n¿Deseas cerrar tu sesión ahora?'
+                : (hasItems
+                    ? 'Tienes productos en la caja actual.\n\n¿Estás seguro de que deseas cerrar tu sesión?'
+                    : '¿Estás seguro de que deseas cerrar tu sesión de cajero?'),
+        confirmText: 'Cerrar Sesión',
+        cancelText: 'Permanecer en Caja',
+        confirmColor: AppColors.error,
       );
 
       if (shouldLogout == true && mounted) {

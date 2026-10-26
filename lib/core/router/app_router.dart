@@ -401,9 +401,31 @@ class AppRouter {
                           parent: animation,
                           curve: Curves.easeOut,
                         ),
-                        child: ColoredBox(
-                          color: AppColors.bg(context),
-                          child: child,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: Offset.zero,
+                            end: const Offset(0, -0.02),
+                          ).animate(
+                            CurvedAnimation(
+                              parent: secondaryAnimation,
+                              curve: Curves.easeOutCubic,
+                            ),
+                          ),
+                          child: FadeTransition(
+                            opacity: Tween<double>(
+                              begin: 1.0,
+                              end: 0.0,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: secondaryAnimation,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                            child: ColoredBox(
+                              color: AppColors.bg(context),
+                              child: child,
+                            ),
+                          ),
                         ),
                       ),
                     ],

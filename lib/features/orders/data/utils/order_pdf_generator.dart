@@ -42,6 +42,34 @@ class OrderPdfGenerator {
     }
   }
 
+  /// Genera los datos estructurados para el Código QR del comprobante
+  /// siguiendo el estándar SUNAT / Comprobante Electrónico (RUC|TIPO_DOC|SERIE|NUMERO|IGV|TOTAL|FECHA|DOC_CLIENTE|NUM_DOC_CLIENTE|ID)
+  static String buildQrData(OrderEntity order, {String taxId = ''}) {
+    final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
+    final dateStr = DateFormat('yyyy-MM-dd').format(peruTime);
+    final opGravada =
+        order.subtotalAmount > 0
+            ? order.subtotalAmount
+            : double.parse((order.totalAmount / 1.18).toStringAsFixed(2));
+    final igv =
+        order.taxAmount > 0
+            ? order.taxAmount
+            : double.parse((order.totalAmount - opGravada).toStringAsFixed(2));
+
+    return [
+      taxId,
+      order.documentType,
+      order.documentSeries ?? '',
+      order.documentNumber ?? order.displayReceiptNumber,
+      igv.toStringAsFixed(2),
+      order.totalAmount.toStringAsFixed(2),
+      dateStr,
+      order.customerDocumentType ?? '',
+      order.customerDocumentNumber ?? '',
+      order.id,
+    ].join('|');
+  }
+
   static Future<Uint8List> buildPdfBytes(
     OrderEntity order, {
     required List<OrderItemEntity> items,
@@ -269,7 +297,31 @@ class OrderPdfGenerator {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 15),
+              pw.SizedBox(height: 10),
+              pw.Divider(borderStyle: pw.BorderStyle.dashed),
+              pw.SizedBox(height: 8),
+
+              // --- CÓDIGO QR ---
+              pw.Center(
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: buildQrData(order, taxId: taxId),
+                  width: 75,
+                  height: 75,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Center(
+                child: pw.Text(
+                  '#${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id}',
+                  style: pw.TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blueGrey800,
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 8),
               pw.Center(
                 child: pw.Text(
                   '¡Gracias por su compra!',
@@ -542,10 +594,31 @@ class OrderPdfGenerator {
               ),
               pw.SizedBox(height: 14),
 
-              // Totales a la derecha
+              // Totales y Código QR
               pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.end,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: buildQrData(order, taxId: taxId),
+                        width: 70,
+                        height: 70,
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        '#${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id}',
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blueGrey700,
+                        ),
+                      ),
+                    ],
+                  ),
                   pw.SizedBox(
                     width: 220,
                     child: pw.Column(

@@ -13,6 +13,7 @@ import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_state.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 
 // ---------------------------------------------------------------------------
 // Modelo de datos para los ítems del drawer
@@ -1281,11 +1282,23 @@ class _DrawerFooter extends StatelessWidget {
                             final messenger = ScaffoldMessenger.of(context);
                             final navigator = Navigator.of(context);
 
+                            final confirmed = await AppConfirmDialog.show(
+                              context,
+                              icon: Icons.logout_rounded,
+                              title: 'Cerrar Sesión',
+                              message:
+                                  '¿Estás seguro de que deseas salir y cerrar tu sesión?',
+                              confirmText: 'Cerrar Sesión',
+                              confirmColor: AppColors.error,
+                            );
+
+                            if (confirmed != true) return;
+
                             try {
-                              await authCubit.logout();
                               if (navigator.mounted) {
                                 navigator.pop();
                               }
+                              await authCubit.logout();
                             } catch (e, st) {
                               LoggerService.e(
                                 'Error al cerrar sesión',

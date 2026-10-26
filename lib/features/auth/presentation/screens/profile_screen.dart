@@ -9,6 +9,7 @@ import 'package:inventory_store_app/features/auth/domain/entities/auth_user_enti
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 
 import 'package:inventory_store_app/features/auth/presentation/widgets/profile/profile_header_section.dart';
@@ -267,6 +268,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return shouldPop ?? false;
   }
 
+  Future<void> _confirmAndSignOut() async {
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      icon: Icons.logout_rounded,
+      title: 'Cerrar Sesión',
+      message: '¿Estás seguro de que deseas salir y cerrar tu sesión?',
+      confirmText: 'Cerrar Sesión',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed == true && mounted) {
+      await context.read<AuthCubit>().logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const isLoyaltyEnabled = false;
@@ -397,9 +412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 16),
                     ProfileActionButtonsSection(
                       isAdmin: user.role == AppRoles.admin,
-                      onSignOut: () async {
-                        await context.read<AuthCubit>().logout();
-                      },
+                      onSignOut: _confirmAndSignOut,
                     ),
                   ],
                 ),
@@ -639,9 +652,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 20),
                 ProfileActionButtonsSection(
                   isAdmin: user.role == AppRoles.admin,
-                  onSignOut: () async {
-                    await context.read<AuthCubit>().logout();
-                  },
+                  onSignOut: _confirmAndSignOut,
                 ),
                 const SizedBox(height: 32),
               ]),

@@ -1047,16 +1047,16 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         _dashedDivider(),
         const SizedBox(height: 12),
 
-        // Código de barras / QR representativo
+        // Código QR representativo
         Center(
           child: SizedBox(
-            height: 38,
-            width: 170,
+            height: 85,
+            width: 85,
             child: BarcodeWidget(
-              barcode: Barcode.code128(),
-              data: _shortId,
+              barcode: Barcode.qrCode(),
+              data: OrderPdfGenerator.buildQrData(widget.order, taxId: taxId),
               drawText: false,
-              color: const Color(0xFF334155),
+              color: const Color(0xFF1E293B),
             ),
           ),
         ),
@@ -1334,73 +1334,107 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
 
         const SizedBox(height: 10),
 
-        // Total
-        Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            width: 190,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
+        // Totales y Código QR
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('OP. GRAVADA:', style: TextStyle(fontSize: 8.5)),
-                    Text(
-                      'S/ ${a4OpGravada.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+                SizedBox(
+                  height: 68,
+                  width: 68,
+                  child: BarcodeWidget(
+                    barcode: Barcode.qrCode(),
+                    data: OrderPdfGenerator.buildQrData(
+                      widget.order,
+                      taxId: taxId,
                     ),
-                  ],
+                    drawText: false,
+                    color: const Color(0xFF1E293B),
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'I.G.V. (18%):',
-                      style: TextStyle(fontSize: 8.5),
-                    ),
-                    Text(
-                      'S/ ${a4IgvAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 6, color: Color(0xFFE2E8F0)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'TOTAL:',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  '#$_shortId',
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontFamily: 'monospace',
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-          ),
+            Container(
+              width: 190,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'OP. GRAVADA:',
+                        style: TextStyle(fontSize: 8.5),
+                      ),
+                      Text(
+                        'S/ ${a4OpGravada.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'I.G.V. (18%):',
+                        style: TextStyle(fontSize: 8.5),
+                      ),
+                      Text(
+                        'S/ ${a4IgvAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 6, color: Color(0xFFE2E8F0)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'TOTAL:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'S/ ${widget.order.totalAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
