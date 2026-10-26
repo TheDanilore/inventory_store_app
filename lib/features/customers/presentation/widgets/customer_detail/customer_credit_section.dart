@@ -216,7 +216,7 @@ class CustomerCreditSection extends StatelessWidget {
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              height: 46,
+              height: 48,
               child: ElevatedButton.icon(
                 icon: Icon(
                   Icons.payments_rounded,
@@ -231,6 +231,7 @@ class CustomerCreditSection extends StatelessWidget {
                     color: debt > 0 ? Colors.white : AppColors.textMuted,
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
+                    height: 1.2,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -238,6 +239,10 @@ class CustomerCreditSection extends StatelessWidget {
                       debt > 0 ? AppColors.teal : AppColors.background,
                   foregroundColor: Colors.white,
                   elevation: debt > 0 ? 2 : 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                     side: BorderSide(

@@ -135,10 +135,16 @@ class OrderPdfGenerator {
                   'REF. OPERACIÓN: ${order.paymentReference}',
                   style: const pw.TextStyle(fontSize: 10),
                 ),
-              pw.Text(
-                'ESTADO PAGO: ${_translatePaymentStatus(order.paymentStatus)}',
-                style: const pw.TextStyle(fontSize: 10),
-              ),
+              if (order.paymentMethod.toUpperCase().contains('CREDIT') ||
+                  order.paymentStatus.toUpperCase() == 'PENDING' ||
+                  order.paymentStatus.toUpperCase() == 'PARTIAL')
+                pw.Text(
+                  'CONDICIÓN: ${order.paymentStatus.toUpperCase() == "PARTIAL" ? "CRÉDITO (PAGO PARCIAL)" : "AL CRÉDITO"}',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
 
               pw.SizedBox(height: 8),
               pw.Divider(borderStyle: pw.BorderStyle.dashed),
@@ -311,8 +317,6 @@ class OrderPdfGenerator {
     final pdf = pw.Document();
     final peruTime = _toPeruTime(order.createdAt ?? DateTime.now());
     final dateStr = DateFormat('dd/MM/yyyy HH:mm', 'es').format(peruTime);
-    final shortId =
-        order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id;
 
     pdf.addPage(
       pw.Page(
@@ -394,7 +398,11 @@ class OrderPdfGenerator {
                           ),
                         pw.SizedBox(height: 4),
                         pw.Text(
-                          'COMPROBANTE DE VENTA',
+                          order.documentType == "FACTURA"
+                              ? "FACTURA ELECTRÓNICA"
+                              : (order.documentType == "BOLETA"
+                                  ? "BOLETA ELECTRÓNICA"
+                                  : "NOTA DE VENTA"),
                           style: pw.TextStyle(
                             fontSize: 10,
                             fontWeight: pw.FontWeight.bold,
@@ -404,7 +412,7 @@ class OrderPdfGenerator {
                         ),
                         pw.SizedBox(height: 4),
                         pw.Text(
-                          'N° B001-$shortId',
+                          'N° ${order.displayReceiptNumber}',
                           style: pw.TextStyle(
                             fontSize: 13,
                             fontWeight: pw.FontWeight.bold,
@@ -725,9 +733,10 @@ class OrderPdfGenerator {
       phone: phone,
     );
 
+    final safeNumber = order.displayReceiptNumber.replaceAll('/', '_');
     await Printing.sharePdf(
       bytes: bytes,
-      filename: 'Comprobante_A4_${order.id.substring(0, 8)}.pdf',
+      filename: 'Comprobante_A4_$safeNumber.pdf',
     );
   }
 
@@ -796,9 +805,10 @@ class OrderPdfGenerator {
       phone: phone,
     );
 
+    final safeNumber = order.displayReceiptNumber.replaceAll('/', '_');
     await Printing.sharePdf(
       bytes: bytes,
-      filename: 'Pedido_${order.id.substring(0, 8)}.pdf',
+      filename: 'Ticket_$safeNumber.pdf',
     );
   }
 

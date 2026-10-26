@@ -181,6 +181,52 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                                 const SizedBox(width: 6),
                                 _buildVipBadge(vipRank),
                               ],
+                              if (c.locationsCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Tooltip(
+                                  message:
+                                      c.locationsCount == 1
+                                          ? '1 ubicación registrada'
+                                          : '${c.locationsCount} ubicaciones registradas',
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.teal.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                        color: AppColors.teal.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.place_rounded,
+                                          size: 10,
+                                          color: AppColors.teal,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${c.locationsCount}',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.teal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           if (c.createdAt != null)

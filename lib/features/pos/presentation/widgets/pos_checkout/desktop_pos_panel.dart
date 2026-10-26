@@ -47,6 +47,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   Timer? _debounce;
   bool _lastSaleWasDraft = false;
   double _lastSaleTotalAmount = 0.0;
+  String _lastSalePaymentMethod = 'EFECTIVO';
+  String _lastSaleCustomerName = 'Cliente Varios';
+  String _lastSaleDocumentType = 'NOTA_VENTA';
+  String? _lastSaleDocumentSeries;
+  String? _lastSalePaymentReference;
+  String _lastSaleCurrency = 'PEN';
   Map<String, int> _lastSoldQuantities = {};
 
   /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
@@ -232,6 +238,14 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     }
 
     _lastSaleWasDraft = isDraft;
+    _lastSalePaymentMethod = posCubit.state.paymentMethod;
+    _lastSaleCustomerName = _clienteCtrl.text.trim().isNotEmpty
+        ? _clienteCtrl.text.trim()
+        : (posCubit.state.selectedClientName ?? 'Cliente Varios');
+    _lastSaleDocumentType = posCubit.state.documentType;
+    _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
+    _lastSalePaymentReference = posCubit.state.paymentReference;
+    _lastSaleCurrency = posCubit.state.currencyCode;
     _lastSoldQuantities = {
       for (final item in cartCubit.state.items.values)
         item.productId: item.quantity,
@@ -407,6 +421,13 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
             builder:
                 (dialogContext) => PosSuccessDialog(
                   isDraft: _lastSaleWasDraft,
+                  totalAmount: _lastSaleTotalAmount,
+                  paymentMethod: _lastSalePaymentMethod,
+                  customerName: _lastSaleCustomerName,
+                  documentType: _lastSaleDocumentType,
+                  documentSeries: _lastSaleDocumentSeries,
+                  paymentReference: _lastSalePaymentReference,
+                  currencySymbol: _lastSaleCurrency == 'USD' ? '\$' : 'S/',
                   onPrint: () async {
                     try {
                       final fetchResult = await posCubit

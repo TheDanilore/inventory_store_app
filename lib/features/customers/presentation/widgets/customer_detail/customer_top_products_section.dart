@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_detail/customer_section_card.dart';
 
@@ -69,7 +70,12 @@ class _TopProductTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _Thumb(url: p.imageUrl, rank: rank, color: color),
+          _Thumb(
+            url: p.imageUrl,
+            productName: p.productName,
+            rank: rank,
+            color: color,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -153,10 +159,16 @@ class _TopProductTile extends StatelessWidget {
 
 class _Thumb extends StatelessWidget {
   final String? url;
+  final String productName;
   final int rank;
   final Color color;
 
-  const _Thumb({required this.url, required this.rank, required this.color});
+  const _Thumb({
+    required this.url,
+    required this.productName,
+    required this.rank,
+    required this.color,
+  });
 
   Color get _badgeColor {
     if (rank == 1) return const Color(0xFFF59E0B); // Gold
@@ -167,9 +179,11 @@ class _Thumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = Container(
-      color: color.withValues(alpha: 0.1),
-      child: Icon(Icons.inventory_2_outlined, color: color, size: 22),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fallback = ProductImagePlaceholder(
+      productName: productName,
+      isDark: isDark,
+      borderRadius: 12,
     );
 
     return SizedBox(

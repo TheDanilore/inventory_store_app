@@ -120,7 +120,10 @@ class _CustomerLocationFormSheetState extends State<CustomerLocationFormSheet> {
 
   Future<void> _pickFromMap() async {
     final initialPoint = (_lat != 0 && _lng != 0) ? LatLng(_lat, _lng) : null;
-    final placeResult = await Navigator.of(context).push<PlaceResult?>(
+    final placeResult = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push<PlaceResult?>(
       MaterialPageRoute(
         builder:
             (_) => CustomerLocationMapScreen(

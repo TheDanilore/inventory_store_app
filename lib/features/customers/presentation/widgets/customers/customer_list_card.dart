@@ -122,20 +122,30 @@ class _CustomerListCardState extends State<CustomerListCard> {
                               ],
                             ),
                           const SizedBox(height: 8),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
                             children: [
                               _Tag(
                                 icon: Icons.shopping_bag_rounded,
                                 text: '${widget.customer.orderCount} compras',
                                 color: AppColors.info,
                               ),
-                              const SizedBox(width: 8),
                               if (widget.customer.currentDebt > 0)
                                 _Tag(
                                   icon: Icons.warning_rounded,
                                   text:
                                       'Debe S/ ${widget.customer.currentDebt.toStringAsFixed(0)}',
                                   color: AppColors.danger,
+                                ),
+                              if (widget.customer.locationsCount > 0)
+                                _Tag(
+                                  icon: Icons.place_rounded,
+                                  text:
+                                      widget.customer.locationsCount == 1
+                                          ? '1 ubicación'
+                                          : '${widget.customer.locationsCount} ubicaciones',
+                                  color: AppColors.teal,
                                 ),
                             ],
                           ),

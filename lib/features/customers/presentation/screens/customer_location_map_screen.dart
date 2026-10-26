@@ -395,12 +395,18 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          // ── 1. Mapa Base ──────────────────────────────────────────────
-          FlutterMap(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final overlayStyle =
+        isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle.copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Stack(
+          children: [
+            // ── 1. Mapa Base ──────────────────────────────────────────────
+            FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _initialCenter,
@@ -460,11 +466,11 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.touch_app_rounded,
+                            Icons.pan_tool_alt_rounded,
                             color: Colors.white,
-                            size: 12,
+                            size: 13,
                           ),
-                          SizedBox(width: 4),
+                          SizedBox(width: 5),
                           Text(
                             'Mueve el mapa para fijar',
                             style: TextStyle(
@@ -516,7 +522,10 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           // ── 3. Controles Flotantes del Mapa (Zoom / GPS / Reset) ───────
           Positioned(
             right: 16,
-            bottom: widget.isPickerMode ? 210 : 230,
+            bottom:
+                widget.isPickerMode
+                    ? 230
+                    : (widget.locations.length > 1 ? 285 : 225),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -525,13 +534,13 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                   tooltip: 'Acercar (+)',
                   onTap: _zoomIn,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 _buildMapButton(
                   icon: Icons.remove_rounded,
                   tooltip: 'Alejar (-)',
                   onTap: _zoomOut,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 _buildMapButton(
                   icon:
                       _isLocating
@@ -542,7 +551,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                   onTap: _locateMe,
                 ),
                 if (!widget.isPickerMode && widget.locations.length > 1) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   _buildMapButton(
                     icon: Icons.fullscreen_rounded,
                     tooltip: 'Ver todas las ubicaciones',
@@ -588,26 +597,43 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
 
           // ── 6. Créditos OpenStreetMap ─────────────────────────────────
           Positioned(
-            bottom: 4,
-            left: 12,
+            left: 16,
+            bottom:
+                widget.isPickerMode
+                    ? 230
+                    : (widget.locations.length > 1 ? 285 : 225),
             child: IgnorePointer(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(4),
+                  color: AppColors.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.6),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
                 child: const Text(
-                  '© OpenStreetMap contributors',
-                  style: TextStyle(fontSize: 10, color: Colors.black54),
+                  '© OpenStreetMap',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── Botón Circular Estilizado para el Mapa ─────────────────────────────
   Widget _buildMapButton({
@@ -853,16 +879,19 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.infoLight,
+              color: AppColors.teal.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.teal.withValues(alpha: 0.25),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.location_on_rounded,
-                  size: 14,
-                  color: AppColors.info,
+                  Icons.place_rounded,
+                  size: 13,
+                  color: AppColors.teal,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -870,7 +899,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.info,
+                    color: AppColors.teal,
                   ),
                 ),
               ],
@@ -1081,42 +1110,71 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                         final isSelected = item.id == loc.id;
                         final itemColor = _typeColor(item.locationType);
 
-                        return ChoiceChip(
-                          selected: isSelected,
-                          onSelected: (val) {
-                            if (val) {
-                              setState(() => _selectedLocation = item);
-                              _mapController.move(
-                                LatLng(item.latitude, item.longitude),
-                                16.0,
-                              );
-                            }
+                        return InkWell(
+                          onTap: () {
+                            setState(() => _selectedLocation = item);
+                            _mapController.move(
+                              LatLng(item.latitude, item.longitude),
+                              16.0,
+                            );
                           },
-                          avatar: Icon(
-                            _typeIcon(item.locationType),
-                            size: 14,
-                            color: isSelected ? Colors.white : itemColor,
-                          ),
-                          label: Text(
-                            item.name,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSelected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
                               color:
                                   isSelected
-                                      ? Colors.white
-                                      : AppColors.textPrimary,
+                                      ? itemColor
+                                      : AppColors.background,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color:
+                                    isSelected ? itemColor : AppColors.border,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                              boxShadow:
+                                  isSelected
+                                      ? [
+                                        BoxShadow(
+                                          color: itemColor.withValues(
+                                            alpha: 0.35,
+                                          ),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                      : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _typeIcon(item.locationType),
+                                  size: 13,
+                                  color: isSelected ? Colors.white : itemColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          selectedColor: itemColor,
-                          backgroundColor: AppColors.background,
-                          side: BorderSide(
-                            color: isSelected ? itemColor : AppColors.border,
-                          ),
-                          visualDensity: VisualDensity.compact,
                         );
                       },
                     ),
@@ -1231,18 +1289,19 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                             () => _copyCoordinates(loc.latitude, loc.longitude),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textPrimary,
+                          backgroundColor: AppColors.background,
                           side: const BorderSide(color: AppColors.border),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         icon: const Icon(Icons.copy_rounded, size: 16),
                         label: const Text(
                           'Copiar Coords',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -1259,17 +1318,18 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
+                          elevation: 1,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        icon: const Icon(Icons.navigation_rounded, size: 16),
+                        icon: const Icon(Icons.directions_rounded, size: 17),
                         label: const Text(
                           'Google Maps',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                         ),
                       ),

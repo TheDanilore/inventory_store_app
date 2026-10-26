@@ -323,7 +323,7 @@ import '../../features/loyalty/domain/usecases/get_loyalty_profile_uc.dart'
 import '../../features/loyalty/domain/usecases/get_today_checkin_uc.dart'
     as _i893;
 import '../../features/loyalty/domain/usecases/get_today_mini_games_uc.dart'
-    as _i231;
+    as _i232;
 import '../../features/loyalty/domain/usecases/get_top_customers_uc.dart'
     as _i34;
 import '../../features/loyalty/domain/usecases/get_wallet_balance_uc.dart'
@@ -337,6 +337,10 @@ import '../../features/loyalty/presentation/bloc/points/points_cubit.dart'
 import '../../features/loyalty/presentation/bloc/top_customers/loyalty_top_customers_cubit.dart'
     as _i739;
 import '../../features/loyalty/presentation/bloc/wallet_cubit.dart' as _i1028;
+import '../../features/main_navigation/data/datasources/inventory_alert_source_impl.dart'
+    as _i231;
+import '../../features/main_navigation/domain/entities/inventory_alert_rules.dart'
+    as _i833;
 import '../../features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart'
     as _i41;
 import '../../features/orders/data/repositories_impl/checkout_repository_impl.dart'
@@ -516,7 +520,7 @@ import '../../features/users/domain/usecases/update_user_usecase.dart' as _i90;
 import '../../features/users/presentation/bloc/user_detail/user_detail_cubit.dart'
     as _i587;
 import '../../features/users/presentation/bloc/user_form/user_form_cubit.dart'
-    as _i833;
+    as _i834;
 import '../../features/users/presentation/bloc/users/users_cubit.dart' as _i451;
 import '../localization/bloc/locale_cubit.dart' as _i119;
 import '../network/network_cubit.dart' as _i11;
@@ -567,6 +571,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i422.InventoryRepository>(
       () => _i1035.InventoryRepositoryImpl(),
+    );
+    gh.lazySingleton<_i833.InventoryAlertSource>(
+      () => _i231.InventoryAlertSourceImpl(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i198.BrandsRepository>(
       () => _i84.BrandsRepositoryImpl(gh<_i454.SupabaseClient>()),
@@ -1189,8 +1196,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i893.GetTodayCheckinUC>(
       () => _i893.GetTodayCheckinUC(gh<_i747.LoyaltyRepository>()),
     );
-    gh.lazySingleton<_i231.GetTodayMiniGamesUC>(
-      () => _i231.GetTodayMiniGamesUC(gh<_i747.LoyaltyRepository>()),
+    gh.lazySingleton<_i232.GetTodayMiniGamesUC>(
+      () => _i232.GetTodayMiniGamesUC(gh<_i747.LoyaltyRepository>()),
     );
     gh.lazySingleton<_i34.GetTopCustomersUC>(
       () => _i34.GetTopCustomersUC(gh<_i747.LoyaltyRepository>()),
@@ -1604,8 +1611,8 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i833.UserFormCubit>(
-      () => _i833.UserFormCubit(
+    gh.factory<_i834.UserFormCubit>(
+      () => _i834.UserFormCubit(
         gh<_i12.CreateUserUseCase>(),
         gh<_i90.UpdateUserUseCase>(),
       ),

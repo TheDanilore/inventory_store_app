@@ -57,6 +57,21 @@ class CustomersRepositoryImpl implements CustomersRepository {
           .eq('status', 'COMPLETED')
           .inFilter('customer_id', cIds);
 
+      // Traer conteo de ubicaciones registradas
+      final locCounts = <String, int>{};
+      try {
+        final locRes = await _supabase
+            .from('customer_locations')
+            .select('profile_id')
+            .inFilter('profile_id', cIds);
+        for (var row in locRes) {
+          final pid = row['profile_id'] as String?;
+          if (pid != null) {
+            locCounts[pid] = (locCounts[pid] ?? 0) + 1;
+          }
+        }
+      } catch (_) {}
+
       return res.map<CustomerEntity>((json) {
         final id = json['id'] as String;
 
@@ -103,6 +118,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
           creditLimit: creditLimit,
           totalRevenue: totalSpent,
           orderCount: customerOrders.length,
+          locationsCount: locCounts[id] ?? 0,
         );
       }).toList();
     } catch (e, stack) {
@@ -149,6 +165,15 @@ class CustomersRepositoryImpl implements CustomersRepository {
         creditLimit = (creditRes['credit_limit'] as num?)?.toDouble() ?? 0.0;
       }
 
+      int locCount = 0;
+      try {
+        final locRes = await _supabase
+            .from('customer_locations')
+            .select('id')
+            .eq('profile_id', customerId);
+        locCount = (locRes as List).length;
+      } catch (_) {}
+
       return CustomerEntity(
         id: res['id'] as String,
         fullName: res['full_name'] as String? ?? 'Cliente',
@@ -166,6 +191,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         creditLimit: creditLimit,
         totalRevenue: totalSpent,
         orderCount: ordersRes.length,
+        locationsCount: locCount,
       );
     } catch (e, stackTrace) {
       LoggerService.e(
@@ -836,23 +862,59 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res = await _supabase
           .from('order_items')
-          .select(
-            'quantity, applied_price, products(name), order:orders!inner(customer_id, status)',
-          )
+          .select('''
+            quantity, applied_price,
+            products(id, name, product_images(image_url, is_main)),
+            product_variants(id, product_images(image_url, is_main)),
+            order:orders!inner(customer_id, status)
+          ''')
           .eq('order.customer_id', customerId)
           .eq('order.status', 'COMPLETED')
           .limit(200);
 
-      final productMap = <String, ({int qty, double spent})>{};
+      final productMap =
+          <String, ({int qty, double spent, String? imageUrl})>{};
       for (var row in res) {
         final productsObj = row['products'] as Map<String, dynamic>?;
         final pname = productsObj?['name'] as String? ?? 'Producto';
         final qty = (row['quantity'] as num?)?.toInt() ?? 0;
         final price = (row['applied_price'] as num?)?.toDouble() ?? 0.0;
-        final current = productMap[pname] ?? (qty: 0, spent: 0.0);
+
+        String? imageUrl;
+        if (productsObj != null) {
+          final prodImgs =
+              productsObj['product_images'] as List<dynamic>? ?? [];
+          if (prodImgs.isNotEmpty) {
+            final mainImg =
+                prodImgs.firstWhere(
+                      (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                      orElse: () => prodImgs.first,
+                    )
+                    as Map<String, dynamic>?;
+            imageUrl = mainImg?['image_url'] as String?;
+          }
+        }
+
+        if (imageUrl == null && row['product_variants'] is Map) {
+          final varMap = row['product_variants'] as Map<String, dynamic>;
+          final varImgs = varMap['product_images'] as List<dynamic>? ?? [];
+          if (varImgs.isNotEmpty) {
+            final mainImg =
+                varImgs.firstWhere(
+                      (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                      orElse: () => varImgs.first,
+                    )
+                    as Map<String, dynamic>?;
+            imageUrl = mainImg?['image_url'] as String?;
+          }
+        }
+
+        final current =
+            productMap[pname] ?? (qty: 0, spent: 0.0, imageUrl: null);
         productMap[pname] = (
           qty: current.qty + qty,
           spent: current.spent + (qty * price),
+          imageUrl: current.imageUrl ?? imageUrl,
         );
       }
 
@@ -865,6 +927,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
           productName: e.key,
           totalQuantity: e.value.qty,
           totalSpent: e.value.spent,
+          imageUrl: e.value.imageUrl,
         );
       }).toList();
     } catch (e, stackTrace) {

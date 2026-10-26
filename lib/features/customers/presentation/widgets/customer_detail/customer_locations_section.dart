@@ -61,7 +61,10 @@ class CustomerLocationsSection extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
 
     // 1. Abrir primero el mapa interactivo para seleccionar el punto exacto
-    final place = await Navigator.of(context).push<PlaceResult?>(
+    final place = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push<PlaceResult?>(
       MaterialPageRoute(
         builder: (_) => const CustomerLocationMapScreen(isPickerMode: true),
       ),
@@ -152,7 +155,7 @@ class CustomerLocationsSection extends StatelessWidget {
   }
 
   void _openMap(BuildContext context, CustomerLocationEntity loc) {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder:
             (_) => CustomerLocationMapScreen(
@@ -164,7 +167,7 @@ class CustomerLocationsSection extends StatelessWidget {
   }
 
   void _openAllMap(BuildContext context) {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => CustomerLocationMapScreen(locations: locations),
       ),

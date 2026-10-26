@@ -16,6 +16,7 @@ class CustomerEntity extends Equatable {
   final double totalRevenue; // Dinero generado por este cliente
   final int orderCount;
   final DateTime? lastOrderAt;
+  final int locationsCount;
 
   const CustomerEntity({
     required this.id,
@@ -32,6 +33,7 @@ class CustomerEntity extends Equatable {
     this.totalRevenue = 0.0,
     this.orderCount = 0,
     this.lastOrderAt,
+    this.locationsCount = 0,
   });
 
   @override
@@ -50,5 +52,6 @@ class CustomerEntity extends Equatable {
     totalRevenue,
     orderCount,
     lastOrderAt,
+    locationsCount,
   ];
 }

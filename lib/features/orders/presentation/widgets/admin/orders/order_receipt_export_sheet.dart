@@ -126,6 +126,28 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
     );
   }
 
+  String get _voucherBadgeLabel {
+    final docType = widget.order.documentType.toUpperCase();
+    final receiptNum = widget.order.displayReceiptNumber;
+    if (docType == 'FACTURA') {
+      return 'Factura $receiptNum';
+    } else if (docType == 'BOLETA') {
+      return 'Boleta $receiptNum';
+    } else {
+      return 'Nota de Venta $receiptNum';
+    }
+  }
+
+  bool get _isCreditOrder {
+    final method = widget.order.paymentMethod.toUpperCase();
+    final payStatus = widget.order.paymentStatus.toUpperCase();
+    final status = widget.order.status.toUpperCase();
+    return method.contains('CREDIT') ||
+        payStatus == 'PENDING' ||
+        payStatus == 'PARTIAL' ||
+        status == 'PENDING';
+  }
+
   // ── ACCIONES RÁPIDAS ────────────────────────────────────────────────────────
 
   Future<void> _handlePrint() async {
@@ -418,6 +440,60 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
     }
   }
 
+  Future<void> _handleDownload() async {
+    if (_selectedFormat == ReceiptFormat.ticket) {
+      await _handleSaveTicket();
+    } else {
+      await _handleSaveA4();
+    }
+  }
+
+  Future<void> _handleShare() async {
+    if (_isProcessingAction) return;
+    setState(() {
+      _isProcessingAction = true;
+      _processingLabel = 'Preparando para compartir...';
+    });
+
+    try {
+      final config = context.read<AppConfigCubit>();
+      if (_selectedFormat == ReceiptFormat.ticket) {
+        await OrderPdfGenerator.shareTicket(
+          widget.order,
+          items: _items,
+          businessName: config.businessName,
+          taxId: config.businessTaxId,
+          address: config.businessAddress,
+          phone: config.businessPhone,
+        );
+      } else {
+        await OrderPdfGenerator.shareA4(
+          widget.order,
+          items: _items,
+          businessName: config.businessName,
+          taxId: config.businessTaxId,
+          address: config.businessAddress,
+          phone: config.businessPhone,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.show(
+          context,
+          message: 'Error al compartir comprobante: $e',
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingAction = false;
+          _processingLabel = null;
+        });
+      }
+    }
+  }
+
   // ── BUILD UI ────────────────────────────────────────────────────────────────
 
   @override
@@ -449,7 +525,7 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Boleta B001-$_shortId',
+                  _voucherBadgeLabel,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -623,32 +699,32 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
 
           const SizedBox(height: 8),
 
-          // Fila 2: TICKET (Marrón/Teja) + PDF (Rojo)
+          // Fila 2: DESCARGAR + COMPARTIR (Diálogo nativo de compartir para apps móviles)
           Row(
             children: [
               Expanded(
                 child: _QuickActionButton(
-                  label: 'TICKET',
+                  label: 'DESCARGAR',
                   icon: Icons.download_rounded,
                   color: const Color(0xFFD97706),
                   textColor: Colors.white,
                   isLoading:
                       _isProcessingAction &&
-                      _processingLabel?.contains('Ticket') == true,
-                  onTap: _handleSaveTicket,
+                      _processingLabel?.contains('Guardando') == true,
+                  onTap: _handleDownload,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _QuickActionButton(
-                  label: 'PDF (A4)',
-                  icon: Icons.picture_as_pdf_rounded,
-                  color: const Color(0xFFEF4444),
+                  label: 'COMPARTIR',
+                  icon: Icons.share_rounded,
+                  color: const Color(0xFF6366F1),
                   textColor: Colors.white,
                   isLoading:
                       _isProcessingAction &&
-                      _processingLabel?.contains('A4') == true,
-                  onTap: _handleSaveA4,
+                      _processingLabel?.contains('compartir') == true,
+                  onTap: _handleShare,
                 ),
               ),
             ],
@@ -858,10 +934,13 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
         if (widget.order.paymentReference != null &&
             widget.order.paymentReference!.isNotEmpty)
           _ticketRow('REF. OPERACIÓN:', widget.order.paymentReference!),
-        _ticketRow(
-          'ESTADO:',
-          '${widget.order.status} (${widget.order.paymentStatus})',
-        ),
+        if (_isCreditOrder)
+          _ticketRow(
+            'CONDICIÓN:',
+            widget.order.paymentStatus.toUpperCase() == 'PARTIAL'
+                ? 'CRÉDITO (PAGO PARCIAL)'
+                : 'AL CRÉDITO (PENDIENTE)',
+          ),
 
         const SizedBox(height: 8),
         _dashedDivider(),
@@ -1155,7 +1234,7 @@ class _OrderReceiptExportSheetState extends State<OrderReceiptExportSheet> {
                 ),
               const SizedBox(height: 2),
               Text(
-                'Fecha: ${DateFormat('dd/MM/yyyy HH:mm', 'es').format(_orderTime)}  |  Pago: ${widget.order.paymentMethod}',
+                'Fecha: ${DateFormat('dd/MM/yyyy HH:mm', 'es').format(_orderTime)}  |  Pago: ${widget.order.paymentMethod}${_isCreditOrder ? " (Al Crédito)" : ""}',
                 style: const TextStyle(fontSize: 8.5, color: Color(0xFF475569)),
               ),
             ],
