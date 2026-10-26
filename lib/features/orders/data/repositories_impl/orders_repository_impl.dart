@@ -42,16 +42,63 @@ class _FinancialAccountsCacheEntry {
       DateTime.now().difference(timestamp) > const Duration(minutes: 15);
 }
 
+class _OrderDetailCacheEntry {
+  final OrderEntity order;
+  final DateTime timestamp;
+
+  _OrderDetailCacheEntry({required this.order, required this.timestamp});
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 5);
+}
+
+class _OrderItemsCacheEntry {
+  final List<OrderItemEntity> items;
+  final DateTime timestamp;
+
+  _OrderItemsCacheEntry({required this.items, required this.timestamp});
+
+  bool get isExpired =>
+      DateTime.now().difference(timestamp) > const Duration(minutes: 5);
+}
+
 @LazySingleton(as: OrdersRepository)
 class OrdersRepositoryImpl implements OrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // ─── CACHÉ L1 EN MEMORIA (STALE-WHILE-REVALIDATE) ──────────────────────────
   final Map<String, _OrdersCacheEntry> _ordersCache = {};
+  final Map<String, _OrderDetailCacheEntry> _orderByIdCache = {};
+  final Map<String, _OrderItemsCacheEntry> _orderItemsCache = {};
   _FinancialAccountsCacheEntry? _accountsCache;
 
-  void _invalidateOrdersCache() {
+  void _invalidateOrdersCache([String? orderId]) {
     _ordersCache.clear();
+    if (orderId != null) {
+      _orderByIdCache.remove(orderId);
+      _orderItemsCache.remove(orderId);
+    } else {
+      _orderByIdCache.clear();
+      _orderItemsCache.clear();
+    }
+  }
+
+  @override
+  OrderEntity? getCachedOrder(String orderId) {
+    final entry = _orderByIdCache[orderId];
+    if (entry != null && !entry.isExpired) {
+      return entry.order;
+    }
+    return null;
+  }
+
+  @override
+  List<OrderItemEntity>? getCachedOrderItems(String orderId) {
+    final entry = _orderItemsCache[orderId];
+    if (entry != null && !entry.isExpired) {
+      return entry.items;
+    }
+    return null;
   }
 
   @override
@@ -330,6 +377,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
   @override
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId) async {
+    final cached = getCachedOrder(orderId);
+    if (cached != null) {
+      return Right(cached);
+    }
+
     try {
       final data =
           await _supabase
@@ -379,7 +431,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
       }
-      return Right(OrderModel.fromJson(data));
+      final order = OrderModel.fromJson(data);
+      _orderByIdCache[orderId] = _OrderDetailCacheEntry(
+        order: order,
+        timestamp: DateTime.now(),
+      );
+      return Right(order);
     } catch (e, st) {
       LoggerService.e(
         'Error en getOrderById: $orderId',
@@ -395,6 +452,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(
     String orderId,
   ) async {
+    final cached = getCachedOrderItems(orderId);
+    if (cached != null) {
+      return Right(cached);
+    }
+
     try {
       final data = await _supabase
           .from('order_items')
@@ -406,6 +468,10 @@ class OrdersRepositoryImpl implements OrdersRepository {
           .eq('order_id', orderId);
 
       final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
+      _orderItemsCache[orderId] = _OrderItemsCacheEntry(
+        items: items,
+        timestamp: DateTime.now(),
+      );
       return Right(items);
     } on PostgrestException catch (e, st) {
       LoggerService.e(

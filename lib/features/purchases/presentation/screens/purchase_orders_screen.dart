@@ -79,9 +79,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final state = cubit.state;
-      if (state is! PurchaseOrdersLoaded ||
-          state.orders.isEmpty ||
-          state.availableWarehouses.length <= 1) {
+      if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
         cubit.init();
       } else {
         // Revalidación silenciosa en background sin borrar la tabla (Stale-While-Revalidate)
@@ -358,6 +356,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           value: cubit,
           child: PODetailSheet(
             po: po,
+            initialItems: _itemsCache[po.id],
             isDialog: AdaptiveDetailSheet.isSideSheet(dialogCtx),
             onPaymentSuccess: () {
               _itemsCache.remove(po.id);

@@ -49,9 +49,15 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   static const String _creditPaymentMethod = 'CRÉDITO';
 
   void setInitialOrder(OrderEntity order) {
+    final cachedItems =
+        sl<OrdersRepository>().getCachedOrderItems(order.id) ?? const [];
+    final hasCachedItems = cachedItems.isNotEmpty;
     emit(
       state.copyWith(
         order: order,
+        items: hasCachedItems ? cachedItems : state.items,
+        isLoading: false,
+        isBackgroundLoading: hasCachedItems,
         currentStatus: order.status,
         selectedCustomerId: order.customerId,
         pointsUsed: order.pointsUsed,
@@ -72,11 +78,20 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
   }
 
   Future<void> fetchData(String orderId) async {
-    final hasInitialOrder = state.order != null;
+    final cachedOrder =
+        state.order ?? sl<OrdersRepository>().getCachedOrder(orderId);
+    final cachedItems =
+        state.items.isNotEmpty
+            ? state.items
+            : (sl<OrdersRepository>().getCachedOrderItems(orderId) ?? const []);
+    final hasData = cachedOrder != null && cachedItems.isNotEmpty;
+
     emit(
       state.copyWith(
-        isLoading: !hasInitialOrder,
-        isBackgroundLoading: hasInitialOrder,
+        order: cachedOrder ?? state.order,
+        items: cachedItems.isNotEmpty ? cachedItems : state.items,
+        isLoading: !hasData,
+        isBackgroundLoading: hasData,
         hasError: false,
       ),
     );
@@ -92,14 +107,25 @@ class OrderDetailCubit extends Cubit<OrderDetailState> {
             tag: 'ORDER_DETAIL_CUBIT',
             error: failure.message,
           );
-          emit(
-            state.copyWith(
-              isLoading: false,
-              isBackgroundLoading: false,
-              hasError: true,
-              errorMessage: failure.message,
-            ),
-          );
+          if (state.order != null && state.items.isNotEmpty) {
+            // SWR: Fallback resiliente conservando datos cacheados en pantalla
+            emit(
+              state.copyWith(
+                isLoading: false,
+                isBackgroundLoading: false,
+                hasError: false,
+              ),
+            );
+          } else {
+            emit(
+              state.copyWith(
+                isLoading: false,
+                isBackgroundLoading: false,
+                hasError: true,
+                errorMessage: failure.message,
+              ),
+            );
+          }
         },
         (details) async {
           // 2. Extract customer ID and execute secondary queries in parallel

@@ -13,14 +13,21 @@ class GetOrderDetailsUc {
   GetOrderDetailsUc(this.repository);
 
   Future<Either<Failure, OrderDetailsResult>> call(String orderId) async {
-    final orderRes = await repository.getOrderById(orderId);
-    return orderRes.fold((failure) => Left(failure), (order) async {
-      final itemsRes = await repository.getOrderItems(orderId);
-      return itemsRes.fold(
+    final results = await Future.wait([
+      repository.getOrderById(orderId),
+      repository.getOrderItems(orderId),
+    ]);
+
+    final orderRes = results[0] as Either<Failure, OrderEntity>;
+    final itemsRes = results[1] as Either<Failure, List<OrderItemEntity>>;
+
+    return orderRes.fold(
+      (failure) => Left(failure),
+      (order) => itemsRes.fold(
         (failure) => Left(failure),
         (items) => Right(OrderDetailsResult(order: order, items: items)),
-      );
-    });
+      ),
+    );
   }
 }
 

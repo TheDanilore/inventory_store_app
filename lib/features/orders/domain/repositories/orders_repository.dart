@@ -34,6 +34,8 @@ abstract class OrdersRepository {
 
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId);
+  OrderEntity? getCachedOrder(String orderId);
+  List<OrderItemEntity>? getCachedOrderItems(String orderId);
   Future<
     Either<
       Failure,
