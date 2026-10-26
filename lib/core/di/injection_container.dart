@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/di/injection_container.config.dart';
 import 'package:inventory_store_app/core/localization/bloc/locale_cubit.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/system_diagnostics_cubit.dart';
 import 'package:inventory_store_app/features/main_navigation/data/datasources/inventory_alert_source_impl.dart';
 import 'package:inventory_store_app/features/main_navigation/domain/entities/inventory_alert_rules.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/notifications/notifications_cubit.dart';
@@ -53,6 +54,11 @@ void initDI([SharedPreferences? prefs]) {
                 ? sl<SharedPreferences>()
                 : null,
       ),
+    );
+  }
+  if (!sl.isRegistered<SystemDiagnosticsCubit>()) {
+    sl.registerLazySingleton<SystemDiagnosticsCubit>(
+      () => SystemDiagnosticsCubit(),
     );
   }
 }

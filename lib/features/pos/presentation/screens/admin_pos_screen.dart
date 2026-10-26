@@ -85,6 +85,9 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   InventoryCubit? _inventoryCubit;
   CashShiftsCubit? _cashShiftsCubit;
   OrdersCubit? _ordersCubit;
+  bool _visitedTab1 = false;
+  bool _visitedTab2 = false;
+  bool _visitedTab3 = false;
   bool _isMountedReady = false;
   bool _isNavigatingToCheckout = false;
   // Controla si el POS es el branch activo (evita que los shortcuts de hardware
@@ -437,11 +440,17 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   }
 
   void _onSidebarTabSelected(int index) {
-    if (index == 1 && _inventoryCubit == null) {
-      _inventoryCubit = sl<InventoryCubit>()..initStockTab();
+    if (index == 1) {
+      _visitedTab1 = true;
+      _inventoryCubit ??= sl<InventoryCubit>()..initStockTab();
     }
-    if (index == 3 && _cashShiftsCubit == null) {
-      _cashShiftsCubit = sl<CashShiftsCubit>();
+    if (index == 2) {
+      _visitedTab2 = true;
+      _ordersCubit ??= sl<OrdersCubit>();
+    }
+    if (index == 3) {
+      _visitedTab3 = true;
+      _cashShiftsCubit ??= sl<CashShiftsCubit>();
     }
     setState(() {
       _selectedSidebarIndex = index;
@@ -960,93 +969,103 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
                     ],
                   );
 
-                  Widget activeView;
-                  if (_selectedSidebarIndex == 1) {
-                    _inventoryCubit ??= sl<InventoryCubit>()..initStockTab();
-                    activeView = Expanded(
-                      child: SafeArea(
-                        bottom: false,
-                        child: BlocProvider.value(
-                          value: _inventoryCubit!,
-                          child: const InventoryScreen(isEmbedded: true),
-                        ),
-                      ),
-                    );
-                  } else if (_selectedSidebarIndex == 2) {
-                    _ordersCubit ??= sl<OrdersCubit>();
-                    activeView = Expanded(
-                      child: SafeArea(
-                        bottom: false,
-                        child: BlocProvider.value(
-                          value: _ordersCubit!,
-                          child: OrdersScreen(
-                            isEmbedded: true,
-                            customTitle: 'Historial de Ventas POS',
-                            onOpenCashShifts: () => _onSidebarTabSelected(3),
-                          ),
-                        ),
-                      ),
-                    );
-                  } else if (_selectedSidebarIndex == 3) {
-                    _cashShiftsCubit ??= sl<CashShiftsCubit>();
-                    activeView = Expanded(
-                      child: SafeArea(
-                        bottom: false,
-                        child: AllCashShiftsScreen(
-                          isEmbedded: true,
-                          cubit: _cashShiftsCubit,
-                        ),
-                      ),
-                    );
-                  } else {
-                    activeView = Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 6,
-                            child: RepaintBoundary(child: catalogContent),
-                          ),
-                          if (isDesktop)
-                            Container(
-                              width:
-                                  MediaQuery.of(context).size.width >= 1300
-                                      ? 440
-                                      : MediaQuery.of(context).size.width >=
-                                          1000
-                                      ? 400
-                                      : 360,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.grey.withValues(alpha: 0.15),
-                                    width: 1,
-                                  ),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 24,
-                                    spreadRadius: -4,
-                                    offset: const Offset(-8, 0),
-                                  ),
-                                ],
-                              ),
-                              child: RepaintBoundary(
-                                child: DesktopPosPanel(
-                                  key: _desktopPanelKey,
-                                  onSaleCompleted: (soldQuantities) {
-                                    context
-                                        .read<AdminCatalogCubit>()
-                                        .decrementStockLocal(soldQuantities);
-                                  },
-                                ),
-                              ),
+                  // IndexedStack preserva el estado en memoria de cada vista.
+                  // Erradica el desmontaje de widgets y los parpadeos de Shimmer al navegar entre pestañas.
+                  final activeView = Expanded(
+                    child: IndexedStack(
+                      index: _selectedSidebarIndex,
+                      children: [
+                        // Tab 0: Catálogo POS + Panel de Cobro
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: RepaintBoundary(child: catalogContent),
                             ),
-                        ],
-                      ),
-                    );
-                  }
+                            if (isDesktop)
+                              Container(
+                                width:
+                                    MediaQuery.of(context).size.width >= 1300
+                                        ? 440
+                                        : MediaQuery.of(context).size.width >=
+                                            1000
+                                        ? 400
+                                        : 360,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: Colors.grey.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.03,
+                                      ),
+                                      blurRadius: 24,
+                                      spreadRadius: -4,
+                                      offset: const Offset(-8, 0),
+                                    ),
+                                  ],
+                                ),
+                                child: RepaintBoundary(
+                                  child: DesktopPosPanel(
+                                    key: _desktopPanelKey,
+                                    onSaleCompleted: (soldQuantities) {
+                                      context
+                                          .read<AdminCatalogCubit>()
+                                          .decrementStockLocal(soldQuantities);
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        // Tab 1: Lotes / Inventario (Montado perezosamente y preservado en memoria)
+                        _visitedTab1 && _inventoryCubit != null
+                            ? SafeArea(
+                              bottom: false,
+                              child: BlocProvider.value(
+                                value: _inventoryCubit!,
+                                child: const InventoryScreen(isEmbedded: true),
+                              ),
+                            )
+                            : const SizedBox.shrink(),
+
+                        // Tab 2: Historial de Ventas POS
+                        _visitedTab2 && _ordersCubit != null
+                            ? SafeArea(
+                              bottom: false,
+                              child: BlocProvider.value(
+                                value: _ordersCubit!,
+                                child: OrdersScreen(
+                                  isEmbedded: true,
+                                  customTitle: 'Historial de Ventas POS',
+                                  onOpenCashShifts:
+                                      () => _onSidebarTabSelected(3),
+                                ),
+                              ),
+                            )
+                            : const SizedBox.shrink(),
+
+                        // Tab 3: Turnos de Caja
+                        _visitedTab3 && _cashShiftsCubit != null
+                            ? SafeArea(
+                              bottom: false,
+                              child: AllCashShiftsScreen(
+                                isEmbedded: true,
+                                cubit: _cashShiftsCubit,
+                              ),
+                            )
+                            : const SizedBox.shrink(),
+                      ],
+                    ),
+                  );
 
                   return Stack(
                     children: [

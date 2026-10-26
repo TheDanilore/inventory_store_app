@@ -201,7 +201,6 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
 
   void decrementStockLocal(Map<String, int> soldQuantities) {
     if (state.products.isEmpty) return;
-    _productsCache.clear();
 
     final updatedProducts =
         state.products.map((product) {
@@ -215,6 +214,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           }
           return product;
         }).toList();
+
+    // Actualizar la caché en memoria en lugar de vaciarla por completo
+    final cacheKey = _buildCacheKey();
+    if (_productsCache.containsKey(cacheKey)) {
+      final currentCached = _productsCache[cacheKey]!;
+      _productsCache[cacheKey] = (
+        products: updatedProducts,
+        totalCount: currentCached.totalCount,
+      );
+    }
 
     emit(state.copyWith(products: updatedProducts));
   }
@@ -250,7 +259,10 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       return;
     }
 
-    emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
+    // Solo emitir estado loading invasivo si la lista actual está vacía (Stale-While-Revalidate)
+    if (state.products.isEmpty) {
+      emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
+    }
 
     final offset = state.currentPage * state.itemsPerPage;
 
