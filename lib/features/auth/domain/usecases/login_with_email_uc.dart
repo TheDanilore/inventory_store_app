@@ -2,7 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 
 class LoginParams {

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 
 abstract class AuthRepository {
   /// Devuelve el usuario actual si hay sesión y el perfil está activo.

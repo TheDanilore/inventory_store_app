@@ -16,6 +16,8 @@ class InventoryStockTable extends StatefulWidget {
 
   /// Muestra el código QR de la variante (icono extra en la columna acciones).
   final ValueChanged<InventoryStockItem>? onShowQr;
+  final ValueChanged<InventoryStockItem>? onStockEntry;
+  final ValueChanged<InventoryStockItem>? onStockExit;
   final AdminTablePaginationConfig? paginationConfig;
   final bool isLoading;
 
@@ -27,6 +29,8 @@ class InventoryStockTable extends StatefulWidget {
     required this.onOpenDetail,
     required this.onKardex,
     this.onShowQr,
+    this.onStockEntry,
+    this.onStockExit,
     this.paginationConfig,
     this.isLoading = false,
   });
@@ -469,13 +473,38 @@ class _InventoryStockTableState extends State<InventoryStockTable> {
         AdminTableColumn<InventoryStockItem>(
           id: 'actions',
           label: 'ACCIONES',
-          fixedWidth: widget.onShowQr != null ? 164 : 130,
+          fixedWidth:
+              (widget.onStockEntry != null || widget.onStockExit != null)
+                  ? (widget.onShowQr != null ? 236 : 202)
+                  : (widget.onShowQr != null ? 164 : 130),
           alignment: Alignment.centerRight,
           isSortable: false,
           cellBuilder: (context, item) {
             return Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (widget.onStockEntry != null)
+                  Tooltip(
+                    message: 'Ingresar Stock (Entrada)',
+                    child: IconButton(
+                      icon: const Icon(Icons.add_box_outlined, size: 17),
+                      color: AppColors.tealDark,
+                      onPressed: () => widget.onStockEntry!(item),
+                      splashRadius: 16,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                if (widget.onStockExit != null)
+                  Tooltip(
+                    message: 'Registrar Salida / Merma',
+                    child: IconButton(
+                      icon: const Icon(Icons.outbox_rounded, size: 17),
+                      color: AppColors.danger,
+                      onPressed: () => widget.onStockExit!(item),
+                      splashRadius: 16,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
                 Tooltip(
                   message: 'Ficha Rápida y Variantes',
                   child: IconButton(

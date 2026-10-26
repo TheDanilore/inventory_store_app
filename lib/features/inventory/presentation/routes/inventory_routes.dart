@@ -64,11 +64,29 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: '/inventory-exits/form',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<InventoryExitFormCubit>(),
-            child: const InventoryExitFormScreen(),
+      builder: (context, state) {
+        final args = state.extra as Map<String, dynamic>? ?? {};
+        final query = state.uri.queryParameters;
+        return BlocProvider(
+          create: (_) => sl<InventoryExitFormCubit>(),
+          child: InventoryExitFormScreen(
+            prefillWarehouseId:
+                args['warehouseId'] ??
+                args['prefillWarehouseId'] ??
+                query['warehouseId'],
+            prefillReason:
+                args['reason'] ?? args['prefillReason'] ?? query['reason'],
+            prefillNotes:
+                args['notes'] ?? args['prefillNotes'] ?? query['notes'],
+            prefillVariantId:
+                args['prefillVariantId'] ??
+                args['variantId'] ??
+                query['variantId'],
+            prefillBatchId:
+                args['prefillBatchId'] ?? args['batchId'] ?? query['batchId'],
           ),
+        );
+      },
     ),
     GoRoute(
       path: '/inventory-exits',

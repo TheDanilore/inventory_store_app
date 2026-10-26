@@ -28,6 +28,8 @@ class DashboardLoaded extends DashboardState {
   final SalesTimeFilter salesFilter;
   final DateTime? customStartDate;
   final DateTime? customEndDate;
+  final String? selectedWarehouseId;
+  final String? selectedWarehouseName;
   final bool isSalesLoading;
   final bool isBackgroundLoading;
 
@@ -40,6 +42,8 @@ class DashboardLoaded extends DashboardState {
     required this.salesFilter,
     this.customStartDate,
     this.customEndDate,
+    this.selectedWarehouseId,
+    this.selectedWarehouseName,
     this.isSalesLoading = false,
     this.isBackgroundLoading = false,
   });
@@ -54,6 +58,9 @@ class DashboardLoaded extends DashboardState {
     SalesTimeFilter? salesFilter,
     DateTime? customStartDate,
     DateTime? customEndDate,
+    String? selectedWarehouseId,
+    String? selectedWarehouseName,
+    bool clearWarehouse = false,
     bool? isSalesLoading,
     bool? isBackgroundLoading,
   }) {
@@ -66,6 +73,14 @@ class DashboardLoaded extends DashboardState {
       salesFilter: salesFilter ?? this.salesFilter,
       customStartDate: customStartDate ?? this.customStartDate,
       customEndDate: customEndDate ?? this.customEndDate,
+      selectedWarehouseId:
+          clearWarehouse
+              ? null
+              : (selectedWarehouseId ?? this.selectedWarehouseId),
+      selectedWarehouseName:
+          clearWarehouse
+              ? null
+              : (selectedWarehouseName ?? this.selectedWarehouseName),
       isSalesLoading: isSalesLoading ?? this.isSalesLoading,
       isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
     );
@@ -81,6 +96,8 @@ class DashboardLoaded extends DashboardState {
     salesFilter,
     customStartDate,
     customEndDate,
+    selectedWarehouseId,
+    selectedWarehouseName,
     isSalesLoading,
     isBackgroundLoading,
   ];

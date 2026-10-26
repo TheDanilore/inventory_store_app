@@ -5,6 +5,77 @@ import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.d
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
 import 'package:inventory_store_app/core/localization/app_localizations.dart';
 
+/// Micro-componente Beacon pulsante para transmitir estado activo en tiempo real.
+class _LiveBeaconDot extends StatefulWidget {
+  final Color color;
+  const _LiveBeaconDot({required this.color});
+
+  @override
+  State<_LiveBeaconDot> createState() => _LiveBeaconDotState();
+}
+
+class _LiveBeaconDotState extends State<_LiveBeaconDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        return SizedBox(
+          width: 14,
+          height: 14,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 10 * _ctrl.value + 4,
+                height: 10 * _ctrl.value + 4,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color.withValues(
+                    alpha: (1.0 - _ctrl.value) * 0.5,
+                  ),
+                ),
+              ),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.9),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Banner Ejecutivo de Bienvenida Agronómica con saludo horario inteligente,
 /// avatar dinámico del usuario, fecha en tiempo real y contexto operativo de campo.
 class AgronomicGreetingBanner extends StatelessWidget {
@@ -43,6 +114,7 @@ class AgronomicGreetingBanner extends StatelessWidget {
         return BlocBuilder<AuthCubit, AuthState>(
           builder: (context, authState) {
             final user = authState.currentUser;
+            final isBirthday = user?.isBirthdayToday ?? false;
             final fullName = user?.fullName.trim();
             final firstName =
                 (fullName != null && fullName.isNotEmpty)
@@ -58,34 +130,50 @@ class AgronomicGreetingBanner extends StatelessWidget {
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF1E3A8A), // Azul corporativo profundo
-                    Color(0xFF1E40AF), // Azul intermedio
-                    Color(0xFF065F46), // Verde esmeralda agrícola
-                  ],
-                  stops: [0.0, 0.55, 1.0],
-                ),
+                gradient:
+                    isBirthday
+                        ? const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF4F46E5), // Indigo vivo
+                            Color(0xFF9333EA), // Morado festivo
+                            Color(0xFFDB2777), // Rosa fucsia
+                            Color(0xFFF59E0B), // Dorado ámbar
+                          ],
+                          stops: [0.0, 0.35, 0.75, 1.0],
+                        )
+                        : const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF1E3A8A), // Azul corporativo profundo
+                            Color(0xFF1E40AF), // Azul intermedio
+                            Color(0xFF065F46), // Verde esmeralda agrícola
+                          ],
+                          stops: [0.0, 0.55, 1.0],
+                        ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E3A8A).withValues(alpha: 0.22),
-                    blurRadius: 18,
+                    color:
+                        isBirthday
+                            ? const Color(0xFF9333EA).withValues(alpha: 0.32)
+                            : const Color(0xFF1E3A8A).withValues(alpha: 0.22),
+                    blurRadius: isBirthday ? 22 : 18,
                     offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Stack(
                 children: [
-                  // ── Patrones vectoriales agronómicos de fondo (hojas / sol) ──
+                  // ── Patrones vectoriales de fondo (Agronómico o Festivo) ──
                   Positioned(
                     right: isDesktop ? 140 : -20,
                     top: -30,
                     child: Opacity(
-                      opacity: 0.08,
+                      opacity: isBirthday ? 0.12 : 0.08,
                       child: Icon(
-                        Icons.eco_rounded,
+                        isBirthday ? Icons.cake_rounded : Icons.eco_rounded,
                         size: isDesktop ? 220 : 160,
                         color: Colors.white,
                       ),
@@ -95,9 +183,11 @@ class AgronomicGreetingBanner extends StatelessWidget {
                     right: 40,
                     bottom: -40,
                     child: Opacity(
-                      opacity: 0.06,
+                      opacity: isBirthday ? 0.10 : 0.06,
                       child: Icon(
-                        Icons.agriculture_rounded,
+                        isBirthday
+                            ? Icons.celebration_rounded
+                            : Icons.agriculture_rounded,
                         size: isDesktop ? 180 : 120,
                         color: Colors.white,
                       ),
@@ -119,12 +209,47 @@ class AgronomicGreetingBanner extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Cápsula de fecha y horario en vivo
+                              // Cápsula de fecha y horario en vivo o cumpleaños
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 6,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
+                                  if (isBirthday)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFEF3C7),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: const Color(0xFFF59E0B),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.cake_rounded,
+                                            size: 13,
+                                            color: Color(0xFFB45309),
+                                          ),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            '¡HOY ES TU CUMPLEAÑOS! 🎉',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFFB45309),
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
@@ -163,38 +288,37 @@ class AgronomicGreetingBanner extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                  if (!isMobile)
+                                  if (!isMobile && !isBirthday)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 9,
+                                        horizontal: 10,
                                         vertical: 4.5,
                                       ),
                                       decoration: BoxDecoration(
                                         color: const Color(
-                                          0xFF10B981,
-                                        ).withValues(alpha: 0.22),
+                                          0xFF064E3B,
+                                        ).withValues(alpha: 0.35),
                                         borderRadius: BorderRadius.circular(20),
                                         border: Border.all(
                                           color: const Color(
                                             0xFF34D399,
-                                          ).withValues(alpha: 0.4),
+                                          ).withValues(alpha: 0.45),
                                         ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            periodInfo.icon,
-                                            size: 13,
-                                            color: const Color(0xFF6EE7B7),
+                                          const _LiveBeaconDot(
+                                            color: Color(0xFF34D399),
                                           ),
-                                          const SizedBox(width: 5),
+                                          const SizedBox(width: 6),
                                           Text(
-                                            periodInfo.timeLabel,
+                                            'En vivo · ${periodInfo.timeLabel}',
                                             style: const TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
                                               color: Color(0xFFD1FAE5),
+                                              letterSpacing: 0.2,
                                             ),
                                           ),
                                         ],
@@ -206,7 +330,9 @@ class AgronomicGreetingBanner extends StatelessWidget {
 
                               // Saludo dinámico con nombre del usuario
                               Text(
-                                '¡${periodInfo.greeting}, $firstName!',
+                                isBirthday
+                                    ? '¡Feliz Cumpleaños, $firstName! 🥳'
+                                    : '¡${periodInfo.greeting}, $firstName!',
                                 style: TextStyle(
                                   fontSize:
                                       isMobile ? 20 : (isDesktop ? 26 : 22),
@@ -218,9 +344,11 @@ class AgronomicGreetingBanner extends StatelessWidget {
                               ),
                               const SizedBox(height: 5),
 
-                              // Subtítulo con contexto agronómico
+                              // Subtítulo con contexto agronómico o festivo
                               Text(
-                                context.tr('greeting_agro_desc'),
+                                isBirthday
+                                    ? '¡Todo el equipo te desea un día extraordinario colmado de salud, bendiciones y grandes éxitos!'
+                                    : context.tr('greeting_agro_desc'),
                                 style: TextStyle(
                                   fontSize: isMobile ? 12 : 13,
                                   fontWeight: FontWeight.w400,
@@ -244,6 +372,7 @@ class AgronomicGreetingBanner extends StatelessWidget {
                           role: role,
                           isDesktop: isDesktop,
                           isMobile: isMobile,
+                          isBirthday: isBirthday,
                         ),
                       ],
                     ),
@@ -264,6 +393,7 @@ class AgronomicGreetingBanner extends StatelessWidget {
     required String role,
     required bool isDesktop,
     required bool isMobile,
+    bool isBirthday = false,
   }) {
     final double avatarSize = isMobile ? 54 : (isDesktop ? 78 : 66);
 
@@ -284,13 +414,19 @@ class AgronomicGreetingBanner extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF34D399).withValues(alpha: 0.6),
-                    width: 2.2,
+                    color:
+                        isBirthday
+                            ? const Color(0xFFF59E0B).withValues(alpha: 0.8)
+                            : const Color(0xFF34D399).withValues(alpha: 0.6),
+                    width: isBirthday ? 2.6 : 2.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                      blurRadius: 12,
+                      color:
+                          isBirthday
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.45)
+                              : const Color(0xFF10B981).withValues(alpha: 0.35),
+                      blurRadius: isBirthday ? 16 : 12,
                     ),
                   ],
                 ),
@@ -321,21 +457,27 @@ class AgronomicGreetingBanner extends StatelessWidget {
                             style: TextStyle(
                               fontSize: avatarSize * 0.44,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF065F46),
+                              color:
+                                  isBirthday
+                                      ? const Color(0xFF9333EA)
+                                      : const Color(0xFF065F46),
                             ),
                           ),
                         )
                         : null,
               ),
 
-              // Micro-badge agronómico (hoja / brote)
+              // Micro-badge agronómico o de cumpleaños
               Positioned(
                 bottom: -2,
                 right: -2,
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981),
+                    color:
+                        isBirthday
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF10B981),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                     boxShadow: [
@@ -345,8 +487,8 @@ class AgronomicGreetingBanner extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.eco_rounded,
+                  child: Icon(
+                    isBirthday ? Icons.cake_rounded : Icons.eco_rounded,
                     size: 13,
                     color: Colors.white,
                   ),
@@ -367,7 +509,7 @@ class AgronomicGreetingBanner extends StatelessWidget {
                 ),
               ),
               child: Text(
-                role,
+                isBirthday ? '🎉 ¡FESTEJADO!' : role,
                 style: const TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,

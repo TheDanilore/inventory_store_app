@@ -13,11 +13,13 @@ class GetCriticalBatchesUseCase {
     int daysThreshold = 30,
     int limit = 15,
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
     return await repository.getCriticalBatches(
       daysThreshold: daysThreshold,
       limit: limit,
       forceRefresh: forceRefresh,
+      warehouseId: warehouseId,
     );
   }
 }

@@ -170,7 +170,8 @@ class InventoryAlertEvaluator {
                 'Lote ${l.lotCode} venció hace ${-days} día(s) con '
                 '${l.quantity} unid. Retíralo de la venta y regístralo como merma.',
             action: SuggestedAction.writeOff,
-            routePath: config.exitsRoute,
+            routePath:
+                '${config.exitsRoute}?batchId=${l.lotId}&variantId=${l.variantId}&reason=VENCIMIENTO',
             payload: {'lotId': l.lotId, 'variantId': l.variantId},
             createdAt: ts,
           ),

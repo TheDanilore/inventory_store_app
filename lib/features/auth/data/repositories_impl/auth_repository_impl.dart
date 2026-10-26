@@ -4,7 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:inventory_store_app/features/auth/data/models/auth_user_model.dart';
 

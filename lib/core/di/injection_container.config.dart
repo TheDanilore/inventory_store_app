@@ -1147,6 +1147,13 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
+    gh.factory<_i378.InventoryExitsCubit>(
+      () => _i378.InventoryExitsCubit(
+        getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
+        getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+      ),
+    );
     gh.lazySingleton<_i971.PurchaseOrdersCubit>(
       () => _i971.PurchaseOrdersCubit(
         fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
@@ -1512,12 +1519,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i70.CustomersCubit(
         gh<_i1019.GetCustomersUseCase>(),
         gh<_i1021.ExportCustomersPdfUseCase>(),
-      ),
-    );
-    gh.factory<_i378.InventoryExitsCubit>(
-      () => _i378.InventoryExitsCubit(
-        getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
-        getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
       ),
     );
     gh.factory<_i1029.CashShiftsCubit>(

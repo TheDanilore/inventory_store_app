@@ -23,7 +23,8 @@ class _DashboardCacheEntry<T> {
 class DashboardRepositoryImpl implements DashboardRepository {
   final SupabaseClient _supabase;
 
-  _DashboardCacheEntry<InventoryMetricsEntity>? _inventoryCache;
+  final Map<String, _DashboardCacheEntry<InventoryMetricsEntity>>
+  _inventoryCache = {};
   final Map<String, _DashboardCacheEntry<SalesMetricsEntity>> _salesCache = {};
   final Map<String, _DashboardCacheEntry<List<Map<String, dynamic>>>>
   _batchesCache = {};
@@ -70,17 +71,22 @@ class DashboardRepositoryImpl implements DashboardRepository {
   @override
   Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics({
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
+    final cacheKey = warehouseId ?? 'all';
     if (!forceRefresh &&
-        _inventoryCache != null &&
-        !_inventoryCache!.isExpired) {
-      return right(_inventoryCache!.data);
+        _inventoryCache.containsKey(cacheKey) &&
+        !_inventoryCache[cacheKey]!.isExpired) {
+      return right(_inventoryCache[cacheKey]!.data);
     }
 
     // 1. Intentar RPC optimizada en Supabase para Data Egress casi nulo (cálculo en PostgreSQL)
     try {
+      final rpcParams =
+          warehouseId != null ? {'p_warehouse_id': warehouseId} : null;
       final rpcResponse = await _supabase.rpc(
         'get_dashboard_inventory_metrics',
+        params: rpcParams,
       );
       if (rpcResponse != null && rpcResponse is Map) {
         final totalStock = (rpcResponse['total_stock'] as num?)?.toInt() ?? 0;
@@ -111,7 +117,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
           totalProducts: totalProducts,
         );
 
-        _inventoryCache = _DashboardCacheEntry(
+        _inventoryCache[cacheKey] = _DashboardCacheEntry(
           data: inventoryEntity,
           timestamp: DateTime.now(),
         );
@@ -131,7 +137,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .select('''
             id, name, is_active, stock_control,
             product_variants(id, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active),
-            warehouse_stock_batches(variant_id, available_quantity)
+            warehouse_stock_batches(variant_id, warehouse_id, available_quantity)
           ''')
           .eq('is_active', true);
 
@@ -165,12 +171,18 @@ class DashboardRepositoryImpl implements DashboardRepository {
         final batches = List<Map<String, dynamic>>.from(
           row['warehouse_stock_batches'] ?? [],
         );
+        final filteredBatches =
+            warehouseId == null
+                ? batches
+                : batches
+                    .where((b) => b['warehouse_id'] == warehouseId)
+                    .toList();
 
         for (final variant in activeVariants) {
           final variantId = variant['id'] as String?;
           if (variantId == null) continue;
 
-          final variantStock = batches
+          final variantStock = filteredBatches
               .where((b) => b['variant_id'] == variantId)
               .fold<int>(
                 0,
@@ -242,7 +254,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
         totalProducts: totalProducts,
       );
 
-      _inventoryCache = _DashboardCacheEntry(
+      _inventoryCache[cacheKey] = _DashboardCacheEntry(
         data: inventoryEntity,
         timestamp: DateTime.now(),
       );
@@ -255,12 +267,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
         error: e,
         stackTrace: stackTrace,
       );
-      if (_inventoryCache != null) {
+      if (_inventoryCache.containsKey(cacheKey)) {
         LoggerService.w(
           'Retornando métricas de inventario desde caché previo tras fallo de red',
           tag: 'DASHBOARD_REPO',
         );
-        return right(_inventoryCache!.data);
+        return right(_inventoryCache[cacheKey]!.data);
       }
       return left(
         ServerFailure(message: 'Error al obtener métricas de inventario: $e'),
@@ -274,9 +286,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
     DateTime? customStartDate,
     DateTime? customEndDate,
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
     final cacheKey =
-        '${filter.name}_${customStartDate?.millisecondsSinceEpoch}_${customEndDate?.millisecondsSinceEpoch}';
+        '${filter.name}_${customStartDate?.millisecondsSinceEpoch}_${customEndDate?.millisecondsSinceEpoch}_$warehouseId';
 
     if (!forceRefresh &&
         _salesCache.containsKey(cacheKey) &&
@@ -289,6 +302,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .from('orders')
           .select('id, total_amount, total_profit, created_at')
           .eq('status', 'COMPLETED');
+
+      if (warehouseId != null) {
+        query = query.eq('warehouse_id', warehouseId);
+      }
 
       final now = DateTime.now();
 
@@ -672,8 +689,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
     int daysThreshold = 30,
     int limit = 15,
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
-    final cacheKey = '${daysThreshold}_$limit';
+    final cacheKey = '${daysThreshold}_${limit}_$warehouseId';
 
     if (!forceRefresh &&
         _batchesCache.containsKey(cacheKey) &&
@@ -685,10 +703,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final now = DateTime.now();
       final thresholdDate = now.add(Duration(days: daysThreshold));
 
-      final response = await _supabase
+      var query = _supabase
           .from('warehouse_stock_batches')
           .select('''
-            id, batch_number, expiry_date, available_quantity,
+            id, batch_number, expiry_date, available_quantity, warehouse_id,
             products(
               id, name,
               product_images(image_url, is_main)
@@ -704,7 +722,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
           ''')
           .not('expiry_date', 'is', null)
           .lte('expiry_date', thresholdDate.toIso8601String().substring(0, 10))
-          .gt('available_quantity', 0)
+          .gt('available_quantity', 0);
+
+      if (warehouseId != null) {
+        query = query.eq('warehouse_id', warehouseId);
+      }
+
+      final response = await query
           .order('expiry_date', ascending: true)
           .limit(limit);
 

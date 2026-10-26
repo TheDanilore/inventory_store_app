@@ -5387,11 +5387,16 @@ CREATE TABLE IF NOT EXISTS "public"."profiles" (
     "document_number" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "is_active" boolean DEFAULT true NOT NULL,
-    "wallet_balance" integer DEFAULT 0 NOT NULL
+    "wallet_balance" integer DEFAULT 0 NOT NULL,
+    "birthdate" "date"
 );
 
 
 ALTER TABLE "public"."profiles" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."profiles"."birthdate" IS 'Fecha de nacimiento del usuario para felicitaciones y métricas corporativas';
+
 
 
 CREATE OR REPLACE VIEW "public"."customer_credit_movements_summary" WITH ("security_invoker"='true') AS

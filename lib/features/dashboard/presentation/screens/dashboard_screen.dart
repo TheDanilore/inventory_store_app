@@ -12,7 +12,9 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
@@ -20,6 +22,7 @@ import 'package:inventory_store_app/features/dashboard/presentation/services/das
 
 // Componentes extraídos
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/agronomic_greeting_banner.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/birthday_celebration_dialog.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_add_widget_sheet.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_admin_goal_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_bento_grid.dart';
@@ -79,6 +82,9 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       } else {
         cubit.loadDashboardData(background: true);
       }
+
+      final authUser = context.read<AuthCubit>().state.currentUser;
+      BirthdayCelebrationDialog.checkAndShow(context, authUser);
     });
   }
 
@@ -415,7 +421,10 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 1. Banner Ejecutivo de Bienvenida
-                const AgronomicGreetingBanner(),
+                const AgronomicGreetingBanner()
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
                 const SizedBox(height: 20),
 
                 // 2. Alerta de Salud Operativa (Inventario)
@@ -423,9 +432,12 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                     (state.inventory.lowStockProducts > 0 ||
                         state.criticalBatches.isNotEmpty)) ...[
                   DashboardHealthSummaryBar(
-                    lowStockCount: state.inventory.lowStockProducts,
-                    criticalBatchesCount: state.criticalBatches.length,
-                  ),
+                        lowStockCount: state.inventory.lowStockProducts,
+                        criticalBatchesCount: state.criticalBatches.length,
+                      )
+                      .animate()
+                      .fadeIn(delay: 60.ms, duration: 350.ms)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 16),
                 ],
 
@@ -436,12 +448,15 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                   visibleWidgetsCount: _visibleWidgets.length,
                   onOpenAddWidgetSheet: _openAddWidgetSheet,
                   onExportReport: _handleExportReport,
-                ),
+                ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
                 const SizedBox(height: 20),
 
                 // 4. Strip Superior de 4 KPIs
                 if (_visibleWidgets.contains('kpi_strip')) ...[
-                  DashboardKpisSection(state: state, isTabletOrMobile: false),
+                  DashboardKpisSection(state: state, isTabletOrMobile: false)
+                      .animate()
+                      .fadeIn(delay: 160.ms, duration: 450.ms)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 24),
                 ],
 
@@ -451,7 +466,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                   visibleWidgets: _visibleWidgets,
                   onToggleWidget: _toggleWidget,
                   onOpenAddWidgetSheet: _openAddWidgetSheet,
-                ),
+                ).animate().fadeIn(delay: 220.ms, duration: 500.ms),
               ],
             ),
           ),
@@ -478,16 +493,22 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const AgronomicGreetingBanner(),
+                const AgronomicGreetingBanner()
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
                 const SizedBox(height: 16),
 
                 if (canViewInventory &&
                     (state.inventory.lowStockProducts > 0 ||
                         state.criticalBatches.isNotEmpty)) ...[
                   DashboardHealthSummaryBar(
-                    lowStockCount: state.inventory.lowStockProducts,
-                    criticalBatchesCount: state.criticalBatches.length,
-                  ),
+                        lowStockCount: state.inventory.lowStockProducts,
+                        criticalBatchesCount: state.criticalBatches.length,
+                      )
+                      .animate()
+                      .fadeIn(delay: 60.ms, duration: 350.ms)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 14),
                 ],
 
@@ -497,11 +518,14 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                   visibleWidgetsCount: _visibleWidgets.length,
                   onOpenAddWidgetSheet: _openAddWidgetSheet,
                   onExportReport: _handleExportReport,
-                ),
+                ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
                 const SizedBox(height: 16),
 
                 if (_visibleWidgets.contains('kpi_strip')) ...[
-                  DashboardKpisSection(state: state, isTabletOrMobile: true),
+                  DashboardKpisSection(state: state, isTabletOrMobile: true)
+                      .animate()
+                      .fadeIn(delay: 160.ms, duration: 450.ms)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 20),
                 ],
 
@@ -510,7 +534,7 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
                   visibleWidgets: _visibleWidgets,
                   onToggleWidget: _toggleWidget,
                   onOpenAddWidgetSheet: _openAddWidgetSheet,
-                ),
+                ).animate().fadeIn(delay: 220.ms, duration: 500.ms),
               ],
             ),
           ),
@@ -534,16 +558,22 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     ]);
 
     final mobileWidgets = <Widget>[
-      const AgronomicGreetingBanner(),
+      const AgronomicGreetingBanner()
+          .animate()
+          .fadeIn(duration: 400.ms)
+          .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
       const SizedBox(height: 14),
 
       if (canViewInventory &&
           (state.inventory.lowStockProducts > 0 ||
               state.criticalBatches.isNotEmpty)) ...[
         DashboardHealthSummaryBar(
-          lowStockCount: state.inventory.lowStockProducts,
-          criticalBatchesCount: state.criticalBatches.length,
-        ),
+              lowStockCount: state.inventory.lowStockProducts,
+              criticalBatchesCount: state.criticalBatches.length,
+            )
+            .animate()
+            .fadeIn(delay: 60.ms, duration: 350.ms)
+            .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
       ],
 
       DashboardExecutiveSubheader(
@@ -552,15 +582,20 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         visibleWidgetsCount: _visibleWidgets.length,
         onOpenAddWidgetSheet: _openAddWidgetSheet,
         onExportReport: _handleExportReport,
-      ),
+      ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
 
       if (_visibleWidgets.contains('kpi_strip'))
-        DashboardKpisSection(state: state, isTabletOrMobile: true),
+        DashboardKpisSection(state: state, isTabletOrMobile: true)
+            .animate()
+            .fadeIn(delay: 160.ms, duration: 450.ms)
+            .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
 
       if (_visibleWidgets.contains('profit_spline') &&
           state.overview != null &&
           canViewSales)
-        SalesTrendCard(overview: state.overview!),
+        SalesTrendCard(
+          overview: state.overview!,
+        ).animate().fadeIn(delay: 200.ms, duration: 450.ms),
 
       if (_visibleWidgets.contains('customer_segments') &&
           state.topCustomers.isNotEmpty &&
@@ -568,25 +603,32 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.mobile,
-        ),
+        ).animate().fadeIn(delay: 220.ms, duration: 450.ms),
 
       if (_visibleWidgets.contains('weekly_activity') &&
           state.overview != null &&
           canViewSales)
-        WeeklyActivityCard(overview: state.overview!),
+        WeeklyActivityCard(
+          overview: state.overview!,
+        ).animate().fadeIn(delay: 240.ms, duration: 450.ms),
 
       if (_visibleWidgets.contains('radial_goal') &&
           (context.isAdmin || canViewSales))
-        const DashboardAdminGoalCard(),
+        const DashboardAdminGoalCard().animate().fadeIn(
+          delay: 260.ms,
+          duration: 450.ms,
+        ),
 
       if (_visibleWidgets.contains('best_sellers') && canViewSales)
         DashboardBestSellersTable(
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
-        ),
+        ).animate().fadeIn(delay: 280.ms, duration: 450.ms),
 
       if (_visibleWidgets.contains('expiring_batches') && canViewInventory)
-        ExpiringBatchesCard(batches: state.criticalBatches),
+        ExpiringBatchesCard(
+          batches: state.criticalBatches,
+        ).animate().fadeIn(delay: 300.ms, duration: 450.ms),
     ];
 
     return CustomScrollView(

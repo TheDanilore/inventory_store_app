@@ -1,4 +1,4 @@
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 
 class AuthUserModel {
   /// `profiles.id` — UUID real del perfil (FK destino de wishlist, shopping_carts, etc.)
@@ -20,6 +20,7 @@ class AuthUserModel {
 
   final String? warehouseId;
   final String? warehouseName;
+  final DateTime? birthdate;
 
   const AuthUserModel({
     required this.id,
@@ -36,6 +37,7 @@ class AuthUserModel {
     this.permissions = const {},
     this.warehouseId,
     this.warehouseName,
+    this.birthdate,
   });
 
   factory AuthUserModel.fromMap(
@@ -86,6 +88,10 @@ class AuthUserModel {
       permissions: parsedPermissions,
       warehouseId: map['warehouse_id']?.toString(),
       warehouseName: map['warehouse_name']?.toString(),
+      birthdate:
+          map['birthdate'] != null
+              ? DateTime.tryParse(map['birthdate'].toString())
+              : null,
     );
   }
 
@@ -105,6 +111,7 @@ class AuthUserModel {
       permissions: entity.permissions,
       warehouseId: entity.warehouseId,
       warehouseName: entity.warehouseName,
+      birthdate: entity.birthdate,
     );
   }
 
@@ -124,6 +131,7 @@ class AuthUserModel {
       permissions: permissions,
       warehouseId: warehouseId,
       warehouseName: warehouseName,
+      birthdate: birthdate,
     );
   }
 }
@@ -138,6 +146,7 @@ extension AuthUserModelCopyWith on AuthUserModel {
     Set<String>? permissions,
     String? warehouseId,
     String? warehouseName,
+    DateTime? birthdate,
   }) {
     return AuthUserModel(
       id: id,
@@ -154,6 +163,7 @@ extension AuthUserModelCopyWith on AuthUserModel {
       permissions: permissions ?? this.permissions,
       warehouseId: warehouseId ?? this.warehouseId,
       warehouseName: warehouseName ?? this.warehouseName,
+      birthdate: birthdate ?? this.birthdate,
     );
   }
 }

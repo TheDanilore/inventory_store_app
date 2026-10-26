@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 
 enum AuthStatus { initial, unauthenticated, authenticated, error }
 

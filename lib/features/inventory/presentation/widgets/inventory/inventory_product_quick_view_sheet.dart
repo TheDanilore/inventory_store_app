@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/catalog/domain/entities/product_ent
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 
 class InventoryProductQuickViewSheet {
   /// Abre la Ficha Rápida:
@@ -886,6 +887,94 @@ class _InventoryProductQuickViewContentState
                 ),
               ],
             ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Acciones Operativas de Stock (Ingreso / Salida) ──
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () {
+                    final router = GoRouter.of(context);
+                    Navigator.pop(context);
+                    router.push(
+                      '/inventory-entries/form',
+                      extra: {
+                        'prefillWarehouseId': widget.selectedWarehouseId,
+                        'prefillItems': [
+                          InventoryEntryItemEntity(
+                            productId: item.productId,
+                            productName: item.productName,
+                            variantId: _activeVariantId,
+                            variantLabel: _activeVariantTitle,
+                            imageUrl: primaryImg,
+                            usesBatches: item.usesBatches,
+                            quantity: 1,
+                            unitCost: _activeVariantUnitCost,
+                            batchNumber: item.usesBatches ? '' : 'DEFAULT',
+                          ),
+                        ],
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.add_box_rounded, size: 16),
+                  label: const Text(
+                    'Ingresar Stock',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final router = GoRouter.of(context);
+                    Navigator.pop(context);
+                    router.push(
+                      '/inventory-exits/form',
+                      extra: {
+                        'warehouseId': widget.selectedWarehouseId,
+                        'prefillVariantId': _activeVariantId,
+                        'prefillProductId': item.productId,
+                        'prefillProductName': item.productName,
+                        'prefillVariantName': _activeVariantTitle,
+                        'reason': 'AJUSTE',
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.outbox_rounded, size: 16),
+                  label: const Text(
+                    'Registrar Salida',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(color: AppColors.danger),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 20),

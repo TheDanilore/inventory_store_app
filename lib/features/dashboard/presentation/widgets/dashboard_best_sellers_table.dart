@@ -218,6 +218,30 @@ class _DashboardBestSellersTableState extends State<DashboardBestSellersTable> {
                                   : const Color(0xFF64748B),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: () => context.go('/pos'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 1,
+                        ),
+                        icon: const Icon(Icons.point_of_sale_rounded, size: 15),
+                        label: const Text(
+                          'Registrar Venta en POS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 )

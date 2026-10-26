@@ -30,6 +30,9 @@ class UserEntity extends Equatable {
   /// Nombre del almacén asignado al usuario
   final String? warehouseName;
 
+  /// Fecha de nacimiento del usuario para felicitaciones y métricas
+  final DateTime? birthdate;
+
   const UserEntity({
     required this.id,
     required this.authUserId,
@@ -45,6 +48,7 @@ class UserEntity extends Equatable {
     this.permissions = const {},
     this.warehouseId,
     this.warehouseName,
+    this.birthdate,
   });
 
   /// Verifica si el usuario cuenta con un permiso específico.
@@ -161,6 +165,13 @@ class UserEntity extends Equatable {
   /// Usuario asignado exclusivamente a POS/Caja (tiene permiso de POS pero no tiene acceso al ERP)
   bool get isPosOnly => canAccessPos && !canAccessErp;
 
+  /// Determina si la fecha actual coincide con el día y mes de cumpleaños del usuario
+  bool get isBirthdayToday {
+    if (birthdate == null) return false;
+    final now = DateTime.now();
+    return birthdate!.month == now.month && birthdate!.day == now.day;
+  }
+
   @override
   List<Object?> get props => [
     id,
@@ -177,6 +188,7 @@ class UserEntity extends Equatable {
     permissions,
     warehouseId,
     warehouseName,
+    birthdate,
   ];
 
   UserEntity copyWith({
@@ -194,6 +206,7 @@ class UserEntity extends Equatable {
     Set<String>? permissions,
     String? warehouseId,
     String? warehouseName,
+    DateTime? birthdate,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -210,6 +223,7 @@ class UserEntity extends Equatable {
       permissions: permissions ?? this.permissions,
       warehouseId: warehouseId ?? this.warehouseId,
       warehouseName: warehouseName ?? this.warehouseName,
+      birthdate: birthdate ?? this.birthdate,
     );
   }
 }

@@ -12,7 +12,11 @@ class GetInventoryMetricsUseCase {
 
   Future<Either<Failure, InventoryMetricsEntity>> call({
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
-    return await repository.getInventoryMetrics(forceRefresh: forceRefresh);
+    return await repository.getInventoryMetrics(
+      forceRefresh: forceRefresh,
+      warehouseId: warehouseId,
+    );
   }
 }

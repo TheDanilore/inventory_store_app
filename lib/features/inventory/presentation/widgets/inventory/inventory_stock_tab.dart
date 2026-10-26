@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_stock_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_product_quick_view_sheet.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_stock_table.dart';
@@ -175,6 +176,42 @@ class _InventoryStockTabState extends State<InventoryStockTab>
     );
   }
 
+  void _openStockEntry(InventoryStockItem item, InventoryLoaded state) {
+    context.push(
+      '/inventory-entries/form',
+      extra: {
+        'prefillWarehouseId': state.selectedWarehouseId,
+        'prefillItems': [
+          InventoryEntryItemEntity(
+            productId: item.productId,
+            productName: item.productName,
+            variantId: item.variantId,
+            variantLabel: item.attrsText,
+            imageUrl: item.imageUrl,
+            usesBatches: item.usesBatches,
+            quantity: 1,
+            unitCost: item.unitCost,
+            batchNumber: item.usesBatches ? '' : 'DEFAULT',
+          ),
+        ],
+      },
+    );
+  }
+
+  void _openStockExit(InventoryStockItem item, InventoryLoaded state) {
+    context.push(
+      '/inventory-exits/form',
+      extra: {
+        'warehouseId': state.selectedWarehouseId,
+        'prefillVariantId': item.variantId,
+        'prefillProductId': item.productId,
+        'prefillProductName': item.productName,
+        'prefillVariantName': item.attrsText,
+        'reason': 'AJUSTE',
+      },
+    );
+  }
+
   bool _isSameItem(InventoryStockItem? a, InventoryStockItem b) =>
       a != null &&
       ((a.variantId.isNotEmpty && a.variantId == b.variantId) ||
@@ -233,6 +270,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
               setState(() => _selectedItem = item);
               _showQuickView(item, state);
             },
+            onStockEntry: () => _openStockEntry(item, state),
+            onStockExit: () => _openStockExit(item, state),
           ),
         );
       },
@@ -621,6 +660,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                             },
                             onKardex: _openKardex,
                             onShowQr: _showQr,
+                            onStockEntry: (it) => _openStockEntry(it, state),
+                            onStockExit: (it) => _openStockExit(it, state),
                           ),
                 ),
               ),
@@ -758,21 +799,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                 onToggleTableView: (val) => setState(() => _isTableView = val),
               )
               : null,
-      trailingActions: [
-        OutlinedButton.icon(
-          onPressed: _openCameraScanner,
-          icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-          label: const Text('Escanear'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.tealDark,
-            side: BorderSide(color: AppColors.teal.withValues(alpha: 0.5)),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-      ],
+      onScanBarcode: _openCameraScanner,
+      scanBarcodeTooltip: 'Escanear código (QR / Barras)',
       // Los atajos (/, R, Esc, B, Enter...) ya los maneja esta pestaña y la
       // pantalla; se desactivan aquí para no ejecutar la acción dos veces.
       enableKeyboardShortcuts: false,
@@ -1057,6 +1085,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                       setState(() => _selectedItem = item);
                       _showQuickView(item, state);
                     },
+                    onStockEntry: () => _openStockEntry(item, state),
+                    onStockExit: () => _openStockExit(item, state),
                   ),
                 );
               }, childCount: state.stockItems.length),
@@ -1089,6 +1119,8 @@ class _InventoryStockTabState extends State<InventoryStockTab>
                         setState(() => _selectedItem = item);
                         _showQuickView(item, state);
                       },
+                      onStockEntry: () => _openStockEntry(item, state),
+                      onStockExit: () => _openStockExit(item, state),
                     ),
                   ),
                 );

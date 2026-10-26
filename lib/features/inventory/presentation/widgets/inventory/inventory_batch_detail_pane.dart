@@ -528,7 +528,101 @@ class InventoryBatchDetailPane extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 10),
+        // CTA 3: Dar de baja lote (Salida por Merma / Vencimiento)
+        OutlinedButton.icon(
+          onPressed: () {
+            final reason = batch.status == 'vencido' ? 'VENCIMIENTO' : 'MERMA';
+            context.push(
+              '/inventory-exits/form',
+              extra: {
+                'warehouseId': batch.warehouseId,
+                'reason': reason,
+                'prefillVariantId': batch.variantId,
+                'prefillBatchId': batch.id,
+                'prefillProductId': batch.productId,
+                'prefillProductName': batch.productName,
+                'prefillVariantName': batch.variantAttrs,
+                'notes': 'Salida por $reason de lote ${batch.batchNumber}',
+              },
+            );
+          },
+          icon: const Icon(Icons.outbox_rounded, size: 16),
+          label: Text(
+            batch.status == 'vencido'
+                ? 'Dar de Baja (Salida por Vencimiento)'
+                : 'Registrar Salida de Lote (Merma)',
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.danger,
+            side: const BorderSide(color: AppColors.danger),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // CTA 4: Sugerencia de Descontinuar Producto
+        TextButton.icon(
+          onPressed: () => _confirmDiscontinue(context),
+          icon: const Icon(Icons.block_flipped, size: 15),
+          label: const Text(
+            'Descontinuar Producto en Catálogo',
+            style: TextStyle(fontSize: 12.5),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+          ),
+        ),
       ],
+    );
+  }
+
+  void _confirmDiscontinue(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: const [
+                Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                SizedBox(width: 8),
+                Text(
+                  'Descontinuar Producto',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            content: Text(
+              '¿Deseas descontinuar "${batch.productName ?? 'este producto'}"?\n\n'
+              'Al descontinuarlo, el producto se marcará como Inactivo en el catálogo y no podrá ser vendido en el POS ni comprado a proveedores. Su historial de Kárdex y auditoría se mantendrán intactos.',
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.push('/products/product-form/${batch.productId}');
+                },
+                icon: const Icon(Icons.edit_note_rounded, size: 16),
+                label: const Text('Ir a Editar Estado en Catálogo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
     );
   }
 

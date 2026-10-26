@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/product_image_placeholder.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -423,39 +424,82 @@ class _ExpiringBatchesCardState extends State<ExpiringBatchesCard> {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  days <= 0
-                                      ? AppColors.error.withValues(alpha: 0.15)
-                                      : days <= 7
-                                      ? AppColors.error.withValues(alpha: 0.12)
-                                      : AppColors.warning.withValues(
-                                        alpha: 0.12,
+                          Builder(
+                            builder: (context) {
+                              Widget chip = Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      days <= 0
+                                          ? AppColors.error.withValues(
+                                            alpha: 0.16,
+                                          )
+                                          : days <= 7
+                                          ? AppColors.error.withValues(
+                                            alpha: 0.12,
+                                          )
+                                          : AppColors.warning.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color:
+                                        days <= 0
+                                            ? AppColors.error.withValues(
+                                              alpha: 0.35,
+                                            )
+                                            : Colors.transparent,
+                                  ),
+                                ),
+                                child: Text(
+                                  days < 0
+                                      ? 'Vencido (${days.abs()}d)'
+                                      : days == 0
+                                      ? 'Vence hoy'
+                                      : days == 1
+                                      ? '1 día'
+                                      : '$days días',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        days <= 7
+                                            ? AppColors.error
+                                            : AppColors.warning,
+                                  ),
+                                ),
+                              );
+
+                              if (days <= 0) {
+                                chip = chip
+                                    .animate(
+                                      onPlay: (c) => c.repeat(reverse: true),
+                                    )
+                                    .boxShadow(
+                                      begin: BoxShadow(
+                                        color: AppColors.error.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        blurRadius: 2,
                                       ),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              days < 0
-                                  ? 'Vencido (${days.abs()}d)'
-                                  : days == 0
-                                  ? 'Vence hoy'
-                                  : days == 1
-                                  ? '1 día'
-                                  : '$days días',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                    days <= 7
-                                        ? AppColors.error
-                                        : AppColors.warning,
-                              ),
-                            ),
+                                      end: BoxShadow(
+                                        color: AppColors.error.withValues(
+                                          alpha: 0.45,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                      duration: const Duration(
+                                        milliseconds: 900,
+                                      ),
+                                    );
+                              }
+
+                              return chip;
+                            },
                           ),
                           const SizedBox(width: 6),
                           const Icon(

@@ -247,7 +247,6 @@ class TopCustomersCard extends StatelessWidget {
               onTap: () => _openCustomerActionSheet(context, customer),
               borderRadius: BorderRadius.circular(14),
               child: Container(
-                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
@@ -258,7 +257,31 @@ class TopCustomersCard extends StatelessWidget {
                           ? AppColors.darkSurfaceElevated
                           : AppColors.surface,
                 ),
-                child: Row(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor:
+                            (customers.isNotEmpty && customers.first.totalRevenue > 0
+                                    ? customer.totalRevenue /
+                                        customers.first.totalRevenue
+                                    : 1.0)
+                                .clamp(0.04, 1.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: (isDark
+                                    ? const Color(0xFF38BDF8)
+                                    : const Color(0xFF2563EB))
+                                .withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
                   children: [
                     _buildRankBadge(rank, isDark: isDark),
                     const SizedBox(width: 14),
@@ -330,9 +353,12 @@ class TopCustomersCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
+      ),
+    );
+  },
       ),
     );
   }
@@ -356,114 +382,141 @@ class TopCustomersCard extends StatelessWidget {
         final customer = customers[index];
         final rank = index + 1;
 
+        final ratio =
+            (customers.isNotEmpty && customers.first.totalRevenue > 0
+                    ? customer.totalRevenue / customers.first.totalRevenue
+                    : 1.0)
+                .clamp(0.04, 1.0);
+
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () => _openCustomerActionSheet(context, customer),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  _buildRankBadge(rank, isDark: isDark),
-                  const SizedBox(width: 12),
-                  _buildAvatar(customer),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          customer.fullName,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color:
-                                isDark
-                                    ? const Color(0xFFF8FAFC)
-                                    : AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? AppColors.primary.withValues(
-                                          alpha: 0.2,
-                                        )
-                                        : AppColors.primaryLight,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                '${customer.orderCount} ord.',
-                                style: const TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                            if (customer.phone != null &&
-                                customer.phone!.isNotEmpty) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                customer.phone!,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF94A3B8)
-                                          : AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: ratio,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: (isDark
+                                ? const Color(0xFF38BDF8)
+                                : const Color(0xFF2563EB))
+                            .withValues(alpha: 0.05),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color:
-                              isDark
-                                  ? const Color(0xFF34D399)
-                                  : AppColors.tealDark,
+                      _buildRankBadge(rank, isDark: isDark),
+                      const SizedBox(width: 12),
+                      _buildAvatar(customer),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              customer.fullName,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isDark
+                                        ? const Color(0xFFF8FAFC)
+                                        : AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isDark
+                                            ? AppColors.primary.withValues(
+                                              alpha: 0.2,
+                                            )
+                                            : AppColors.primaryLight,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${customer.orderCount} ord.',
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                                if (customer.phone != null &&
+                                    customer.phone!.isNotEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    customer.phone!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF94A3B8)
+                                              : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Total facturado',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color:
+                                  isDark
+                                      ? const Color(0xFF34D399)
+                                      : AppColors.tealDark,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Total facturado',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textMuted,
+                        size: 18,
                       ),
                     ],
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.textMuted,
-                    size: 18,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -475,31 +528,101 @@ class TopCustomersCard extends StatelessWidget {
   // COMPONENTES ATÓMICOS: RANK MEDAL & AVATAR
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildRankBadge(int rank, {bool isDark = false}) {
-    Color bg;
-    Color fg;
-    String text;
-
     if (rank == 1) {
-      bg = isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7);
-      fg = isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309);
-      text = '1';
+      return Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFD97706)],
+          ),
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Text(
+          '1',
+          style: TextStyle(
+            color: Color(0xFF78350F),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
     } else if (rank == 2) {
-      bg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
-      fg = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
-      text = '2';
+      return Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF8FAFC), Color(0xFFCBD5E1), Color(0xFF64748B)],
+          ),
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF64748B).withValues(alpha: 0.25),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Text(
+          '2',
+          style: TextStyle(
+            color: Color(0xFF1E293B),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
     } else if (rank == 3) {
-      bg = isDark ? const Color(0xFF7C2D12) : const Color(0xFFFFEDD5);
-      fg = isDark ? const Color(0xFFFDBA74) : const Color(0xFFC2410C);
-      text = '3';
-    } else {
-      bg = isDark ? const Color(0xFF1E293B) : AppColors.background;
-      fg = isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary;
-      text = '$rank';
+      return Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFEDD5), Color(0xFFFB923C), Color(0xFF9A3412)],
+          ),
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEA580C).withValues(alpha: 0.25),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Text(
+          '3',
+          style: TextStyle(
+            color: Color(0xFF431407),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
     }
 
+    final bg = isDark ? const Color(0xFF1E293B) : AppColors.background;
+    final fg = isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary;
+
     return Container(
-      width: 26,
-      height: 26,
+      width: 28,
+      height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: bg,
@@ -507,8 +630,8 @@ class TopCustomersCard extends StatelessWidget {
         border: Border.all(color: fg.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w900),
+        '$rank',
+        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -742,6 +865,13 @@ class _DesktopTableState extends State<_DesktopTable> {
                       ? customer.totalRevenue / customer.orderCount
                       : 0.0;
               final isHovered = _hoveredRank == rank;
+              final maxRevenue =
+                  widget.customers.isNotEmpty &&
+                          widget.customers.first.totalRevenue > 0
+                      ? widget.customers.first.totalRevenue
+                      : 1.0;
+              final ratio =
+                  (customer.totalRevenue / maxRevenue).clamp(0.04, 1.0);
 
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -752,20 +882,38 @@ class _DesktopTableState extends State<_DesktopTable> {
                 },
                 child: GestureDetector(
                   onTap: () => widget.onCustomerTap(customer),
-                  child: Container(
-                    color:
-                        isHovered
-                            ? (isDark
-                                ? AppColors.darkSurfaceElevated
-                                : AppColors.primaryLight.withValues(
-                                  alpha: 0.45,
-                                ))
-                            : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    child: Row(
+                  child: Stack(
+                    children: [
+                      // Proportional participation bar behind row
+                      Positioned.fill(
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: ratio,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: (isDark
+                                      ? const Color(0xFF38BDF8)
+                                      : const Color(0xFF2563EB))
+                                  .withValues(alpha: isHovered ? 0.12 : 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        color:
+                            isHovered
+                                ? (isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : AppColors.primaryLight.withValues(
+                                      alpha: 0.45,
+                                    ))
+                                : Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        child: Row(
                       children: [
                         // Rank
                         SizedBox(
@@ -948,8 +1096,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                       ],
                     ),
                   ),
-                ),
-              );
+                ],
+              ),
+            ),
+          );
             },
           ),
         ],

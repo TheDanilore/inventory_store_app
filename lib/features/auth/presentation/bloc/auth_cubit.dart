@@ -3,7 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
-import 'package:inventory_store_app/features/auth/domain/entities/user_entity.dart';
+import 'package:inventory_store_app/features/auth/domain/entities/auth_user_entity.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/change_password_uc.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/delete_account_uc.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';

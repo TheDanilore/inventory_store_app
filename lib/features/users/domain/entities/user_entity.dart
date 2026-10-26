@@ -14,6 +14,7 @@ class UserEntity extends Equatable {
   final List<String> roles;
   final String? warehouseId;
   final String? warehouseName;
+  final DateTime? birthdate;
 
   const UserEntity({
     required this.id,
@@ -29,6 +30,7 @@ class UserEntity extends Equatable {
     this.roles = const [],
     this.warehouseId,
     this.warehouseName,
+    this.birthdate,
   });
 
   /// Lista de todos los roles asignados, incluyendo el rol primario
@@ -39,6 +41,13 @@ class UserEntity extends Equatable {
       if (!list.contains(r)) list.add(r);
     }
     return list;
+  }
+
+  /// Determina si hoy es el cumpleaños del usuario
+  bool get isBirthdayToday {
+    if (birthdate == null) return false;
+    final now = DateTime.now();
+    return birthdate!.month == now.month && birthdate!.day == now.day;
   }
 
   @override
@@ -56,6 +65,7 @@ class UserEntity extends Equatable {
     roles,
     warehouseId,
     warehouseName,
+    birthdate,
   ];
 
   UserEntity copyWith({
@@ -72,6 +82,7 @@ class UserEntity extends Equatable {
     List<String>? roles,
     String? warehouseId,
     String? warehouseName,
+    DateTime? birthdate,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -87,6 +98,7 @@ class UserEntity extends Equatable {
       roles: roles ?? this.roles,
       warehouseId: warehouseId ?? this.warehouseId,
       warehouseName: warehouseName ?? this.warehouseName,
+      birthdate: birthdate ?? this.birthdate,
     );
   }
 }

@@ -54,20 +54,41 @@ class DashboardCubit extends Cubit<DashboardState> {
         currentState is DashboardLoaded ? currentState.customStartDate : null;
     final activeEndDate =
         currentState is DashboardLoaded ? currentState.customEndDate : null;
+    final activeWarehouseId =
+        currentState is DashboardLoaded
+            ? currentState.selectedWarehouseId
+            : null;
+    final activeWarehouseName =
+        currentState is DashboardLoaded
+            ? currentState.selectedWarehouseName
+            : null;
 
     try {
       // Carga paralela de alto rendimiento
       final results = await Future.wait([
-        getInventoryMetrics(forceRefresh: forceRefresh),
+        getInventoryMetrics(
+          forceRefresh: forceRefresh,
+          warehouseId: activeWarehouseId,
+        ),
         getSalesMetrics(
           filter: activeFilter,
           customStartDate: activeStartDate,
           customEndDate: activeEndDate,
           forceRefresh: forceRefresh,
+          warehouseId: activeWarehouseId,
         ),
-        getCriticalBatches(daysThreshold: 30, forceRefresh: forceRefresh),
+        getCriticalBatches(
+          daysThreshold: 30,
+          forceRefresh: forceRefresh,
+          warehouseId: activeWarehouseId,
+        ),
         _fetchTopCustomers(limit: 5),
-        _fetchOverview(activeFilter, activeStartDate, activeEndDate),
+        _fetchOverview(
+          activeFilter,
+          activeStartDate,
+          activeEndDate,
+          warehouseId: activeWarehouseId,
+        ),
       ]);
 
       final inventoryResult =
@@ -126,6 +147,8 @@ class DashboardCubit extends Cubit<DashboardState> {
             salesFilter: activeFilter,
             customStartDate: activeStartDate,
             customEndDate: activeEndDate,
+            selectedWarehouseId: activeWarehouseId,
+            selectedWarehouseName: activeWarehouseName,
             isSalesLoading: false,
             isBackgroundLoading: false,
           ),
@@ -156,6 +179,8 @@ class DashboardCubit extends Cubit<DashboardState> {
                         salesFilter: activeFilter,
                         customStartDate: activeStartDate,
                         customEndDate: activeEndDate,
+                        selectedWarehouseId: activeWarehouseId,
+                        selectedWarehouseName: activeWarehouseName,
                         isSalesLoading: false,
                         isBackgroundLoading: false,
                       ),
@@ -211,10 +236,15 @@ class DashboardCubit extends Cubit<DashboardState> {
   Future<Either<Failure, SalesOverview>> _fetchOverview(
     SalesTimeFilter filter,
     DateTime? customStart,
-    DateTime? customEnd,
-  ) {
+    DateTime? customEnd, {
+    String? warehouseId,
+  }) {
     final r = _rangeFor(filter, customStart, customEnd);
-    return dashboardRepository.getSalesOverview(from: r.from, to: r.to);
+    return dashboardRepository.getSalesOverview(
+      from: r.from,
+      to: r.to,
+      warehouseId: warehouseId,
+    );
   }
 
   Future<List<CustomerEntity>> _fetchTopCustomers({int limit = 5}) async {
@@ -231,6 +261,101 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
+  Future<void> updateWarehouseFilter({
+    String? warehouseId,
+    String? warehouseName,
+  }) async {
+    final currentState = state;
+    if (currentState is DashboardLoaded) {
+      if (currentState.selectedWarehouseId == warehouseId) return;
+
+      emit(
+        currentState.copyWith(
+          selectedWarehouseId: warehouseId,
+          selectedWarehouseName: warehouseName,
+          clearWarehouse: warehouseId == null,
+          isBackgroundLoading: true,
+          isSalesLoading: true,
+        ),
+      );
+
+      final activeFilter = currentState.salesFilter;
+      final activeStartDate = currentState.customStartDate;
+      final activeEndDate = currentState.customEndDate;
+
+      try {
+        final results = await Future.wait([
+          getInventoryMetrics(forceRefresh: true, warehouseId: warehouseId),
+          getSalesMetrics(
+            filter: activeFilter,
+            customStartDate: activeStartDate,
+            customEndDate: activeEndDate,
+            forceRefresh: true,
+            warehouseId: warehouseId,
+          ),
+          getCriticalBatches(
+            daysThreshold: 30,
+            forceRefresh: true,
+            warehouseId: warehouseId,
+          ),
+          _fetchOverview(
+            activeFilter,
+            activeStartDate,
+            activeEndDate,
+            warehouseId: warehouseId,
+          ),
+        ]);
+
+        final inventoryResult =
+            results[0] as Either<Failure, InventoryMetricsEntity>;
+        final salesResult = results[1] as Either<Failure, SalesMetricsEntity>;
+        final batchesResult =
+            results[2] as Either<Failure, List<Map<String, dynamic>>>;
+        final overviewResult = results[3] as Either<Failure, SalesOverview>;
+
+        final inventory = inventoryResult.getOrElse(
+          (_) => currentState.inventory,
+        );
+        final sales = salesResult.getOrElse((_) => currentState.sales);
+        final batches = batchesResult.getOrElse(
+          (_) => currentState.criticalBatches,
+        );
+        final overview = overviewResult.fold<SalesOverview?>(
+          (_) => null,
+          (o) => o,
+        );
+
+        emit(
+          currentState.copyWith(
+            selectedWarehouseId: warehouseId,
+            selectedWarehouseName: warehouseName,
+            clearWarehouse: warehouseId == null,
+            inventory: inventory,
+            sales: sales,
+            overview: overview,
+            clearOverview: overview == null,
+            criticalBatches: batches,
+            isSalesLoading: false,
+            isBackgroundLoading: false,
+          ),
+        );
+      } catch (e, stack) {
+        LoggerService.e(
+          'Error actualizando filtro de almacén en dashboard',
+          tag: 'DASHBOARD_CUBIT',
+          error: e,
+          stackTrace: stack,
+        );
+        emit(
+          currentState.copyWith(
+            isSalesLoading: false,
+            isBackgroundLoading: false,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> updateSalesFilter(
     SalesTimeFilter filter, {
     DateTime? customStartDate,
@@ -240,6 +365,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     final currentState = state;
     if (currentState is DashboardLoaded) {
       final loadId = ++_currentFilterLoadId;
+      final activeWarehouseId = currentState.selectedWarehouseId;
 
       emit(
         currentState.copyWith(
@@ -257,8 +383,14 @@ class DashboardCubit extends Cubit<DashboardState> {
               customStartDate: customStartDate,
               customEndDate: customEndDate,
               forceRefresh: forceRefresh,
+              warehouseId: activeWarehouseId,
             ),
-            _fetchOverview(filter, customStartDate, customEndDate),
+            _fetchOverview(
+              filter,
+              customStartDate,
+              customEndDate,
+              warehouseId: activeWarehouseId,
+            ),
           ).wait;
 
       // Mutex anti-race-conditions: descartar si hay una petición más reciente

@@ -22,6 +22,7 @@ class _DashboardHealthSummaryBarState extends State<DashboardHealthSummaryBar>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  bool _isButtonHovered = false;
 
   @override
   void initState() {
@@ -137,6 +138,15 @@ class _DashboardHealthSummaryBarState extends State<DashboardHealthSummaryBar>
                   ? const Color(0xFFB45309).withValues(alpha: 0.45)
                   : AppColors.warning.withValues(alpha: 0.3),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(
+              0xFFF59E0B,
+            ).withValues(alpha: isDark ? 0.12 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -150,6 +160,12 @@ class _DashboardHealthSummaryBarState extends State<DashboardHealthSummaryBar>
                         ? const Color(0xFFF59E0B).withValues(alpha: 0.2)
                         : AppColors.warning.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.warning_amber_rounded,
@@ -188,24 +204,42 @@ class _DashboardHealthSummaryBarState extends State<DashboardHealthSummaryBar>
               ],
             ),
           ),
-          TextButton.icon(
-            onPressed: () {
-              if (widget.criticalBatchesCount > 0) {
-                context.go('/inventory?tab=batches');
-              } else {
-                context.go('/inventory');
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor:
-                  isDark ? const Color(0xFFFBBF24) : AppColors.warning,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(44, 38),
-            ),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-            label: const Text(
-              'Revisar',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+          MouseRegion(
+            onEnter: (_) => setState(() => _isButtonHovered = true),
+            onExit: (_) => setState(() => _isButtonHovered = false),
+            child: TextButton(
+              onPressed: () {
+                if (widget.criticalBatchesCount > 0) {
+                  context.go('/inventory?tab=batches');
+                } else {
+                  context.go('/inventory');
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    isDark ? const Color(0xFFFBBF24) : AppColors.warning,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(44, 38),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Revisar',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedSlide(
+                    offset: Offset(_isButtonHovered ? 0.25 : 0.0, 0),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

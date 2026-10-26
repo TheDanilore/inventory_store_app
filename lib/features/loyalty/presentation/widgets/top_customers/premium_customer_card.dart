@@ -1,18 +1,58 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 
+/// Avatar reutilizable (foto o inicial) para todo el módulo de Top Clientes.
+class TopCustomerAvatar extends StatelessWidget {
+  final CustomerEntity customer;
+  final double radius;
+  const TopCustomerAvatar({
+    super.key,
+    required this.customer,
+    this.radius = 22,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final url = customer.avatarUrl;
+    final hasPhoto = url != null && url.isNotEmpty;
+    final name = customer.fullName.trim();
+    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+      backgroundImage: hasPhoto ? CachedNetworkImageProvider(url) : null,
+      child:
+          hasPhoto
+              ? null
+              : Text(
+                initial,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  fontSize: radius * 0.8,
+                ),
+              ),
+    );
+  }
+}
+
+/// Tarjeta de podio (puestos 1, 2 y 3). El #1 se muestra más grande
+/// ([featured]) con acento dorado; plata y bronce para 2 y 3.
 class PremiumCustomerCard extends StatefulWidget {
   final CustomerEntity customer;
-  final int position;
+  final int position; // 1, 2 o 3
+  final bool featured;
 
   const PremiumCustomerCard({
     super.key,
     required this.customer,
     required this.position,
+    this.featured = false,
   });
 
   @override
@@ -20,183 +60,120 @@ class PremiumCustomerCard extends StatefulWidget {
 }
 
 class _PremiumCustomerCardState extends State<PremiumCustomerCard> {
-  bool _isHovered = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final formatCurrency = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-    );
+    final currency = NumberFormat.currency(symbol: 'S/ ', decimalDigits: 2);
+    final c = widget.customer;
+    final featured = widget.featured;
 
-    final isTop3 = widget.position <= 3;
-    Color? borderColor;
-    List<Color>? gradientColors;
-    Widget? medalIcon;
-
-    if (widget.position == 1) {
-      borderColor = const Color(0xFFFFD700); // Oro
-      gradientColors = [
-        const Color(0xFFFFD700).withValues(alpha: 0.15),
-        const Color(0xFFFFD700).withValues(alpha: 0.02),
-      ];
-      medalIcon = const Text('🥇', style: TextStyle(fontSize: 24));
-    } else if (widget.position == 2) {
-      borderColor = const Color(0xFFC0C0C0); // Plata
-      gradientColors = [
-        const Color(0xFFC0C0C0).withValues(alpha: 0.15),
-        const Color(0xFFC0C0C0).withValues(alpha: 0.02),
-      ];
-      medalIcon = const Text('🥈', style: TextStyle(fontSize: 24));
-    } else if (widget.position == 3) {
-      borderColor = const Color(0xFFCD7F32); // Bronce
-      gradientColors = [
-        const Color(0xFFCD7F32).withValues(alpha: 0.15),
-        const Color(0xFFCD7F32).withValues(alpha: 0.02),
-      ];
-      medalIcon = const Text('🥉', style: TextStyle(fontSize: 24));
+    final Color accent;
+    final String medal;
+    switch (widget.position) {
+      case 1:
+        accent = const Color(0xFFF5B301);
+        medal = '🥇';
+        break;
+      case 2:
+        accent = const Color(0xFF94A3B8);
+        medal = '🥈';
+        break;
+      default:
+        accent = const Color(0xFFCD7F32);
+        medal = '🥉';
     }
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
       cursor: SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.only(bottom: 12),
-        transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
+        transform: Matrix4.translationValues(0, _hovered ? -4 : 0, 0),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          gradient:
-              isTop3
-                  ? LinearGradient(
-                    colors: gradientColors!,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                  : null,
-          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [accent.withValues(alpha: 0.20), theme.colorScheme.surface],
+          ),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color:
-                borderColor ??
-                theme.colorScheme.outlineVariant.withValues(
-                  alpha: _isHovered ? 0.8 : 0.3,
-                ),
-            width: isTop3 ? 1.5 : 1.0,
+            color: accent.withValues(alpha: 0.75),
+            width: featured ? 2 : 1.4,
           ),
           boxShadow: [
             BoxShadow(
-              color: (borderColor ?? theme.colorScheme.shadow).withValues(
-                alpha: _isHovered ? 0.15 : 0.03,
-              ),
-              blurRadius: _isHovered ? 20 : 12,
-              offset: Offset(0, _isHovered ? 8 : 4),
+              color: accent.withValues(alpha: _hovered ? 0.30 : 0.14),
+              blurRadius: _hovered ? 28 : 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              context.go(
-                '/customers/customer-detail/${widget.customer.id}',
-                extra: widget.customer,
-              );
-            },
+            borderRadius: BorderRadius.circular(22),
+            onTap:
+                () =>
+                    context.go('/customers/customer-detail/${c.id}', extra: c),
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+              padding: EdgeInsets.fromLTRB(16, featured ? 24 : 18, 16, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Posición / Medalla
-                  SizedBox(
-                    width: 40,
-                    child: Center(
-                      child:
-                          medalIcon ??
-                          Text(
-                            '#${widget.position}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
+                  Text(medal, style: TextStyle(fontSize: featured ? 36 : 28)),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: accent, width: 2),
+                    ),
+                    child: TopCustomerAvatar(
+                      customer: c,
+                      radius: featured ? 38 : 30,
                     ),
                   ),
-                  const SizedBox(width: 12),
-
-                  // Avatar
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage:
-                        widget.customer.avatarUrl != null
-                            ? CachedNetworkImageProvider(
-                              widget.customer.avatarUrl!,
-                            )
-                            : null,
-                    child:
-                        widget.customer.avatarUrl == null
-                            ? Text(
-                              widget.customer.fullName[0].toUpperCase(),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                                fontSize: 18,
-                              ),
-                            )
-                            : null,
-                  ),
-                  const SizedBox(width: 16),
-
-                  // Info del Cliente
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          widget.customer.fullName,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Cliente Destacado',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 12),
+                  Text(
+                    c.fullName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: featured ? 17 : 15,
                     ),
                   ),
-
-                  // Monto Total
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        formatCurrency.format(widget.customer.totalRevenue),
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: theme.colorScheme.primary,
-                          fontSize: 18,
-                        ),
+                  const SizedBox(height: 2),
+                  Text(
+                    c.orderCount == 1 ? '1 compra' : '${c.orderCount} compras',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      currency.format(c.totalRevenue),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: featured ? 20 : 16,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.3,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Total Comprado',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),

@@ -15,6 +15,7 @@ class UserModel extends UserEntity {
     super.roles,
     super.warehouseId,
     super.warehouseName,
+    super.birthdate,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +66,10 @@ class UserModel extends UserEntity {
       roles: parsedRoles,
       warehouseId: json['warehouse_id'] as String?,
       warehouseName: json['warehouse_name'] as String?,
+      birthdate:
+          json['birthdate'] != null
+              ? DateTime.tryParse(json['birthdate'].toString())
+              : null,
     );
   }
 
@@ -83,6 +88,8 @@ class UserModel extends UserEntity {
       'roles': roles,
       if (warehouseId != null) 'warehouse_id': warehouseId,
       if (warehouseName != null) 'warehouse_name': warehouseName,
+      if (birthdate != null)
+        'birthdate': birthdate!.toIso8601String().split('T').first,
     };
   }
 
@@ -101,6 +108,7 @@ class UserModel extends UserEntity {
       roles: entity.roles,
       warehouseId: entity.warehouseId,
       warehouseName: entity.warehouseName,
+      birthdate: entity.birthdate,
     );
   }
 }

@@ -16,12 +16,14 @@ class GetSalesMetricsUseCase {
     DateTime? customStartDate,
     DateTime? customEndDate,
     bool forceRefresh = false,
+    String? warehouseId,
   }) async {
     return await repository.getSalesMetrics(
       filter: filter,
       customStartDate: customStartDate,
       customEndDate: customEndDate,
       forceRefresh: forceRefresh,
+      warehouseId: warehouseId,
     );
   }
 }

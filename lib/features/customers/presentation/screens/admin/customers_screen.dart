@@ -24,6 +24,10 @@ import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 
+/// Ruta de la pantalla "Top Clientes" (ranking + ruleta de sorteo).
+/// AJUSTA este valor al path real registrado en tu go_router.
+const String kTopCustomersRoute = '/top-customers';
+
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
 
@@ -97,6 +101,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       }
     });
   }
+
+  void _openTopCustomers() => context.push(kTopCustomersRoute);
 
   void _reloadAll() {
     context.read<CustomersCubit>().fetchCustomers(reset: true);
@@ -606,6 +612,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                           'Gestiona tus clientes, su información y datos de contacto',
                       isDesktop: isDesktop,
                       actions: [
+                        _TopClientsHeaderButton(onPressed: _openTopCustomers),
                         AdminHeaderButton.primary(
                           label: 'Nuevo Cliente',
                           icon: Icons.person_add_rounded,
@@ -727,6 +734,14 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                       );
                     },
                   ),
+
+                  // 2.b AVISO CONTEXTUAL: solo con el filtro "Top VIP" activo.
+                  // El filtro sigue siendo un filtro; desde aquí se salta al
+                  // ranking completo y a la ruleta de sorteo.
+                  if (_tabCtrl.index == 2)
+                    SliverToBoxAdapter(
+                      child: _TopVipBanner(onOpen: _openTopCustomers),
+                    ),
 
                   // 3. LISTADO / DATA TABLE PRO CON CARGA Y ORDENAMIENTO
                   BlocBuilder<TopCustomersCubit, TopCustomersState>(
@@ -1919,6 +1934,103 @@ class _CustomersSkeleton extends StatelessWidget {
             ),
           );
         }, childCount: 6),
+      ),
+    );
+  }
+}
+
+/// Botón secundario de la cabecera: acceso permanente al ranking y sorteo.
+class _TopClientsHeaderButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _TopClientsHeaderButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Tooltip(
+      message: 'Ranking de mejores clientes y sorteo',
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(
+          Icons.emoji_events_rounded,
+          size: 18,
+          color: Color(0xFFF59E0B),
+        ),
+        label: const Text('Top clientes'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+          ),
+          side: BorderSide(
+            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Franja que aparece bajo la barra de filtros cuando "Top VIP" está activo.
+class _TopVipBanner extends StatelessWidget {
+  final VoidCallback onOpen;
+  const _TopVipBanner({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const amber = Color(0xFFF59E0B);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: amber.withValues(alpha: isDark ? 0.12 : 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: amber.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            const Text('👑', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tus clientes VIP por facturación',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Mira el podio completo y sortea un premio entre ellos.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.casino_rounded, size: 18),
+              label: const Text('Ranking y sorteo'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFB45309),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

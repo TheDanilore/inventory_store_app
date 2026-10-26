@@ -1,5 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+
+/// Componente para animar números de métricas de forma fluida (roll-up fintech).
+class AnimatedCounterText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+
+  const AnimatedCounterText({
+    super.key,
+    required this.text,
+    required this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final match = RegExp(
+      r'^(.*?)([\d,]+(?:\.\d+)?)(.*)$',
+    ).firstMatch(text.trim());
+    if (match == null) {
+      return Text(
+        text,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    final prefix = match.group(1) ?? '';
+    final rawNumber = (match.group(2) ?? '0').replaceAll(',', '');
+    final suffix = match.group(3) ?? '';
+    final targetValue = double.tryParse(rawNumber) ?? 0.0;
+    final hasDecimals = match.group(2)!.contains('.');
+    final decimalPlaces =
+        hasDecimals
+            ? (match.group(2)!.split('.').length > 1
+                ? match.group(2)!.split('.')[1].length
+                : 2)
+            : 0;
+
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(text),
+      tween: Tween<double>(begin: 0.0, end: targetValue),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutExpo,
+      builder: (context, val, child) {
+        final formattedNumber =
+            NumberFormat.currency(
+              symbol: '',
+              decimalDigits: decimalPlaces,
+            ).format(val).trim();
+
+        return Text(
+          '$prefix$formattedNumber$suffix',
+          style: style,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
+    );
+  }
+}
 
 /// Tarjeta KPI estándar del Dashboard estilo Apple HIG / Shopeers.
 class DashboardKpiStripCard extends StatefulWidget {
@@ -45,8 +107,9 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(0, _isHovered ? -3.0 : 0.0, 0),
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkSurface : Colors.white,
@@ -54,22 +117,22 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
             border: Border.all(
               color:
                   _isHovered
-                      ? widget.accentColor.withValues(alpha: 0.45)
+                      ? widget.accentColor.withValues(alpha: 0.65)
                       : (isDark
                           ? AppColors.darkBorder
                           : const Color(0xFFE2E8F0)),
-              width: 1.2,
+              width: _isHovered ? 1.5 : 1.2,
             ),
             boxShadow: [
               BoxShadow(
                 color:
                     _isHovered
-                        ? widget.accentColor.withValues(alpha: 0.12)
+                        ? widget.accentColor.withValues(alpha: 0.22)
                         : (isDark
                             ? Colors.black.withValues(alpha: 0.2)
                             : Colors.black.withValues(alpha: 0.03)),
-                blurRadius: _isHovered ? 16 : 8,
-                offset: const Offset(0, 4),
+                blurRadius: _isHovered ? 20 : 8,
+                offset: Offset(0, _isHovered ? 6 : 4),
               ),
             ],
           ),
@@ -77,7 +140,7 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header: Title and Icon Container
+              // Header: Title and Animated Icon Container
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -97,28 +160,39 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: widget.accentColor.withValues(
-                        alpha: isDark ? 0.2 : 0.12,
+                  AnimatedScale(
+                    scale: _isHovered ? 1.08 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutBack,
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: widget.accentColor.withValues(
+                          alpha: isDark ? 0.25 : 0.14,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: widget.accentColor.withValues(
+                            alpha: _isHovered ? 0.5 : 0.0,
+                          ),
+                          width: 1,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      size: 18,
-                      color: widget.accentColor,
+                      child: Icon(
+                        widget.icon,
+                        size: 18,
+                        color: widget.accentColor,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
 
-              // Main Metric Value (Dedicated full width row -> NEVER truncated)
-              Text(
-                widget.value,
+              // Main Metric Value (Animated Counter)
+              AnimatedCounterText(
+                text: widget.value,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -128,8 +202,6 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                           : const Color(0xFF0F172A),
                   letterSpacing: -0.6,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
 
@@ -160,15 +232,22 @@ class _DashboardKpiStripCardState extends State<DashboardKpiStripCard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          widget.isPositiveDelta
-                              ? Icons.arrow_drop_up_rounded
-                              : Icons.arrow_drop_down_rounded,
-                          size: 15,
-                          color:
                               widget.isPositiveDelta
-                                  ? const Color(0xFF16A34A)
-                                  : const Color(0xFFE11D48),
-                        ),
+                                  ? Icons.arrow_drop_up_rounded
+                                  : Icons.arrow_drop_down_rounded,
+                              size: 15,
+                              color:
+                                  widget.isPositiveDelta
+                                      ? const Color(0xFF16A34A)
+                                      : const Color(0xFFE11D48),
+                            )
+                            .animate(onPlay: (c) => c.repeat(reverse: true))
+                            .moveY(
+                              begin: 0,
+                              end: widget.isPositiveDelta ? -1.5 : 1.5,
+                              duration: const Duration(milliseconds: 900),
+                              curve: Curves.easeInOut,
+                            ),
                         Text(
                           widget.deltaText,
                           style: TextStyle(

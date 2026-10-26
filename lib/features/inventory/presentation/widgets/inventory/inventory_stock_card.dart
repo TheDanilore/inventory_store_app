@@ -9,12 +9,16 @@ class InventoryStockCard extends StatelessWidget {
   final InventoryStockItem item;
   final bool isSelected;
   final VoidCallback? onTap;
+  final VoidCallback? onStockEntry;
+  final VoidCallback? onStockExit;
 
   const InventoryStockCard({
     super.key,
     required this.item,
     this.isSelected = false,
     this.onTap,
+    this.onStockEntry,
+    this.onStockExit,
   });
 
   @override
@@ -314,6 +318,26 @@ class InventoryStockCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    if (onStockEntry != null) ...[
+                      _FooterChip(
+                        icon: Icons.add_box_outlined,
+                        label: '+ Entrada',
+                        foreground: AppColors.tealDark,
+                        background: AppColors.teal.withValues(alpha: 0.12),
+                        onTap: onStockEntry,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    if (onStockExit != null) ...[
+                      _FooterChip(
+                        icon: Icons.outbox_rounded,
+                        label: '- Salida',
+                        foreground: AppColors.danger,
+                        background: AppColors.danger.withValues(alpha: 0.12),
+                        onTap: onStockExit,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     _FooterChip(
                       icon: Icons.receipt_long_rounded,
                       label: 'Kárdex',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
@@ -98,12 +99,22 @@ class DashboardKpisSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    Widget animateKpi(Widget kpi, int index) {
+      return kpi
+          .animate()
+          .fadeIn(
+            delay: Duration(milliseconds: 160 + index * 50),
+            duration: const Duration(milliseconds: 380),
+          )
+          .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
+    }
+
     if (!isTabletOrMobile) {
       // ── DESKTOP: FILA HORIZONTAL DE KPIS ─────────────────────────────────
       return Row(
         children: [
           for (int i = 0; i < visibleKpis.length; i++) ...[
-            Expanded(child: visibleKpis[i]),
+            Expanded(child: animateKpi(visibleKpis[i], i)),
             if (i < visibleKpis.length - 1) const SizedBox(width: 14),
           ],
         ],
@@ -115,7 +126,7 @@ class DashboardKpisSection extends StatelessWidget {
       return Row(
         children: [
           for (int i = 0; i < visibleKpis.length; i++) ...[
-            Expanded(child: visibleKpis[i]),
+            Expanded(child: animateKpi(visibleKpis[i], i)),
             if (i < visibleKpis.length - 1) const SizedBox(width: 12),
           ],
         ],
@@ -132,7 +143,7 @@ class DashboardKpisSection extends StatelessWidget {
         Row(
           children: [
             for (int i = 0; i < firstRow.length; i++) ...[
-              Expanded(child: firstRow[i]),
+              Expanded(child: animateKpi(firstRow[i], i)),
               if (i < firstRow.length - 1) const SizedBox(width: 12),
             ],
           ],
@@ -141,7 +152,7 @@ class DashboardKpisSection extends StatelessWidget {
         Row(
           children: [
             for (int i = 0; i < secondRow.length; i++) ...[
-              Expanded(child: secondRow[i]),
+              Expanded(child: animateKpi(secondRow[i], mid + i)),
               if (i < secondRow.length - 1) const SizedBox(width: 12),
             ],
           ],

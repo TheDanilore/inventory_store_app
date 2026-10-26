@@ -8,6 +8,7 @@ import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_warehouse_filter_pill.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Barra de contexto ejecutiva con título, selector de rango de fechas estilo Shopeers,
@@ -125,9 +126,11 @@ class DashboardExecutiveSubheader extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Fila 2: Cápsula de Fecha Shopeers + Botón +Widget
+          // Fila 2: Filtro Almacén + Cápsula de Fecha Shopeers + Botón +Widget
           Row(
             children: [
+              DashboardWarehouseFilterPill(state: state, isDesktop: false),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildShopeersDateRangePill(
                   context,
@@ -217,10 +220,12 @@ class DashboardExecutiveSubheader extends StatelessWidget {
           ],
         ),
 
-        // Right: Shopeers Date Range Composite Pill + Actions
+        // Right: Warehouse Filter + Shopeers Date Range Composite Pill + Actions
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            DashboardWarehouseFilterPill(state: state, isDesktop: true),
+            const SizedBox(width: 10),
             _buildShopeersDateRangePill(context, state, isDesktop: true),
             const SizedBox(width: 10),
 

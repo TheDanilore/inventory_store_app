@@ -19,7 +19,20 @@ import 'package:inventory_store_app/features/pos/presentation/services/pos_barco
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_camera_scanner_dialog.dart';
 
 class InventoryExitFormScreen extends StatefulWidget {
-  const InventoryExitFormScreen({super.key});
+  final String? prefillWarehouseId;
+  final String? prefillReason;
+  final String? prefillNotes;
+  final String? prefillVariantId;
+  final String? prefillBatchId;
+
+  const InventoryExitFormScreen({
+    super.key,
+    this.prefillWarehouseId,
+    this.prefillReason,
+    this.prefillNotes,
+    this.prefillVariantId,
+    this.prefillBatchId,
+  });
 
   @override
   State<InventoryExitFormScreen> createState() =>
@@ -42,9 +55,21 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (widget.prefillNotes != null && widget.prefillNotes!.isNotEmpty) {
+      _notesCtrl.text = widget.prefillNotes!;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<InventoryExitFormCubit>().loadInitialData();
+      final cubit = context.read<InventoryExitFormCubit>();
+      await cubit.loadInitialData();
+      if (!mounted) return;
+      if (widget.prefillWarehouseId != null &&
+          widget.prefillWarehouseId!.isNotEmpty) {
+        cubit.selectWarehouse(widget.prefillWarehouseId);
+      }
+      if (widget.prefillReason != null && widget.prefillReason!.isNotEmpty) {
+        cubit.selectReason(widget.prefillReason!);
+      }
     });
   }
 

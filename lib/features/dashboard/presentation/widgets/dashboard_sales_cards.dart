@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
@@ -188,27 +190,76 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.text, required this.height});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: height,
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.insights_rounded,
-            size: 34,
-            color: AppColors.txtMuted(context),
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: height,
+      child: Center(
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFEFF6FF),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.auto_graph_rounded,
+                  size: 26,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => context.go('/pos'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 1,
+                ),
+                icon: const Icon(Icons.point_of_sale_rounded, size: 15),
+                label: const Text(
+                  'Registrar Venta en POS',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.txtSecondary(context)),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _CardShell extends StatelessWidget {
@@ -355,7 +406,10 @@ class _SalesTrendCardState extends State<SalesTrendCard> {
             LayoutBuilder(
               builder: (context, c) {
                 final h = c.maxWidth < 520 ? 190.0 : 240.0;
-                return _chart(context, c.maxWidth, h);
+                return _chart(context, c.maxWidth, h)
+                    .animate()
+                    .fadeIn(duration: const Duration(milliseconds: 400))
+                    .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic);
               },
             ),
           const SizedBox(height: 16),
@@ -884,25 +938,28 @@ class _WeeklyActivityCardState extends State<WeeklyActivityCard> {
             const _EmptyState(text: 'Sin ventas en este periodo.', height: 160)
           else ...[
             SizedBox(
-              height: 150,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < 7; i++)
-                    Expanded(
-                      child: _bar(
-                        context,
-                        index: i,
-                        day: days[i],
-                        v: value(days[i]),
-                        maxVal: maxVal,
-                        isPeak: i == peakIdx,
-                        isFocus: i == focus,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+                  height: 150,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (var i = 0; i < 7; i++)
+                        Expanded(
+                          child: _bar(
+                            context,
+                            index: i,
+                            day: days[i],
+                            v: value(days[i]),
+                            maxVal: maxVal,
+                            isPeak: i == peakIdx,
+                            isFocus: i == focus,
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+                .animate()
+                .fadeIn(duration: const Duration(milliseconds: 400))
+                .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 14),
             if (focus != null)
               Container(
