@@ -5,6 +5,7 @@ abstract class InventoryExitsRepository {
     required int start,
     required int end,
     String? searchQuery,
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
   });

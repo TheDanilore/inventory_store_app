@@ -198,25 +198,26 @@ class _LoginFormCardState extends State<LoginFormCard> {
   Widget build(BuildContext context) {
     return Container(
       padding: widget.isFlat ? EdgeInsets.zero : const EdgeInsets.all(24),
-      decoration: widget.isFlat
-          ? null
-          : BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppColors.radiusXl),
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0F172A).withValues(alpha: 0.05),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-            ),
+      decoration:
+          widget.isFlat
+              ? null
+              : BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
       child: AutofillGroup(
         child: Form(
           key: widget.formKey,

@@ -81,14 +81,45 @@ class _InventoryEntriesTableViewState extends State<InventoryEntriesTableView> {
   }
 
   Widget _buildPaymentBadge(String? paymentMode) {
-    final mode = (paymentMode ?? 'CONTADO').toUpperCase();
-    final isCredit = mode.contains('CREDIT') || mode.contains('CRÉDITO');
+    final mode = (paymentMode ?? 'CONTADO').trim().toUpperCase();
 
-    final bg = isCredit ? const Color(0xFFEFF6FF) : const Color(0xFFECFDF5);
-    final border = isCredit ? const Color(0xFFBFDBFE) : const Color(0xFFA7F3D0);
-    final text = isCredit ? const Color(0xFF1D4ED8) : const Color(0xFF047857);
-    final label = isCredit ? 'Crédito' : 'Contado';
-    final icon = isCredit ? Icons.credit_card_rounded : Icons.payments_rounded;
+    Color bg;
+    Color border;
+    Color text;
+    String label;
+    IconData icon;
+
+    if (mode == 'AJUSTE' || mode.contains('AJUSTE')) {
+      bg = const Color(0xFFFFFBEB); // Amber 50
+      border = const Color(0xFFFDE68A); // Amber 200
+      text = const Color(0xFFB45309); // Amber 700
+      label = 'Ajuste';
+      icon = Icons.tune_rounded;
+    } else if (mode.contains('CREDIT') || mode.contains('CRÉDITO')) {
+      bg = const Color(0xFFEFF6FF); // Blue 50
+      border = const Color(0xFFBFDBFE); // Blue 200
+      text = const Color(0xFF1D4ED8); // Blue 700
+      label = 'Crédito';
+      icon = Icons.credit_card_rounded;
+    } else if (mode == 'DONACION' || mode == 'DONACIÓN') {
+      bg = const Color(0xFFFDF4FF); // Purple 50
+      border = const Color(0xFFF0ABFC); // Purple 200
+      text = const Color(0xFF86198F); // Purple 700
+      label = 'Donación';
+      icon = Icons.volunteer_activism_rounded;
+    } else if (mode == 'TRANSFERENCIA') {
+      bg = const Color(0xFFF0FDF4);
+      border = const Color(0xFFBAE6FD);
+      text = const Color(0xFF0369A1);
+      label = 'Transferencia';
+      icon = Icons.sync_alt_rounded;
+    } else {
+      bg = const Color(0xFFECFDF5); // Emerald 50
+      border = const Color(0xFFA7F3D0); // Emerald 200
+      text = const Color(0xFF047857); // Emerald 700
+      label = mode == 'CONTADO' ? 'Contado' : (mode.isEmpty ? '—' : mode);
+      icon = Icons.payments_rounded;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

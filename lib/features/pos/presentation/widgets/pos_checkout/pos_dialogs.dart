@@ -514,9 +514,13 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
     }
     if (t > 150) {
       final next50 = ((t / 50).ceil()) * 50.0;
-      if (!list.contains(next50) && (next50 - t).abs() > 0.01) list.add(next50);
+      if (!list.contains(next50) && (next50 - t).abs() > 0.01) {
+        list.add(next50);
+      }
       final next100 = ((t / 100).ceil()) * 100.0;
-      if (!list.contains(next100) && (next100 - t).abs() > 0.01) list.add(next100);
+      if (!list.contains(next100) && (next100 - t).abs() > 0.01) {
+        list.add(next100);
+      }
     }
     list.sort();
     return list.take(4).toList();
@@ -527,13 +531,15 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
     final vuelto = _montoRecibido - widget.totalAmount;
     final faltaDinero = _isCashPayment && vuelto < -0.01;
 
-    final docType = (widget.documentType ?? 'NOTA_VENTA')
-        .replaceAll('_', ' ')
-        .toUpperCase();
+    final docType =
+        (widget.documentType ?? 'NOTA_VENTA')
+            .replaceAll('_', ' ')
+            .toUpperCase();
     final docSeries = widget.documentSeries;
-    final docLabel = docSeries != null && docSeries.isNotEmpty
-        ? '$docType • $docSeries'
-        : docType;
+    final docLabel =
+        docSeries != null && docSeries.isNotEmpty
+            ? '$docType • $docSeries'
+            : docType;
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -608,7 +614,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
 
                   // ── Barra informativa de Comprobante y Cliente ──
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
@@ -617,7 +626,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.teal.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
@@ -809,14 +821,16 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: faltaDinero
-            ? AppColors.danger.withValues(alpha: 0.08)
-            : const Color(0xFFF0FDF4),
+        color:
+            faltaDinero
+                ? AppColors.danger.withValues(alpha: 0.08)
+                : const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: faltaDinero
-              ? AppColors.danger.withValues(alpha: 0.35)
-              : const Color(0xFF86EFAC),
+          color:
+              faltaDinero
+                  ? AppColors.danger.withValues(alpha: 0.35)
+                  : const Color(0xFF86EFAC),
           width: 1.5,
         ),
       ),
@@ -833,7 +847,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                         ? Icons.warning_amber_rounded
                         : Icons.currency_exchange_rounded,
                     size: 16,
-                    color: faltaDinero ? AppColors.danger : const Color(0xFF15803D),
+                    color:
+                        faltaDinero
+                            ? AppColors.danger
+                            : const Color(0xFF15803D),
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -842,14 +859,20 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.0,
-                      color: faltaDinero ? AppColors.danger : const Color(0xFF166534),
+                      color:
+                          faltaDinero
+                              ? AppColors.danger
+                              : const Color(0xFF166534),
                     ),
                   ),
                 ],
               ),
               if (!faltaDinero && vuelto.abs() < 0.01)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
@@ -880,9 +903,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
           const SizedBox(height: 10),
           Divider(
             height: 1,
-            color: faltaDinero
-                ? AppColors.danger.withValues(alpha: 0.2)
-                : const Color(0xFFBBF7D0),
+            color:
+                faltaDinero
+                    ? AppColors.danger.withValues(alpha: 0.2)
+                    : const Color(0xFFBBF7D0),
           ),
           const SizedBox(height: 8),
           Row(
@@ -932,7 +956,9 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
               height: 34,
               child: TextField(
                 controller: _receivedCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
                 ],
@@ -962,7 +988,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.teal, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: AppColors.teal,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -975,7 +1004,8 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
           runSpacing: 6,
           children: [
             _PresetChip(
-              label: 'Exacto (${widget.currencySymbol} ${widget.totalAmount.toStringAsFixed(2)})',
+              label:
+                  'Exacto (${widget.currencySymbol} ${widget.totalAmount.toStringAsFixed(2)})',
               isSelected: (_montoRecibido - widget.totalAmount).abs() < 0.01,
               onTap: () => _setPresetAmount(widget.totalAmount),
             ),
@@ -1027,7 +1057,10 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -1057,7 +1090,11 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF15803D)),
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 12,
+                      color: Color(0xFF15803D),
+                    ),
                     SizedBox(width: 4),
                     Text(
                       'PAGADO',
@@ -1103,7 +1140,11 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.receipt_rounded, size: 14, color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.receipt_rounded,
+                    size: 14,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 6),
                   const Text(
                     'N° Operación: ',
@@ -1131,7 +1172,11 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
           const SizedBox(height: 8),
           const Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 13, color: AppColors.textMuted),
+              Icon(
+                Icons.info_outline_rounded,
+                size: 13,
+                color: AppColors.textMuted,
+              ),
               SizedBox(width: 5),
               Text(
                 'Pago electrónico confirmado sin cambio de efectivo.',

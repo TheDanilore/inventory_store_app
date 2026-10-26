@@ -407,233 +407,236 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
           children: [
             // ── 1. Mapa Base ──────────────────────────────────────────────
             FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _initialCenter,
-              initialZoom: _initialZoom,
-              minZoom: 8.0,
-              maxZoom: 18.5,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-              ),
-              onTap: (tapPos, point) {
-                if (_searchFocusNode.hasFocus) {
-                  _searchFocusNode.unfocus();
-                }
-                if (_searchResults.isNotEmpty) {
-                  setState(() => _searchResults = []);
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.inventorystore.app',
-                keepBuffer: 2,
-                errorTileCallback: (tile, error, stackTrace) {},
-              ),
-              MarkerLayer(markers: markers),
-            ],
-          ),
-
-          // ── 2. Pin Central Fijo (Solo Picker Mode) ────────────────────
-          if (widget.isPickerMode)
-            Align(
-              alignment: Alignment.center,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 42),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Badge flotante sobre el pin
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.pan_tool_alt_rounded,
-                            color: Colors.white,
-                            size: 13,
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'Mueve el mapa para fijar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Icono de Pin
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accent.withValues(alpha: 0.45),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.place_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                    // Sombra en el suelo del mapa
-                    Container(
-                      width: 10,
-                      height: 5,
-                      margin: const EdgeInsets.only(top: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ],
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _initialCenter,
+                initialZoom: _initialZoom,
+                minZoom: 8.0,
+                maxZoom: 18.5,
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 ),
+                onTap: (tapPos, point) {
+                  if (_searchFocusNode.hasFocus) {
+                    _searchFocusNode.unfocus();
+                  }
+                  if (_searchResults.isNotEmpty) {
+                    setState(() => _searchResults = []);
+                  }
+                },
               ),
-            ),
-
-          // ── 3. Controles Flotantes del Mapa (Zoom / GPS / Reset) ───────
-          Positioned(
-            right: 16,
-            bottom:
-                widget.isPickerMode
-                    ? 230
-                    : (widget.locations.length > 1 ? 285 : 225),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildMapButton(
-                  icon: Icons.add_rounded,
-                  tooltip: 'Acercar (+)',
-                  onTap: _zoomIn,
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.inventorystore.app',
+                  keepBuffer: 2,
+                  errorTileCallback: (tile, error, stackTrace) {},
                 ),
-                const SizedBox(height: 8),
-                _buildMapButton(
-                  icon: Icons.remove_rounded,
-                  tooltip: 'Alejar (-)',
-                  onTap: _zoomOut,
-                ),
-                const SizedBox(height: 12),
-                _buildMapButton(
-                  icon:
-                      _isLocating
-                          ? Icons.hourglass_top_rounded
-                          : Icons.my_location_rounded,
-                  tooltip: 'Mi ubicación GPS',
-                  iconColor: AppColors.teal,
-                  onTap: _locateMe,
-                ),
-                if (!widget.isPickerMode && widget.locations.length > 1) ...[
-                  const SizedBox(height: 8),
-                  _buildMapButton(
-                    icon: Icons.fullscreen_rounded,
-                    tooltip: 'Ver todas las ubicaciones',
-                    iconColor: AppColors.primary,
-                    onTap: _fitAllLocations,
-                  ),
-                ],
+                MarkerLayer(markers: markers),
               ],
             ),
-          ),
 
-          // ── 4. Cabecera Flotante (Buscador o Título) ───────────────────
-          Positioned(
-            top: MediaQuery.paddingOf(context).top + 12,
-            left: 16,
-            right: 16,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.isPickerMode)
-                      _buildFloatingSearchBar(context)
-                    else
-                      _buildViewerHeader(context),
-
-                    // Resultados de búsqueda emergentes en Picker Mode
-                    if (widget.isPickerMode && _searchResults.isNotEmpty)
-                      _buildSearchResultsDropdown(),
-                  ],
+            // ── 2. Pin Central Fijo (Solo Picker Mode) ────────────────────
+            if (widget.isPickerMode)
+              Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 42),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Badge flotante sobre el pin
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.pan_tool_alt_rounded,
+                              color: Colors.white,
+                              size: 13,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Mueve el mapa para fijar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Icono de Pin
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accent.withValues(alpha: 0.45),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.place_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                      // Sombra en el suelo del mapa
+                      Container(
+                        width: 10,
+                        height: 5,
+                        margin: const EdgeInsets.only(top: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // ── 5. Panel Inferior ──────────────────────────────────────────
-          if (widget.isPickerMode)
-            _buildPickerBottomPanel(context)
-          else if (_selectedLocation != null)
-            _buildViewerBottomPanel(context),
-
-          // ── 6. Créditos OpenStreetMap ─────────────────────────────────
-          Positioned(
-            left: 16,
-            bottom:
-                widget.isPickerMode
-                    ? 230
-                    : (widget.locations.length > 1 ? 285 : 225),
-            child: IgnorePointer(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.surface.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: AppColors.border.withValues(alpha: 0.6),
+            // ── 3. Controles Flotantes del Mapa (Zoom / GPS / Reset) ───────
+            Positioned(
+              right: 16,
+              bottom:
+                  widget.isPickerMode
+                      ? 230
+                      : (widget.locations.length > 1 ? 285 : 225),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildMapButton(
+                    icon: Icons.add_rounded,
+                    tooltip: 'Acercar (+)',
+                    onTap: _zoomIn,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 4,
+                  const SizedBox(height: 8),
+                  _buildMapButton(
+                    icon: Icons.remove_rounded,
+                    tooltip: 'Alejar (-)',
+                    onTap: _zoomOut,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMapButton(
+                    icon:
+                        _isLocating
+                            ? Icons.hourglass_top_rounded
+                            : Icons.my_location_rounded,
+                    tooltip: 'Mi ubicación GPS',
+                    iconColor: AppColors.teal,
+                    onTap: _locateMe,
+                  ),
+                  if (!widget.isPickerMode && widget.locations.length > 1) ...[
+                    const SizedBox(height: 8),
+                    _buildMapButton(
+                      icon: Icons.fullscreen_rounded,
+                      tooltip: 'Ver todas las ubicaciones',
+                      iconColor: AppColors.primary,
+                      onTap: _fitAllLocations,
                     ),
                   ],
-                ),
-                child: const Text(
-                  '© OpenStreetMap',
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMuted,
+                ],
+              ),
+            ),
+
+            // ── 4. Cabecera Flotante (Buscador o Título) ───────────────────
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 12,
+              left: 16,
+              right: 16,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.isPickerMode)
+                        _buildFloatingSearchBar(context)
+                      else
+                        _buildViewerHeader(context),
+
+                      // Resultados de búsqueda emergentes en Picker Mode
+                      if (widget.isPickerMode && _searchResults.isNotEmpty)
+                        _buildSearchResultsDropdown(),
+                    ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // ── 5. Panel Inferior ──────────────────────────────────────────
+            if (widget.isPickerMode)
+              _buildPickerBottomPanel(context)
+            else if (_selectedLocation != null)
+              _buildViewerBottomPanel(context),
+
+            // ── 6. Créditos OpenStreetMap ─────────────────────────────────
+            Positioned(
+              left: 16,
+              bottom:
+                  widget.isPickerMode
+                      ? 230
+                      : (widget.locations.length > 1 ? 285 : 225),
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.6),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    '© OpenStreetMap',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ── Botón Circular Estilizado para el Mapa ─────────────────────────────
   Widget _buildMapButton({
@@ -881,9 +884,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
             decoration: BoxDecoration(
               color: AppColors.teal.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.teal.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: AppColors.teal.withValues(alpha: 0.25)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1127,9 +1128,7 @@ class _CustomerLocationMapScreenState extends State<CustomerLocationMapScreen> {
                             ),
                             decoration: BoxDecoration(
                               color:
-                                  isSelected
-                                      ? itemColor
-                                      : AppColors.background,
+                                  isSelected ? itemColor : AppColors.background,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color:

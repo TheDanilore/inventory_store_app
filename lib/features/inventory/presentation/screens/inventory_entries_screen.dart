@@ -1018,6 +1018,39 @@ class _EntryCardState extends State<_EntryCard> {
         entry.documentNumber != null &&
         entry.documentNumber!.isNotEmpty;
 
+    final mode = (entry.paymentMode ?? 'CONTADO').trim().toUpperCase();
+    final String paymentLabel;
+    final IconData paymentIcon;
+    final Color paymentColor;
+    final Color paymentBgColor;
+
+    if (mode == 'AJUSTE' || mode.contains('AJUSTE')) {
+      paymentLabel = 'Ajuste';
+      paymentIcon = Icons.tune_rounded;
+      paymentColor = const Color(0xFFB45309);
+      paymentBgColor = const Color(0xFFFFFBEB);
+    } else if (mode.contains('CREDIT') || mode.contains('CRÉDITO')) {
+      paymentLabel = 'Crédito';
+      paymentIcon = Icons.credit_card_rounded;
+      paymentColor = const Color(0xFF1D4ED8);
+      paymentBgColor = const Color(0xFFEFF6FF);
+    } else if (mode == 'DONACION' || mode == 'DONACIÓN') {
+      paymentLabel = 'Donación';
+      paymentIcon = Icons.volunteer_activism_rounded;
+      paymentColor = const Color(0xFF86198F);
+      paymentBgColor = const Color(0xFFFDF4FF);
+    } else if (mode == 'TRANSFERENCIA') {
+      paymentLabel = 'Transferencia';
+      paymentIcon = Icons.account_balance_rounded;
+      paymentColor = const Color(0xFF0F766E);
+      paymentBgColor = const Color(0xFFF0FDFA);
+    } else {
+      paymentLabel = 'Contado';
+      paymentIcon = Icons.payments_rounded;
+      paymentColor = AppColors.successDark;
+      paymentBgColor = AppColors.successLight;
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
@@ -1162,10 +1195,10 @@ class _EntryCardState extends State<_EntryCard> {
                               bgColor: AppColors.background,
                             ),
                           _Pill(
-                            icon: Icons.payments_rounded,
-                            label: entry.paymentMode ?? 'Contado',
-                            color: AppColors.successDark,
-                            bgColor: AppColors.successLight,
+                            icon: paymentIcon,
+                            label: paymentLabel,
+                            color: paymentColor,
+                            bgColor: paymentBgColor,
                           ),
                           if (hasDoc)
                             _Pill(

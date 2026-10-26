@@ -239,9 +239,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
     _lastSaleWasDraft = isDraft;
     _lastSalePaymentMethod = posCubit.state.paymentMethod;
-    _lastSaleCustomerName = _clienteCtrl.text.trim().isNotEmpty
-        ? _clienteCtrl.text.trim()
-        : (posCubit.state.selectedClientName ?? 'Cliente Varios');
+    _lastSaleCustomerName =
+        _clienteCtrl.text.trim().isNotEmpty
+            ? _clienteCtrl.text.trim()
+            : (posCubit.state.selectedClientName ?? 'Cliente Varios');
     _lastSaleDocumentType = posCubit.state.documentType;
     _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
     _lastSalePaymentReference = posCubit.state.paymentReference;

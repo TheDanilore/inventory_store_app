@@ -14,11 +14,42 @@ class AppFeedbackService {
   AppFeedbackService._();
 
   static AudioPlayer? _audioPlayer;
+  static bool _audioConfigured = false;
 
-  static AudioPlayer get _player {
+  static Future<AudioPlayer> _getPlayer() async {
     if (_audioPlayer == null) {
       _audioPlayer = AudioPlayer();
-      _audioPlayer!.setReleaseMode(ReleaseMode.stop);
+      try {
+        await _audioPlayer!.setReleaseMode(ReleaseMode.stop);
+        await _audioPlayer!.setPlayerMode(PlayerMode.lowLatency);
+      } catch (e) {
+        debugPrint('[AppFeedbackService] Error en setPlayerMode: $e');
+      }
+    }
+    if (!_audioConfigured) {
+      _audioConfigured = true;
+      try {
+        await AudioPlayer.global.setAudioContext(
+          AudioContext(
+            android: const AudioContextAndroid(
+              isSpeakerphoneOn: true,
+              stayAwake: false,
+              contentType: AndroidContentType.sonification,
+              usageType: AndroidUsageType.assistanceSonification,
+              audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+            ),
+            iOS: AudioContextIOS(
+              category: AVAudioSessionCategory.playback,
+              options: const {
+                AVAudioSessionOptions.mixWithOthers,
+                AVAudioSessionOptions.duckOthers,
+              },
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint('[AppFeedbackService] Error configurando AudioContext: $e');
+      }
     }
     return _audioPlayer!;
   }
@@ -27,8 +58,11 @@ class AppFeedbackService {
   static bool? _hasCustomAmplitude;
 
   /// Emite una vibración real utilizando el servicio de hardware `Vibrator` en móviles,
-  /// con fallback seguro a `HapticFeedback` si no hay motor disponible o en Web.
-  static Future<void> vibrate({int durationMs = 30, int amplitude = 64}) async {
+  /// acompañado de `HapticFeedback` para garantizar respuesta física en cualquier dispositivo.
+  static Future<void> vibrate({
+    int durationMs = 80,
+    int amplitude = 200,
+  }) async {
     if (kIsWeb) {
       try {
         if (durationMs > 50) {
@@ -40,6 +74,18 @@ class AppFeedbackService {
       return;
     }
 
+    // Impacto háptico a nivel de sistema
+    try {
+      if (durationMs >= 75) {
+        HapticFeedback.heavyImpact();
+      } else if (durationMs >= 40) {
+        HapticFeedback.mediumImpact();
+      } else {
+        HapticFeedback.lightImpact();
+      }
+    } catch (_) {}
+
+    // Motor de vibración directo de Android / iOS
     try {
       _hasVibrator ??= await Vibration.hasVibrator();
       if (_hasVibrator == true) {
@@ -52,53 +98,45 @@ class AppFeedbackService {
         } else {
           await Vibration.vibrate(duration: durationMs);
         }
-        return;
       }
     } catch (e) {
       debugPrint('[AppFeedbackService] Fallback de vibración: $e');
     }
-
-    // Fallback a nivel de framework
-    try {
-      if (durationMs > 50) {
-        await HapticFeedback.mediumImpact();
-      } else {
-        await HapticFeedback.lightImpact();
-      }
-    } catch (_) {}
   }
 
-  /// Vibración ligera (30ms, amp 64) para toques, botones y navegación.
+  /// Vibración ligera (35ms, amp 90) para toques, botones y navegación.
   static void lightImpact() {
-    vibrate(durationMs: 30, amplitude: 64);
+    vibrate(durationMs: 35, amplitude: 90);
   }
 
-  /// Vibración media (50ms, amp 128) para confirmaciones, botones principales y escaneo.
+  /// Vibración media (75ms, amp 180) para confirmaciones, botones principales y escaneo.
   static void mediumImpact() {
-    vibrate(durationMs: 50, amplitude: 128);
+    vibrate(durationMs: 75, amplitude: 180);
   }
 
-  /// Vibración fuerte (70ms, amp 160) para advertencias, eliminaciones y operaciones críticas.
+  /// Vibración fuerte (100ms, amp 240) para advertencias, eliminaciones y operaciones críticas.
   static void heavyImpact() {
-    vibrate(durationMs: 70, amplitude: 160);
+    vibrate(durationMs: 100, amplitude: 240);
   }
 
-  /// Micro-vibración de selección (25ms, amp 60) para dropdowns, pestañas y chips.
+  /// Micro-vibración de selección (30ms, amp 80) para dropdowns, pestañas y chips.
   static void selectionClick() {
-    vibrate(durationMs: 25, amplitude: 60);
+    vibrate(durationMs: 30, amplitude: 80);
   }
 
   /// Reproduce un tono de Bip real de escáner / caja registradora
-  /// a través del canal multimedia (independiente de los sonidos táctiles de Android).
-  static Future<void> playBeep({double volume = 0.85}) async {
+  /// a través del canal de sonificación (baja latencia y con fallback instantáneo).
+  static Future<void> playBeep({double volume = 0.95}) async {
     try {
-      final player = _player;
+      // Disparo de sonido táctil de sistema inmediato
+      SystemSound.play(SystemSoundType.click);
+
+      final player = await _getPlayer();
       await player.setVolume(volume.clamp(0.0, 1.0));
       await player.stop();
       await player.play(AssetSource('sounds/scanner_beep.wav'));
     } catch (e) {
       debugPrint('[AppFeedbackService] Error reproduciendo bip de escáner: $e');
-      // Fallback a sonido del sistema
       try {
         await SystemSound.play(SystemSoundType.click);
       } catch (_) {}
@@ -117,7 +155,7 @@ class AppFeedbackService {
         forceSound || BarcodeScannerHardwareService.soundBeepNotifier.value;
 
     if (shouldVibrate) {
-      vibrate();
+      vibrate(durationMs: 90, amplitude: 220);
     }
     if (shouldSound) {
       playBeep();

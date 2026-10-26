@@ -231,7 +231,9 @@ class _LoginScreenState extends State<LoginScreen>
                               shape: BoxShape.circle,
                               gradient: RadialGradient(
                                 colors: [
-                                  const Color(0xFF3B82F6).withValues(alpha: 0.14),
+                                  const Color(
+                                    0xFF3B82F6,
+                                  ).withValues(alpha: 0.14),
                                   Colors.transparent,
                                 ],
                               ),
@@ -378,7 +380,9 @@ class _LoginScreenState extends State<LoginScreen>
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              LoginHeaderSection(isLoginMode: state.isLoginMode),
+                              LoginHeaderSection(
+                                isLoginMode: state.isLoginMode,
+                              ),
                               const SizedBox(height: 26),
                               LoginFormCard(
                                 formKey: _formKey,
@@ -395,7 +399,8 @@ class _LoginScreenState extends State<LoginScreen>
                               LoginToggleMode(
                                 isLoginMode: state.isLoginMode,
                                 isLoading: state.viewState == ViewState.loading,
-                                onToggle: () => _onToggleMode(state.isLoginMode),
+                                onToggle:
+                                    () => _onToggleMode(state.isLoginMode),
                               ),
                             ],
                           ),
@@ -434,8 +439,10 @@ class _LoginScreenState extends State<LoginScreen>
           child: AnimatedBuilder(
             animation: _sheetExpandCtrl,
             builder: (context, child) {
-              final heroOpacity =
-                  (1.0 - _sheetExpandAnim.value * 1.8).clamp(0.0, 1.0);
+              final heroOpacity = (1.0 - _sheetExpandAnim.value * 1.8).clamp(
+                0.0,
+                1.0,
+              );
               return Opacity(opacity: heroOpacity, child: child);
             },
             child: Container(
@@ -459,22 +466,25 @@ class _LoginScreenState extends State<LoginScreen>
                     right: -50,
                     child: AnimatedBuilder(
                       animation: _blobAnim,
-                      builder: (context, _) => Transform.scale(
-                        scale: _blobAnim.value,
-                        child: Container(
-                          width: 280,
-                          height: 280,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: RadialGradient(
-                              colors: [
-                                const Color(0xFF3B82F6).withValues(alpha: 0.20),
-                                Colors.transparent,
-                              ],
+                      builder:
+                          (context, _) => Transform.scale(
+                            scale: _blobAnim.value,
+                            child: Container(
+                              width: 280,
+                              height: 280,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    const Color(
+                                      0xFF3B82F6,
+                                    ).withValues(alpha: 0.20),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
                     ),
                   ),
 
@@ -494,7 +504,10 @@ class _LoginScreenState extends State<LoginScreen>
                       },
                       child: Center(
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 20.0, top: 4.0),
+                          padding: const EdgeInsets.only(
+                            bottom: 20.0,
+                            top: 4.0,
+                          ),
                           child: ShaderMask(
                             shaderCallback: (rect) {
                               return const RadialGradient(
@@ -512,12 +525,12 @@ class _LoginScreenState extends State<LoginScreen>
                             child: Image.asset(
                               'assets/images/login_hero_3d.jpg',
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(
-                                Icons.storefront_rounded,
-                                size: 84,
-                                color: Colors.white,
-                              ),
+                              errorBuilder:
+                                  (context, error, stackTrace) => const Icon(
+                                    Icons.storefront_rounded,
+                                    size: 84,
+                                    color: Colors.white,
+                                  ),
                             ),
                           ),
                         ),
@@ -546,18 +559,12 @@ class _LoginScreenState extends State<LoginScreen>
             final entranceOffsetY = _sheetSlideAnim.value * screenHeight;
 
             // Al iniciar sesión (éxito): se eleva fluidamente hasta el tope (0.0) cubriendo la pantalla
-            final currentTop = lerpDouble(
-              restingSheetTop,
-              0.0,
-              _sheetExpandAnim.value,
-            )!;
+            final currentTop =
+                lerpDouble(restingSheetTop, 0.0, _sheetExpandAnim.value)!;
 
             // El radio de borde superior pasa de 32 a 0 al alcanzar la cima
-            final currentRadius = lerpDouble(
-              32.0,
-              0.0,
-              _sheetExpandAnim.value,
-            )!;
+            final currentRadius =
+                lerpDouble(32.0, 0.0, _sheetExpandAnim.value)!;
 
             return Positioned(
               top: (currentTop + entranceOffsetY).clamp(0.0, screenHeight),
@@ -595,8 +602,8 @@ class _LoginScreenState extends State<LoginScreen>
                 AnimatedBuilder(
                   animation: _sheetExpandCtrl,
                   builder: (context, child) {
-                    final handleOpacity =
-                        (1.0 - _sheetExpandAnim.value * 2.5).clamp(0.0, 1.0);
+                    final handleOpacity = (1.0 - _sheetExpandAnim.value * 2.5)
+                        .clamp(0.0, 1.0);
                     return Opacity(opacity: handleOpacity, child: child);
                   },
                   child: Center(
@@ -763,13 +770,13 @@ class _MobileBackButtonState extends State<_MobileBackButton> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: widget.isDark
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : AppColors.surface,
+              color:
+                  widget.isDark
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : AppColors.surface,
               borderRadius: BorderRadius.circular(11),
-              boxShadow: widget.isDark
-                  ? null
-                  : AppColors.cardShadow(opacity: 0.08),
+              boxShadow:
+                  widget.isDark ? null : AppColors.cardShadow(opacity: 0.08),
             ),
             child: Icon(
               Icons.arrow_back_ios_new_rounded,

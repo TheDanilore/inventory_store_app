@@ -17,6 +17,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/core/localization/app_localizations.dart';
 import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
+import 'package:inventory_store_app/core/services/barcode_scanner_hardware_service.dart';
 import 'package:inventory_store_app/core/widgets/fatal_error_app.dart';
 import 'dart:developer' as developer;
 
@@ -50,6 +51,9 @@ Future<void> main() async {
 
     // Inicialización del contenedor de dependencias (GetIt)
     initDI(prefs);
+
+    // Inicialización del servicio de escáner y feedback de hardware
+    await BarcodeScannerHardwareService.init();
 
     // Captura de rutas profundas (Deep Linking) de forma segura
     AppRouter.captureInitialRoute();

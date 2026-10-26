@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -108,30 +109,37 @@ class PosCameraScannerDialog extends StatefulWidget {
         useRootNavigator: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder:
-            (_) => Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
+        builder: (sheetCtx) {
+          final bottomInset = MediaQuery.of(sheetCtx).viewInsets.bottom;
+          final screenHeight = MediaQuery.of(sheetCtx).size.height;
+          final baseHeight = screenHeight * (cartCubit != null ? 0.94 : 0.85);
+          final sheetHeight =
+              bottomInset > 0
+                  ? (screenHeight - bottomInset).clamp(320.0, baseHeight)
+                  : baseHeight;
+
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: Container(
+              height: sheetHeight,
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              child: Container(
-                height:
-                    MediaQuery.of(context).size.height *
-                    (cartCubit != null ? 0.94 : 0.85),
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: PosCameraScannerDialog(
-                  warehouseId: warehouseId,
-                  title: title,
-                  continuousMode: continuousMode,
-                  onContinuousScan: onContinuousScan,
-                  returnRawCode: returnRawCode,
-                  cartCubit: cartCubit,
-                ),
+              clipBehavior: Clip.antiAlias,
+              child: PosCameraScannerDialog(
+                warehouseId: warehouseId,
+                title: title,
+                continuousMode: continuousMode,
+                onContinuousScan: onContinuousScan,
+                returnRawCode: returnRawCode,
+                cartCubit: cartCubit,
               ),
             ),
+          );
+        },
       );
     }
     // Garantiza el apagado físico del hardware de la cámara (web/móvil)
@@ -484,127 +492,206 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   /// Vista dividida: Cámara interactiva arriba (~38%) + Carrito en tiempo real abajo
   Widget _buildSplitCartLayout(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 700;
-    final cameraHeight =
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 80;
+    final defaultCameraHeight =
         isDesktop
             ? 310.0
             : (MediaQuery.of(context).size.height *
                 (_scannerMode == PosScannerMode.ocrLabel ? 0.42 : 0.36));
+    final cameraHeight = isKeyboardOpen ? 0.0 : defaultCameraHeight;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         top: false,
         bottom: true,
         child: Column(
           children: [
-            // 1. Visor de Cámara Superior
-            SizedBox(
-              height: cameraHeight,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  MobileScanner(
-                    controller: _scannerController,
-                    fit: BoxFit.cover,
-                    onDetect: (capture) {
-                      // Solo procesar códigos de barra cuando estamos en modo barcode
-                      if (_scannerMode != PosScannerMode.barcode) return;
-                      for (final barcode in capture.barcodes) {
-                        final rawValue = barcode.rawValue;
-                        if (rawValue != null && rawValue.isNotEmpty) {
-                          _handleBarcodeDetected(rawValue);
-                          break;
-                        }
-                      }
-                    },
-                    errorBuilder: (context, error) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.videocam_off_rounded,
-                                color: Colors.white70,
-                                size: 36,
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Cámara no disponible',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                error.errorDetails?.message ??
-                                    'Usa el buscador por nombre abajo.',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 11,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // HUD adaptado según modo (Códigos vs Etiqueta OCR)
-                  Positioned.fill(
-                    child:
-                        _scannerMode == PosScannerMode.barcode
-                            ? _buildCompactScanHud()
-                            : _buildOcrScanHud(isSplit: true),
-                  ),
-
-                  // Barra superior flotante de controles con selector de modos
-                  Positioned(
-                    top:
-                        MediaQuery.of(context).padding.top > 0
-                            ? MediaQuery.of(context).padding.top + 6
-                            : 10,
-                    left: 12,
-                    right: 12,
-                    child: _buildTopControlBar(),
-                  ),
-
-                  // Pill Banner Toast flotante ("✔ Fideo... agregado (+1)")
-                  if (_lastScannedName != null)
-                    Positioned(
-                      bottom: 10,
-                      left: 16,
-                      right: 16,
-                      child: _buildScannedFeedbackBanner(),
+            // Barra superior compacta visible cuando el teclado está abierto y la cámara colapsa
+            if (isKeyboardOpen)
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  MediaQuery.of(context).padding.top > 0
+                      ? MediaQuery.of(context).padding.top + 6
+                      : 10,
+                  16,
+                  10,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F172A),
+                  border: Border(bottom: BorderSide(color: Colors.white12)),
+                ),
+                child: Row(
+                  children: [
+                    _buildCircleAction(
+                      icon: Icons.close_rounded,
+                      tooltip: 'Cerrar escáner',
+                      onPressed: () => _safeClose(),
                     ),
-
-                  // Selector flotante de variantes si el OCR detectó ambigüedad
-                  if (_pendingAmbiguousResult != null)
-                    _buildAmbiguousVariantsSheet(_pendingAmbiguousResult!),
-
-                  // Overlay de búsqueda en proceso
-                  if (_isResolving)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black45,
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.teal,
-                            strokeWidth: 3,
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Ingreso Manual / Búsqueda',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
+                          Text(
+                            'Escribe el código o SKU y presiona Agregar',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    IconButton(
+                      onPressed: () => FocusScope.of(context).unfocus(),
+                      icon: const Icon(
+                        Icons.keyboard_hide_rounded,
+                        color: AppColors.teal,
+                      ),
+                      tooltip: 'Ocultar teclado y ver cámara',
+                    ),
+                  ],
+                ),
+              ),
 
-                  // Overlay de procesamiento OCR inteligente
-                  if (_isOcrProcessing) _buildOcrProcessingOverlay(),
-                ],
+            // 1. Visor de Cámara Superior con colapso animado
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              height: cameraHeight,
+              child: ClipRect(
+                child:
+                    cameraHeight == 0.0
+                        ? const SizedBox.shrink()
+                        : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            MobileScanner(
+                              controller: _scannerController,
+                              fit: BoxFit.cover,
+                              onDetect: (capture) {
+                                // Solo procesar códigos de barra cuando estamos en modo barcode
+                                if (_scannerMode != PosScannerMode.barcode) {
+                                  return;
+                                }
+                                for (final barcode in capture.barcodes) {
+                                  final rawValue = barcode.rawValue;
+                                  if (rawValue != null && rawValue.isNotEmpty) {
+                                    _handleBarcodeDetected(rawValue);
+                                    break;
+                                  }
+                                }
+                              },
+                              errorBuilder: (context, error) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.videocam_off_rounded,
+                                          color: Colors.white70,
+                                          size: 36,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Cámara no disponible',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        Text(
+                                          error.errorDetails?.message ??
+                                              'Usa el buscador por nombre abajo.',
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 11,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            // HUD adaptado según modo (Códigos vs Etiqueta OCR)
+                            Positioned.fill(
+                              child:
+                                  _scannerMode == PosScannerMode.barcode
+                                      ? _buildCompactScanHud()
+                                      : _buildOcrScanHud(isSplit: true),
+                            ),
+
+                            // Barra superior flotante de controles con selector de modos
+                            Positioned(
+                              top:
+                                  MediaQuery.of(context).padding.top > 0
+                                      ? MediaQuery.of(context).padding.top + 6
+                                      : 10,
+                              left: 12,
+                              right: 12,
+                              child: _buildTopControlBar(),
+                            ),
+
+                            // Pill Banner Toast flotante ("✔ Fideo... agregado (+1)")
+                            if (_lastScannedName != null)
+                              Positioned(
+                                bottom: 10,
+                                left: 16,
+                                right: 16,
+                                child: _buildScannedFeedbackBanner(),
+                              ),
+
+                            // Selector flotante de variantes si el OCR detectó ambigüedad
+                            if (_pendingAmbiguousResult != null)
+                              _buildAmbiguousVariantsSheet(
+                                _pendingAmbiguousResult!,
+                              ),
+
+                            // Overlay de búsqueda en proceso
+                            if (_isResolving)
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black45,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.teal,
+                                      strokeWidth: 3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                            // Overlay de procesamiento OCR inteligente
+                            if (_isOcrProcessing) _buildOcrProcessingOverlay(),
+                          ],
+                        ),
               ),
             ),
+
+            // Toast de confirmación si el teclado está abierto (para que se vea arriba del carrito)
+            if (isKeyboardOpen && _lastScannedName != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                child: _buildScannedFeedbackBanner(),
+              ),
 
             // 2. Panel Interactivo del Carrito en Vivo
             Expanded(child: _buildLiveCartSheet(context)),
@@ -865,15 +952,15 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 38,
+                        height: 42,
                         child: TextField(
                           controller: _manualInputCtrl,
                           focusNode: _manualFocusNode,
                           textInputAction: TextInputAction.search,
                           onSubmitted: (_) => _onManualSubmit(),
                           style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                           decoration: InputDecoration(
@@ -881,21 +968,36 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                             fillColor: const Color(0xFF1E293B),
                             hintText: 'Ingresar código de barras o SKU...',
                             hintStyle: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
+                              fontSize: 12.5,
+                              color: Color(0xFF94A3B8),
                             ),
                             prefixIcon: const Icon(
                               Icons.keyboard_alt_outlined,
-                              size: 16,
+                              size: 18,
                               color: AppColors.teal,
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 12,
+                              vertical: 10,
+                              horizontal: 14,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide.none,
+                              borderSide: const BorderSide(
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: const BorderSide(
+                                color: AppColors.teal,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -903,18 +1005,18 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
-                      height: 38,
+                      height: 42,
                       child: FilledButton(
                         onPressed: _onManualSubmit,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.teal,
                           foregroundColor: const Color(0xFF0F172A),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                           textStyle: const TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1207,6 +1309,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                   ),
                   cartCubit: widget.cartCubit!,
                   warehouseId: widget.warehouseId,
+                  showSnackbar: false,
                 );
                 if (mounted) {
                   setState(() {
@@ -1457,6 +1560,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
             scanResult: scanResult,
             cartCubit: widget.cartCubit!,
             warehouseId: widget.warehouseId,
+            showSnackbar: false,
           );
 
           if (added && mounted) {
@@ -1805,6 +1909,7 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
                             scanResult: scanResult,
                             cartCubit: widget.cartCubit!,
                             warehouseId: widget.warehouseId,
+                            showSnackbar: false,
                           );
                           if (mounted) {
                             setState(() {
@@ -1966,50 +2071,136 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
   }
 
   Widget _buildScannedFeedbackBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '¡Agregado a la lista (+1)!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  _lastScannedName ?? '',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xE80F172A), // Slate oscuro translúcido
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.85),
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.28),
+                blurRadius: 16,
+                spreadRadius: 1,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'AGREGADO AL CARRITO',
+                          style: TextStyle(
+                            color: Color(0xFF34D399),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10.5,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: const Text(
+                            '+1',
+                            style: TextStyle(
+                              color: Color(0xFF34D399),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _lastScannedName ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        letterSpacing: 0.1,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              InkWell(
+                onTap: () {
+                  setState(() => _lastScannedName = null);
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: Colors.white.withValues(alpha: 0.5),
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

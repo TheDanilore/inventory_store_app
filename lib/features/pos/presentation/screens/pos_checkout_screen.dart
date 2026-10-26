@@ -260,9 +260,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     _lastSaleWasDraft = isDraft;
     _lastSaleTotalAmount = totalFinal;
     _lastSalePaymentMethod = posCubit.state.paymentMethod;
-    _lastSaleCustomerName = _clienteCtrl.text.trim().isNotEmpty
-        ? _clienteCtrl.text.trim()
-        : (posCubit.state.selectedClientName ?? 'Cliente Varios');
+    _lastSaleCustomerName =
+        _clienteCtrl.text.trim().isNotEmpty
+            ? _clienteCtrl.text.trim()
+            : (posCubit.state.selectedClientName ?? 'Cliente Varios');
     _lastSaleDocumentType = posCubit.state.documentType;
     _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
     _lastSalePaymentReference = posCubit.state.paymentReference;

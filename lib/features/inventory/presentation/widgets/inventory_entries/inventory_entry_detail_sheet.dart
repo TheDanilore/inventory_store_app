@@ -226,45 +226,83 @@ class _InventoryEntryDetailSheetState extends State<InventoryEntryDetailSheet> {
                                 ),
                               ),
                             ),
-                            if (entry.paymentMode != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      entry.paymentMode == 'CRÉDITO'
-                                          ? Colors.purple.shade50
-                                          : AppColors.teal.withValues(
-                                            alpha: 0.1,
+                            if (entry.paymentMode != null) ...[
+                              Builder(
+                                builder: (context) {
+                                  final m =
+                                      entry.paymentMode!.trim().toUpperCase();
+                                  final isAdj =
+                                      m == 'AJUSTE' || m.contains('AJUSTE');
+                                  final isCred =
+                                      m.contains('CREDIT') ||
+                                      m.contains('CRÉDITO');
+
+                                  final bg =
+                                      isAdj
+                                          ? const Color(0xFFFFFBEB)
+                                          : (isCred
+                                              ? Colors.purple.shade50
+                                              : AppColors.teal.withValues(
+                                                alpha: 0.1,
+                                              ));
+                                  final border =
+                                      isAdj
+                                          ? const Color(0xFFFDE68A)
+                                          : (isCred
+                                              ? Colors.purple.shade200
+                                              : AppColors.teal.withValues(
+                                                alpha: 0.3,
+                                              ));
+                                  final textCol =
+                                      isAdj
+                                          ? const Color(0xFFB45309)
+                                          : (isCred
+                                              ? Colors.purple.shade700
+                                              : AppColors.teal);
+                                  final icon =
+                                      isAdj
+                                          ? Icons.tune_rounded
+                                          : (isCred
+                                              ? Icons.credit_card_rounded
+                                              : Icons.payments_rounded);
+                                  final label =
+                                      isAdj
+                                          ? 'Ajuste de Stock'
+                                          : (isCred
+                                              ? 'Al Crédito'
+                                              : (m == 'CONTADO'
+                                                  ? 'Al Contado'
+                                                  : entry.paymentMode!));
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: bg,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: border),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(icon, size: 12, color: textCol),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          label,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: textCol,
                                           ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color:
-                                        entry.paymentMode == 'CRÉDITO'
-                                            ? Colors.purple.shade200
-                                            : AppColors.teal.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                  ),
-                                ),
-                                child: Text(
-                                  entry.paymentMode == 'CONTADO'
-                                      ? 'Al Contado'
-                                      : entry.paymentMode == 'CRÉDITO'
-                                      ? 'Al Crédito'
-                                      : entry.paymentMode!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        entry.paymentMode == 'CRÉDITO'
-                                            ? Colors.purple.shade700
-                                            : AppColors.teal,
-                                  ),
-                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
+                            ],
                           ],
                         ),
                         const Divider(height: 20, color: AppColors.border),

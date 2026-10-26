@@ -806,10 +806,7 @@ class OrderPdfGenerator {
     );
 
     final safeNumber = order.displayReceiptNumber.replaceAll('/', '_');
-    await Printing.sharePdf(
-      bytes: bytes,
-      filename: 'Ticket_$safeNumber.pdf',
-    );
+    await Printing.sharePdf(bytes: bytes, filename: 'Ticket_$safeNumber.pdf');
   }
 
   static Future<void> saveTicket(

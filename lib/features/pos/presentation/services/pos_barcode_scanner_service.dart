@@ -191,6 +191,7 @@ class PosBarcodeScannerService {
     required PosScanResult scanResult,
     required CartCubit cartCubit,
     String? warehouseId,
+    bool showSnackbar = true,
   }) async {
     final product = scanResult.product;
     final variant = scanResult.variant;
@@ -292,11 +293,14 @@ class PosBarcodeScannerService {
       cartCubit.addItem(cartItem);
       AppFeedbackService.triggerFeedback();
 
-      AppSnackbar.show(
-        context,
-        message: 'Agregado: ${product.name} ${targetVariant?.shortLabel ?? ''}',
-        type: SnackbarType.success,
-      );
+      if (showSnackbar) {
+        AppSnackbar.show(
+          context,
+          message:
+              'Agregado: ${product.name} ${targetVariant?.shortLabel ?? ''}',
+          type: SnackbarType.success,
+        );
+      }
       return true;
     }
 
@@ -329,6 +333,7 @@ class PosBarcodeScannerService {
           scanResult: scanResult,
           cartCubit: cartCubit,
           warehouseId: warehouseId,
+          showSnackbar: false,
         );
       },
     );
