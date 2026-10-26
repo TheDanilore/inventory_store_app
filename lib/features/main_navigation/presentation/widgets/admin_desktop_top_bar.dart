@@ -11,6 +11,7 @@ import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
 import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/notifications/notification_bell.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_pos_button.dart';
 
 class AdminDesktopTopBar extends StatelessWidget {
   final bool isSidebarCollapsed;
@@ -160,6 +161,10 @@ class AdminDesktopTopBar extends StatelessWidget {
           if (actions != null &&
               actions!.where((a) => !_isRefreshWidget(a)).isNotEmpty)
             const SizedBox(width: 12),
+
+          // ── Acceso fijo al POS (siempre visible en desktop, con permiso) ──
+          const AdminPosButton(),
+          const SizedBox(width: 12),
 
           // ── Theme Mode Toggle ("Eclipse Morphing" + "Circular Eclipse Wave") ──
           BlocBuilder<ThemeCubit, ThemeMode>(

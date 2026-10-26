@@ -540,12 +540,13 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                             totalCount: state.totalRecords,
                             totalCost: totalCost,
                             totalUnits: totalUnits,
+                            warehouseName: state.warehouseFilter,
                             isDesktop: isTablet,
                           ),
                         ),
                       ),
 
-                      // ── 3. Toolbar Pro Unificado (Buscador, Fecha, Vista, Refresh, CTA) ──
+                      // ── 3. Toolbar Pro Unificado (Buscador, Almacén, Fecha, Vista, Refresh, CTA) ──
                       SliverToBoxAdapter(
                         child: AdminProToolbar(
                           isDesktop: constraints.maxWidth >= 1024,
@@ -568,6 +569,26 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                             _searchCtrl.clear();
                             cubit.updateSearch('');
                           },
+                          filterGroups: [
+                            AdminFilterGroup<String>(
+                              title: 'Almacén',
+                              icon: Icons.storefront_rounded,
+                              selected: state.warehouseFilter,
+                              defaultValue: 'Todos',
+                              onSelected: cubit.updateWarehouse,
+                              options: [
+                                for (final w in state.availableWarehouses)
+                                  AdminFilterOption<String>(
+                                    value: w,
+                                    label:
+                                        (w == 'TODOS' || w == 'Todos')
+                                            ? 'Todos'
+                                            : w,
+                                    icon: Icons.storefront_rounded,
+                                  ),
+                              ],
+                            ),
+                          ],
                           mobileExtraFilters: [
                             DateFilterCalendar(
                               height: 40,
@@ -587,11 +608,14 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
                             ),
                           ],
                           activeFiltersCount:
-                              (state.startDate != null && state.endDate != null)
+                              (state.startDate != null && state.endDate != null
                                   ? 1
-                                  : 0,
-                          onClearFilters:
-                              () => cubit.updateDateRange(null, null),
+                                  : 0) +
+                              (state.warehouseFilter != 'Todos' &&
+                                      state.warehouseFilter != 'TODOS'
+                                  ? 1
+                                  : 0),
+                          onClearFilters: () => cubit.clearFilters(),
                           viewToggleConfig: AdminProViewToggleConfig(
                             isTableView: _isTableView,
                             onToggleTableView:
@@ -741,6 +765,7 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
   final int totalCount;
   final double totalCost;
   final int totalUnits;
+  final String warehouseName;
   final bool isDesktop;
 
   const _InventoryExitsBentoKpiBar({
@@ -748,11 +773,15 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
     required this.totalCount,
     required this.totalCost,
     required this.totalUnits,
+    required this.warehouseName,
     required this.isDesktop,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isFilteredByWarehouse =
+        warehouseName != 'Todos' && warehouseName != 'TODOS';
+
     return AdminKpiMetricsBar(
       isDesktop: isDesktop,
       padding: EdgeInsets.zero,
@@ -760,7 +789,10 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Salidas',
           value: totalCount > 0 ? '$totalCount' : '$count',
-          subtitle: 'Salidas registradas',
+          subtitle:
+              isFilteredByWarehouse
+                  ? 'En $warehouseName'
+                  : 'Salidas registradas',
           icon: Icons.outbox_rounded,
           accentColor: AppColors.primary,
           gradientColors: const [Colors.white, Color(0xFFF8FAFC)],

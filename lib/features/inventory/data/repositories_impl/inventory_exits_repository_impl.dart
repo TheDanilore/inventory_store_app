@@ -13,18 +13,25 @@ class InventoryExitsRepositoryImpl implements InventoryExitsRepository {
     required int start,
     required int end,
     String? searchQuery,
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     var query = _supabase.from('inventory_exits').select('''
           id, created_at, reason, notes, warehouse_id,
-          warehouses(name),
+          warehouses!inner(name),
           inventory_exit_items(quantity, unit_cost)
         ''');
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
       final sq = '%$searchQuery%';
       query = query.or('reason.ilike.$sq,notes.ilike.$sq');
+    }
+
+    if (warehouseFilter != null &&
+        warehouseFilter != 'Todos' &&
+        warehouseFilter != 'TODOS') {
+      query = query.eq('warehouses.name', warehouseFilter);
     }
 
     if (startDate != null) {

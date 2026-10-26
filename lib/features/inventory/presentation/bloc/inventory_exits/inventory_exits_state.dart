@@ -11,6 +11,8 @@ class InventoryExitsState extends Equatable {
   final int pageSize;
 
   final String searchQuery;
+  final String warehouseFilter;
+  final List<String> availableWarehouses;
   final DateTime? startDate;
   final DateTime? endDate;
 
@@ -22,6 +24,8 @@ class InventoryExitsState extends Equatable {
     this.totalRecords = 0,
     this.pageSize = 15,
     this.searchQuery = '',
+    this.warehouseFilter = 'Todos',
+    this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
   });
@@ -37,6 +41,8 @@ class InventoryExitsState extends Equatable {
     int? totalRecords,
     int? pageSize,
     String? searchQuery,
+    String? warehouseFilter,
+    List<String>? availableWarehouses,
     DateTime? startDate,
     DateTime? endDate,
     bool clearErrorMessage = false,
@@ -51,6 +57,8 @@ class InventoryExitsState extends Equatable {
       totalRecords: totalRecords ?? this.totalRecords,
       pageSize: pageSize ?? this.pageSize,
       searchQuery: searchQuery ?? this.searchQuery,
+      warehouseFilter: warehouseFilter ?? this.warehouseFilter,
+      availableWarehouses: availableWarehouses ?? this.availableWarehouses,
       startDate: clearDateRange ? null : (startDate ?? this.startDate),
       endDate: clearDateRange ? null : (endDate ?? this.endDate),
     );
@@ -65,6 +73,8 @@ class InventoryExitsState extends Equatable {
     totalRecords,
     pageSize,
     searchQuery,
+    warehouseFilter,
+    availableWarehouses,
     startDate,
     endDate,
   ];

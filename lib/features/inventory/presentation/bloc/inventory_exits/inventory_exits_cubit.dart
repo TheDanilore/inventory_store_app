@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_exits_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_state.dart';
 
@@ -11,13 +13,23 @@ import 'package:inventory_store_app/features/inventory/data/models/inventory_exi
 class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   final GetInventoryExitsUseCase getExitsUseCase;
   final GetExitItemsUseCase getItemsUseCase;
+  final GetActiveWarehousesUseCase getActiveWarehouses;
 
   InventoryExitsCubit({
     required this.getExitsUseCase,
     required this.getItemsUseCase,
-  }) : super(const InventoryExitsState());
+    GetActiveWarehousesUseCase? getActiveWarehouses,
+  }) : getActiveWarehouses =
+           getActiveWarehouses ?? sl<GetActiveWarehousesUseCase>(),
+       super(const InventoryExitsState());
 
-  void initLoad() {
+  Future<void> initLoad() async {
+    List<String> warehouses = ['Todos'];
+    try {
+      final whList = await getActiveWarehouses.call();
+      warehouses.addAll(whList.map((w) => w.name).toList());
+    } catch (_) {}
+    emit(state.copyWith(availableWarehouses: warehouses));
     loadExits(isRefresh: true);
   }
 
@@ -32,10 +44,16 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
       final int start = state.currentPage * state.pageSize;
       final int end = start + state.pageSize - 1;
 
+      final warehouseFilter =
+          (state.warehouseFilter == 'Todos' || state.warehouseFilter == 'TODOS')
+              ? null
+              : state.warehouseFilter;
+
       final response = await getExitsUseCase.call(
         start: start,
         end: end,
         searchQuery: state.searchQuery,
+        warehouseFilter: warehouseFilter,
         startDate: state.startDate,
         endDate: state.endDate,
       );
@@ -110,8 +128,20 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
     loadExits(isRefresh: true);
   }
 
+  void updateWarehouse(String warehouse) {
+    if (state.warehouseFilter == warehouse) return;
+    emit(state.copyWith(warehouseFilter: warehouse));
+    loadExits(isRefresh: true);
+  }
+
   void clearFilters() {
-    emit(state.copyWith(searchQuery: '', clearDateRange: true));
+    emit(
+      state.copyWith(
+        searchQuery: '',
+        warehouseFilter: 'Todos',
+        clearDateRange: true,
+      ),
+    );
     loadExits(isRefresh: true);
   }
 

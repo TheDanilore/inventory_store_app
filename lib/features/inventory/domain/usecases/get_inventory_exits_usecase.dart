@@ -12,6 +12,7 @@ class GetInventoryExitsUseCase {
     required int start,
     required int end,
     String? searchQuery,
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
@@ -19,6 +20,7 @@ class GetInventoryExitsUseCase {
       start: start,
       end: end,
       searchQuery: searchQuery,
+      warehouseFilter: warehouseFilter,
       startDate: startDate,
       endDate: endDate,
     );

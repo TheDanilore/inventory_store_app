@@ -627,51 +627,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
               (value) =>
                   _handleMenuSelection(value, cubit, cubit.state, context),
           showAppBar: true,
-          actions: [
-            if (!isMobile &&
-                (context.watch<AuthCubit>().state.currentUser?.canAccessPos ??
-                    false))
-              OutlinedButton.icon(
-                onPressed: () => context.go('/pos'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor:
-                      isDark
-                          ? const Color(0xFF064E3B).withValues(alpha: 0.35)
-                          : AppColors.tealLight.withValues(alpha: 0.5),
-                  foregroundColor:
-                      isDark ? const Color(0xFF34D399) : AppColors.tealDark,
-                  side: BorderSide(
-                    color:
-                        isDark
-                            ? const Color(0xFF059669).withValues(alpha: 0.5)
-                            : AppColors.teal.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                  ),
-                ),
-                icon: Icon(
-                  Icons.point_of_sale_rounded,
-                  size: 16,
-                  color: isDark ? const Color(0xFF34D399) : AppColors.tealDark,
-                ),
-                label: Text(
-                  'Punto de Venta (POS)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                    color:
-                        isDark ? const Color(0xFF34D399) : AppColors.tealDark,
-                  ),
-                ),
-              ),
-          ],
+          // El botón de POS ahora vive fijo en el top bar (AdminPosButton).
           body: Focus(
             autofocus: true,
             onKeyEvent: (node, event) {
