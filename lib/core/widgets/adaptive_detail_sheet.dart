@@ -58,8 +58,7 @@ class AdaptiveDetailSheet {
                                 )
                                 : Container(color: Colors.transparent),
                       ),
-                    ),
-                    // Panel Flotante
+                    ), // Panel Flotante
                     Align(
                       alignment: Alignment.centerRight,
                       child: SlideTransition(
@@ -67,23 +66,44 @@ class AdaptiveDetailSheet {
                           begin: const Offset(1, 0),
                           end: Offset.zero,
                         ).animate(curved),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Material(
-                            color: Colors.white,
-                            elevation: 10,
-                            shadowColor: Colors.black12,
-                            borderRadius: BorderRadius.circular(24),
-                            clipBehavior: Clip.antiAlias,
-                            child: SizedBox(
-                              width: desktopWidth.clamp(
-                                360.0,
-                                MediaQuery.sizeOf(dialogContext).width - 32,
+                        child: Builder(
+                          builder: (dialogCtx) {
+                            final isDarkDialog =
+                                Theme.of(dialogCtx).brightness ==
+                                Brightness.dark;
+                            return Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Material(
+                                color:
+                                    isDarkDialog
+                                        ? AppColors.darkSurface
+                                        : Colors.white,
+                                elevation: isDarkDialog ? 16 : 10,
+                                shadowColor:
+                                    isDarkDialog
+                                        ? Colors.black54
+                                        : Colors.black12,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(24),
+                                  side: BorderSide(
+                                    color:
+                                        isDarkDialog
+                                            ? AppColors.darkBorder
+                                            : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: SizedBox(
+                                  width: desktopWidth.clamp(
+                                    360.0,
+                                    MediaQuery.sizeOf(dialogCtx).width - 32,
+                                  ),
+                                  height: double.infinity,
+                                  child: Builder(builder: builder),
+                                ),
                               ),
-                              height: double.infinity,
-                              child: Builder(builder: builder),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -103,6 +123,7 @@ class AdaptiveDetailSheet {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
         return wrapped(
           _DetailSheetScope(
             isSideSheet: false,
@@ -111,9 +132,17 @@ class AdaptiveDetailSheet {
                 maxHeight:
                     MediaQuery.sizeOf(ctx).height * mobileMaxHeightFactor,
               ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              decoration: BoxDecoration(
+                color: isDarkCtx ? AppColors.darkSurface : Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                border:
+                    isDarkCtx
+                        ? const Border(
+                          top: BorderSide(color: AppColors.darkBorder),
+                        )
+                        : null,
               ),
               clipBehavior: Clip.antiAlias,
               child: Builder(builder: builder),
@@ -221,6 +250,7 @@ class DetailSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSide = _DetailSheetScope.isSide(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return Column(
@@ -245,11 +275,14 @@ class DetailSheetFrame extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                       ),
                     ),
                     if (subtitle != null) ...[
@@ -272,23 +305,41 @@ class DetailSheetFrame extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color:
+                            isDark
+                                ? AppColors.darkSurfaceElevated
+                                : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? AppColors.darkBorderSubtle
+                                  : const Color(0xFFE2E8F0),
+                        ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'ESC',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.textMuted,
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
                   ],
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textPrimary,
+                    ),
                     visualDensity: VisualDensity.compact,
                     splashRadius: 20,
                     tooltip: 'Cerrar',
@@ -301,7 +352,11 @@ class DetailSheetFrame extends StatelessWidget {
           ),
         ),
 
-        const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: isDark ? AppColors.darkDivider : const Color(0xFFF1F5F9),
+        ),
 
         if (headerBottom != null) headerBottom!,
 
@@ -309,7 +364,9 @@ class DetailSheetFrame extends StatelessWidget {
         Flexible(
           fit: isSide || fillMobileHeight ? FlexFit.tight : FlexFit.loose,
           child: Container(
-            color: bodyBackgroundColor ?? const Color(0xFFF8FAFC),
+            color:
+                bodyBackgroundColor ??
+                (isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC)),
             child: SingleChildScrollView(
               padding: bodyPadding,
               physics: const AlwaysScrollableScrollPhysics(),
@@ -320,9 +377,13 @@ class DetailSheetFrame extends StatelessWidget {
 
         // Pie Fijo (Footer)
         if (footer != null) ...[
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: isDark ? AppColors.darkDivider : const Color(0xFFE2E8F0),
+          ),
           Container(
-            color: Colors.white,
+            color: isDark ? AppColors.darkSurface : Colors.white,
             padding: EdgeInsets.fromLTRB(
               20,
               12,
@@ -360,18 +421,27 @@ class DetailSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.white,
+        color:
+            backgroundColor ?? (isDark ? AppColors.darkSurface : Colors.white),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor ?? const Color(0xFFE2E8F0)),
-        boxShadow: const [
+        border: Border.all(
+          color:
+              borderColor ??
+              (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x050F172A),
+            color:
+                isDark
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : const Color(0x050F172A),
             blurRadius: 6,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -382,16 +452,26 @@ class DetailSectionCard extends StatelessWidget {
             Row(
               children: [
                 if (icon != null) ...[
-                  Icon(icon, size: 16, color: AppColors.textSecondary),
+                  Icon(
+                    icon,
+                    size: 16,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 6),
                 ],
                 Expanded(
                   child: Text(
                     title!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                     ),
                   ),
                 ),

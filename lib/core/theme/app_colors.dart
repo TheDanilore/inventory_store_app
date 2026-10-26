@@ -220,6 +220,15 @@ class AppColors {
   static Color sideSectionHeader(BuildContext context) =>
       isDark(context) ? darkSidebarSectionHeader : sidebarSectionHeader;
 
+  static Color chipBg(BuildContext context) =>
+      isDark(context) ? darkSurfaceElevated : const Color(0xFFF1F5F9);
+
+  static Color chipBorder(BuildContext context) =>
+      isDark(context) ? darkBorderSubtle : const Color(0xFFE2E8F0);
+
+  static Color dividerColor(BuildContext context) =>
+      isDark(context) ? darkDivider : const Color(0xFFE2E8F0);
+
   // --- 7. CONFIGURACIÓN DEL MATERIAL 3 ---
   static const ColorScheme colorScheme = ColorScheme.light(
     primary: primary,

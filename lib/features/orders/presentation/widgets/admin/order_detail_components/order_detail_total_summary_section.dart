@@ -51,6 +51,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
     bool isEmphasized = false,
     Color? valueColor,
     String? hint,
+    bool isDark = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -69,16 +70,23 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                         isEmphasized ? FontWeight.w700 : FontWeight.w500,
                     color:
                         isEmphasized
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
+                            ? (isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary)
+                            : (isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary),
                   ),
                 ),
                 if (hint != null)
                   Text(
                     hint,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
-                      color: AppColors.amberDark,
+                      color:
+                          isDark
+                              ? const Color(0xFFFBBF24)
+                              : AppColors.amberDark,
                     ),
                   ),
               ],
@@ -89,7 +97,9 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             style: TextStyle(
               fontSize: isEmphasized ? 16 : 13,
               fontWeight: isEmphasized ? FontWeight.w900 : FontWeight.w700,
-              color: valueColor ?? AppColors.textPrimary,
+              color:
+                  valueColor ??
+                  (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
               letterSpacing: isEmphasized ? -0.3 : 0,
             ),
           ),
@@ -100,6 +110,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final capApplied = _rawDiscount > _appliedDiscount;
     final sym = currencySymbol.trim().isEmpty ? 'S/' : currencySymbol;
 
@@ -111,16 +122,27 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             _buildRow(
               'Op. Gravada',
               '$sym ${(subtotalAmount > 0 ? subtotalAmount : (subtotal - taxAmount)).toStringAsFixed(2)}',
+              isDark: isDark,
             ),
-            _buildRow('I.G.V. (18%)', '$sym ${taxAmount.toStringAsFixed(2)}'),
+            _buildRow(
+              'I.G.V. (18%)',
+              '$sym ${taxAmount.toStringAsFixed(2)}',
+              isDark: isDark,
+            ),
           ] else
-            _buildRow('Subtotal', '$sym ${subtotal.toStringAsFixed(2)}'),
+            _buildRow(
+              'Subtotal',
+              '$sym ${subtotal.toStringAsFixed(2)}',
+              isDark: isDark,
+            ),
           if (pointsUsed > 0) ...[
-            _buildRow('Monedas usadas', '$pointsUsed monedas'),
+            _buildRow('Monedas usadas', '$pointsUsed monedas', isDark: isDark),
             _buildRow(
               'Descuento por monedas',
               '- $sym ${_appliedDiscount.toStringAsFixed(2)}',
-              valueColor: AppColors.successDark,
+              valueColor:
+                  isDark ? const Color(0xFF34D399) : AppColors.successDark,
+              isDark: isDark,
               hint:
                   capApplied
                       ? 'Cap 50% aplicado ($sym ${_rawDiscount.toStringAsFixed(2)} → $sym ${_appliedDiscount.toStringAsFixed(2)})'
@@ -131,14 +153,20 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
             _buildRow(
               'Descuento adicional',
               '- $sym ${discountAmount.toStringAsFixed(2)}',
-              valueColor: AppColors.successDark,
+              valueColor:
+                  isDark ? const Color(0xFF34D399) : AppColors.successDark,
+              isDark: isDark,
             ),
-          const Divider(height: 16, color: AppColors.border),
+          Divider(
+            height: 16,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
           _buildRow(
             'Total final',
             '$sym ${_totalFinal.toStringAsFixed(2)}',
             isEmphasized: true,
-            valueColor: AppColors.teal,
+            valueColor: isDark ? const Color(0xFF2DD4BF) : AppColors.teal,
+            isDark: isDark,
           ),
           const SizedBox(height: 6),
           if (isLoyaltyEnabled || pointsEarned > 0)
@@ -149,6 +177,7 @@ class OrderDetailTotalSummarySection extends StatelessWidget {
                       ? 'Monedas ganadas'
                       : 'Pendientes de otorgar'),
               '$pointsEarned monedas',
+              isDark: isDark,
             ),
         ],
       ),

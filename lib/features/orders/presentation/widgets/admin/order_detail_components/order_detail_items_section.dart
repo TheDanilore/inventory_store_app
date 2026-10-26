@@ -72,6 +72,7 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final subtotal = widget.item.subtotal;
     final imageUrl = widget.item.displayImageUrl;
 
@@ -87,10 +88,12 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 6),
-      color: AppColors.surface,
+      color: isDark ? AppColors.darkSurfaceElevated : AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -124,9 +127,10 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                                 ),
                               ),
                             ),
-                        errorWidget: (_, _, _) => _placeholderIcon(),
+                        errorWidget:
+                            (_, _, _) => _placeholderIcon(isDark: isDark),
                       )
-                      : _placeholderIcon(),
+                      : _placeholderIcon(isDark: isDark),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -135,10 +139,13 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                 children: [
                   Text(
                     widget.item.productName ?? 'Producto sin nombre',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14.5,
-                      color: AppColors.textPrimary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -150,9 +157,12 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                     const SizedBox(height: 3),
                     Text(
                       widget.item.variantLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -162,19 +172,25 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                     const SizedBox(height: 2),
                     Text(
                       'SKU: ${widget.item.sku}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11.5,
-                        color: AppColors.textMuted,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                       ),
                     ),
                   ],
                   const SizedBox(height: 3),
                   Text(
                     'P. unit: S/ ${widget.item.appliedPrice.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color:
+                          isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary,
                     ),
                   ),
 
@@ -323,9 +339,17 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
 
                       return Container(
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color:
+                              isDark
+                                  ? AppColors.darkSurface
+                                  : AppColors.background,
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -335,15 +359,18 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                               borderRadius: const BorderRadius.horizontal(
                                 left: Radius.circular(24),
                               ),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 6,
                                 ),
                                 child: Icon(
                                   Icons.remove,
                                   size: 16,
-                                  color: AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -354,10 +381,13 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                                   controller: _quantityController,
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : AppColors.textPrimary,
                                   ),
                                   decoration: const InputDecoration(
                                     isDense: true,
@@ -386,17 +416,23 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                                     children: [
                                       Text(
                                         _quantityController.text,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
-                                          color: AppColors.textPrimary,
+                                          color:
+                                              isDark
+                                                  ? AppColors.darkTextPrimary
+                                                  : AppColors.textPrimary,
                                         ),
                                       ),
                                       const SizedBox(width: 2),
-                                      const Icon(
+                                      Icon(
                                         Icons.edit_rounded,
                                         size: 11,
-                                        color: AppColors.textMuted,
+                                        color:
+                                            isDark
+                                                ? AppColors.darkTextMuted
+                                                : AppColors.textMuted,
                                       ),
                                     ],
                                   ),
@@ -407,15 +443,18 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                               borderRadius: const BorderRadius.horizontal(
                                 right: Radius.circular(24),
                               ),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 6,
                                 ),
                                 child: Icon(
                                   Icons.add,
                                   size: 16,
-                                  color: AppColors.textPrimary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                 ),
                               ),
                             ),
@@ -431,26 +470,35 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color:
+                          isDark ? AppColors.darkSurface : AppColors.background,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                     ),
                     child: Text(
                       'x${widget.item.quantity}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 12.5,
-                        color: AppColors.textPrimary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
                       ),
                     ),
                   ),
                 const SizedBox(height: 6),
                 Text(
                   'S/ ${subtotal.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -461,14 +509,16 @@ class _OrderDetailItemCardState extends State<OrderDetailItemCard> {
     );
   }
 
-  Widget _placeholderIcon() {
+  Widget _placeholderIcon({bool isDark = false}) {
     return Container(
       width: 52,
       height: 52,
       decoration: BoxDecoration(
         color: AppColors.teal.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: const Icon(
         Icons.inventory_2_outlined,
@@ -511,21 +561,28 @@ class OrderDetailItemsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return OrderDetailSectionCard(
       title: 'Productos del Pedido',
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.05),
+          color:
+              isDark
+                  ? AppColors.darkSurfaceElevated
+                  : AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
         ),
         child: Text(
           '${items.length} ${items.length == 1 ? 'item' : 'items'}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
+            color:
+                isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
         ),
       ),

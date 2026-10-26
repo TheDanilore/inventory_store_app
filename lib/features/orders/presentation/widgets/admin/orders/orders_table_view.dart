@@ -75,7 +75,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     return list;
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildStatusBadge(String status, {bool isDark = false}) {
     Color bg;
     Color border;
     Color text;
@@ -84,37 +84,61 @@ class _OrdersTableViewState extends State<OrdersTableView> {
 
     switch (status.toUpperCase()) {
       case 'COMPLETED':
-        bg = const Color(0xFFECFDF5);
-        border = const Color(0xFFA7F3D0);
-        text = const Color(0xFF047857);
+        bg =
+            isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                : const Color(0xFFECFDF5);
+        border =
+            isDark
+                ? const Color(0xFF059669).withValues(alpha: 0.5)
+                : const Color(0xFFA7F3D0);
+        text = isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
         label = 'Completado';
         icon = Icons.check_circle_rounded;
         break;
       case 'DRAFT':
-        bg = const Color(0xFFFFFBEB);
-        border = const Color(0xFFFDE68A);
-        text = const Color(0xFFB45309);
+        bg =
+            isDark
+                ? const Color(0xFF78350F).withValues(alpha: 0.35)
+                : const Color(0xFFFFFBEB);
+        border =
+            isDark
+                ? const Color(0xFFD97706).withValues(alpha: 0.5)
+                : const Color(0xFFFDE68A);
+        text = isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
         label = 'Borrador';
         icon = Icons.hourglass_top_rounded;
         break;
       case 'CANCELLED':
-        bg = const Color(0xFFFFF1F2);
-        border = const Color(0xFFFECDD3);
-        text = const Color(0xFFBE123C);
+        bg =
+            isDark
+                ? const Color(0xFF881337).withValues(alpha: 0.35)
+                : const Color(0xFFFFF1F2);
+        border =
+            isDark
+                ? const Color(0xFFE11D48).withValues(alpha: 0.5)
+                : const Color(0xFFFECDD3);
+        text = isDark ? const Color(0xFFFB7185) : const Color(0xFFBE123C);
         label = 'Cancelado';
         icon = Icons.cancel_rounded;
         break;
       case 'RETURNED':
-        bg = const Color(0xFFF5F3FF);
-        border = const Color(0xFFDDD6FE);
-        text = const Color(0xFF6D28D9);
+        bg =
+            isDark
+                ? const Color(0xFF4C1D95).withValues(alpha: 0.35)
+                : const Color(0xFFF5F3FF);
+        border =
+            isDark
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.5)
+                : const Color(0xFFDDD6FE);
+        text = isDark ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
         label = 'Devuelto';
         icon = Icons.assignment_return_rounded;
         break;
       default:
-        bg = const Color(0xFFF1F5F9);
-        border = const Color(0xFFCBD5E1);
-        text = const Color(0xFF475569);
+        bg = isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9);
+        border = isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1);
+        text = isDark ? AppColors.darkTextSecondary : const Color(0xFF475569);
         label = status;
         icon = Icons.info_outline_rounded;
     }
@@ -150,6 +174,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     double pending, {
     String? orderStatus,
     String? paymentReference,
+    bool isDark = false,
   }) {
     final isCancelled = orderStatus?.toUpperCase() == 'CANCELLED';
     final isReturned = orderStatus?.toUpperCase() == 'RETURNED';
@@ -161,24 +186,59 @@ class _OrdersTableViewState extends State<OrdersTableView> {
     final String label;
 
     if (isCancelled) {
-      bg = const Color(0xFFFEF2F2);
-      border = const Color(0xFFFECACA);
-      text = const Color(0xFFDC2626);
+      bg =
+          isDark
+              ? const Color(0xFF881337).withValues(alpha: 0.35)
+              : const Color(0xFFFEF2F2);
+      border =
+          isDark
+              ? const Color(0xFFE11D48).withValues(alpha: 0.5)
+              : const Color(0xFFFECACA);
+      text = isDark ? const Color(0xFFFB7185) : const Color(0xFFDC2626);
       label = 'Anulado';
     } else if (isReturned) {
-      bg = const Color(0xFFF5F3FF);
-      border = const Color(0xFFDDD6FE);
-      text = const Color(0xFF6D28D9);
+      bg =
+          isDark
+              ? const Color(0xFF4C1D95).withValues(alpha: 0.35)
+              : const Color(0xFFF5F3FF);
+      border =
+          isDark
+              ? const Color(0xFF7C3AED).withValues(alpha: 0.5)
+              : const Color(0xFFDDD6FE);
+      text = isDark ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
       label = 'Devuelto';
     } else if (isPaid) {
-      bg = const Color(0xFFECFDF5);
-      border = const Color(0xFFA7F3D0);
-      text = const Color(0xFF047857);
+      bg =
+          isDark
+              ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+              : const Color(0xFFECFDF5);
+      border =
+          isDark
+              ? const Color(0xFF059669).withValues(alpha: 0.5)
+              : const Color(0xFFA7F3D0);
+      text = isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
       label = 'Pagado';
     } else {
-      bg = pending > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF1F5F9);
-      border = pending > 0 ? const Color(0xFFFDE68A) : const Color(0xFFCBD5E1);
-      text = pending > 0 ? const Color(0xFFB45309) : const Color(0xFF475569);
+      bg =
+          pending > 0
+              ? (isDark
+                  ? const Color(0xFF78350F).withValues(alpha: 0.35)
+                  : const Color(0xFFFFFBEB))
+              : (isDark
+                  ? AppColors.darkSurfaceElevated
+                  : const Color(0xFFF1F5F9));
+      border =
+          pending > 0
+              ? (isDark
+                  ? const Color(0xFFD97706).withValues(alpha: 0.5)
+                  : const Color(0xFFFDE68A))
+              : (isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1));
+      text =
+          pending > 0
+              ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309))
+              : (isDark
+                  ? AppColors.darkTextSecondary
+                  : const Color(0xFF475569));
       label = pending > 0 ? 'Por Cobrar' : 'Pendiente';
     }
 
@@ -209,9 +269,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
             children: [
               Text(
                 method,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10.5,
-                  color: Color(0xFF64748B),
+                  color:
+                      isDark
+                          ? AppColors.darkTextMuted
+                          : const Color(0xFF64748B),
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -219,18 +282,25 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               ),
               if (paymentReference != null &&
                   paymentReference.trim().isNotEmpty) ...[
-                const Text(
+                Text(
                   ' · ',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFF94A3B8),
+                  ),
                 ),
                 Flexible(
                   child: Text(
                     'Op: ${paymentReference.trim()}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10,
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : const Color(0xFF0F172A),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -246,6 +316,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sortedOrders = _getSortedOrders();
 
     return AdminProTable<OrderEntity>(
@@ -363,17 +434,28 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? AppColors.darkBorder
+                                : const Color(0xFFCBD5E1),
+                      ),
                     ),
                     child: Text(
                       '#$shortId',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : const Color(0xFF0F172A),
                       ),
                     ),
                   ),
@@ -396,20 +478,44 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                       decoration: BoxDecoration(
                         color:
                             (order.documentType.toUpperCase() == 'FACTURA')
-                                ? const Color(0xFFF3E8FF)
+                                ? (isDark
+                                    ? const Color(
+                                      0xFF4C1D95,
+                                    ).withValues(alpha: 0.35)
+                                    : const Color(0xFFF3E8FF))
                                 : ((order.documentType.toUpperCase() ==
                                         'BOLETA')
-                                    ? const Color(0xFFEFF6FF)
-                                    : const Color(0xFFECFDF5)),
+                                    ? (isDark
+                                        ? const Color(
+                                          0xFF1E3A8A,
+                                        ).withValues(alpha: 0.35)
+                                        : const Color(0xFFEFF6FF))
+                                    : (isDark
+                                        ? const Color(
+                                          0xFF064E3B,
+                                        ).withValues(alpha: 0.35)
+                                        : const Color(0xFFECFDF5))),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color:
                               (order.documentType.toUpperCase() == 'FACTURA')
-                                  ? const Color(0xFFD8B4FE)
+                                  ? (isDark
+                                      ? const Color(
+                                        0xFF7C3AED,
+                                      ).withValues(alpha: 0.5)
+                                      : const Color(0xFFD8B4FE))
                                   : ((order.documentType.toUpperCase() ==
                                           'BOLETA')
-                                      ? const Color(0xFFBFDBFE)
-                                      : const Color(0xFFA7F3D0)),
+                                      ? (isDark
+                                          ? const Color(
+                                            0xFF2563EB,
+                                          ).withValues(alpha: 0.5)
+                                          : const Color(0xFFBFDBFE))
+                                      : (isDark
+                                          ? const Color(
+                                            0xFF059669,
+                                          ).withValues(alpha: 0.5)
+                                          : const Color(0xFFA7F3D0))),
                           width: 0.8,
                         ),
                       ),
@@ -421,11 +527,17 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                           fontWeight: FontWeight.w800,
                           color:
                               (order.documentType.toUpperCase() == 'FACTURA')
-                                  ? const Color(0xFF7E22CE)
+                                  ? (isDark
+                                      ? const Color(0xFFA78BFA)
+                                      : const Color(0xFF7E22CE))
                                   : ((order.documentType.toUpperCase() ==
                                           'BOLETA')
-                                      ? const Color(0xFF1D4ED8)
-                                      : const Color(0xFF047857)),
+                                      ? (isDark
+                                          ? const Color(0xFF60A5FA)
+                                          : const Color(0xFF1D4ED8))
+                                      : (isDark
+                                          ? const Color(0xFF34D399)
+                                          : const Color(0xFF047857))),
                         ),
                       ),
                     ),
@@ -451,16 +563,19 @@ class _OrdersTableViewState extends State<OrdersTableView> {
             ).format(date);
             return Text(
               dateFormatted,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF475569),
+                color:
+                    isDark
+                        ? AppColors.darkTextSecondary
+                        : const Color(0xFF475569),
                 fontWeight: FontWeight.w600,
               ),
             );
           },
         ),
 
-        // 3. Cliente / Sucursal
+        // 3. Cliente / Destino
         AdminTableColumn<OrderEntity>(
           id: 'customer',
           label: 'CLIENTE / DESTINO',
@@ -474,10 +589,13 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               children: [
                 Text(
                   order.displayCustomerName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -488,9 +606,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                           order.warehouseName!.isNotEmpty)
                       ? order.warehouseName!
                       : 'Tienda Principal',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? AppColors.darkTextMuted
+                            : const Color(0xFF64748B),
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -511,7 +632,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           cellBuilder: (context, order) {
             return Align(
               alignment: Alignment.centerLeft,
-              child: _buildStatusBadge(order.status),
+              child: _buildStatusBadge(order.status, isDark: isDark),
             );
           },
         ),
@@ -531,6 +652,7 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               pending,
               orderStatus: order.status,
               paymentReference: order.paymentReference,
+              isDark: isDark,
             );
           },
         ),
@@ -548,23 +670,29 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               textAlign: TextAlign.end,
               text: TextSpan(
                 children: [
-                  const TextSpan(
+                  TextSpan(
                     text: 'S/ ',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF64748B),
+                      color:
+                          isDark
+                              ? AppColors.darkTextMuted
+                              : const Color(0xFF64748B),
                       fontFamily: 'Inter',
                     ),
                   ),
                   TextSpan(
                     text: order.totalAmount.toStringAsFixed(2),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF0F172A),
+                      color:
+                          isDark
+                              ? AppColors.darkTextPrimary
+                              : const Color(0xFF0F172A),
                       fontFamily: 'Inter',
-                      fontFeatures: [FontFeature.tabularFigures()],
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -585,13 +713,19 @@ class _OrdersTableViewState extends State<OrdersTableView> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.receipt_long_rounded,
                     size: 19,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : const Color(0xFF64748B),
                   ),
                   tooltip: 'Imprimir Ticket',
-                  hoverColor: const Color(0xFFF1F5F9),
+                  hoverColor:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF1F5F9),
                   onPressed: () => widget.onPrintTicket(order),
                 ),
                 if (order.status.toUpperCase() == 'DRAFT' ||
@@ -607,10 +741,13 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                   )
                 else
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.chevron_right_rounded,
                       size: 21,
-                      color: Color(0xFF94A3B8),
+                      color:
+                          isDark
+                              ? AppColors.darkTextMuted
+                              : const Color(0xFF94A3B8),
                     ),
                     tooltip: 'Ver detalle',
                     onPressed: () => widget.onSelectOrder(order),
@@ -635,13 +772,21 @@ class _OrdersTableViewState extends State<OrdersTableView> {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFFF0FDFA) : AppColors.surface,
+              color:
+                  isSelected
+                      ? (isDark
+                          ? AppColors.teal.withValues(alpha: 0.15)
+                          : const Color(0xFFF0FDFA))
+                      : (isDark ? AppColors.darkSurface : AppColors.surface),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected ? AppColors.teal : AppColors.border,
+                color:
+                    isSelected
+                        ? AppColors.teal
+                        : (isDark ? AppColors.darkBorder : AppColors.border),
                 width: isSelected ? 1.6 : 1,
               ),
-              boxShadow: AppColors.cardShadow(opacity: 0.03),
+              boxShadow: isDark ? [] : AppColors.cardShadow(opacity: 0.03),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,26 +803,40 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color:
+                                isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            border: Border.all(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFCBD5E1),
+                            ),
                           ),
                           child: Text(
                             '#$shortId',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           dateFormatted,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
-                            color: Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? AppColors.darkTextMuted
+                                    : const Color(0xFF64748B),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -686,10 +845,13 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.receipt_long_rounded,
                             size: 19,
-                            color: Color(0xFF64748B),
+                            color:
+                                isDark
+                                    ? AppColors.darkTextSecondary
+                                    : const Color(0xFF64748B),
                           ),
                           tooltip: 'Imprimir',
                           padding: EdgeInsets.zero,
@@ -716,10 +878,13 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                 // Customer info
                 Text(
                   order.displayCustomerName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -730,9 +895,12 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                           order.warehouseName!.isNotEmpty)
                       ? order.warehouseName!
                       : 'Tienda Principal',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11.5,
-                    color: Color(0xFF64748B),
+                    color:
+                        isDark
+                            ? AppColors.darkTextMuted
+                            : const Color(0xFF64748B),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -744,13 +912,14 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                   children: [
                     Row(
                       children: [
-                        _buildStatusBadge(order.status),
+                        _buildStatusBadge(order.status, isDark: isDark),
                         const SizedBox(width: 6),
                         _buildPaymentBadge(
                           order.paymentStatus,
                           order.paymentMethod,
                           pending,
                           orderStatus: order.status,
+                          isDark: isDark,
                         ),
                       ],
                     ),
@@ -758,21 +927,29 @@ class _OrdersTableViewState extends State<OrdersTableView> {
                       textAlign: TextAlign.end,
                       text: TextSpan(
                         children: [
-                          const TextSpan(
+                          TextSpan(
                             text: 'S/ ',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF64748B),
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextMuted
+                                      : const Color(0xFF64748B),
                             ),
                           ),
                           TextSpan(
                             text: order.totalAmount.toStringAsFixed(2),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w900,
-                              color: Color(0xFF0F172A),
-                              fontFeatures: [FontFeature.tabularFigures()],
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextPrimary
+                                      : const Color(0xFF0F172A),
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
                             ),
                           ),
                         ],

@@ -53,6 +53,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   /// El estado PosStatus.loading tarda un frame en propagarse al botón;
   /// este flag bloquea la re-entrada de forma síncrona e inmediata.
   bool _isProcessing = false;
+  bool _isOpeningBatchSheet = false;
   bool _isLoadingInitialData = true;
   bool _lastSaleWasDraft = false;
   double _lastSaleTotalAmount = 0.0;
@@ -70,6 +71,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final posCubit = context.read<PosCubit>();
     _clienteCtrl.text = posCubit.state.selectedClientName ?? '';
     _puntosCtrl.text = posCubit.state.puntosAUsar.toString();
+    _isLoadingInitialData =
+        posCubit.state.warehouses.isEmpty || posCubit.state.accounts.isEmpty;
     _loadInitialData(posCubit);
   }
 
@@ -289,8 +292,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   }
 
   Future<void> _showBatchEditSheet(CartItemEntity item) async {
+    if (_isOpeningBatchSheet) return;
+    _isOpeningBatchSheet = true;
+
     final posCubit = context.read<PosCubit>();
     if (posCubit.state.selectedWarehouseId == null) {
+      _isOpeningBatchSheet = false;
       AppSnackbar.show(
         context,
         message: 'Selecciona un almacén primero',
@@ -377,6 +384,8 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           type: SnackbarType.error,
         );
       }
+    } finally {
+      if (mounted) _isOpeningBatchSheet = false;
     }
   }
 

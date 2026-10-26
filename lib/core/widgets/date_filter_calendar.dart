@@ -179,6 +179,9 @@ class DateFilterCalendar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool hasDate = dateRange != null;
     final String label = _getRangeLabel();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? const Color(0xFF2DD4BF) : AppColors.teal;
+    final accentText = isDark ? const Color(0xFF2DD4BF) : AppColors.tealDark;
 
     return Tooltip(
       message: 'Filtrar por período',
@@ -194,13 +197,17 @@ class DateFilterCalendar extends StatelessWidget {
         alignment: isExpanded ? null : Alignment.center,
         decoration: BoxDecoration(
           color:
-              hasDate ? AppColors.primary.withValues(alpha: 0.1) : Colors.white,
+              hasDate
+                  ? accent.withValues(alpha: isDark ? 0.18 : 0.10)
+                  : (isDark ? AppColors.darkSurfaceElevated : Colors.white),
           borderRadius: borderRadius ?? BorderRadius.circular(20),
           border: Border.all(
             color:
                 hasDate
-                    ? AppColors.primary.withValues(alpha: 0.35)
-                    : AppColors.border,
+                    ? accent
+                    : (isDark
+                        ? AppColors.darkBorderSubtle
+                        : const Color(0xFFCBD5E1)),
             width: hasDate ? 1.5 : 1,
           ),
         ),
@@ -224,8 +231,10 @@ class DateFilterCalendar extends StatelessWidget {
                         size: 14,
                         color:
                             hasDate
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
+                                ? accentText
+                                : (isDark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary),
                       ),
                       const SizedBox(width: 6),
                       if (isExpanded)
@@ -237,8 +246,10 @@ class DateFilterCalendar extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                               color:
                                   hasDate
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
+                                      ? accentText
+                                      : (isDark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary),
                             ),
                           ),
                         )
@@ -251,16 +262,21 @@ class DateFilterCalendar extends StatelessWidget {
                                 hasDate ? FontWeight.w800 : FontWeight.w600,
                             color:
                                 hasDate
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
+                                    ? accentText
+                                    : (isDark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textPrimary),
                           ),
                         ),
                       if (!hasDate) ...[
                         const SizedBox(width: 4),
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 16,
-                          color: AppColors.textSecondary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
                         ),
                       ],
                     ],
@@ -281,13 +297,13 @@ class DateFilterCalendar extends StatelessWidget {
                     height: 22,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: accent.withValues(alpha: isDark ? 0.25 : 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 13,
-                      color: AppColors.primary,
+                      color: accentText,
                     ),
                   ),
                 ),

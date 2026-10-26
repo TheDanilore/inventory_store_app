@@ -58,6 +58,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
   bool _isProcessing = false;
 
+  /// Mutex anti-doble-clic para modal de edición de lotes (FEFO).
+  bool _isOpeningBatchSheet = false;
+
   void openClientSearch() {
     _clientHeaderBarKey.currentState?.openSearch();
   }
@@ -265,8 +268,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   }
 
   Future<void> _showBatchEditSheet(CartItemEntity item) async {
+    if (_isOpeningBatchSheet) return;
+    _isOpeningBatchSheet = true;
+
     final posCubit = context.read<PosCubit>();
     if (posCubit.state.selectedWarehouseId == null) {
+      _isOpeningBatchSheet = false;
       AppSnackbar.show(
         context,
         message: 'Selecciona un almacén primero',
@@ -354,6 +361,8 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           type: SnackbarType.error,
         );
       }
+    } finally {
+      if (mounted) _isOpeningBatchSheet = false;
     }
   }
 

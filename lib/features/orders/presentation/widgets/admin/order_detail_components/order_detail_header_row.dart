@@ -64,6 +64,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final shortId =
         orderId.length > 8 ? orderId.substring(0, 8).toUpperCase() : orderId;
     final bool hasDocNumber =
@@ -81,12 +82,15 @@ class OrderDetailHeaderRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Detalle del Pedido',
                 style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                   letterSpacing: -0.4,
                 ),
               ),
@@ -106,24 +110,38 @@ class OrderDetailHeaderRow extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color:
+                              isDark
+                                  ? AppColors.darkSurfaceElevated
+                                  : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.border,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.copy_rounded,
                               size: 11,
-                              color: AppColors.textSecondary,
+                              color:
+                                  isDark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.textSecondary,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               'ID: $shortId',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.textSecondary,
+                                color:
+                                    isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textSecondary,
                                 fontFamily: 'monospace',
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
@@ -134,7 +152,10 @@ class OrderDetailHeaderRow extends StatelessWidget {
                               '(Copiar)',
                               style: TextStyle(
                                 fontSize: 9.5,
-                                color: AppColors.tealDark,
+                                color:
+                                    isDark
+                                        ? AppColors.teal
+                                        : AppColors.tealDark,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -165,19 +186,43 @@ class OrderDetailHeaderRow extends StatelessWidget {
                           decoration: BoxDecoration(
                             color:
                                 (documentType?.toUpperCase() == 'FACTURA')
-                                    ? const Color(0xFFF3E8FF)
+                                    ? (isDark
+                                        ? const Color(
+                                          0xFF4C1D95,
+                                        ).withValues(alpha: 0.35)
+                                        : const Color(0xFFF3E8FF))
                                     : ((documentType?.toUpperCase() == 'BOLETA')
-                                        ? const Color(0xFFEFF6FF)
-                                        : const Color(0xFFECFDF5)),
+                                        ? (isDark
+                                            ? const Color(
+                                              0xFF1E3A8A,
+                                            ).withValues(alpha: 0.35)
+                                            : const Color(0xFFEFF6FF))
+                                        : (isDark
+                                            ? const Color(
+                                              0xFF064E3B,
+                                            ).withValues(alpha: 0.35)
+                                            : const Color(0xFFECFDF5))),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
                               color:
                                   (documentType?.toUpperCase() == 'FACTURA')
-                                      ? const Color(0xFFD8B4FE)
+                                      ? (isDark
+                                          ? const Color(
+                                            0xFF7C3AED,
+                                          ).withValues(alpha: 0.5)
+                                          : const Color(0xFFD8B4FE))
                                       : ((documentType?.toUpperCase() ==
                                               'BOLETA')
-                                          ? const Color(0xFFBFDBFE)
-                                          : const Color(0xFFA7F3D0)),
+                                          ? (isDark
+                                              ? const Color(
+                                                0xFF2563EB,
+                                              ).withValues(alpha: 0.5)
+                                              : const Color(0xFFBFDBFE))
+                                          : (isDark
+                                              ? const Color(
+                                                0xFF059669,
+                                              ).withValues(alpha: 0.5)
+                                              : const Color(0xFFA7F3D0))),
                             ),
                           ),
                           child: Row(
@@ -188,11 +233,17 @@ class OrderDetailHeaderRow extends StatelessWidget {
                                 size: 11.5,
                                 color:
                                     (documentType?.toUpperCase() == 'FACTURA')
-                                        ? const Color(0xFF7E22CE)
+                                        ? (isDark
+                                            ? const Color(0xFFA78BFA)
+                                            : const Color(0xFF7E22CE))
                                         : ((documentType?.toUpperCase() ==
                                                 'BOLETA')
-                                            ? const Color(0xFF1D4ED8)
-                                            : const Color(0xFF047857)),
+                                            ? (isDark
+                                                ? const Color(0xFF60A5FA)
+                                                : const Color(0xFF1D4ED8))
+                                            : (isDark
+                                                ? const Color(0xFF34D399)
+                                                : const Color(0xFF047857))),
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -205,11 +256,17 @@ class OrderDetailHeaderRow extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                   color:
                                       (documentType?.toUpperCase() == 'FACTURA')
-                                          ? const Color(0xFF7E22CE)
+                                          ? (isDark
+                                              ? const Color(0xFFA78BFA)
+                                              : const Color(0xFF7E22CE))
                                           : ((documentType?.toUpperCase() ==
                                                   'BOLETA')
-                                              ? const Color(0xFF1D4ED8)
-                                              : const Color(0xFF047857)),
+                                              ? (isDark
+                                                  ? const Color(0xFF60A5FA)
+                                                  : const Color(0xFF1D4ED8))
+                                              : (isDark
+                                                  ? const Color(0xFF34D399)
+                                                  : const Color(0xFF047857))),
                                 ),
                               ),
                               if (hasDocNumber) ...[
@@ -222,11 +279,17 @@ class OrderDetailHeaderRow extends StatelessWidget {
                                     color:
                                         (documentType?.toUpperCase() ==
                                                 'FACTURA')
-                                            ? const Color(0xFF7E22CE)
+                                            ? (isDark
+                                                ? const Color(0xFFA78BFA)
+                                                : const Color(0xFF7E22CE))
                                             : ((documentType?.toUpperCase() ==
                                                     'BOLETA')
-                                                ? const Color(0xFF1D4ED8)
-                                                : const Color(0xFF047857)),
+                                                ? (isDark
+                                                    ? const Color(0xFF60A5FA)
+                                                    : const Color(0xFF1D4ED8))
+                                                : (isDark
+                                                    ? const Color(0xFF34D399)
+                                                    : const Color(0xFF047857))),
                                   ),
                                 ),
                               ],
@@ -236,7 +299,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
                       ),
                     ),
                   ],
-                  _buildStatusBadge(orderStatus),
+                  _buildStatusBadge(orderStatus, isDark: isDark),
                 ],
               ),
             ],
@@ -258,25 +321,36 @@ class OrderDetailHeaderRow extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color:
+                          isDark
+                              ? AppColors.darkSurfaceElevated
+                              : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           Icons.print_rounded,
                           size: 15,
-                          color: AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
                           'Ticket',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color:
+                                isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textPrimary,
                           ),
                         ),
                       ],
@@ -300,20 +374,28 @@ class OrderDetailHeaderRow extends StatelessWidget {
                         color:
                             isEditing
                                 ? AppColors.error.withValues(alpha: 0.1)
-                                : const Color(0xFFF1F5F9),
+                                : (isDark
+                                    ? AppColors.darkSurfaceElevated
+                                    : const Color(0xFFF1F5F9)),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color:
                               isEditing
                                   ? AppColors.error.withValues(alpha: 0.3)
-                                  : AppColors.border,
+                                  : (isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.border),
                         ),
                       ),
                       child: Icon(
                         isEditing ? Icons.close_rounded : Icons.edit_rounded,
                         size: 16,
                         color:
-                            isEditing ? AppColors.error : AppColors.textPrimary,
+                            isEditing
+                                ? AppColors.error
+                                : (isDark
+                                    ? AppColors.darkTextPrimary
+                                    : AppColors.textPrimary),
                       ),
                     ),
                   ),
@@ -325,25 +407,35 @@ class OrderDetailHeaderRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color:
+                      isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                  ),
                 ),
-                child: const Text(
+                child: Text(
                   'ESC',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textMuted,
+                    color:
+                        isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                   ),
                 ),
               ),
               const SizedBox(width: 4),
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.close_rounded,
                   size: 20,
-                  color: AppColors.textSecondary,
+                  color:
+                      isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
                 ),
                 tooltip: 'Cerrar detalle (Esc)',
                 visualDensity: VisualDensity.compact,
@@ -356,7 +448,7 @@ class OrderDetailHeaderRow extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(String? status) {
+  Widget _buildStatusBadge(String? status, {bool isDark = false}) {
     final rawStatus =
         status?.toUpperCase() ?? (isCompleted ? 'COMPLETED' : 'PENDING');
     final Color bg;
@@ -367,38 +459,62 @@ class OrderDetailHeaderRow extends StatelessWidget {
 
     switch (rawStatus) {
       case 'COMPLETED':
-        bg = const Color(0xFFECFDF5);
-        border = const Color(0xFFA7F3D0);
-        text = const Color(0xFF047857);
+        bg =
+            isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                : const Color(0xFFECFDF5);
+        border =
+            isDark
+                ? const Color(0xFF059669).withValues(alpha: 0.5)
+                : const Color(0xFFA7F3D0);
+        text = isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
         label = 'COMPLETADO';
         icon = Icons.check_circle_rounded;
         break;
       case 'DRAFT':
       case 'PENDING':
-        bg = const Color(0xFFFFFBEB);
-        border = const Color(0xFFFDE68A);
-        text = const Color(0xFFB45309);
+        bg =
+            isDark
+                ? const Color(0xFF78350F).withValues(alpha: 0.35)
+                : const Color(0xFFFFFBEB);
+        border =
+            isDark
+                ? const Color(0xFFD97706).withValues(alpha: 0.5)
+                : const Color(0xFFFDE68A);
+        text = isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309);
         label = 'BORRADOR';
         icon = Icons.edit_note_rounded;
         break;
       case 'CANCELLED':
-        bg = const Color(0xFFFEF2F2);
-        border = const Color(0xFFFECACA);
-        text = const Color(0xFFDC2626);
+        bg =
+            isDark
+                ? const Color(0xFF881337).withValues(alpha: 0.35)
+                : const Color(0xFFFEF2F2);
+        border =
+            isDark
+                ? const Color(0xFFE11D48).withValues(alpha: 0.5)
+                : const Color(0xFFFECACA);
+        text = isDark ? const Color(0xFFFB7185) : const Color(0xFFDC2626);
         label = 'CANCELADO';
         icon = Icons.cancel_rounded;
         break;
       case 'RETURNED':
-        bg = const Color(0xFFF5F3FF);
-        border = const Color(0xFFDDD6FE);
-        text = const Color(0xFF6D28D9);
+        bg =
+            isDark
+                ? const Color(0xFF4C1D95).withValues(alpha: 0.35)
+                : const Color(0xFFF5F3FF);
+        border =
+            isDark
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.5)
+                : const Color(0xFFDDD6FE);
+        text = isDark ? const Color(0xFFA78BFA) : const Color(0xFF6D28D9);
         label = 'DEVUELTO';
         icon = Icons.rotate_left_rounded;
         break;
       default:
-        bg = const Color(0xFFF1F5F9);
-        border = const Color(0xFFCBD5E1);
-        text = const Color(0xFF475569);
+        bg = isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9);
+        border = isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1);
+        text = isDark ? AppColors.darkTextSecondary : const Color(0xFF475569);
         label = rawStatus;
         icon = Icons.info_outline_rounded;
     }

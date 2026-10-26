@@ -17,6 +17,7 @@ class OrderDetailInfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cleanValue =
         value.trim().isNotEmpty ? value.trim() : 'Cliente general';
     final parts = cleanValue.split(' ').where((p) => p.isNotEmpty).toList();
@@ -29,9 +30,11 @@ class OrderDetailInfoBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
       ),
       child: Row(
         children: [
@@ -41,8 +44,12 @@ class OrderDetailInfoBox extends StatelessWidget {
             decoration: BoxDecoration(
               color:
                   isRegistered
-                      ? AppColors.teal.withValues(alpha: 0.12)
-                      : const Color(0xFFE2E8F0),
+                      ? (isDark
+                          ? AppColors.teal.withValues(alpha: 0.18)
+                          : AppColors.teal.withValues(alpha: 0.12))
+                      : (isDark
+                          ? AppColors.darkSurface
+                          : const Color(0xFFE2E8F0)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -50,7 +57,11 @@ class OrderDetailInfoBox extends StatelessWidget {
                 initials,
                 style: TextStyle(
                   color:
-                      isRegistered ? AppColors.teal : AppColors.textSecondary,
+                      isRegistered
+                          ? AppColors.teal
+                          : (isDark
+                              ? AppColors.darkTextSecondary
+                              : AppColors.textSecondary),
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
@@ -65,10 +76,13 @@ class OrderDetailInfoBox extends StatelessWidget {
               children: [
                 Text(
                   cleanValue,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                     letterSpacing: -0.2,
                   ),
                   maxLines: 1,
@@ -79,10 +93,13 @@ class OrderDetailInfoBox extends StatelessWidget {
                   isRegistered
                       ? 'Cliente registrado'
                       : 'Cliente mostrador · Venta rápida',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -92,7 +109,7 @@ class OrderDetailInfoBox extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.teal.withValues(alpha: 0.08),
+                color: AppColors.teal.withValues(alpha: isDark ? 0.15 : 0.08),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: AppColors.teal.withValues(alpha: 0.25),

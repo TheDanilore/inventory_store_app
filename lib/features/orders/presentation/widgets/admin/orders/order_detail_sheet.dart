@@ -501,20 +501,26 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           safePaymentMethod == 'CRÉDITO' ? AppColors.teal : AppColors.textMuted;
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
+        boxShadow:
+            isDark
+                ? const []
+                : const [
+                  BoxShadow(
+                    color: Color(0x060F172A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
       ),
       child: Row(
         children: [
@@ -546,18 +552,24 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                         decoration: BoxDecoration(
                           color:
                               isRegistered
-                                  ? AppColors.teal.withValues(alpha: 0.12)
-                                  : const Color(0xFFF1F5F9),
+                                  ? (isDark
+                                      ? AppColors.teal.withValues(alpha: 0.18)
+                                      : AppColors.teal.withValues(alpha: 0.12))
+                                  : (isDark
+                                      ? AppColors.darkSurfaceElevated
+                                      : const Color(0xFFF1F5F9)),
                           borderRadius: BorderRadius.circular(8),
                           border:
                               isRegistered
                                   ? Border.all(
                                     color: AppColors.teal.withValues(
-                                      alpha: 0.25,
+                                      alpha: isDark ? 0.45 : 0.25,
                                     ),
                                     width: 1,
                                   )
-                                  : null,
+                                  : (isDark
+                                      ? Border.all(color: AppColors.darkBorder)
+                                      : null),
                         ),
                         child: Center(
                           child: Text(
@@ -565,8 +577,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                             style: TextStyle(
                               color:
                                   isRegistered
-                                      ? AppColors.tealDark
-                                      : AppColors.textSecondary,
+                                      ? (isDark
+                                          ? AppColors.teal
+                                          : AppColors.tealDark)
+                                      : (isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary),
                               fontWeight: FontWeight.w800,
                               fontSize: 12,
                             ),
@@ -589,8 +605,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                       fontSize: 13,
                                       color:
                                           isRegistered
-                                              ? AppColors.tealDark
-                                              : AppColors.textPrimary,
+                                              ? (isDark
+                                                  ? AppColors.teal
+                                                  : AppColors.tealDark)
+                                              : (isDark
+                                                  ? AppColors.darkTextPrimary
+                                                  : AppColors.textPrimary),
                                       letterSpacing: -0.2,
                                     ),
                                     maxLines: 1,
@@ -604,9 +624,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                     child: Icon(
                                       Icons.open_in_new_rounded,
                                       size: 12,
-                                      color: AppColors.tealDark.withValues(
-                                        alpha: 0.85,
-                                      ),
+                                      color: (isDark
+                                              ? AppColors.teal
+                                              : AppColors.tealDark)
+                                          .withValues(alpha: 0.85),
                                     ),
                                   ),
                                 ],
@@ -625,8 +646,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 fontWeight: FontWeight.w500,
                                 color:
                                     isRegistered
-                                        ? AppColors.tealDark
-                                        : AppColors.textMuted,
+                                        ? (isDark
+                                            ? AppColors.teal
+                                            : AppColors.tealDark)
+                                        : (isDark
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.textMuted),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -636,18 +661,24 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.storefront_outlined,
                                     size: 11,
-                                    color: AppColors.textMuted,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextMuted
+                                            : AppColors.textMuted,
                                   ),
                                   const SizedBox(width: 3),
                                   Flexible(
                                     child: Text(
                                       order.warehouseName!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
-                                        color: AppColors.textSecondary,
+                                        color:
+                                            isDark
+                                                ? AppColors.darkTextSecondary
+                                                : AppColors.textSecondary,
                                         fontWeight: FontWeight.w500,
                                       ),
                                       maxLines: 1,
@@ -666,7 +697,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                           child: Icon(
                             Icons.chevron_right_rounded,
                             size: 16,
-                            color: AppColors.textMuted.withValues(alpha: 0.6),
+                            color: (isDark
+                                    ? AppColors.darkTextMuted
+                                    : AppColors.textMuted)
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                     ],
@@ -680,7 +714,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
           Container(
             width: 1,
             height: 32,
-            color: AppColors.border,
+            color: isDark ? AppColors.darkBorder : AppColors.border,
             margin: const EdgeInsets.symmetric(horizontal: 12),
           ),
 
@@ -705,10 +739,13 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                     children: [
                       Text(
                         safePaymentMethod,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
                           letterSpacing: -0.2,
                         ),
                         maxLines: 1,
@@ -764,35 +801,50 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
+                              color:
+                                  isDark
+                                      ? AppColors.darkSurfaceElevated
+                                      : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: const Color(0xFFCBD5E1),
+                                color:
+                                    isDark
+                                        ? AppColors.darkBorder
+                                        : const Color(0xFFCBD5E1),
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.tag_rounded,
                                   size: 11,
-                                  color: AppColors.textSecondary,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   'Nº Op: ${order.paymentReference!.trim()}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10.5,
                                     fontFamily: 'monospace',
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : AppColors.textPrimary,
                                   ),
                                 ),
                                 const SizedBox(width: 3),
-                                const Icon(
+                                Icon(
                                   Icons.copy_rounded,
                                   size: 9.5,
-                                  color: AppColors.textMuted,
+                                  color:
+                                      isDark
+                                          ? AppColors.darkTextMuted
+                                          : AppColors.textMuted,
                                 ),
                               ],
                             ),
@@ -840,6 +892,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       return const SizedBox.shrink();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final String docTitle;
     final Color badgeColor;
     final Color badgeTextColor;
@@ -848,27 +901,51 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     switch (docType.toUpperCase()) {
       case 'FACTURA':
         docTitle = 'Factura Electrónica';
-        badgeColor = const Color(0xFFF3E8FF);
-        badgeTextColor = const Color(0xFF7E22CE);
-        badgeBorderColor = const Color(0xFFD8B4FE);
+        badgeColor =
+            isDark
+                ? const Color(0xFF4C1D95).withValues(alpha: 0.35)
+                : const Color(0xFFF3E8FF);
+        badgeTextColor =
+            isDark ? const Color(0xFFA78BFA) : const Color(0xFF7E22CE);
+        badgeBorderColor =
+            isDark
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.5)
+                : const Color(0xFFD8B4FE);
         break;
       case 'BOLETA':
         docTitle = 'Boleta de Venta';
-        badgeColor = const Color(0xFFEFF6FF);
-        badgeTextColor = const Color(0xFF1D4ED8);
-        badgeBorderColor = const Color(0xFFBFDBFE);
+        badgeColor =
+            isDark
+                ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                : const Color(0xFFEFF6FF);
+        badgeTextColor =
+            isDark ? const Color(0xFF60A5FA) : const Color(0xFF1D4ED8);
+        badgeBorderColor =
+            isDark
+                ? const Color(0xFF2563EB).withValues(alpha: 0.5)
+                : const Color(0xFFBFDBFE);
         break;
       case 'NOTA_VENTA':
         docTitle = 'Nota de Venta';
-        badgeColor = const Color(0xFFECFDF5);
-        badgeTextColor = const Color(0xFF047857);
-        badgeBorderColor = const Color(0xFFA7F3D0);
+        badgeColor =
+            isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                : const Color(0xFFECFDF5);
+        badgeTextColor =
+            isDark ? const Color(0xFF34D399) : const Color(0xFF047857);
+        badgeBorderColor =
+            isDark
+                ? const Color(0xFF059669).withValues(alpha: 0.5)
+                : const Color(0xFFA7F3D0);
         break;
       default:
         docTitle = 'Comprobante';
-        badgeColor = const Color(0xFFF1F5F9);
-        badgeTextColor = const Color(0xFF334155);
-        badgeBorderColor = const Color(0xFFCBD5E1);
+        badgeColor =
+            isDark ? AppColors.darkSurfaceElevated : const Color(0xFFF1F5F9);
+        badgeTextColor =
+            isDark ? AppColors.darkTextPrimary : const Color(0xFF334155);
+        badgeBorderColor =
+            isDark ? AppColors.darkBorder : const Color(0xFFCBD5E1);
     }
 
     final docNum = order.documentNumber ?? order.displayReceiptNumber;
@@ -878,16 +955,21 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x040F172A),
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+        ),
+        boxShadow:
+            isDark
+                ? const []
+                : const [
+                  BoxShadow(
+                    color: Color(0x040F172A),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -941,27 +1023,41 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                     vertical: 3.5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color:
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? AppColors.darkBorder
+                              : const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         docNum,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color:
+                              isDark
+                                  ? AppColors.darkTextPrimary
+                                  : AppColors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(
+                      Icon(
                         Icons.copy_rounded,
                         size: 10,
-                        color: AppColors.textMuted,
+                        color:
+                            isDark
+                                ? AppColors.darkTextMuted
+                                : AppColors.textMuted,
                       ),
                     ],
                   ),
@@ -971,9 +1067,12 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
               if (date != null)
                 Text(
                   DateFormat('dd/MM/yyyy', 'es').format(date.toLocal()),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.textSecondary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -984,31 +1083,45 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.badge_outlined,
                   size: 12,
-                  color: AppColors.textMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                   ),
                 ),
                 if (order.customerAddress != null &&
                     order.customerAddress!.isNotEmpty) ...[
                   const SizedBox(width: 8),
-                  const Text('·', style: TextStyle(color: AppColors.textMuted)),
+                  Text(
+                    '·',
+                    style: TextStyle(
+                      color:
+                          isDark
+                              ? AppColors.darkTextMuted
+                              : AppColors.textMuted,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       order.customerAddress!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color:
+                            isDark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1023,19 +1136,22 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.tag_rounded,
                   size: 12,
-                  color: AppColors.textMuted,
+                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   'Nº Operación / Voucher: ${order.paymentReference!.trim()}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'monospace',
-                    color: AppColors.textPrimary,
+                    color:
+                        isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -1091,6 +1207,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
 
         final isDesktopOrDialog = MediaQuery.sizeOf(context).width >= 800;
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         Widget child = Container(
           height:
               widget.isEmbedded
@@ -1099,7 +1216,7 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       ? double.infinity
                       : MediaQuery.of(context).size.height * 0.9),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(
                 isDesktopOrDialog || widget.isEmbedded ? 0 : 24,
@@ -1597,18 +1714,26 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                       return Container(
                         height: 64,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkSurface : Colors.white,
                           border: Border(
-                            top: BorderSide(color: Color(0xFFE2E8F0)),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x060F172A),
-                              blurRadius: 8,
-                              offset: Offset(0, -3),
+                            top: BorderSide(
+                              color:
+                                  isDark
+                                      ? AppColors.darkBorder
+                                      : const Color(0xFFE2E8F0),
                             ),
-                          ],
+                          ),
+                          boxShadow:
+                              isDark
+                                  ? const []
+                                  : const [
+                                    BoxShadow(
+                                      color: Color(0x060F172A),
+                                      blurRadius: 8,
+                                      offset: Offset(0, -3),
+                                    ),
+                                  ],
                         ),
                         child: Row(
                           children: [
@@ -1618,11 +1743,14 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Total del Pedido',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary,
+                                      color:
+                                          isDark
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.textSecondary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1630,20 +1758,26 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                                   RichText(
                                     text: TextSpan(
                                       children: [
-                                        const TextSpan(
+                                        TextSpan(
                                           text: 'S/ ',
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w800,
-                                            color: AppColors.teal,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFF2DD4BF)
+                                                    : AppColors.teal,
                                           ),
                                         ),
                                         TextSpan(
                                           text: actualTotal.toStringAsFixed(2),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 19,
                                             fontWeight: FontWeight.w900,
-                                            color: AppColors.textPrimary,
+                                            color:
+                                                isDark
+                                                    ? AppColors.darkTextPrimary
+                                                    : AppColors.textPrimary,
                                             letterSpacing: -0.4,
                                           ),
                                         ),

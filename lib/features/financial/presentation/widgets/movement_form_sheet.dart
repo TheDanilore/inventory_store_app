@@ -12,6 +12,7 @@ import 'package:inventory_store_app/features/financial/presentation/bloc/account
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 
 class MovementFormSheet extends StatefulWidget {
   final bool isSlideOver;
@@ -51,6 +52,11 @@ class MovementFormSheet extends StatefulWidget {
       shiftCubit = sl<CashShiftsCubit>();
     }
 
+    PosCubit? posCubit;
+    try {
+      posCubit = context.read<PosCubit>();
+    } catch (_) {}
+
     return AdaptiveDetailSheet.show<bool>(
       context,
       desktopWidth: 500.0,
@@ -60,6 +66,7 @@ class MovementFormSheet extends StatefulWidget {
               BlocProvider.value(value: accCubit),
               BlocProvider.value(value: movCubit),
               BlocProvider.value(value: shiftCubit),
+              if (posCubit != null) BlocProvider.value(value: posCubit),
             ],
             child: MovementFormSheet(
               isSlideOver: AdaptiveDetailSheet.isSideSheet(dialogCtx),
@@ -93,6 +100,11 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     _sourceAccountId = widget.preselectedAccountId;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        context.read<CashShiftsCubit>().fetchShifts();
+      } catch (_) {}
+
       final accState = context.read<FinancialAccountsCubit>().state;
       final accounts =
           accState is FinancialAccountsLoaded
@@ -125,8 +137,24 @@ class _MovementFormSheetState extends State<MovementFormSheet> {
     if (accountId == null) return false;
     final acc = _accounts.where((a) => a.id == accountId).firstOrNull;
     if (acc == null || acc.type != 'CAJA') return false;
-    final openIds = context.read<CashShiftsCubit>().state.openAccountIds;
-    return !openIds.contains(accountId);
+
+    // 1. Verificar si la caja tiene turno activo en PosCubit (entorno de Punto de Venta)
+    try {
+      final posShift = context.read<PosCubit?>()?.state.activeShift;
+      if (posShift != null && posShift.accountId == accountId) {
+        return false; // Turno abierto y activo
+      }
+    } catch (_) {}
+
+    // 2. Verificar openAccountIds en CashShiftsCubit
+    try {
+      final openIds = context.read<CashShiftsCubit>().state.openAccountIds;
+      if (openIds.contains(accountId)) {
+        return false;
+      }
+    } catch (_) {}
+
+    return true;
   }
 
   bool get _isSourceCajaWithoutShift => _isCajaWithoutShift(_sourceAccountId);

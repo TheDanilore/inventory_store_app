@@ -20,6 +20,9 @@ import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_uti
 import 'package:go_router/go_router.dart';
 
 class PosHeader extends StatelessWidget {
+  static bool _isShiftActionBusy = false;
+  static bool _isMovementActionBusy = false;
+
   final TextEditingController searchController;
   final FocusNode? searchFocusNode;
   final ValueChanged<String> onSearchChanged;
@@ -511,7 +514,9 @@ class PosHeader extends StatelessWidget {
     PosState posState,
     bool isShiftOpen,
   ) {
-    if (posState.isLoading) {
+    if (posState.isLoading &&
+        posState.activeShift == null &&
+        posState.accounts.isEmpty) {
       return Container(
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -558,41 +563,47 @@ class PosHeader extends StatelessWidget {
       child: InkWell(
         mouseCursor: SystemMouseCursors.click,
         onTap: () async {
-          if (isShiftOpen) {
-            final shiftsCubit = context.read<CashShiftsCubit>();
-            final expected = await shiftsCubit.calcExpected(
-              activeShift!.id,
-              activeShift.accountId ?? '',
-              activeShift.openingAmount,
-            );
-            if (!context.mounted) return;
-            final closed = await CloseShiftSheet.show(
-              context,
-              shift: activeShift,
-              expectedAmount: expected,
-            );
-            if (closed == true && context.mounted) {
-              context.read<PosCubit>().clearActiveShift();
-              await context.read<PosCubit>().refreshAccountsAndShift();
-              if (context.mounted) {
-                context.read<CashShiftsCubit>().fetchShifts();
+          if (_isShiftActionBusy) return;
+          _isShiftActionBusy = true;
+          try {
+            if (isShiftOpen) {
+              final shiftsCubit = context.read<CashShiftsCubit>();
+              final expected = await shiftsCubit.calcExpected(
+                activeShift!.id,
+                activeShift.accountId ?? '',
+                activeShift.openingAmount,
+              );
+              if (!context.mounted) return;
+              final closed = await CloseShiftSheet.show(
+                context,
+                shift: activeShift,
+                expectedAmount: expected,
+              );
+              if (closed == true && context.mounted) {
+                context.read<PosCubit>().clearActiveShift();
+                await context.read<PosCubit>().refreshAccountsAndShift();
+                if (context.mounted) {
+                  context.read<CashShiftsCubit>().fetchShifts();
+                }
+              }
+            } else {
+              final cashAccounts =
+                  posState.accounts
+                      .where((a) => PosCalculatorUtils.accountRequiresShift(a))
+                      .toList();
+              final opened = await OpenShiftSheet.show(
+                context,
+                accounts: cashAccounts,
+              );
+              if (opened == true && context.mounted) {
+                await context.read<PosCubit>().refreshAccountsAndShift();
+                if (context.mounted) {
+                  context.read<CashShiftsCubit>().fetchShifts();
+                }
               }
             }
-          } else {
-            final cashAccounts =
-                posState.accounts
-                    .where((a) => PosCalculatorUtils.accountRequiresShift(a))
-                    .toList();
-            final opened = await OpenShiftSheet.show(
-              context,
-              accounts: cashAccounts,
-            );
-            if (opened == true && context.mounted) {
-              await context.read<PosCubit>().refreshAccountsAndShift();
-              if (context.mounted) {
-                context.read<CashShiftsCubit>().fetchShifts();
-              }
-            }
+          } finally {
+            _isShiftActionBusy = false;
           }
         },
         borderRadius: BorderRadius.circular(12),
@@ -663,7 +674,7 @@ class PosHeader extends StatelessWidget {
   }
 
   Widget _buildWarehouseSelector(BuildContext context, PosState posState) {
-    if (posState.isLoading) {
+    if (posState.isLoading && posState.warehouses.isEmpty) {
       return Container(
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1012,35 +1023,42 @@ class PosHeader extends StatelessWidget {
     PosState posState, {
     String? initialType,
   }) async {
-    String? cashAccountId = posState.activeShift?.accountId;
-    if (cashAccountId == null) {
-      final cashAcc = posState.accounts.firstWhere(
-        (a) => PosCalculatorUtils.accountRequiresShift(a),
-        orElse:
-            () =>
-                posState.accounts.isNotEmpty
-                    ? posState.accounts.first
-                    : <String, dynamic>{},
-      );
-      cashAccountId = cashAcc['id'] as String?;
-    }
+    if (_isMovementActionBusy) return;
+    _isMovementActionBusy = true;
 
-    final saved = await MovementFormSheet.show(
-      context,
-      initialType: initialType ?? 'INCOME',
-      preselectedAccountId: cashAccountId,
-    );
-
-    if (saved == true && context.mounted) {
-      context.read<PosCubit>().initPosData(forceRefresh: true);
-      if (cashAccountId != null) {
-        context.read<PosCubit>().checkActiveShift(cashAccountId);
+    try {
+      String? cashAccountId = posState.activeShift?.accountId;
+      if (cashAccountId == null) {
+        final cashAcc = posState.accounts.firstWhere(
+          (a) => PosCalculatorUtils.accountRequiresShift(a),
+          orElse:
+              () =>
+                  posState.accounts.isNotEmpty
+                      ? posState.accounts.first
+                      : <String, dynamic>{},
+        );
+        cashAccountId = cashAcc['id'] as String?;
       }
-      AppSnackbar.show(
+
+      final saved = await MovementFormSheet.show(
         context,
-        message: 'Movimiento de dinero registrado exitosamente.',
-        type: SnackbarType.success,
+        initialType: initialType ?? 'INCOME',
+        preselectedAccountId: cashAccountId,
       );
+
+      if (saved == true && context.mounted) {
+        context.read<PosCubit>().initPosData(forceRefresh: true);
+        if (cashAccountId != null) {
+          context.read<PosCubit>().checkActiveShift(cashAccountId);
+        }
+        AppSnackbar.show(
+          context,
+          message: 'Movimiento de dinero registrado exitosamente.',
+          type: SnackbarType.success,
+        );
+      }
+    } finally {
+      _isMovementActionBusy = false;
     }
   }
 

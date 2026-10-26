@@ -86,6 +86,7 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   CashShiftsCubit? _cashShiftsCubit;
   OrdersCubit? _ordersCubit;
   bool _isMountedReady = false;
+  bool _isNavigatingToCheckout = false;
   // Controla si el POS es el branch activo (evita que los shortcuts de hardware
   // intercepten teclas del ERP cuando el POS está en IndexedStack pero invisible).
   bool _isPosActive = false;
@@ -94,6 +95,13 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   void initState() {
     super.initState();
     _catalogCubit = context.read<AdminCatalogCubit>();
+    // Si ya existen productos en catálogo o almacenes en PosCubit en caché,
+    // renderizamos de inmediato sin forzar el PosDesktopSkeleton!
+    final posCubit = context.read<PosCubit>();
+    _isMountedReady =
+        _catalogCubit.state.products.isNotEmpty ||
+        posCubit.state.warehouses.isNotEmpty;
+
     // No registramos el handler aquí; se registra en didChangeDependencies
     // cuando confirmamos que la ruta POS es la activa.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1086,13 +1094,18 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
 
                           return FloatingActionButton.extended(
                             onPressed: () async {
-                              final sold = await context.push<Map<String, int>>(
-                                '/pos-checkout',
-                              );
-                              if (sold != null && context.mounted) {
-                                context
-                                    .read<AdminCatalogCubit>()
-                                    .decrementStockLocal(sold);
+                              if (_isNavigatingToCheckout) return;
+                              _isNavigatingToCheckout = true;
+                              try {
+                                final sold = await context
+                                    .push<Map<String, int>>('/pos-checkout');
+                                if (sold != null && context.mounted) {
+                                  context
+                                      .read<AdminCatalogCubit>()
+                                      .decrementStockLocal(sold);
+                                }
+                              } finally {
+                                if (mounted) _isNavigatingToCheckout = false;
                               }
                             },
                             backgroundColor:
