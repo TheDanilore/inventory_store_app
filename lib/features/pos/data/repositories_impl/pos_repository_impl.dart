@@ -21,6 +21,8 @@ class PosRepositoryImpl implements PosRepository {
   String? _cachedProfileId;
   String? _cachedRole;
   List<WarehouseModel>? _cachedWarehouses;
+  List<Map<String, dynamic>>? _cachedAccounts;
+  List<DocumentSeriesModel>? _cachedDocumentSeries;
 
   Future<void> _ensureProfileLoaded() async {
     if (_cachedProfileId != null && _cachedRole != null) return;
@@ -45,6 +47,23 @@ class PosRepositoryImpl implements PosRepository {
     bool forceRefresh = false,
   }) async {
     try {
+      // ── Retorno Inmediato si ya está todo en Caché L1 ───────────────────────
+      if (!forceRefresh &&
+          _cachedWarehouses != null &&
+          _cachedWarehouses!.isNotEmpty &&
+          _cachedAccounts != null &&
+          _cachedAccounts!.isNotEmpty &&
+          _cachedDocumentSeries != null &&
+          _cachedDocumentSeries!.isNotEmpty) {
+        return right(
+          PosInitData(
+            warehouses: _cachedWarehouses!,
+            accounts: _cachedAccounts!,
+            documentSeries: _cachedDocumentSeries!,
+          ),
+        );
+      }
+
       List<WarehouseModel> warehouses;
       if (!forceRefresh &&
           _cachedWarehouses != null &&
@@ -82,18 +101,32 @@ class PosRepositoryImpl implements PosRepository {
         _cachedWarehouses = warehouses;
       }
 
-      final accRes = await _supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance, warehouse_id')
-          .eq('is_active', true)
-          .order('type')
-          .order('name');
+      List<Map<String, dynamic>> accData;
+      if (!forceRefresh &&
+          _cachedAccounts != null &&
+          _cachedAccounts!.isNotEmpty) {
+        accData = _cachedAccounts!;
+      } else {
+        final accRes = await _supabase
+            .from('financial_accounts')
+            .select('id, name, type, balance, warehouse_id')
+            .eq('is_active', true)
+            .order('type')
+            .order('name');
+        accData = List<Map<String, dynamic>>.from(accRes);
+        _cachedAccounts = accData;
+      }
 
-      final accData = List<Map<String, dynamic>>.from(accRes);
-
-      // Cargar series de comprobantes
-      final seriesRes = await fetchDocumentSeries();
-      final seriesData = seriesRes.getOrElse((_) => _defaultDocumentSeries);
+      List<DocumentSeriesModel> seriesData;
+      if (!forceRefresh &&
+          _cachedDocumentSeries != null &&
+          _cachedDocumentSeries!.isNotEmpty) {
+        seriesData = _cachedDocumentSeries!;
+      } else {
+        final seriesRes = await fetchDocumentSeries();
+        seriesData = seriesRes.getOrElse((_) => _defaultDocumentSeries);
+        _cachedDocumentSeries = seriesData;
+      }
 
       return right(
         PosInitData(

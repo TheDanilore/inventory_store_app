@@ -8,6 +8,7 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 class ProductFormState extends Equatable {
   final ProductEntity? productToEdit;
   final bool isInitializingData;
+  final bool isBackgroundSyncing;
   final bool hasErrorLoading;
   final String errorMessage;
   final bool isSaving;
@@ -68,6 +69,7 @@ class ProductFormState extends Equatable {
   const ProductFormState({
     this.productToEdit,
     this.isInitializingData = false,
+    this.isBackgroundSyncing = false,
     this.hasErrorLoading = false,
     this.errorMessage = '',
     this.isSaving = false,
@@ -111,6 +113,7 @@ class ProductFormState extends Equatable {
   ProductFormState copyWith({
     ProductEntity? productToEdit,
     bool? isInitializingData,
+    bool? isBackgroundSyncing,
     bool? hasErrorLoading,
     String? errorMessage,
     bool? isSaving,
@@ -146,6 +149,7 @@ class ProductFormState extends Equatable {
     return ProductFormState(
       productToEdit: productToEdit ?? this.productToEdit,
       isInitializingData: isInitializingData ?? this.isInitializingData,
+      isBackgroundSyncing: isBackgroundSyncing ?? this.isBackgroundSyncing,
       hasErrorLoading: hasErrorLoading ?? this.hasErrorLoading,
       errorMessage: errorMessage ?? this.errorMessage,
       isSaving: isSaving ?? this.isSaving,
@@ -187,6 +191,7 @@ class ProductFormState extends Equatable {
   List<Object?> get props => [
     productToEdit,
     isInitializingData,
+    isBackgroundSyncing,
     hasErrorLoading,
     errorMessage,
     isSaving,

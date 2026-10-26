@@ -26,5 +26,8 @@ abstract class BrandsRepository {
 
   Future<Either<Failure, List<BrandEntity>>> getBrands({
     bool activeOnly = false,
+    bool forceRefresh = false,
   });
+
+  List<BrandEntity>? getCachedBrands({bool activeOnly = false});
 }

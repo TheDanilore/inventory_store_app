@@ -1,33 +1,32 @@
 import 'dart:async';
-import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_document_and_currency_card.dart';
-import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
-
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_credit_warning_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_custom_discount_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_and_config_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_sticky_action_bar.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 
 class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
@@ -46,15 +45,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   final _descuentoCtrl = TextEditingController();
 
   Timer? _debounce;
-
   final _isDiscountPercentageNotifier = ValueNotifier<bool>(false);
 
   /// Mutex local que impide doble-ejecución de _processSale ante taps rápidos.
-  /// El estado PosStatus.loading tarda un frame en propagarse al botón;
-  /// este flag bloquea la re-entrada de forma síncrona e inmediata.
   bool _isProcessing = false;
   bool _isOpeningBatchSheet = false;
-  bool _isLoadingInitialData = true;
+  bool _isLoadingInitialData = false;
+
   bool _lastSaleWasDraft = false;
   double _lastSaleTotalAmount = 0.0;
   double? _lastSaleAmountReceived;
@@ -70,10 +67,19 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   void initState() {
     super.initState();
     final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+
     _clienteCtrl.text = posCubit.state.selectedClientName ?? '';
     _puntosCtrl.text = posCubit.state.puntosAUsar.toString();
-    _isLoadingInitialData =
-        posCubit.state.warehouses.isEmpty || posCubit.state.accounts.isEmpty;
+
+    // SWR Pattern: Si ya hay almacenes o cuentas en memoria, o productos en el carrito,
+    // jamás mostrar shimmer obstructivo de pantalla completa.
+    final hasCachedData =
+        (posCubit.state.warehouses.isNotEmpty &&
+            posCubit.state.accounts.isNotEmpty) ||
+        cartCubit.state.items.isNotEmpty;
+
+    _isLoadingInitialData = !hasCachedData;
     _loadInitialData(posCubit);
   }
 
@@ -87,7 +93,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     super.dispose();
   }
 
-  // CARGA DE DATOS
+  // ─── CARGA DE DATOS ──────────────────────────────────────────────────────────
 
   Future<void> _loadInitialData(PosCubit posCubit) async {
     try {
@@ -151,8 +157,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  //  CÁLCULOS (Movidos a PosCalculatorUtils)
-
   Future<void> _updateCartItemsStockForWarehouse(String warehouseId) async {
     final cartCubit = context.read<CartCubit>();
     final items = cartCubit.state.items.values.toList();
@@ -194,26 +198,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
-  // ─── HELPER DE CÁLCULO (evita recalcular totalFinal 3× por frame) ───────────
-
-  double _calcTotal(PosState pos, CartState cart, double ratio) {
-    return PosCalculatorUtils.calcularTotalFinal(
-      discountText: _descuentoCtrl.text,
-      isDiscountPercentage: _isDiscountPercentageNotifier.value,
-      pos: pos,
-      cart: cart,
-      ratio: ratio,
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─── PROCESO DE VENTA ────────────────────────────────────────────────────────
 
   Future<void> _processSale(
     PosCubit posCubit,
     CartCubit cartCubit, {
     bool isDraft = false,
   }) async {
-    // Mutex: bloquea re-entrada síncrona antes de que el BLoC actualice la UI.
     if (posCubit.state.status == PosStatus.loading) return;
     if (_isProcessing) return;
     _isProcessing = true;
@@ -221,8 +212,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     try {
       await _processSaleInternal(posCubit, cartCubit, isDraft: isDraft);
     } finally {
-      _isProcessing =
-          false; // Sin setState para no re-renderizar todo el widget
+      _isProcessing = false;
     }
   }
 
@@ -239,11 +229,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
     final earningRate = config.getDouble('points_earning_rate', 0.03);
 
-    // Usa el helper memoizado en lugar de invocar directamente la utilidad.
-    final totalFinal = _calcTotal(
-      posCubit.state,
-      cartCubit.state,
-      pointsToSolesRatio,
+    final totalFinal = PosCalculatorUtils.calcularTotalFinal(
+      discountText: _descuentoCtrl.text,
+      isDiscountPercentage: _isDiscountPercentageNotifier.value,
+      pos: posCubit.state,
+      cart: cartCubit.state,
+      ratio: pointsToSolesRatio,
     );
 
     final validationError = PosCalculatorUtils.validateSalePreFlight(
@@ -279,7 +270,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         currencySymbol: currency,
       );
 
-      // Si el usuario cancela la confirmación, se aborta sin tocar el carrito ni procesar nada
       if (confirmedAmountReceived == null) {
         return;
       }
@@ -450,7 +440,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     }
   }
 
-  // BUILD
+  // ─── BUILD ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -464,8 +454,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       (c) => c.loyaltyGlobalEnabled,
     );
 
-    // Si el sistema de fidelidad está desactivado globalmente y hay puntos asignados, purgarlos
     final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+
+    // Si el sistema de fidelidad está desactivado globalmente y hay puntos asignados, purgarlos
     if (!isLoyaltyEnabled && posCubit.state.puntosAUsar > 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted && posCubit.state.puntosAUsar > 0) {
@@ -474,6 +466,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         }
       });
     }
+
+    // SWR Verification en build: Si hay datos en memoria en los BLoCs, NUNCA bloquear con Shimmer.
+    final hasDataInCache =
+        (posCubit.state.warehouses.isNotEmpty &&
+            posCubit.state.accounts.isNotEmpty) ||
+        cartCubit.state.items.isNotEmpty;
+    final showShimmer = _isLoadingInitialData && !hasDataInCache;
 
     return BlocListener<PosCubit, PosState>(
       listenWhen: (previous, current) => previous.status != current.status,
@@ -487,8 +486,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           context.read<PosCubit>().resetStatus();
         } else if (state.status == PosStatus.success &&
             state.lastOrderId != null) {
-          final posCubit = context.read<PosCubit>();
-          final cartCubit = context.read<CartCubit>();
           final orderId = state.lastOrderId!;
 
           posCubit.removeClient();
@@ -498,7 +495,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           posCubit.clearAllBatchOverrides();
           widget.onSaleCompleted?.call();
 
-          // Refrescar balance localmente sin data egress
           if (posCubit.state.selectedAccountId != null && !_lastSaleWasDraft) {
             posCubit.updateAccountBalanceLocal(
               accountId: posCubit.state.selectedAccountId!,
@@ -525,7 +521,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                       final detailsRes = await posCubit
                           .fetchOrderDetailsForTicket(orderId);
 
-                      // await sobre el fold para que los errores lleguen al catch
                       await detailsRes.fold<Future<void>>(
                         (failure) async {
                           if (dialogContext.mounted) {
@@ -598,13 +593,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.teal.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.point_of_sale_rounded,
-                  color: AppColors.primary,
-                  size: 18,
+                  color: AppColors.teal,
+                  size: 20,
                 ),
               ),
               const SizedBox(width: 8),
@@ -668,7 +663,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
         body: Form(
           key: _formKey,
           child:
-              _isLoadingInitialData
+              showShimmer
                   ? ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: 4,
@@ -697,108 +692,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                        16,
-                                        16,
-                                        16,
-                                        8,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          PosSectionLabel('Productos en caja'),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Tooltip(
-                                                message:
-                                                    'Escanear código de barra / QR',
-                                                child: TextButton.icon(
-                                                  onPressed: _openCameraScanner,
-                                                  icon: const Icon(
-                                                    Icons
-                                                        .qr_code_scanner_rounded,
-                                                    color: AppColors.teal,
-                                                    size: 18,
-                                                  ),
-                                                  label: const Text(
-                                                    'Escanear',
-                                                    style: TextStyle(
-                                                      color: AppColors.teal,
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  style: TextButton.styleFrom(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 6,
-                                                        ),
-                                                    minimumSize: Size.zero,
-                                                    tapTargetSize:
-                                                        MaterialTapTargetSize
-                                                            .shrinkWrap,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              BlocBuilder<CartCubit, CartState>(
-                                                builder: (context, cartState) {
-                                                  if (cartState.items.isEmpty) {
-                                                    return const SizedBox.shrink();
-                                                  }
-                                                  return TextButton.icon(
-                                                    onPressed: _onClearCart,
-                                                    icon: const Icon(
-                                                      Icons.delete_outline,
-                                                      color: AppColors.error,
-                                                      size: 20,
-                                                    ),
-                                                    label: const Text(
-                                                      'Vaciar Todo',
-                                                      style: TextStyle(
-                                                        color: AppColors.error,
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    style: TextButton.styleFrom(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 12,
-                                                            vertical: 8,
-                                                          ),
-                                                      minimumSize: Size.zero,
-                                                      tapTargetSize:
-                                                          MaterialTapTargetSize
-                                                              .shrinkWrap,
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                    _buildCartHeader(),
                                     Expanded(
                                       child: SingleChildScrollView(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 16,
                                           vertical: 8,
                                         ),
-                                        child: Builder(
-                                          builder: (context) {
-                                            return PosCartItemsSection(
-                                              onShowBatchEditSheet:
-                                                  _showBatchEditSheet,
-                                            );
-                                          },
+                                        child: PosCartItemsSection(
+                                          onShowBatchEditSheet:
+                                              _showBatchEditSheet,
                                         ),
                                       ),
                                     ),
@@ -813,19 +716,16 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                 pointsToSolesRatio,
                                 earningRate,
                                 isLoyaltyEnabled,
-                                isWide: true,
                               ),
                             ),
                           ],
                         );
                       }
 
-                      // Móvil (Columna única pero con Action Bar pegajoso al fondo)
+                      // Móvil: Columna única con Action Bar inferior
                       return Column(
                         children: [
-                          // Cliente Sticky en la parte superior para selección inmediata
                           _buildClientHeader(isLoyaltyEnabled),
-
                           Expanded(
                             child: SingleChildScrollView(
                               padding: const EdgeInsets.symmetric(
@@ -835,91 +735,21 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      PosSectionLabel('Productos en caja'),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Tooltip(
-                                            message:
-                                                'Escanear código de barra / QR',
-                                            child: TextButton.icon(
-                                              onPressed: _openCameraScanner,
-                                              icon: const Icon(
-                                                Icons.qr_code_scanner_rounded,
-                                                color: AppColors.teal,
-                                                size: 18,
-                                              ),
-                                              label: const Text(
-                                                'Escanear',
-                                                style: TextStyle(
-                                                  color: AppColors.teal,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              style: TextButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 6,
-                                                    ),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize:
-                                                    MaterialTapTargetSize
-                                                        .shrinkWrap,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          BlocBuilder<CartCubit, CartState>(
-                                            builder: (context, cartState) {
-                                              if (cartState.items.isEmpty) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return TextButton.icon(
-                                                onPressed: _onClearCart,
-                                                icon: const Icon(
-                                                  Icons.delete_outline,
-                                                  color: AppColors.error,
-                                                  size: 20,
-                                                ),
-                                                label: const Text(
-                                                  'Vaciar Todo',
-                                                  style: TextStyle(
-                                                    color: AppColors.error,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                style: TextButton.styleFrom(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8,
-                                                      ),
-                                                  minimumSize: Size.zero,
-                                                  tapTargetSize:
-                                                      MaterialTapTargetSize
-                                                          .shrinkWrap,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                  _buildCartHeader(),
                                   PosCartItemsSection(
                                     onShowBatchEditSheet: _showBatchEditSheet,
                                   ),
                                   const SizedBox(height: 20),
-                                  _buildPaymentAndConfigSection(
-                                    pointsToSolesRatio,
-                                    isLoyaltyEnabled,
+                                  PosPaymentAndConfigSection(
+                                    ratio: pointsToSolesRatio,
+                                    isLoyaltyEnabled: isLoyaltyEnabled,
+                                    pointsController: _puntosCtrl,
+                                    onWarehouseChanged: (v) {
+                                      posCubit.setWarehouse(v);
+                                      if (v != null) {
+                                        _updateCartItemsStockForWarehouse(v);
+                                      }
+                                    },
                                   ),
                                   const SizedBox(height: 24),
                                   ListenableBuilder(
@@ -945,8 +775,19 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                               _isDiscountPercentageNotifier,
                             ]),
                             builder:
-                                (context, _) =>
-                                    _buildStickyActionBar(pointsToSolesRatio),
+                                (context, _) => PosStickyActionBar(
+                                  ratio: pointsToSolesRatio,
+                                  discountText: _descuentoCtrl.text,
+                                  isDiscountPercentage:
+                                      _isDiscountPercentageNotifier.value,
+                                  isProcessingLocal: _isProcessing,
+                                  onProcessSale:
+                                      ({required bool isDraft}) => _processSale(
+                                        posCubit,
+                                        cartCubit,
+                                        isDraft: isDraft,
+                                      ),
+                                ),
                           ),
                         ],
                       );
@@ -957,24 +798,109 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     );
   }
 
+  Widget _buildCartHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          PosSectionLabel('Productos en caja'),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Tooltip(
+                message: 'Escanear código de barra / QR',
+                child: TextButton.icon(
+                  onPressed: _openCameraScanner,
+                  icon: const Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: AppColors.teal,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Escanear',
+                    style: TextStyle(
+                      color: AppColors.teal,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              BlocSelector<CartCubit, CartState, bool>(
+                selector: (cart) => cart.items.isEmpty,
+                builder: (context, isEmpty) {
+                  if (isEmpty) return const SizedBox.shrink();
+                  return TextButton.icon(
+                    onPressed: _onClearCart,
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
+                    label: const Text(
+                      'Vaciar Todo',
+                      style: TextStyle(
+                        color: AppColors.error,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRightPanel(
     double ratio,
     double earningRate,
-    bool isLoyaltyEnabled, {
-    required bool isWide,
-  }) {
+    bool isLoyaltyEnabled,
+  ) {
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+
     return Column(
       children: [
-        // Cliente Sticky en la parte superior del panel derecho
         _buildClientHeader(isLoyaltyEnabled),
-
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildPaymentAndConfigSection(ratio, isLoyaltyEnabled),
+                PosPaymentAndConfigSection(
+                  ratio: ratio,
+                  isLoyaltyEnabled: isLoyaltyEnabled,
+                  pointsController: _puntosCtrl,
+                  onWarehouseChanged: (v) {
+                    posCubit.setWarehouse(v);
+                    if (v != null) {
+                      _updateCartItemsStockForWarehouse(v);
+                    }
+                  },
+                ),
                 const SizedBox(height: 24),
                 ListenableBuilder(
                   listenable: Listenable.merge([
@@ -998,16 +924,22 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
             _descuentoCtrl,
             _isDiscountPercentageNotifier,
           ]),
-          builder: (context, _) => _buildStickyActionBar(ratio),
+          builder:
+              (context, _) => PosStickyActionBar(
+                ratio: ratio,
+                discountText: _descuentoCtrl.text,
+                isDiscountPercentage: _isDiscountPercentageNotifier.value,
+                isProcessingLocal: _isProcessing,
+                onProcessSale:
+                    ({required bool isDraft}) =>
+                        _processSale(posCubit, cartCubit, isDraft: isDraft),
+              ),
         ),
       ],
     );
   }
 
-  Widget _buildClientHeader(
-    bool isLoyaltyEnabled, {
-    bool showCajaHeader = false,
-  }) {
+  Widget _buildClientHeader(bool isLoyaltyEnabled) {
     return BlocBuilder<PosCubit, PosState>(
       buildWhen:
           (prev, curr) =>
@@ -1029,7 +961,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 cart.items.isEmpty,
               ),
           builder: (context, cartTuple) {
-            final (itemCount, isCartEmpty) = cartTuple;
+            final (totalItems, isCartEmpty) = cartTuple;
             return PosClientHeaderBar(
               controller: _clienteCtrl,
               onSearchChanged: _onClientSearchChanged,
@@ -1042,153 +974,14 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               creditInfo: posState.creditInfo,
               isCredito: isCredito,
               isLoyaltyEnabled: isLoyaltyEnabled,
-              cartItemCount: itemCount,
+              cartItemCount: totalItems,
               isCartEmpty: isCartEmpty,
               onClearCart: _onClearCart,
-              showCajaHeader: showCajaHeader,
+              showCajaHeader: false,
             );
           },
         );
       },
-    );
-  }
-
-  Widget _buildPaymentAndConfigSection(double ratio, bool isLoyaltyEnabled) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.selectedClientId != curr.selectedClientId ||
-                  prev.saldoActualCliente != curr.saldoActualCliente ||
-                  prev.puntosAUsar != curr.puntosAUsar,
-          builder: (context, posState) {
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return BlocSelector<CartCubit, CartState, double>(
-              selector: (state) => state.totalAmount,
-              builder: (context, totalAmount) {
-                final cartState = context.read<CartCubit>().state;
-                return AdminSalePointsSection(
-                  show:
-                      isLoyaltyEnabled &&
-                      posState.selectedClientId != null &&
-                      posState.saldoActualCliente > 0 &&
-                      !isCredito,
-                  saldoActualCliente: posState.saldoActualCliente,
-                  maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                    posState,
-                    cartState,
-                    ratio,
-                  ),
-                  pointsToSolesRatio: ratio,
-                  pointsController: _puntosCtrl,
-                  onPointsChanged: (p) {
-                    final posCubit = context.read<PosCubit>();
-                    final next = PosCalculatorUtils.clampPointsValue(
-                      p,
-                      posState,
-                      cartState,
-                      ratio,
-                    );
-                    posCubit.setPuntosAUsar(next);
-                    _puntosCtrl.value = TextEditingValue(
-                      text: next.toString(),
-                      selection: TextSelection.collapsed(
-                        offset: next.toString().length,
-                      ),
-                    );
-                  },
-                );
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.discountText != curr.discountText ||
-                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
-                  prev.puntosAUsar != curr.puntosAUsar,
-          builder: (context, posState) {
-            return BlocBuilder<CartCubit, CartState>(
-              buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
-              builder: (context, cartState) {
-                final currentTotal = PosCalculatorUtils.calcularTotalFinal(
-                  discountText: posState.discountText,
-                  isDiscountPercentage: posState.isDiscountPercentage,
-                  pos: posState,
-                  cart: cartState,
-                  ratio: ratio,
-                );
-                return PosDocumentAndCurrencyCard(totalFinal: currentTotal);
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 20),
-        PosSectionLabel('Método de pago y almacén'),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.warehouses != curr.warehouses ||
-                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
-                  prev.accounts != curr.accounts ||
-                  prev.selectedAccountId != curr.selectedAccountId ||
-                  prev.activeShift != curr.activeShift,
-          builder: (context, posState) {
-            final posCubit = context.read<PosCubit>();
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return PaymentWarehouseAccountCard(
-              paymentMethod: posState.paymentMethod,
-              warehouseList: posState.warehouses,
-              selectedWarehouseId: posState.selectedWarehouseId,
-              accountsList: posState.accounts,
-              selectedAccountId: posState.selectedAccountId,
-              activeShift: posState.activeShift,
-              isCredito: isCredito,
-              onCreditoToggle: (isCredito) {
-                if (isCredito) {
-                  posCubit.setPaymentMethod('CRÉDITO');
-                  posCubit.setPuntosAUsar(0);
-                  _puntosCtrl.text = '0';
-                } else {
-                  if (posState.selectedAccountId != null) {
-                    final acc = posState.accounts.firstWhere(
-                      (a) => a['id'] == posState.selectedAccountId,
-                      orElse: () => {},
-                    );
-                    final accName = acc['name'] as String? ?? 'EFECTIVO';
-                    posCubit.setPaymentMethod(accName);
-                  } else {
-                    posCubit.setPaymentMethod('EFECTIVO');
-                  }
-                }
-              },
-              onWarehouseChanged: (v) {
-                posCubit.setWarehouse(v);
-                if (v != null) {
-                  _updateCartItemsStockForWarehouse(v);
-                }
-              },
-              onAccountChanged: (v) {
-                posCubit.setSelectedAccountId(v);
-                if (v != null) {
-                  final acc = posState.accounts.firstWhere(
-                    (a) => a['id'] == v,
-                    orElse: () => {},
-                  );
-                  final accName = acc['name'] as String? ?? 'OTRO';
-                  posCubit.setPaymentMethod(accName);
-                }
-              },
-            );
-          },
-        ),
-      ],
     );
   }
 
@@ -1221,7 +1014,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isCredito) ...[
-                  _CreditWarningCard(
+                  PosCreditWarningCard(
                     clienteSeleccionado: posState.selectedClientId != null,
                     creditActivo: PosCalculatorUtils.isCreditActivo(
                       posState.creditInfo,
@@ -1242,11 +1035,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 ],
 
                 if (!isCredito) ...[
-                  _buildCustomDiscountCard(
-                    posState,
-                    cartState,
-                    ratio,
-                    puntosSeguros,
+                  PosCustomDiscountCard(
+                    discountController: _descuentoCtrl,
+                    isPercentageNotifier: _isDiscountPercentageNotifier,
+                    posState: posState,
+                    cartState: cartState,
+                    ratio: ratio,
+                    puntosSeguros: puntosSeguros,
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -1287,665 +1082,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildCustomDiscountCard(
-    PosState posState,
-    CartState cartState,
-    double ratio,
-    int puntosSeguros,
-  ) {
-    final descuentoExtra = PosCalculatorUtils.getCustomDiscountAmount(
-      discountText: _descuentoCtrl.text,
-      isDiscountPercentage: _isDiscountPercentageNotifier.value,
-      pos: posState,
-      cart: cartState,
-      ratio: ratio,
-    );
-    final maxAllowed = cartState.totalAmount - (puntosSeguros * ratio);
-    final descuentoExcedido = descuentoExtra > maxAllowed;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(
-          color: descuentoExcedido ? AppColors.danger : Colors.grey.shade200,
-        ),
-        boxShadow: AppColors.cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.sell_outlined, size: 20, color: Colors.grey.shade700),
-              const SizedBox(width: 8),
-              const Text(
-                'Descuento Extra',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: TextField(
-                    controller: _descuentoCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    // Restringe la entrada a números con máximo 2 decimales.
-                    // Elimina el callback vacío onChanged — el ListenableBuilder
-                    // padre ya reacciona al controller automáticamente.
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}'),
-                      ),
-                    ],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '0.00',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap:
-                              () => _isDiscountPercentageNotifier.value = false,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            decoration: BoxDecoration(
-                              color:
-                                  !_isDiscountPercentageNotifier.value
-                                      ? Colors.white
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusSm,
-                              ),
-                              boxShadow:
-                                  !_isDiscountPercentageNotifier.value
-                                      ? [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.05,
-                                          ),
-                                          blurRadius: 4,
-                                        ),
-                                      ]
-                                      : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'S/',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    !_isDiscountPercentageNotifier.value
-                                        ? AppColors.primary
-                                        : Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap:
-                              () => _isDiscountPercentageNotifier.value = true,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            decoration: BoxDecoration(
-                              color:
-                                  _isDiscountPercentageNotifier.value
-                                      ? Colors.white
-                                      : Colors.transparent,
-                              borderRadius: BorderRadius.circular(
-                                AppColors.radiusSm,
-                              ),
-                              boxShadow:
-                                  _isDiscountPercentageNotifier.value
-                                      ? [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.05,
-                                          ),
-                                          blurRadius: 4,
-                                        ),
-                                      ]
-                                      : [],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "%",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color:
-                                    _isDiscountPercentageNotifier.value
-                                        ? AppColors.primary
-                                        : Colors.grey.shade600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (descuentoExcedido)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.warning_rounded,
-                    size: 14,
-                    color: AppColors.danger,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      "No puede superar los S/ ${maxAllowed.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        color: AppColors.danger,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStickyActionBar(double ratio) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, -4),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.puntosAUsar != curr.puntosAUsar ||
-                  prev.selectedClientId != curr.selectedClientId ||
-                  prev.selectedAccountId != curr.selectedAccountId ||
-                  prev.activeShift != curr.activeShift ||
-                  prev.creditInfo != curr.creditInfo ||
-                  prev.status != curr.status,
-          builder: (context, posState) {
-            return BlocBuilder<CartCubit, CartState>(
-              buildWhen:
-                  (prev, curr) =>
-                      prev.totalAmount != curr.totalAmount ||
-                      prev.items.isEmpty != curr.items.isEmpty,
-              builder: (context, cartState) {
-                final posCubit = context.read<PosCubit>();
-                final cartCubit = context.read<CartCubit>();
-                final isCredito = posState.paymentMethod == 'CRÉDITO';
-                final puntosSeguros = PosCalculatorUtils.clampPointsValue(
-                  posState.puntosAUsar,
-                  posState,
-                  cartState,
-                  ratio,
-                );
-                final descuentoExtra =
-                    PosCalculatorUtils.getCustomDiscountAmount(
-                      discountText: _descuentoCtrl.text,
-                      isDiscountPercentage: _isDiscountPercentageNotifier.value,
-                      pos: posState,
-                      cart: cartState,
-                      ratio: ratio,
-                    );
-                final descuentoExcedido =
-                    descuentoExtra >
-                    (cartState.totalAmount - (puntosSeguros * ratio));
-
-                // Usa el helper _calcTotal para no recalcular el total 3 veces por frame.
-                final totalFinal = _calcTotal(posState, cartState, ratio);
-
-                final disp = PosCalculatorUtils.getCreditDisponible(
-                  posState.creditInfo,
-                );
-                final creditoInsuficiente =
-                    isCredito &&
-                    posState.selectedClientId != null &&
-                    PosCalculatorUtils.isCreditActivo(posState.creditInfo) &&
-                    disp < totalFinal;
-                final creditoSinCliente =
-                    isCredito && posState.selectedClientId == null;
-
-                // Unificado con la misma lógica booleana que usa _processSale,
-                // eliminando el magic string 'CAJA' que era inconsistente.
-                final accountData = posState.accounts.firstWhere(
-                  (a) => a['id'] == posState.selectedAccountId,
-                  orElse: () => {},
-                );
-                final requiresShift =
-                    accountData['is_cash_register'] == true ||
-                    accountData['requires_shift'] == true;
-                final noCajaAbierta =
-                    !isCredito &&
-                    posState.selectedAccountId != null &&
-                    requiresShift &&
-                    posState.activeShift == null;
-
-                final puedeVender =
-                    cartState.items.isNotEmpty &&
-                    !descuentoExcedido &&
-                    !creditoInsuficiente &&
-                    !creditoSinCliente &&
-                    !noCajaAbierta;
-
-                // Combina el estado del BLoC con el mutex local para máxima seguridad.
-                final isProcessingSale =
-                    posState.status == PosStatus.loading || _isProcessing;
-
-                return Stack(
-                  children: [
-                    Row(
-                      children: [
-                        // Botón Secundario: Guardar Borrador
-                        SizedBox(
-                          height: 50,
-                          child: Tooltip(
-                            message: 'Guardar orden como borrador',
-                            child: OutlinedButton(
-                              onPressed:
-                                  (isProcessingSale ||
-                                          cartState.items.isEmpty ||
-                                          descuentoExcedido)
-                                      ? null
-                                      : () => _processSale(
-                                        posCubit,
-                                        cartCubit,
-                                        isDraft: true,
-                                      ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textPrimary,
-                                backgroundColor: Colors.white,
-                                disabledForegroundColor: AppColors.textMuted,
-                                side: BorderSide(
-                                  color:
-                                      (cartState.items.isEmpty ||
-                                              descuentoExcedido)
-                                          ? Colors.grey.shade200
-                                          : AppColors.border,
-                                  width: 1.2,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.bookmark_add_outlined, size: 18),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Borrador',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // Botón Principal: Cobrar (CTA)
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed:
-                                  (!puedeVender || isProcessingSale)
-                                      ? null
-                                      : () => _processSale(
-                                        posCubit,
-                                        cartCubit,
-                                        isDraft: false,
-                                      ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.teal,
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                foregroundColor: Colors.white,
-                                disabledForegroundColor: Colors.grey.shade500,
-                                elevation: puedeVender ? 2 : 0,
-                                shadowColor: AppColors.teal.withValues(
-                                  alpha: 0.35,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                              ),
-                              child:
-                                  isProcessingSale
-                                      ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          valueColor: AlwaysStoppedAnimation(
-                                            Colors.white,
-                                          ),
-                                        ),
-                                      )
-                                      : Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons
-                                                .shopping_cart_checkout_rounded,
-                                            size: 19,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Flexible(
-                                            child: Text(
-                                              isCredito
-                                                  ? 'Vender a crédito'
-                                                  : 'Cobrar S/ ${totalFinal.toStringAsFixed(2)}',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 14.5,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: -0.2,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isProcessingSale)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          alignment: Alignment.center,
-                          child: const CircularProgressIndicator(),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _CreditWarningCard extends StatelessWidget {
-  final bool clienteSeleccionado;
-  final bool creditActivo;
-  final double creditDisponible;
-  final double totalFinal;
-  final Map<String, dynamic>? creditInfo;
-
-  const _CreditWarningCard({
-    required this.clienteSeleccionado,
-    required this.creditActivo,
-    required this.creditDisponible,
-    required this.totalFinal,
-    required this.creditInfo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!clienteSeleccionado) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.deepOrange.shade50,
-          borderRadius: BorderRadius.circular(AppColors.radius),
-          border: Border.all(color: Colors.deepOrange.shade200),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.warning_rounded, color: Colors.deepOrange, size: 18),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Debes seleccionar un cliente para ventas a crédito.',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.deepOrange,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (!creditActivo) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(AppColors.radius),
-          border: Border.all(color: Colors.red.shade200),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.block_rounded, color: Colors.red, size: 18),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Este cliente no tiene línea de crédito activa.',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final limit = (creditInfo!['credit_limit'] as num).toDouble();
-    final isUnlimited = limit <= 0;
-    final debt = (creditInfo!['current_debt'] as num).toDouble();
-    final insuficiente = creditDisponible < totalFinal;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: insuficiente ? Colors.red.shade50 : Colors.green.shade50,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(
-          color: insuficiente ? Colors.red.shade200 : Colors.green.shade200,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                insuficiente
-                    ? Icons.warning_rounded
-                    : Icons.check_circle_rounded,
-                color: insuficiente ? Colors.red : Colors.green,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                insuficiente
-                    ? 'Crédito insuficiente'
-                    : (isUnlimited
-                        ? 'Crédito ilimitado disponible'
-                        : 'Crédito disponible'),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: insuficiente ? Colors.red : Colors.green.shade800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Límite',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    Text(
-                      isUnlimited
-                          ? 'Sin límite (∞)'
-                          : 'S/ ${limit.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Deuda actual',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    Text(
-                      'S/ ${debt.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.deepOrange,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Disponible',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    Text(
-                      isUnlimited
-                          ? 'Ilimitado'
-                          : 'S/ ${creditDisponible.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            insuficiente ? Colors.red : Colors.green.shade800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (insuficiente)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Necesitas S/ ${totalFinal.toStringAsFixed(2)} pero solo hay S/ ${creditDisponible.toStringAsFixed(2)} disponibles.',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.red,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 }

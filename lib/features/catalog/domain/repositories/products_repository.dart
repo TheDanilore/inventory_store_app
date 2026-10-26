@@ -25,7 +25,11 @@ abstract class ProductsRepository {
     CatalogStockFilter? stockFilter,
     CatalogSortOption? sortOption,
   });
-  Future<Either<Failure, ProductEntity?>> getProductById(String id);
+  Future<Either<Failure, ProductEntity?>> getProductById(
+    String id, {
+    bool forceRefresh = false,
+  });
+  ProductEntity? getCachedProductById(String id);
   Future<Either<Failure, Map<String, int>>> getProductStock({
     List<String>? productIds,
   });

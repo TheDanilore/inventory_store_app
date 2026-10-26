@@ -22,5 +22,8 @@ abstract class CategoriesRepository {
 
   Future<Either<Failure, List<CategoryEntity>>> getCategories({
     bool activeOnly = false,
+    bool forceRefresh = false,
   });
+
+  List<CategoryEntity>? getCachedCategories({bool activeOnly = false});
 }

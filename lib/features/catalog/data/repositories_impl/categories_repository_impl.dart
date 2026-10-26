@@ -11,6 +11,29 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/categor
 class CategoriesRepositoryImpl implements CategoriesRepository {
   final SupabaseClient _supabase;
 
+  // ─── CACHÉ L1 EN MEMORIA (TTL: 15 MINUTOS) ──────────────────────────────
+  List<CategoryEntity>? _categoriesCache;
+  DateTime? _cacheTimestamp;
+  static const Duration _cacheTtl = Duration(minutes: 15);
+
+  void _invalidateCache() {
+    _categoriesCache = null;
+    _cacheTimestamp = null;
+  }
+
+  @override
+  List<CategoryEntity>? getCachedCategories({bool activeOnly = false}) {
+    if (_categoriesCache != null && _cacheTimestamp != null) {
+      if (DateTime.now().difference(_cacheTimestamp!) < _cacheTtl) {
+        if (activeOnly) {
+          return _categoriesCache!.where((c) => c.isActive).toList();
+        }
+        return _categoriesCache;
+      }
+    }
+    return null;
+  }
+
   CategoriesRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
@@ -53,6 +76,7 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
               .select()
               .single();
       final model = CategoryModel.fromJson(response);
+      _invalidateCache();
       return right(model.toEntity());
     } catch (e, st) {
       return _handleError(e, st);
@@ -77,6 +101,7 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
             if (profileId != null) 'updated_by': profileId,
           })
           .eq('id', id);
+      _invalidateCache();
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -87,6 +112,7 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
   Future<Either<Failure, void>> deleteCategory(String id) async {
     try {
       await _supabase.from('categories').delete().eq('id', id);
+      _invalidateCache();
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -96,23 +122,42 @@ class CategoriesRepositoryImpl implements CategoriesRepository {
   @override
   Future<Either<Failure, List<CategoryEntity>>> getCategories({
     bool activeOnly = false,
+    bool forceRefresh = false,
   }) async {
+    if (!forceRefresh) {
+      final cached = getCachedCategories(activeOnly: activeOnly);
+      if (cached != null) {
+        return right(cached);
+      }
+    }
+
     try {
       var query = _supabase
           .from('categories')
           .select(
             'id, name, description, is_active, created_at, products:products(count)',
           );
-      if (activeOnly) {
-        query = query.eq('is_active', true);
-      }
       final response = await query.order('name');
       final models =
           List<Map<String, dynamic>>.from(
             response,
           ).map(CategoryModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
+      final allCategories = models.map((m) => m.toEntity()).toList();
+
+      _categoriesCache = allCategories;
+      _cacheTimestamp = DateTime.now();
+
+      if (activeOnly) {
+        return right(allCategories.where((c) => c.isActive).toList());
+      }
+      return right(allCategories);
     } catch (e, st) {
+      if (_categoriesCache != null) {
+        if (activeOnly) {
+          return right(_categoriesCache!.where((c) => c.isActive).toList());
+        }
+        return right(_categoriesCache!);
+      }
       return _handleError(e, st);
     }
   }

@@ -12,7 +12,14 @@ class GetBrandsUC {
 
   Future<Either<Failure, List<BrandEntity>>> call({
     bool activeOnly = false,
+    bool forceRefresh = false,
   }) async {
-    return await repository.getBrands(activeOnly: activeOnly);
+    return await repository.getBrands(
+      activeOnly: activeOnly,
+      forceRefresh: forceRefresh,
+    );
   }
+
+  List<BrandEntity>? getCached({bool activeOnly = false}) =>
+      repository.getCachedBrands(activeOnly: activeOnly);
 }

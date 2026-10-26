@@ -21,6 +21,11 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/product
 class ProductsRepositoryImpl implements ProductsRepository {
   final SupabaseClient _supabase;
 
+  // L1 In-Memory Cache para detalles de producto (5 min TTL)
+  final Map<String, ({ProductEntity product, DateTime timestamp})>
+  _productDetailCache = {};
+  static const Duration _productCacheTtl = Duration(minutes: 5);
+
   ProductsRepositoryImpl(this._supabase);
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
@@ -269,7 +274,26 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
-  Future<Either<Failure, ProductEntity?>> getProductById(String id) async {
+  ProductEntity? getCachedProductById(String id) {
+    final entry = _productDetailCache[id];
+    if (entry != null &&
+        DateTime.now().difference(entry.timestamp) < _productCacheTtl) {
+      return entry.product;
+    }
+    return null;
+  }
+
+  @override
+  Future<Either<Failure, ProductEntity?>> getProductById(
+    String id, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = getCachedProductById(id);
+      if (cached != null) {
+        return right(cached);
+      }
+    }
     try {
       final response =
           await _supabase
@@ -280,9 +304,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
               .eq('id', id)
               .maybeSingle();
 
-      if (response == null) return right(null);
+      if (response == null) {
+        _productDetailCache.remove(id);
+        return right(null);
+      }
       final model = ProductModel.fromJson(response);
-      return right(model.toEntity());
+      final entity = model.toEntity();
+      _productDetailCache[id] = (product: entity, timestamp: DateTime.now());
+      return right(entity);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -324,6 +353,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
           .from('products')
           .update({'is_active': isActive})
           .eq('id', productId);
+      _productDetailCache.remove(productId);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -1439,6 +1469,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
         'save_product_complete',
         params: {'payload': jsonPayload},
       );
+      if (payload.product.id.isNotEmpty) {
+        _productDetailCache.remove(payload.product.id);
+      }
       return right(null);
     } catch (e, st) {
       if (uploadedPaths.isNotEmpty) {

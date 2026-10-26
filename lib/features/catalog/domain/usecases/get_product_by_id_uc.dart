@@ -12,7 +12,14 @@ class GetProductByIdUC {
   final ProductsRepository repository;
   GetProductByIdUC(this.repository);
 
-  Future<Either<Failure, ProductEntity?>> call(String id) {
-    return repository.getProductById(id);
+  Future<Either<Failure, ProductEntity?>> call(
+    String id, {
+    bool forceRefresh = false,
+  }) {
+    return repository.getProductById(id, forceRefresh: forceRefresh);
+  }
+
+  ProductEntity? getCached(String id) {
+    return repository.getCachedProductById(id);
   }
 }

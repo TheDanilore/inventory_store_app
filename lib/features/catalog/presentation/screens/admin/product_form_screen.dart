@@ -1,35 +1,24 @@
-import 'package:inventory_store_app/core/di/injection_container.dart';
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
+import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_brands_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
+import 'package:inventory_store_app/features/catalog/domain/usecases/get_product_by_id_uc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/product_form_state.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_primary_button.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-
-// Secciones modulares
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_images_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_basic_info_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_pricing_inventory_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_config_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_details_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_ingredients_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_batch_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_status_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_sales_channels_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_changelog_card.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_seo_section.dart';
-import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_variants_table_view.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/layouts/product_form_desktop_layout.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/layouts/product_form_mobile_layout.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/layouts/product_form_skeleton.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_preview_sheet.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
 class ProductFormScreen extends StatelessWidget {
   final ProductEntity? productToEdit;
@@ -71,16 +60,36 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
   final _nombreCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
-  // ── Control de expansión masiva y filtro de variantes ────────────────────
+  // ── Control de expansión masiva en Mobile ────────────────────────────────
   bool? _allExpanded;
-  final _variantSearchCtrl = TextEditingController();
-  String _variantSearchTerm = '';
 
   bool _initialized = false;
+  bool _isShowingPopDialog = false;
+  bool _allowExplicitPop = false;
 
   @override
   void initState() {
     super.initState();
+    // Optimización Zero-Shimmer: Si los datos o entidades ya residen en caché L1,
+    // precargamos los controladores síncronamente antes del primer frame.
+    final effectiveId = widget.productToEdit?.id ?? widget.productId;
+    final cachedProduct =
+        widget.productToEdit ??
+        (effectiveId != null
+            ? sl<GetProductByIdUC>().getCached(effectiveId)
+            : null);
+
+    if (cachedProduct != null) {
+      _nombreCtrl.text = cachedProduct.name;
+      _descCtrl.text = cachedProduct.description ?? '';
+      _initialized = true;
+    } else if (widget.productId == null && widget.productToEdit == null) {
+      if (sl<GetCategoriesUC>().getCached() != null &&
+          sl<GetBrandsUC>().getCached() != null) {
+        _initialized = true;
+      }
+    }
+
     _nombreCtrl.addListener(_onFieldInput);
     _descCtrl.addListener(_onFieldInput);
     _loadData();
@@ -118,12 +127,8 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     _descCtrl.removeListener(_onFieldInput);
     _nombreCtrl.dispose();
     _descCtrl.dispose();
-    _variantSearchCtrl.dispose();
     super.dispose();
   }
-
-  bool _isShowingPopDialog = false;
-  bool _allowExplicitPop = false;
 
   Future<bool> _onWillPop() async {
     final cubit = context.read<ProductFormCubit>();
@@ -191,12 +196,11 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     }
   }
 
-  // Sale del formulario hacia donde se vino (pop real o historial de AppBackHandler).
   void _exitForm([Object? result]) {
     if (Navigator.canPop(context)) {
       Navigator.pop(context, result);
     } else {
-      AppBackHandler.handleBack(context); // sin onCustomBack → usa el historial
+      AppBackHandler.handleBack(context);
     }
   }
 
@@ -274,10 +278,10 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
         buildWhen:
             (prev, current) =>
                 prev.isInitializingData != current.isInitializingData ||
+                prev.isBackgroundSyncing != current.isBackgroundSyncing ||
                 prev.hasErrorLoading != current.hasErrorLoading ||
                 prev.errorMessage != current.errorMessage,
         builder: (context, state) {
-          final cubit = context.read<ProductFormCubit>();
           final canPopNow = _allowExplicitPop;
           return PopScope(
             canPop: canPopNow,
@@ -341,7 +345,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                   backgroundColor: AppColors.background,
                   body:
                       !_initialized || state.isInitializingData
-                          ? const _ProductFormSkeleton()
+                          ? const ProductFormSkeleton()
                           : state.hasErrorLoading
                           ? _buildErrorState()
                           : LayoutBuilder(
@@ -352,23 +356,47 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                 child: Stack(
                                   children: [
                                     if (isDesktop)
-                                      _buildDesktopSplitLayout(
-                                        context,
-                                        cubit,
-                                        isEdit,
+                                      ProductFormDesktopLayout(
+                                        isEdit: isEdit,
+                                        nombreCtrl: _nombreCtrl,
+                                        descCtrl: _descCtrl,
+                                        onExit: _handleExit,
+                                        onPreview: _openPreview,
+                                        onSave: _guardar,
                                       )
                                     else
-                                      _buildMobileSingleColumnLayout(
-                                        context,
-                                        cubit,
-                                        isEdit,
+                                      ProductFormMobileLayout(
+                                        isEdit: isEdit,
+                                        nombreCtrl: _nombreCtrl,
+                                        descCtrl: _descCtrl,
+                                        allExpanded: _allExpanded,
+                                        onToggleExpandCollapseAll:
+                                            _toggleExpandCollapseAll,
+                                        onExit: _handleExit,
+                                        onPreview: _openPreview,
+                                        onSave: _guardar,
                                       ),
+
+                                    // Indicador sutil de sincronización en segundo plano (SWR)
+                                    if (state.isBackgroundSyncing)
+                                      const Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: LinearProgressIndicator(
+                                          minHeight: 2.5,
+                                          color: AppColors.primary,
+                                          backgroundColor: Colors.transparent,
+                                        ),
+                                      ),
+
+                                    // Overlay de guardado
                                     BlocSelector<
                                       ProductFormCubit,
                                       ProductFormState,
                                       bool
                                     >(
-                                      selector: (state) => state.isSaving,
+                                      selector: (s) => s.isSaving,
                                       builder: (context, isSaving) {
                                         if (!isSaving) {
                                           return const SizedBox.shrink();
@@ -444,1305 +472,6 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
           ],
         ),
       ),
-    );
-  }
-
-  // ── Header de Página en Canvas (Estilo Kusale ERP) ──────────────────────────
-  Widget _buildKusalePageHeader(
-    BuildContext context,
-    ProductFormCubit cubit,
-    bool isEdit,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Título Principal y Subtítulo Ejecutivo (Las migas de pan ya viven en la barra superior persistente)
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isEdit ? 'Editar Producto' : 'Nuevo Producto',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                isEdit
-                    ? 'Actualiza los datos técnicos, inventario, precios y variantes'
-                    : 'Registra un nuevo producto, configura precios, lotes y galería multimedia',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Acciones Gemelas de Cabecera (Kusale Header Action Buttons)
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Tooltip(
-              message: 'Descartar cambios y salir (Esc)',
-              waitDuration: const Duration(milliseconds: 300),
-              child: OutlinedButton(
-                onPressed: _handleExit,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: BorderSide(color: Colors.grey.shade300),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
-                  ),
-                ),
-                child: const Text(
-                  'Descartar',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Tooltip(
-              message: 'Vista previa de la ficha en tienda (Ctrl + P / ⌘ + P)',
-              child: OutlinedButton.icon(
-                onPressed: _openPreview,
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: const Text('Vista Previa'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF4F46E5),
-                  side: const BorderSide(color: Color(0xFFC7D2FE)),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
-                  ),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            BlocSelector<ProductFormCubit, ProductFormState, bool>(
-              selector: (s) => s.isSaving,
-              builder: (context, isSaving) {
-                return Tooltip(
-                  message:
-                      isEdit
-                          ? 'Guardar cambios (Alt + G / Ctrl + S)'
-                          : 'Publicar producto en catálogo (Alt + G / Ctrl + S)',
-                  waitDuration: const Duration(milliseconds: 300),
-                  child: FilledButton.icon(
-                    onPressed: isSaving ? null : _guardar,
-                    icon:
-                        isSaving
-                            ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                            : const Icon(Icons.check_rounded, size: 16),
-                    label: Text(
-                      isEdit ? 'Actualizar Producto' : 'Guardar Producto',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppColors.radius),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ── Layout Desktop: Split ERP 2 Columnas (width >= 1024) ────────────────────
-  Widget _buildDesktopSplitLayout(
-    BuildContext context,
-    ProductFormCubit cubit,
-    bool isEdit,
-  ) {
-    return Stack(
-      children: [
-        Scrollbar(
-          thumbVisibility: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1280),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildKusalePageHeader(context, cubit, isEdit),
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Columna Principal Izquierda (65% ancho: flex 13)
-                        Expanded(
-                          flex: 13,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ProductBasicInfoSection(
-                                nombreCtrl: _nombreCtrl,
-                                descCtrl: _descCtrl,
-                              ),
-                              const SizedBox(height: 20),
-                              const ProductPricingInventorySection(),
-                              BlocBuilder<ProductFormCubit, ProductFormState>(
-                                buildWhen:
-                                    (p, c) =>
-                                        p.hasMultipleVariants !=
-                                        c.hasMultipleVariants,
-                                builder: (context, state) {
-                                  if (!state.hasMultipleVariants) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return const Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(height: 20),
-                                      ProductVariantsTableView(),
-                                    ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 20),
-                              ProductSeoSection(
-                                nombreCtrl: _nombreCtrl,
-                                descCtrl: _descCtrl,
-                              ),
-                              const SizedBox(height: 20),
-                              const ProductDetailsSection(),
-                              const SizedBox(height: 20),
-                              const ProductIngredientsSection(),
-                              const SizedBox(height: 20),
-                              const ProductBatchSection(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        // Columna Lateral Derecha (35% ancho: flex 7)
-                        Expanded(
-                          flex: 7,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const ProductImagesSection(),
-                              const SizedBox(height: 20),
-                              const ProductStatusCard(),
-                              const SizedBox(height: 20),
-                              const ProductSalesChannelsCard(),
-                              const SizedBox(height: 20),
-                              const ProductConfigSection(),
-                              const SizedBox(height: 20),
-                              const ProductChangelogCard(),
-                              const SizedBox(height: 20),
-                              _buildDesktopJumpNav(cubit, isEdit),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Barra flotante Glassmorphism de guardado (Estilo Linear / Stripe Island)
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 20,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 820),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.border.withValues(alpha: 0.85),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Micro-estado de cambios pendientes (Reactivo vía BlocSelector)
-                          BlocSelector<
-                            ProductFormCubit,
-                            ProductFormState,
-                            bool
-                          >(
-                            selector: (s) => s.isDirty,
-                            builder: (context, isDirty) {
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isDirty
-                                          ? Colors.orange.shade50
-                                          : Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color:
-                                        isDirty
-                                            ? Colors.orange.shade200
-                                            : Colors.green.shade200,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isDirty
-                                                ? Colors.orange.shade600
-                                                : Colors.green.shade600,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 7),
-                                    Text(
-                                      isDirty
-                                          ? 'Cambios sin guardar'
-                                          : 'Cambios al día',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            isDirty
-                                                ? Colors.orange.shade800
-                                                : Colors.green.shade800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: ListenableBuilder(
-                              listenable: _nombreCtrl,
-                              builder: (context, _) {
-                                final name = _nombreCtrl.text.trim();
-                                return Text(
-                                  name.isNotEmpty
-                                      ? name
-                                      : (isEdit
-                                          ? 'Editar Producto'
-                                          : 'Nuevo Producto'),
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Tooltip(
-                            message: 'Descartar cambios y salir (Esc)',
-                            waitDuration: const Duration(milliseconds: 300),
-                            child: OutlinedButton(
-                              onPressed: _handleExit,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: BorderSide(color: Colors.grey.shade300),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 11,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radius,
-                                  ),
-                                ),
-                              ),
-                              child: const Text(
-                                'Descartar',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          BlocSelector<
-                            ProductFormCubit,
-                            ProductFormState,
-                            bool
-                          >(
-                            selector: (s) => s.isSaving,
-                            builder: (context, isSaving) {
-                              return Tooltip(
-                                message:
-                                    isEdit
-                                        ? 'Guardar cambios del producto (Alt + G / Ctrl + S)'
-                                        : 'Publicar nuevo producto en catálogo (Alt + G / Ctrl + S)',
-                                waitDuration: const Duration(milliseconds: 300),
-                                child: FilledButton.icon(
-                                  onPressed: isSaving ? null : _guardar,
-                                  icon:
-                                      isSaving
-                                          ? const SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                          : const Icon(
-                                            Icons.check_rounded,
-                                            size: 16,
-                                          ),
-                                  label: Text(
-                                    isEdit
-                                        ? 'Actualizar Producto'
-                                        : 'Guardar Producto',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.success,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 11,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppColors.radius,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Jump-Nav lateral: navega a secciones del formulario ─────────────────────
-  Widget _buildDesktopJumpNav(ProductFormCubit cubit, bool isEdit) {
-    final sections = [
-      (Icons.info_outline_rounded, 'Info básica'),
-      (Icons.attach_money_rounded, 'Precios e Inventario'),
-      (Icons.tune_rounded, 'Variantes'),
-      (Icons.settings_outlined, 'Configuración'),
-      (Icons.list_alt_rounded, 'Detalles Técnicos'),
-      (Icons.science_outlined, 'Ingredientes'),
-      (Icons.inventory_outlined, 'Lotes'),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.format_list_bulleted_rounded,
-                  size: 17,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Secciones del Formulario',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          const SizedBox(height: 12),
-          // Links de sección
-          ...sections.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final (icon, label) = entry.value;
-            // Ocultar variantes si no aplica
-            if (idx == 2) {
-              return BlocSelector<ProductFormCubit, ProductFormState, bool>(
-                selector: (s) => s.hasMultipleVariants,
-                builder: (context, hasMultiple) {
-                  if (!hasMultiple) return const SizedBox.shrink();
-                  return _buildJumpNavItem(icon, label);
-                },
-              );
-            }
-            return _buildJumpNavItem(icon, label);
-          }),
-          const SizedBox(height: 14),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          const SizedBox(height: 14),
-          // Estado de cambios
-          BlocBuilder<ProductFormCubit, ProductFormState>(
-            buildWhen: (p, c) => p.isDirty != c.isDirty,
-            builder: (context, state) {
-              final isDirty = cubit.hasUnsavedChanges;
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: isDirty ? Colors.orange.shade50 : Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(9),
-                  border: Border.all(
-                    color:
-                        isDirty
-                            ? Colors.orange.shade200
-                            : Colors.green.shade200,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color:
-                            isDirty
-                                ? Colors.orange.shade600
-                                : Colors.green.shade600,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isDirty ? 'Cambios sin guardar' : 'Todo guardado',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isDirty
-                                  ? Colors.orange.shade800
-                                  : Colors.green.shade800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          // Tip de atajos
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.keyboard_outlined,
-                  size: 14,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                        height: 1.4,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: isEdit ? 'Ctrl+S' : 'Alt+G',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'monospace',
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const TextSpan(text: ' para guardar · '),
-                        const TextSpan(
-                          text: 'Esc',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'monospace',
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const TextSpan(text: ' para salir'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildJumpNavItem(IconData icon, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(7),
-        onTap: () {}, // Scroll-to en implementación futura con ScrollController
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-          child: Row(
-            children: [
-              Icon(icon, size: 15, color: AppColors.textSecondary),
-              const SizedBox(width: 9),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              const Icon(
-                Icons.keyboard_arrow_right_rounded,
-                size: 15,
-                color: AppColors.textMuted,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Layout Móvil: 1 Columna Vertical Continua (width < 1024) ─────────────
-  Widget _buildMobileSingleColumnLayout(
-    BuildContext context,
-    ProductFormCubit cubit,
-    bool isEdit,
-  ) {
-    return Stack(
-      children: [
-        CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16.0),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const ProductImagesSection(),
-                  const SizedBox(height: 16),
-                  const ProductStatusCard(),
-                  const SizedBox(height: 16),
-                  const ProductSalesChannelsCard(),
-                  const SizedBox(height: 16),
-                  ProductBasicInfoSection(
-                    nombreCtrl: _nombreCtrl,
-                    descCtrl: _descCtrl,
-                  ),
-                  const SizedBox(height: 16),
-                  const ProductPricingInventorySection(),
-                  BlocBuilder<ProductFormCubit, ProductFormState>(
-                    buildWhen:
-                        (p, c) =>
-                            p.hasMultipleVariants != c.hasMultipleVariants,
-                    builder: (context, state) {
-                      if (!state.hasMultipleVariants) {
-                        return const SizedBox.shrink();
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 16),
-                          _buildVariantsHeader(cubit),
-                          const SizedBox(height: 12),
-                          _buildVariantsList(cubit),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  ProductSeoSection(
-                    nombreCtrl: _nombreCtrl,
-                    descCtrl: _descCtrl,
-                  ),
-                  const SizedBox(height: 16),
-                  const ProductConfigSection(),
-                  const SizedBox(height: 16),
-                  const ProductDetailsSection(),
-                  const SizedBox(height: 16),
-                  const ProductIngredientsSection(),
-                  const SizedBox(height: 16),
-                  const ProductBatchSection(),
-                  const SizedBox(height: 16),
-                  const ProductChangelogCard(),
-                ]),
-              ),
-            ),
-            const SliverPadding(padding: EdgeInsets.only(bottom: 110)),
-          ],
-        ),
-
-        // Barra flotante Glassmorphism de guardado en Mobile
-        Positioned(
-          left: 12,
-          right: 12,
-          bottom: 12,
-          child: SafeArea(
-            top: false,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withValues(alpha: 0.90),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.85),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        // Micro-estado reactivo vía BlocSelector
-                        BlocSelector<ProductFormCubit, ProductFormState, bool>(
-                          selector: (s) => s.isDirty,
-                          builder: (context, isDirty) {
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDirty
-                                        ? Colors.orange.shade50
-                                        : Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      isDirty
-                                          ? Colors.orange.shade200
-                                          : Colors.green.shade200,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          isDirty
-                                              ? Colors.orange.shade600
-                                              : Colors.green.shade600,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    isDirty ? 'Sin guardar' : 'Al día',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.bold,
-                                      color:
-                                          isDirty
-                                              ? Colors.orange.shade800
-                                              : Colors.green.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                        const Spacer(),
-                        Tooltip(
-                          message: 'Vista previa (Ctrl + P)',
-                          child: IconButton(
-                            onPressed: _openPreview,
-                            icon: const Icon(
-                              Icons.visibility_outlined,
-                              size: 20,
-                              color: Color(0xFF4F46E5),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Tooltip(
-                          message: 'Descartar cambios y salir (Esc)',
-                          child: OutlinedButton(
-                            onPressed: _handleExit,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.textSecondary,
-                              side: BorderSide(color: Colors.grey.shade300),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  AppColors.radius,
-                                ),
-                              ),
-                            ),
-                            child: const Text(
-                              'Salir',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        BlocSelector<ProductFormCubit, ProductFormState, bool>(
-                          selector: (s) => s.isSaving,
-                          builder: (context, isSaving) {
-                            return FilledButton.icon(
-                              onPressed: isSaving ? null : _guardar,
-                              icon:
-                                  isSaving
-                                      ? const SizedBox(
-                                        width: 13,
-                                        height: 13,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                      : const Icon(
-                                        Icons.check_rounded,
-                                        size: 15,
-                                      ),
-                              label: Text(
-                                isEdit ? 'Actualizar' : 'Guardar',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.success,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppColors.radius,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Headers & Listas de Variantes ──────────────────────────────────────────
-  Widget _buildVariantsHeader(ProductFormCubit cubit) {
-    return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen:
-          (p, c) =>
-              p.variantDrafts.length != c.variantDrafts.length ||
-              p.variantDrafts.where((d) => d.isActive).length !=
-                  c.variantDrafts.where((d) => d.isActive).length,
-      builder: (context, state) {
-        final count = state.variantDrafts.length;
-        final activeCount = state.variantDrafts.where((d) => d.isActive).length;
-        final isAllExpanded = _allExpanded == true;
-        final isMobile = MediaQuery.sizeOf(context).width < 640;
-
-        return Row(
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Variantes',
-                  style: TextStyle(
-                    fontSize: isMobile ? 16 : 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isMobile
-                        ? '$count var.'
-                        : '$count ${count == 1 ? 'variante' : 'variantes'}${count > 0 ? ' • $activeCount activas' : ''}',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            if (count > 1) ...[
-              Tooltip(
-                message: isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
-                waitDuration: const Duration(milliseconds: 300),
-                child:
-                    isMobile
-                        ? IconButton(
-                          onPressed: _toggleExpandCollapseAll,
-                          icon: Icon(
-                            isAllExpanded
-                                ? Icons.unfold_less_rounded
-                                : Icons.unfold_more_rounded,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                          padding: const EdgeInsets.all(6),
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                          splashRadius: 16,
-                        )
-                        : TextButton.icon(
-                          onPressed: _toggleExpandCollapseAll,
-                          icon: Icon(
-                            isAllExpanded
-                                ? Icons.unfold_less_rounded
-                                : Icons.unfold_more_rounded,
-                            size: 16,
-                          ),
-                          label: Text(
-                            isAllExpanded ? 'Colapsar todo' : 'Expandir todo',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                          ),
-                        ),
-              ),
-              SizedBox(width: isMobile ? 4 : 6),
-            ],
-            FilledButton.icon(
-              onPressed: cubit.addVariantDraft,
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(
-                isMobile ? 'Agregar' : 'Agregar variante',
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 10 : 12,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppColors.radius),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildVariantsList(ProductFormCubit cubit) {
-    return BlocBuilder<ProductFormCubit, ProductFormState>(
-      buildWhen: (p, c) => p.variantDrafts != c.variantDrafts,
-      builder: (context, state) {
-        if (state.variantDrafts.isEmpty) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.border.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(AppColors.radius),
-            ),
-            child: const Text(
-              'Sin variantes aún. Agrega una si este producto cambia por color, talla, etc.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          );
-        }
-
-        final totalCount = state.variantDrafts.length;
-        final term = _variantSearchTerm.trim().toLowerCase();
-
-        final List<int> filteredIndices = [];
-        for (int i = 0; i < totalCount; i++) {
-          if (term.isEmpty) {
-            filteredIndices.add(i);
-          } else {
-            final d = state.variantDrafts[i];
-            final matchSku = d.sku.toLowerCase().contains(term);
-            final matchNum = (i + 1).toString() == term;
-            final matchAttr = d.selectedAttributes.any((a) {
-              final an = (a['attribute_name'] ?? '').toString().toLowerCase();
-              final vn = (a['value_name'] ?? '').toString().toLowerCase();
-              return an.contains(term) || vn.contains(term);
-            });
-            if (matchSku || matchNum || matchAttr) {
-              filteredIndices.add(i);
-            }
-          }
-        }
-
-        return Column(
-          children: [
-            if (totalCount > 4) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: TextField(
-                  controller: _variantSearchCtrl,
-                  onChanged: (val) => setState(() => _variantSearchTerm = val),
-                  decoration: InputDecoration(
-                    hintText: 'Filtrar variantes por modelo, atributo o SKU...',
-                    hintStyle: TextStyle(
-                      fontSize: 12.5,
-                      color: Colors.grey.shade400,
-                    ),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                    suffixIcon:
-                        _variantSearchTerm.isNotEmpty
-                            ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 16),
-                              onPressed: () {
-                                _variantSearchCtrl.clear();
-                                setState(() => _variantSearchTerm = '');
-                              },
-                            )
-                            : null,
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-            if (filteredIndices.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppColors.radius),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Text(
-                  'No se encontraron variantes que coincidan con "$_variantSearchTerm"',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              )
-            else
-              ...filteredIndices.map((index) {
-                final draft = state.variantDrafts[index];
-                return VariantDraftCard(
-                  key: ValueKey(draft.id ?? 'variant_draft_$index'),
-                  index: index,
-                  draft: draft,
-                  isExpanded: _allExpanded,
-                  onRemove: () => cubit.removeVariantDraft(index),
-                  onDuplicate: () => cubit.duplicateVariantDraft(index),
-                  onActiveChanged: (val) {
-                    cubit.updateVariantDraft(
-                      index,
-                      draft.copyWith(isActive: val),
-                      syncState: true,
-                    );
-                  },
-                  onPickImage: () => cubit.pickVariantImage(index),
-                  onUpdate:
-                      (newDraft, {syncState = false}) =>
-                          cubit.updateVariantDraft(
-                            index,
-                            newDraft,
-                            syncState: syncState,
-                          ),
-                );
-              }),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: cubit.addVariantDraft,
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Agregar otra variante'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radius),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-// ── Skeleton Loader Responsivo ─────────────────────────────────────────────
-class _ProductFormSkeleton extends StatelessWidget {
-  const _ProductFormSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 1024;
-
-        if (isDesktop) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    children: const [
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 180,
-                        borderRadius: 16,
-                      ),
-                      SizedBox(height: 16),
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 250,
-                        borderRadius: 16,
-                      ),
-                      SizedBox(height: 16),
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 200,
-                        borderRadius: 16,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: const [
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 220,
-                        borderRadius: 16,
-                      ),
-                      SizedBox(height: 16),
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 160,
-                        borderRadius: 16,
-                      ),
-                      SizedBox(height: 16),
-                      AppShimmer(
-                        width: double.infinity,
-                        height: 100,
-                        borderRadius: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: const [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [AppShimmer(width: 120, height: 40, borderRadius: 12)],
-            ),
-            SizedBox(height: 16),
-            AppShimmer(width: double.infinity, height: 180, borderRadius: 16),
-            SizedBox(height: 16),
-            AppShimmer(width: double.infinity, height: 300, borderRadius: 16),
-            SizedBox(height: 16),
-            AppShimmer(width: double.infinity, height: 120, borderRadius: 16),
-            SizedBox(height: 16),
-            AppShimmer(width: double.infinity, height: 250, borderRadius: 16),
-          ],
-        );
-      },
     );
   }
 }

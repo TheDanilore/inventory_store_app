@@ -26,6 +26,7 @@ import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checko
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_credit_warning_card.dart';
 
 class DesktopPosPanel extends StatefulWidget {
   final ValueChanged<Map<String, int>>? onSaleCompleted;
@@ -825,7 +826,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isCredito) ...[
-                  _CreditWarningCard(
+                  PosCreditWarningCard(
                     clienteSeleccionado: posState.selectedClientId != null,
                     creditActivo: PosCalculatorUtils.isCreditActivo(
                       posState.creditInfo,
@@ -1446,85 +1447,6 @@ class _SectionTitle extends StatelessWidget {
           letterSpacing: 1.2,
           color: AppColors.textSecondary,
         ),
-      ),
-    );
-  }
-}
-
-class _CreditWarningCard extends StatelessWidget {
-  final bool clienteSeleccionado;
-  final bool creditActivo;
-  final double creditDisponible;
-  final double totalFinal;
-  final Map<String, dynamic>? creditInfo;
-
-  const _CreditWarningCard({
-    required this.clienteSeleccionado,
-    required this.creditActivo,
-    required this.creditDisponible,
-    required this.totalFinal,
-    this.creditInfo,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!clienteSeleccionado) {
-      return _buildAlert(
-        'Selecciona un cliente para ver su crédito.',
-        Icons.info_outline,
-        Colors.blue,
-      );
-    }
-    final limit = (creditInfo?['credit_limit'] as num?)?.toDouble() ?? 0.0;
-    final isUnlimited = limit <= 0;
-
-    if (!creditActivo) {
-      return _buildAlert(
-        'El cliente no tiene crédito activo.',
-        Icons.warning_amber_rounded,
-        AppColors.danger,
-      );
-    }
-    if (totalFinal > creditDisponible) {
-      return _buildAlert(
-        'Crédito insuficiente.\nDisp: S/ ${creditDisponible.toStringAsFixed(2)}\nLímite: S/ ${limit.toStringAsFixed(2)}',
-        Icons.error_outline_rounded,
-        AppColors.danger,
-      );
-    }
-
-    return _buildAlert(
-      isUnlimited
-          ? 'Crédito aprobado (Límite Ilimitado ∞)'
-          : 'Crédito aprobado. Disp: S/ ${creditDisponible.toStringAsFixed(2)}',
-      Icons.check_circle_outline_rounded,
-      AppColors.success,
-    );
-  }
-
-  Widget _buildAlert(String message, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

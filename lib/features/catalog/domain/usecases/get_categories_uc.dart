@@ -12,7 +12,14 @@ class GetCategoriesUC {
 
   Future<Either<Failure, List<CategoryEntity>>> call({
     bool activeOnly = false,
+    bool forceRefresh = false,
   }) async {
-    return await repository.getCategories(activeOnly: activeOnly);
+    return await repository.getCategories(
+      activeOnly: activeOnly,
+      forceRefresh: forceRefresh,
+    );
   }
+
+  List<CategoryEntity>? getCached({bool activeOnly = false}) =>
+      repository.getCachedCategories(activeOnly: activeOnly);
 }

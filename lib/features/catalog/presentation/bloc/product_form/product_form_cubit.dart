@@ -57,6 +57,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   bool _isLoadingBrands = true;
 
   bool _isInitializingData = false;
+  bool _isBackgroundSyncing = false;
   bool _isSaving = false;
   bool _isDirty = false;
   bool _hasErrorLoading = false;
@@ -93,6 +94,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // ── Getters ──────────────────────────────────────────────────────────────────
   bool get isInitializingData => _isInitializingData;
+  bool get isBackgroundSyncing => _isBackgroundSyncing;
   bool get hasErrorLoading => _hasErrorLoading;
   String get errorMessage => _errorMessage;
   bool get isSaving => _isSaving;
@@ -292,6 +294,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       state.copyWith(
         productToEdit: _productToEdit,
         isInitializingData: _isInitializingData,
+        isBackgroundSyncing: _isBackgroundSyncing,
         hasErrorLoading: _hasErrorLoading,
         errorMessage: _errorMessage,
         isSaving: _isSaving,
@@ -331,13 +334,124 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     }
   }
 
-  // ── Inicialización ───────────────────────────────────────────────────────────
+  // ── Inicialización & Caché SWR ───────────────────────────────────────────────
+
+  ({String nombre, String desc}) _hydrateProduct(ProductEntity targetProduct) {
+    _productToEdit = targetProduct;
+    final nombre = targetProduct.name;
+    final desc = targetProduct.description ?? '';
+    _selectedCategoryId = targetProduct.categoryId;
+    _selectedBrandId = targetProduct.brandId;
+    _productType = targetProduct.productType;
+    _stockControl = targetProduct.stockControl;
+    _batchManagementEnabled = targetProduct.usesBatches;
+
+    _detailRows.clear();
+    targetProduct.details.forEach((key, value) {
+      if (![
+        'publication_status',
+        'sales_channels',
+        'slug',
+        'seo_title',
+        'seo_description',
+        'changelog',
+      ].contains(key)) {
+        _detailRows.add(DetailModel(key: key, value: value.toString()));
+      }
+    });
+
+    final d = targetProduct.details;
+    _isActive = targetProduct.isActive;
+    if (d['sales_channels'] is Map) {
+      final rawCh = d['sales_channels'] as Map;
+      _salesChannels = {
+        'web': rawCh['web'] != false,
+        'pos': rawCh['pos'] != false,
+        'mercadolibre': rawCh['mercadolibre'] != false,
+        'social': rawCh['social'] != false,
+      };
+    } else {
+      _salesChannels = const {
+        'web': true,
+        'pos': true,
+        'mercadolibre': true,
+        'social': true,
+      };
+    }
+    _slug = (d['slug'] as String?) ?? _slugify(nombre);
+    _seoTitle =
+        (d['seo_title'] as String?) ??
+        (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
+    _seoDescription =
+        (d['seo_description'] as String?) ??
+        (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
+    if (d['changelog'] is List) {
+      _changelog =
+          (d['changelog'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+    } else {
+      _changelog = [
+        {
+          'action': 'Ficha creada e inventario registrado',
+          'time':
+              targetProduct.createdAt != null
+                  ? '${targetProduct.createdAt!.day}/${targetProduct.createdAt!.month}/${targetProduct.createdAt!.year}'
+                  : 'Fecha inicial',
+          'author': targetProduct.createdBy ?? 'Admin',
+        },
+      ];
+    }
+
+    _formImages.clear();
+    final productImagesOnly =
+        targetProduct.images.where((img) => img.variantId == null).toList();
+    _formImages.addAll(
+      productImagesOnly.map((img) => FormImageItem(existing: img)),
+    );
+
+    _variantDrafts.clear();
+    final drafts = targetProduct.productVariants.map(
+      (v) => VariantDraftEntity.fromVariant(v),
+    );
+    _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
+    if (_variantDrafts.isEmpty) {
+      _variantDrafts = [VariantDraftFormModel()];
+    }
+    _hasMultipleVariants =
+        targetProduct.productVariants.length > 1 ||
+        (targetProduct.productVariants.length == 1 &&
+            targetProduct.productVariants.first.attributeValues.isNotEmpty);
+
+    return (nombre: nombre, desc: desc);
+  }
+
+  void _initNewProduct() {
+    _variantDrafts = [VariantDraftFormModel()];
+    _hasMultipleVariants = false;
+    _isActive = true;
+    _salesChannels = const {
+      'web': true,
+      'pos': true,
+      'mercadolibre': true,
+      'social': true,
+    };
+    _slug = '';
+    _seoTitle = '';
+    _seoDescription = '';
+    _changelog = [
+      {
+        'action': 'Borrador iniciado',
+        'time': 'Ahora',
+        'author': 'Usuario actual',
+      },
+    ];
+  }
 
   Future<ProductFormInitialValues> loadInitialData(
     ProductEntity? product, {
     String? productId,
   }) async {
-    _isInitializingData = true;
     _hasErrorLoading = false;
     _errorMessage = '';
     _isDirty = false;
@@ -345,6 +459,53 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _ingredientRows = [];
     _formImages = [];
     _variantDrafts = [];
+
+    final effectiveId = product?.id ?? productId;
+    final isEditing = effectiveId != null && effectiveId.isNotEmpty;
+
+    // 1. Revisar caché L1 de dependencias
+    final cachedCategories = _getCategoriesUC.getCached();
+    final cachedBrands = _getBrandsUC.getCached();
+    ProductEntity? cachedProduct = product;
+    if (cachedProduct == null && isEditing) {
+      cachedProduct = _getProductByIdUC.getCached(effectiveId);
+    }
+
+    final hasAllDepsCached = cachedCategories != null && cachedBrands != null;
+    final canUseCache =
+        hasAllDepsCached && (!isEditing || cachedProduct != null);
+
+    if (canUseCache) {
+      // Hidratar inmediatamente desde memoria sin Shimmer
+      _categories = cachedCategories;
+      _isLoadingCategories = false;
+      _brands = cachedBrands;
+      _isLoadingBrands = false;
+      _isInitializingData = false;
+      _isBackgroundSyncing = true;
+
+      String nombre = '';
+      String desc = '';
+
+      if (isEditing && cachedProduct != null) {
+        final hydrated = _hydrateProduct(cachedProduct);
+        nombre = hydrated.nombre;
+        desc = hydrated.desc;
+      } else {
+        _initNewProduct();
+      }
+
+      _syncState();
+
+      // Disparar revalidación silenciosa en background (SWR) sin bloquear la UI
+      unawaited(_backgroundRevalidate(effectiveId));
+
+      return ProductFormInitialValues(nombre: nombre, desc: desc);
+    }
+
+    // Cold start (sin caché suficiente): Carga inicial completa con Shimmer
+    _isInitializingData = true;
+    _isBackgroundSyncing = false;
     _syncState();
 
     String nombre = '';
@@ -352,119 +513,16 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     try {
       ProductEntity? targetProduct = product;
-      final effectiveId = targetProduct?.id ?? productId;
-
-      // HIDRATACIÓN BAJO DEMANDA: Al editar, consultamos invariablemente el detalle por ID
-      // para recuperar las variantes con el árbol completo de atributos (variant_attribute_values)
-      // que se omitieron en el listado por control de Data Egress.
-      if (effectiveId != null && effectiveId.isNotEmpty) {
-        try {
-          final fullProduct = await _unwrap(
-            _getProductByIdUC.call(effectiveId),
-          );
-          if (fullProduct != null) {
-            targetProduct = fullProduct;
-          } else {
-            throw Exception('El servidor no devolvió el detalle del producto.');
-          }
-        } catch (e, st) {
-          LoggerService.e(
-            'ProductFormCubit: Error crítico al hidratar detalle por ID: $effectiveId. Se aborta para evitar corrupción de datos.',
-            tag: 'PRODUCT_FORM_CUBIT',
-            error: e,
-            stackTrace: st,
-          );
-          rethrow;
-        }
-      }
-
-      _productToEdit = targetProduct;
-
-      if (targetProduct != null) {
-        nombre = targetProduct.name;
-        desc = targetProduct.description ?? '';
-        _selectedCategoryId = targetProduct.categoryId;
-        _selectedBrandId = targetProduct.brandId;
-        _productType = targetProduct.productType;
-        _stockControl = targetProduct.stockControl;
-        _batchManagementEnabled = targetProduct.usesBatches;
-
-        targetProduct.details.forEach((key, value) {
-          if (![
-            'publication_status',
-            'sales_channels',
-            'slug',
-            'seo_title',
-            'seo_description',
-            'changelog',
-          ].contains(key)) {
-            _detailRows.add(DetailModel(key: key, value: value.toString()));
-          }
-        });
-
-        // Hidratar Omnicanalidad, Estado y SEO (fuente única: isActive)
-        final d = targetProduct.details;
-        _isActive = targetProduct.isActive;
-        if (d['sales_channels'] is Map) {
-          final rawCh = d['sales_channels'] as Map;
-          _salesChannels = {
-            'web': rawCh['web'] != false,
-            'pos': rawCh['pos'] != false,
-            'mercadolibre': rawCh['mercadolibre'] != false,
-            'social': rawCh['social'] != false,
-          };
+      if (isEditing) {
+        final fullProduct = await _unwrap(_getProductByIdUC.call(effectiveId));
+        if (fullProduct != null) {
+          targetProduct = fullProduct;
         } else {
-          _salesChannels = const {
-            'web': true,
-            'pos': true,
-            'mercadolibre': true,
-            'social': true,
-          };
+          throw Exception('El servidor no devolvió el detalle del producto.');
         }
-        _slug = (d['slug'] as String?) ?? _slugify(nombre);
-        _seoTitle =
-            (d['seo_title'] as String?) ??
-            (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
-        _seoDescription =
-            (d['seo_description'] as String?) ??
-            (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
-        if (d['changelog'] is List) {
-          _changelog =
-              (d['changelog'] as List)
-                  .map((e) => Map<String, dynamic>.from(e as Map))
-                  .toList();
-        } else {
-          _changelog = [
-            {
-              'action': 'Ficha creada e inventario registrado',
-              'time':
-                  targetProduct.createdAt != null
-                      ? '${targetProduct.createdAt!.day}/${targetProduct.createdAt!.month}/${targetProduct.createdAt!.year}'
-                      : 'Fecha inicial',
-              'author': targetProduct.createdBy ?? 'Admin',
-            },
-          ];
-        }
-
-        // Cargar imágenes precargadas
-        final productImagesOnly =
-            targetProduct.images.where((img) => img.variantId == null).toList();
-        _formImages.addAll(
-          productImagesOnly.map((img) => FormImageItem(existing: img)),
-        );
-
-        // Cargar variantes precargadas
-        final drafts = targetProduct.productVariants.map(
-          (v) => VariantDraftEntity.fromVariant(v),
-        );
-        _variantDrafts.addAll(drafts.map(VariantDraftFormModel.fromEntity));
-        if (_variantDrafts.isEmpty) {
-          _variantDrafts = [VariantDraftFormModel()];
-        }
-        _hasMultipleVariants =
-            targetProduct.productVariants.length > 1 ||
-            (targetProduct.productVariants.length == 1 &&
-                targetProduct.productVariants.first.attributeValues.isNotEmpty);
+        final hydrated = _hydrateProduct(targetProduct);
+        nombre = hydrated.nombre;
+        desc = hydrated.desc;
 
         await Future.wait([
           _fetchCategories(),
@@ -472,25 +530,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           _fetchIngredients(targetProduct.id),
         ]);
       } else {
-        _variantDrafts = [VariantDraftFormModel()]; // Variante por defecto
-        _hasMultipleVariants = false;
-        _isActive = true;
-        _salesChannels = const {
-          'web': true,
-          'pos': true,
-          'mercadolibre': true,
-          'social': true,
-        };
-        _slug = '';
-        _seoTitle = '';
-        _seoDescription = '';
-        _changelog = [
-          {
-            'action': 'Borrador iniciado',
-            'time': 'Ahora',
-            'author': 'Usuario actual',
-          },
-        ];
+        _initNewProduct();
         await Future.wait([_fetchCategories(), _fetchBrands()]);
       }
     } catch (e) {
@@ -512,15 +552,41 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     return ProductFormInitialValues(nombre: nombre, desc: desc);
   }
 
-  Future<void> _fetchCategories() async {
-    _categories = await _unwrap(_getCategoriesUC.call());
+  Future<void> _backgroundRevalidate(String? effectiveId) async {
+    try {
+      final futures = <Future<dynamic>>[
+        _fetchCategories(forceRefresh: true),
+        _fetchBrands(forceRefresh: true),
+      ];
+      if (effectiveId != null && effectiveId.isNotEmpty) {
+        futures.add(_getProductByIdUC.call(effectiveId, forceRefresh: true));
+        futures.add(_fetchIngredients(effectiveId));
+      }
+      await Future.wait(futures);
+    } catch (e, st) {
+      LoggerService.w(
+        'ProductFormCubit: Error menor en revalidación background (se mantienen datos de caché)',
+        tag: 'PRODUCT_FORM_CUBIT',
+        error: e,
+        stackTrace: st,
+      );
+    } finally {
+      _isBackgroundSyncing = false;
+      _syncState();
+    }
+  }
+
+  Future<void> _fetchCategories({bool forceRefresh = false}) async {
+    _categories = await _unwrap(
+      _getCategoriesUC.call(forceRefresh: forceRefresh),
+    );
     _isLoadingCategories = false;
     _syncState();
   }
 
-  Future<void> _fetchBrands() async {
+  Future<void> _fetchBrands({bool forceRefresh = false}) async {
     try {
-      _brands = await _unwrap(_getBrandsUC.call());
+      _brands = await _unwrap(_getBrandsUC.call(forceRefresh: forceRefresh));
     } catch (e, st) {
       LoggerService.e(
         'Error al cargar marcas en ProductFormCubit',
@@ -528,7 +594,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         error: e,
         stackTrace: st,
       );
-      _brands = [];
+      if (_brands.isEmpty) _brands = [];
     }
     _isLoadingBrands = false;
     _syncState();
