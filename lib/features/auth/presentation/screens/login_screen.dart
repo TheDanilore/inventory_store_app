@@ -354,7 +354,7 @@ class _LoginScreenState extends State<LoginScreen>
                         );
                       },
                       child: Image.asset(
-                        'assets/images/login_bg.jpg',
+                        'assets/images/login_bg.png',
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
                         errorBuilder:
@@ -824,7 +824,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ).createShader(rect),
                   blendMode: BlendMode.dstIn,
                   child: Image.asset(
-                    'assets/images/login_bg.jpg',
+                    'assets/images/login_bg.png',
                     width: double.infinity,
                     fit: BoxFit.fitWidth,
                     errorBuilder:
