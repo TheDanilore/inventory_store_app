@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_text_field.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
@@ -35,17 +34,9 @@ class LoginFormCard extends StatefulWidget {
 }
 
 class _LoginFormCardState extends State<LoginFormCard> {
-  late final ValueNotifier<bool> _obscurePasswordNotifier;
-
-  static final RegExp _emailRegex = RegExp(
-    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+  final ValueNotifier<bool> _obscurePasswordNotifier = ValueNotifier<bool>(
+    true,
   );
-
-  @override
-  void initState() {
-    super.initState();
-    _obscurePasswordNotifier = ValueNotifier<bool>(true);
-  }
 
   @override
   void dispose() {
@@ -55,138 +46,75 @@ class _LoginFormCardState extends State<LoginFormCard> {
 
   String? _validateName(String? value) {
     if (widget.isLoginMode) return null;
-    final name = (value ?? '').trim();
-    if (name.isEmpty) return 'Ingresa tu nombre completo';
-    if (name.length < 2) return 'El nombre debe tener al menos 2 caracteres';
-    if (name.length > 80) return 'El nombre no puede exceder 80 caracteres';
+    final val = value?.trim() ?? '';
+    if (val.isEmpty) return 'Ingresa tu nombre completo';
+    if (val.length < 3) return 'Mínimo 3 caracteres';
     return null;
   }
 
   String? _validateEmail(String? value) {
-    final email = (value ?? '').trim();
-    if (email.isEmpty) return 'Ingresa tu correo';
-    if (!_emailRegex.hasMatch(email)) {
-      return 'Ingresa un correo electrónico válido';
-    }
+    final val = value?.trim() ?? '';
+    if (val.isEmpty) return 'Ingresa tu correo';
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$',
+    );
+    if (!emailRegex.hasMatch(val)) return 'Ingresa un correo válido';
     return null;
   }
 
   String? _validatePassword(String? value) {
-    final password = value ?? '';
-    if (password.trim().isEmpty) return 'Ingresa tu contraseña';
-    if (!widget.isLoginMode && password.length < 8) {
-      return 'Mínimo 8 caracteres';
-    }
+    if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+    if (value.length < 6) return 'Mínimo 6 caracteres';
     return null;
   }
 
-  Future<void> _showForgotPasswordDialog() async {
-    final emailCtrl = TextEditingController(
-      text: widget.emailController.text.trim(),
+  void _showForgotPasswordDialog() {
+    final emailCtrl = TextEditingController(text: widget.emailController.text);
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$',
     );
-    final cubit = context.read<AuthCubit>();
-    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     try {
-      if (isMobile) {
-        await showModalBottomSheet(
-          context: context,
-          useRootNavigator: true,
-          isScrollControlled: true,
-          backgroundColor: AppColors.surface,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          builder: (ctx) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 16,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _ForgotPasswordDialogContent(
-                    emailController: emailCtrl,
-                    emailRegex: _emailRegex,
-                    onSend: (email) async {
-                      Navigator.pop(ctx);
-                      final error = await cubit.resetPassword(email);
-                      if (mounted) {
-                        if (error != null) {
-                          AppSnackbar.show(
-                            context,
-                            message: error,
-                            type: SnackbarType.error,
-                          );
-                        } else {
-                          AppSnackbar.show(
-                            context,
-                            message:
-                                'Enlace enviado. Revisa tu bandeja de entrada.',
-                            type: SnackbarType.success,
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        );
+      showDialog(
+        context: context,
+        builder:
+            (dialogContext) => _ForgotPasswordDialogContent(
+              emailController: emailCtrl,
+              emailRegex: emailRegex,
+              onSend: (email) => _sendPasswordResetEmail(dialogContext, email),
+            ),
+      );
+    } catch (_) {
+      emailCtrl.dispose();
+    }
+  }
+
+  Future<void> _sendPasswordResetEmail(
+    BuildContext dialogContext,
+    String email,
+  ) async {
+    final emailCtrl = TextEditingController(text: email);
+    try {
+      final cubit = context.read<AuthCubit>();
+      final errorMsg = await cubit.resetPassword(email);
+
+      if (!dialogContext.mounted) return;
+
+      if (errorMsg == null) {
+        Navigator.pop(dialogContext);
+        if (mounted) {
+          AppSnackbar.show(
+            context,
+            message:
+                'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.',
+            type: SnackbarType.success,
+          );
+        }
       } else {
-        await showDialog(
-          context: context,
-          builder: (ctx) {
-            return AlertDialog(
-              backgroundColor: AppColors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppColors.radiusLg),
-              ),
-              contentPadding: const EdgeInsets.all(24),
-              content: SizedBox(
-                width: 400,
-                child: _ForgotPasswordDialogContent(
-                  emailController: emailCtrl,
-                  emailRegex: _emailRegex,
-                  onSend: (email) async {
-                    Navigator.pop(ctx);
-                    final error = await cubit.resetPassword(email);
-                    if (mounted) {
-                      if (error != null) {
-                        AppSnackbar.show(
-                          context,
-                          message: error,
-                          type: SnackbarType.error,
-                        );
-                      } else {
-                        AppSnackbar.show(
-                          context,
-                          message:
-                              'Enlace enviado. Revisa tu bandeja de entrada.',
-                          type: SnackbarType.success,
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-            );
-          },
+        AppSnackbar.show(
+          dialogContext,
+          message: errorMsg,
+          type: SnackbarType.error,
         );
       }
     } finally {
@@ -197,6 +125,8 @@ class _LoginFormCardState extends State<LoginFormCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cyanLinkColor =
+        isDark ? const Color(0xFF22D3EE) : const Color(0xFF0891B2);
 
     return Container(
       padding: widget.isFlat ? EdgeInsets.zero : const EdgeInsets.all(24),
@@ -225,7 +155,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     ],
                   )
                   : BoxDecoration(
-                    color: AppColors.surface,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(AppColors.radiusXl),
                     border: Border.all(
                       color: const Color(0xFFE2E8F0),
@@ -259,61 +189,33 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     !widget.isLoginMode
                         ? Padding(
                           padding: const EdgeInsets.only(bottom: 14),
-                          child:
-                              isDark
-                                  ? _GlassField(
-                                    controller: widget.nameController,
-                                    label: 'Nombre completo',
-                                    icon: Icons.person_outline_rounded,
-                                    keyboardType: TextInputType.name,
-                                    textCapitalization:
-                                        TextCapitalization.words,
-                                    textInputAction: TextInputAction.next,
-                                    autofillHints: const [AutofillHints.name],
-                                    validator: _validateName,
-                                  )
-                                  : AppTextField(
-                                    controller: widget.nameController,
-                                    label: 'Nombre completo',
-                                    icon: Icons.person_outline_rounded,
-                                    keyboardType: TextInputType.name,
-                                    textCapitalization:
-                                        TextCapitalization.words,
-                                    textInputAction: TextInputAction.next,
-                                    autofillHints: const [AutofillHints.name],
-                                    validator: _validateName,
-                                  ),
+                          child: _GlassField(
+                            controller: widget.nameController,
+                            label: 'Nombre completo',
+                            icon: Icons.person_outline_rounded,
+                            keyboardType: TextInputType.name,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.name],
+                            validator: _validateName,
+                          ),
                         )
                         : const SizedBox.shrink(),
               ),
 
-              isDark
-                  ? _GlassField(
-                    controller: widget.emailController,
-                    label: 'Correo electrónico',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    autofillHints: const [
-                      AutofillHints.username,
-                      AutofillHints.email,
-                    ],
-                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                    validator: _validateEmail,
-                  )
-                  : AppTextField(
-                    controller: widget.emailController,
-                    label: 'Correo electrónico',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    autofillHints: const [
-                      AutofillHints.username,
-                      AutofillHints.email,
-                    ],
-                    onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-                    validator: _validateEmail,
-                  ),
+              _GlassField(
+                controller: widget.emailController,
+                label: 'Correo electrónico',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                validator: _validateEmail,
+              ),
               const SizedBox(height: 14),
 
               ValueListenableBuilder<bool>(
@@ -335,50 +237,31 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         color:
                             isDark
                                 ? Colors.white.withValues(alpha: 0.62)
-                                : AppColors.textSecondary,
+                                : const Color(0xFF64748B),
                         size: 20,
                       ),
                     ),
                     onPressed: () => _obscurePasswordNotifier.value = !obscure,
                   );
 
-                  return isDark
-                      ? _GlassField(
-                        controller: widget.passwordController,
-                        label: 'Contraseña',
-                        icon: Icons.lock_outline_rounded,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: [
-                          widget.isLoginMode
-                              ? AutofillHints.password
-                              : AutofillHints.newPassword,
-                        ],
-                        onFieldSubmitted:
-                            widget.isLoading
-                                ? null
-                                : (_) => widget.onAuthenticate(),
-                        suffixIcon: suffix,
-                        obscureText: obscure,
-                        validator: _validatePassword,
-                      )
-                      : AppTextField(
-                        controller: widget.passwordController,
-                        label: 'Contraseña',
-                        icon: Icons.lock_outline_rounded,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: [
-                          widget.isLoginMode
-                              ? AutofillHints.password
-                              : AutofillHints.newPassword,
-                        ],
-                        onFieldSubmitted:
-                            widget.isLoading
-                                ? null
-                                : (_) => widget.onAuthenticate(),
-                        suffixIcon: suffix,
-                        obscureText: obscure,
-                        validator: _validatePassword,
-                      );
+                  return _GlassField(
+                    controller: widget.passwordController,
+                    label: 'Contraseña',
+                    icon: Icons.lock_outline_rounded,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: [
+                      widget.isLoginMode
+                          ? AutofillHints.password
+                          : AutofillHints.newPassword,
+                    ],
+                    onFieldSubmitted:
+                        widget.isLoading
+                            ? null
+                            : (_) => widget.onAuthenticate(),
+                    suffixIcon: suffix,
+                    obscureText: obscure,
+                    validator: _validatePassword,
+                  );
                 },
               ),
 
@@ -410,10 +293,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                                 child: Text(
                                   '¿Olvidaste tu contraseña?',
                                   style: TextStyle(
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF22D3EE)
-                                            : const Color(0xFF2563EB),
+                                    color: cyanLinkColor,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -440,8 +320,9 @@ class _LoginFormCardState extends State<LoginFormCard> {
   }
 }
 
-/// Campo de texto de vidrio oscuro para el login (reemplaza a AppTextField
-/// solo en esta pantalla; el diálogo de recuperar contraseña no cambia).
+/// Campo de texto adaptable para el login:
+/// En Modo Oscuro: translúcido oscuro con resplandor cian (#22D3EE) y texto blanco.
+/// En Modo Claro: fondo gris muy claro (#F8FAFC) con bordes suaves, iconos cian (#0891B2) y texto marino.
 class _GlassField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -469,7 +350,8 @@ class _GlassField extends StatelessWidget {
     this.obscureText = false,
   });
 
-  static const _cyan = Color(0xFF22D3EE);
+  static const _cyanBright = Color(0xFF22D3EE);
+  static const _cyanDark = Color(0xFF0891B2);
 
   OutlineInputBorder _border(Color color, [double width = 1.2]) =>
       OutlineInputBorder(
@@ -479,6 +361,9 @@ class _GlassField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cyanColor = isDark ? _cyanBright : _cyanDark;
+
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
@@ -488,36 +373,59 @@ class _GlassField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       validator: validator,
       obscureText: obscureText,
-      cursorColor: _cyan,
-      style: const TextStyle(
-        color: Colors.white,
+      cursorColor: cyanColor,
+      style: TextStyle(
+        color: isDark ? Colors.white : const Color(0xFF0F172A),
         fontSize: 15,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         hintText: label,
         hintStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.48),
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.48)
+                  : const Color(0xFF94A3B8),
           fontSize: 15,
         ),
-        prefixIcon: Icon(icon, size: 20, color: _cyan.withValues(alpha: 0.9)),
+        prefixIcon: Icon(
+          icon,
+          size: 20,
+          color: cyanColor.withValues(alpha: isDark ? 0.9 : 1.0),
+        ),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor:
+            isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFF8FAFC),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 17,
           horizontal: 16,
         ),
-        errorStyle: const TextStyle(
-          color: Color(0xFFFCA5A5),
+        errorStyle: TextStyle(
+          color: isDark ? const Color(0xFFFCA5A5) : AppColors.error,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        enabledBorder: _border(Colors.white.withValues(alpha: 0.14)),
-        focusedBorder: _border(_cyan, 1.6),
-        errorBorder: _border(const Color(0xFFF87171)),
-        focusedErrorBorder: _border(const Color(0xFFF87171), 1.6),
-        border: _border(Colors.white.withValues(alpha: 0.14)),
+        enabledBorder: _border(
+          isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : const Color(0xFFE2E8F0),
+        ),
+        focusedBorder: _border(cyanColor, 1.6),
+        errorBorder: _border(
+          isDark ? const Color(0xFFF87171) : AppColors.error,
+        ),
+        focusedErrorBorder: _border(
+          isDark ? const Color(0xFFF87171) : AppColors.error,
+          1.6,
+        ),
+        border: _border(
+          isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : const Color(0xFFE2E8F0),
+        ),
       ),
     );
   }
@@ -541,102 +449,114 @@ class _ForgotPasswordDialogContent extends StatefulWidget {
 
 class _ForgotPasswordDialogContentState
     extends State<_ForgotPasswordDialogContent> {
-  bool _isSending = false;
+  final _dialogFormKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
-  Future<void> _handleSubmit() async {
-    if (_isSending) return;
-    final email = widget.emailController.text.trim();
-    if (email.isEmpty || !widget.emailRegex.hasMatch(email)) {
-      AppSnackbar.show(
-        context,
-        message: 'Ingresa un correo electrónico válido.',
-        type: SnackbarType.warning,
-      );
-      return;
+  Future<void> _submit() async {
+    if (!(_dialogFormKey.currentState?.validate() ?? false)) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.onSend(widget.emailController.text.trim());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    setState(() => _isSending = true);
-    await widget.onSend(email);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recuperar contraseña',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.3,
-          ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AlertDialog(
+      backgroundColor: isDark ? const Color(0xFF0B1E3A) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        side: BorderSide(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : const Color(0xFFE2E8F0),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Ingresa tu correo electrónico para enviarte un enlace de recuperación.',
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-            height: 1.4,
-          ),
+      ),
+      title: Text(
+        'Recuperar Contraseña',
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
+          fontSize: 18,
         ),
-        const SizedBox(height: 16),
-        AppTextField(
-          controller: widget.emailController,
-          label: 'Correo electrónico',
-          icon: Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.done,
-          onFieldSubmitted: (_) => _handleSubmit(),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+      ),
+      content: Form(
+        key: _dialogFormKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextButton(
-              onPressed: _isSending ? null : () => Navigator.pop(context),
-              child: const Text(
-                'Cancelar',
-                style: TextStyle(color: AppColors.textMuted),
+            Text(
+              'Ingresa tu correo para enviarte las instrucciones de restablecimiento.',
+              style: TextStyle(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.66)
+                        : AppColors.textSecondary,
+                fontSize: 14,
               ),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: _isSending ? null : _handleSubmit,
-              child:
-                  _isSending
-                      ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                      : const Text(
-                        'Enviar enlace',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+            const SizedBox(height: 16),
+            _GlassField(
+              controller: widget.emailController,
+              label: 'Correo electrónico',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _submit(),
+              validator: (val) {
+                final text = val?.trim() ?? '';
+                if (text.isEmpty) return 'Ingresa tu correo';
+                if (!widget.emailRegex.hasMatch(text)) {
+                  return 'Ingresa un correo válido';
+                }
+                return null;
+              },
             ),
           ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            foregroundColor:
+                isDark
+                    ? Colors.white.withValues(alpha: 0.6)
+                    : AppColors.textSecondary,
+          ),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0891B2),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          ),
+          child:
+              _isLoading
+                  ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                  : const Text(
+                    'Enviar Enlace',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
         ),
       ],
     );

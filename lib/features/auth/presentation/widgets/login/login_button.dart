@@ -33,8 +33,6 @@ class _LoginButtonState extends State<LoginButton> {
   Widget build(BuildContext context) {
     final success = widget.isSuccess;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     // Listener (no GestureDetector): responde al instante, sin esperar el
     // timeout de tap, y no compite con el botón interno.
     return Listener(
@@ -58,9 +56,7 @@ class _LoginButtonState extends State<LoginButton> {
               colors:
                   success
                       ? const [Color(0xFF059669), Color(0xFF10B981)]
-                      : (isDark
-                          ? const [Color(0xFF1D6FF2), Color(0xFF06B6D4)]
-                          : const [Color(0xFF1E2038), AppColors.primary]),
+                      : const [Color(0xFF1D6FF2), Color(0xFF06B6D4)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -68,10 +64,8 @@ class _LoginButtonState extends State<LoginButton> {
               BoxShadow(
                 color: (success
                         ? const Color(0xFF10B981)
-                        : (isDark
-                            ? const Color(0xFF06B6D4)
-                            : AppColors.primary))
-                    .withValues(alpha: success ? 0.35 : (isDark ? 0.25 : 0.30)),
+                        : const Color(0xFF06B6D4))
+                    .withValues(alpha: success ? 0.35 : 0.28),
                 blurRadius: _isPressed ? 8 : 16,
                 offset: Offset(0, _isPressed ? 3 : 6),
               ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 
-/// Cabecera del login bimodal (Modo Claro elegante / Modo Oscuro vidrio).
+/// Cabecera del login: Emblema circular de la marca con resplandor turquesa,
+/// título y subtítulo adaptados según el tema.
 class LoginHeaderSection extends StatelessWidget {
   final bool isLoginMode;
   final bool showLogo;
@@ -11,63 +12,44 @@ class LoginHeaderSection extends StatelessWidget {
     super.key,
     required this.isLoginMode,
     this.showLogo = true,
-    this.logoSize = 64,
+    this.logoSize = 56,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glowColor =
+        isDark ? const Color(0xFF22D3EE) : const Color(0xFF0891B2);
 
     return Center(
       child: Column(
         children: [
           if (showLogo) ...[
-            if (isDark)
-              Container(
-                key: const ValueKey('danilore_one_logo_dark'),
-                width: logoSize,
-                height: logoSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF22D3EE).withValues(alpha: 0.35),
-                      blurRadius: 28,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/images/app_icon.png',
-                  fit: BoxFit.contain,
-                  errorBuilder:
-                      (context, error, stackTrace) => const Icon(
-                        Icons.storefront_rounded,
-                        size: 48,
-                        color: Color(0xFF22D3EE),
-                      ),
-                ),
-              )
-            else
-              Container(
-                key: const ValueKey('danilore_one_logo_light'),
-                height: 85,
-                constraints: const BoxConstraints(maxWidth: 190),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                child: Image.asset(
-                  'assets/logo_full.png',
-                  fit: BoxFit.contain,
-                  errorBuilder:
-                      (context, error, stackTrace) => const Icon(
-                        Icons.storefront_rounded,
-                        size: 60,
-                        color: AppColors.primary,
-                      ),
-                ),
+            Container(
+              key: const ValueKey('danilore_one_logo_header'),
+              width: logoSize,
+              height: logoSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: glowColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                    blurRadius: 28,
+                    spreadRadius: 1,
+                  ),
+                ],
               ),
+              child: Image.asset(
+                'assets/images/app_icon.png',
+                fit: BoxFit.contain,
+                errorBuilder:
+                    (context, error, stackTrace) => Icon(
+                      Icons.storefront_rounded,
+                      size: logoSize * 0.75,
+                      color: glowColor,
+                    ),
+              ),
+            ),
             const SizedBox(height: 16),
           ],
           AnimatedSwitcher(
@@ -83,7 +65,7 @@ class LoginHeaderSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : AppColors.textPrimary,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
                 letterSpacing: -0.6,
                 height: 1.15,
               ),

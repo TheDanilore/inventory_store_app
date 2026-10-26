@@ -13,11 +13,13 @@ class LoginToggleMode extends StatelessWidget {
     required this.onToggle,
   });
 
-  static const _cyan = Color(0xFF22D3EE);
+  static const _cyanBright = Color(0xFF22D3EE);
+  static const _cyanDark = Color(0xFF0891B2);
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cyanColor = isDark ? _cyanBright : _cyanDark;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
@@ -42,12 +44,12 @@ class LoginToggleMode extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: isDark ? _cyan : const Color(0xFF2563EB),
+              foregroundColor: cyanColor,
             ),
             child: Text(
               isLoginMode ? 'Regístrate gratis' : 'Inicia sesión',
               style: TextStyle(
-                color: isDark ? _cyan : const Color(0xFF2563EB),
+                color: cyanColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.2,

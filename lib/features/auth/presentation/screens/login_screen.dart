@@ -387,12 +387,9 @@ class _LoginScreenState extends State<LoginScreen>
                         );
                       },
                       child: Image.asset(
-                        isDark
-                            ? 'assets/images/login_bg.png'
-                            : 'assets/images/login_hero_3d.jpg',
-                        fit: isDark ? BoxFit.cover : BoxFit.contain,
-                        alignment:
-                            isDark ? Alignment.topCenter : Alignment.center,
+                        'assets/images/login_bg.png',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
                         errorBuilder:
                             (context, error, stackTrace) =>
                                 const SizedBox.shrink(),
@@ -687,8 +684,8 @@ class _LoginScreenState extends State<LoginScreen>
                               0,
                               LoginHeaderSection(
                                 isLoginMode: state.isLoginMode,
-                                showLogo: false,
-                                logoSize: 52,
+                                showLogo: true,
+                                logoSize: 56,
                               ),
                             ),
                             const SizedBox(height: 22),
@@ -969,11 +966,9 @@ class _LoginScreenState extends State<LoginScreen>
                       ).createShader(rect),
                   blendMode: BlendMode.dstIn,
                   child: Image.asset(
-                    isDark
-                        ? 'assets/images/login_bg.png'
-                        : 'assets/images/login_hero_3d.jpg',
+                    'assets/images/login_bg.png',
                     width: double.infinity,
-                    fit: isDark ? BoxFit.fitWidth : BoxFit.contain,
+                    fit: BoxFit.fitWidth,
                     errorBuilder:
                         (context, error, stackTrace) => const SizedBox(
                           height: 240,
@@ -1125,46 +1120,31 @@ class _SuccessVeilContent extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isDark)
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: _kCyan.withValues(alpha: 0.38),
-                            blurRadius: 44,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/app_icon.png',
-                        fit: BoxFit.contain,
-                        errorBuilder:
-                            (context, error, stackTrace) => const Icon(
-                              Icons.storefront_rounded,
-                              size: 64,
-                              color: _kCyan,
-                            ),
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      width: 190,
-                      height: 95,
-                      child: Image.asset(
-                        'assets/logo_full.png',
-                        fit: BoxFit.contain,
-                        errorBuilder:
-                            (context, error, stackTrace) => const Icon(
-                              Icons.storefront_rounded,
-                              size: 64,
-                              color: AppColors.primary,
-                            ),
-                      ),
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isDark ? _kCyan : const Color(0xFF0891B2))
+                              .withValues(alpha: isDark ? 0.38 : 0.25),
+                          blurRadius: 44,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
+                    child: Image.asset(
+                      'assets/images/app_icon.png',
+                      fit: BoxFit.contain,
+                      errorBuilder:
+                          (context, error, stackTrace) => Icon(
+                            Icons.storefront_rounded,
+                            size: 64,
+                            color: isDark ? _kCyan : const Color(0xFF0891B2),
+                          ),
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   Text(
                     'Abriendo tu panel',
@@ -1191,7 +1171,7 @@ class _SuccessVeilContent extends StatelessWidget {
                                 ? Colors.white.withValues(alpha: 0.14)
                                 : const Color(0xFFE2E8F0),
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          isDark ? _kCyan : AppColors.primary,
+                          isDark ? _kCyan : const Color(0xFF0891B2),
                         ),
                       ),
                     ),
