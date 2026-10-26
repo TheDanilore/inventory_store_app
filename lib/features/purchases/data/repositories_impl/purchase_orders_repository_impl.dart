@@ -34,6 +34,21 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
   final Map<String, _PurchaseOrdersCacheEntry> _ordersCache = {};
   final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
 
+  // Caché L1 para catálogos del formulario (10 minutos TTL)
+  Map<String, dynamic>? _catalogsCache;
+  DateTime? _catalogsTimestamp;
+  static const Duration _catalogsTtl = Duration(minutes: 10);
+
+  @override
+  Map<String, dynamic>? getCachedFormCatalogs() {
+    if (_catalogsCache != null && _catalogsTimestamp != null) {
+      if (DateTime.now().difference(_catalogsTimestamp!) < _catalogsTtl) {
+        return _catalogsCache;
+      }
+    }
+    return null;
+  }
+
   void _invalidateOrdersCache() {
     _ordersCache.clear();
   }
@@ -922,27 +937,45 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
   }
 
   @override
-  Future<Either<Failure, Map<String, dynamic>>> getFormCatalogs() async {
+  Future<Either<Failure, Map<String, dynamic>>> getFormCatalogs({
+    bool forceRefresh = false,
+  }) async {
+    // 1. Servir desde caché L1 si es válido y no se exige refresco forzado
+    if (!forceRefresh) {
+      final cached = getCachedFormCatalogs();
+      if (cached != null) {
+        return Right(cached);
+      }
+    }
+
     try {
-      final pRes = await _supabase
-          .from('suppliers')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
-      final wRes = await _supabase
-          .from('warehouses')
-          .select('id, name, is_active, address')
-          .eq('is_active', true)
-          .order('name');
-      final aRes = await _supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .order('name');
-      final shiftsRes = await _supabase
-          .from('cash_shifts')
-          .select('id, account_id')
-          .eq('status', 'OPEN');
+      // 2. Ejecución paralela de las 4 consultas para reducir RTT acumulado
+      final results = await Future.wait([
+        _supabase
+            .from('suppliers')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name'),
+        _supabase
+            .from('warehouses')
+            .select('id, name, is_active, address')
+            .eq('is_active', true)
+            .order('name'),
+        _supabase
+            .from('financial_accounts')
+            .select('id, name, type, balance')
+            .eq('is_active', true)
+            .order('name'),
+        _supabase
+            .from('cash_shifts')
+            .select('id, account_id')
+            .eq('status', 'OPEN'),
+      ]);
+
+      final pRes = results[0];
+      final wRes = results[1];
+      final aRes = results[2];
+      final shiftsRes = results[3];
 
       final suppliers = List<Map<String, dynamic>>.from(pRes as List);
       final warehouses =
@@ -957,12 +990,18 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         }
       }
 
-      return Right({
+      final data = {
         'suppliers': suppliers,
         'warehouses': warehouses,
         'accounts': accounts,
         'activeShiftsByAccount': activeShiftsByAccount,
-      });
+      };
+
+      // Guardar en caché L1
+      _catalogsCache = data;
+      _catalogsTimestamp = DateTime.now();
+
+      return Right(data);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'getFormCatalogs PostgrestException: ${e.message}',
@@ -970,6 +1009,10 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         error: e,
         stackTrace: st,
       );
+      // Si falla la red pero hay datos viejos en caché, servirlos resiliente
+      if (_catalogsCache != null) {
+        return Right(_catalogsCache!);
+      }
       return Left(
         ServerFailure(message: 'Error al cargar catálogos: ${e.message}'),
       );
@@ -980,6 +1023,9 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
         error: e,
         stackTrace: st,
       );
+      if (_catalogsCache != null) {
+        return Right(_catalogsCache!);
+      }
       return Left(
         ServerFailure(message: 'Error inesperado al cargar catálogos: $e'),
       );

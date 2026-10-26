@@ -17,6 +17,20 @@ import 'package:inventory_store_app/features/purchases/domain/usecases/get_purch
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_supplier_credit_usecase.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_order_form/purchase_order_form_state.dart';
 
+class _DraftData {
+  final List<InventoryEntryItemEntity> items;
+  final String? supplierId;
+  final String? warehouseId;
+  final bool isRestored;
+
+  const _DraftData({
+    this.items = const [],
+    this.supplierId,
+    this.warehouseId,
+    this.isRestored = false,
+  });
+}
+
 @injectable
 class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
   final CreatePurchaseOrderUseCase createPurchaseOrderUseCase;
@@ -50,10 +64,44 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
       }
     }
 
+    // 1. HIDRATACIÓN INSTANTÁNEA DESDE CACHÉ (Zero-Shimmer SWR)
+    final cachedData = getPurchaseOrderFormCatalogsUseCase.getCached();
+
+    if (cachedData != null && editOrderId == null) {
+      final parsed = _parseCatalogs(cachedData);
+      final draft = await _loadDraft();
+
+      emit(
+        PurchaseOrderFormLoaded(
+          suppliers: parsed['suppliers'] as List<Map<String, dynamic>>,
+          warehouses: parsed['warehouses'] as List<WarehouseModel>,
+          accounts: parsed['accounts'] as List<FinancialAccountModel>,
+          activeShiftsByAccount:
+              parsed['activeShiftsByAccount'] as Map<String, String>,
+          items: draft.items,
+          selectedSupplierId: draft.supplierId,
+          selectedWarehouseId: draft.warehouseId,
+          isDraftRestored: draft.isRestored,
+          isBackgroundLoading: true,
+        ),
+      );
+
+      if (draft.supplierId != null) {
+        _fetchSupplierCreditIfNeeded(draft.supplierId!);
+      }
+
+      // Revalidación silenciosa en background
+      _revalidateCatalogsInBackground(forceReload);
+      return;
+    }
+
+    // Cold start (solo cuando no hay datos en caché en la primera apertura)
     emit(const PurchaseOrderFormLoading());
 
     try {
-      final catalogsResult = await getPurchaseOrderFormCatalogsUseCase();
+      final catalogsResult = await getPurchaseOrderFormCatalogsUseCase(
+        forceRefresh: forceReload,
+      );
 
       await catalogsResult.fold(
         (failure) async {
@@ -71,13 +119,12 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           );
         },
         (data) async {
-          final suppliers =
-              data['suppliers'] as List<Map<String, dynamic>>? ?? [];
-          final warehouses = data['warehouses'] as List<WarehouseModel>? ?? [];
-          final accounts =
-              data['accounts'] as List<FinancialAccountModel>? ?? [];
+          final parsed = _parseCatalogs(data);
+          final suppliers = parsed['suppliers'] as List<Map<String, dynamic>>;
+          final warehouses = parsed['warehouses'] as List<WarehouseModel>;
+          final accounts = parsed['accounts'] as List<FinancialAccountModel>;
           final activeShiftsByAccount =
-              data['activeShiftsByAccount'] as Map<String, String>? ?? {};
+              parsed['activeShiftsByAccount'] as Map<String, String>;
 
           if (editOrderId != null) {
             // Modo edición: Cargar la orden y sus ítems
@@ -212,67 +259,7 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           }
 
           // Modo creación normal (con restauración de borrador)
-          bool isDraftRestored = false;
-          List<InventoryEntryItemEntity> initialItems = [];
-          String? initialSupplier;
-          String? initialWarehouse;
-
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            final draftStr = prefs.getString(_draftKey);
-
-            if (draftStr != null) {
-              final draftData = jsonDecode(draftStr) as Map<String, dynamic>;
-              initialSupplier = draftData['supplierId'] as String?;
-              initialWarehouse = draftData['warehouseId'] as String?;
-              if (draftData['items'] != null) {
-                final rawItems = draftData['items'] as List;
-                initialItems =
-                    rawItems.map((e) {
-                      return InventoryEntryItemEntity(
-                        productId: e['productId'],
-                        variantId: e['variantId'],
-                        productName: e['productName'],
-                        variantLabel: e['variantLabel'] ?? '',
-                        imageUrl: e['imageUrl'] ?? e['image_url'],
-                        batchNumber: e['batchNumber'],
-                        usesBatches: e['usesBatches'] ?? false,
-                        expiryDate:
-                            e['expiryDate'] != null
-                                ? DateTime.tryParse(e['expiryDate'])
-                                : null,
-                        unitCost: (e['unitCost'] as num?)?.toDouble() ?? 0.0,
-                        quantity: (e['quantity'] as num?)?.toDouble() ?? 0.0,
-                      );
-                    }).toList();
-                isDraftRestored =
-                    initialItems.isNotEmpty ||
-                    initialSupplier != null ||
-                    initialWarehouse != null;
-              }
-            }
-          } catch (e, st) {
-            developer.log(
-              'Error restaurando borrador en SharedPreferences',
-              error: e,
-              stackTrace: st,
-              name: 'PurchaseOrderFormCubit',
-            );
-            try {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove(_draftKey);
-            } catch (removeError, removeSt) {
-              developer.log(
-                'Error al limpiar borrador corrupto en SharedPreferences',
-                error: removeError,
-                stackTrace: removeSt,
-                name: 'PurchaseOrderFormCubit',
-              );
-            }
-          }
-
-          final Map<String, Map<String, dynamic>> supplierCreditsBySupplierId =
-              {};
+          final draft = await _loadDraft();
 
           emit(
             PurchaseOrderFormLoaded(
@@ -280,17 +267,15 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
               warehouses: warehouses,
               accounts: accounts,
               activeShiftsByAccount: activeShiftsByAccount,
-              supplierCreditsBySupplierId: supplierCreditsBySupplierId,
-              items: initialItems,
-              selectedSupplierId: initialSupplier,
-              selectedWarehouseId: initialWarehouse,
-              isDraftRestored: isDraftRestored,
+              items: draft.items,
+              selectedSupplierId: draft.supplierId,
+              selectedWarehouseId: draft.warehouseId,
+              isDraftRestored: draft.isRestored,
             ),
           );
 
-          // Cargar crédito del proveedor inicial restaurado bajo demanda (Lazy Loading)
-          if (initialSupplier != null) {
-            _fetchSupplierCreditIfNeeded(initialSupplier);
+          if (draft.supplierId != null) {
+            _fetchSupplierCreditIfNeeded(draft.supplierId!);
           }
         },
       );
@@ -309,6 +294,110 @@ class PurchaseOrderFormCubit extends Cubit<PurchaseOrderFormState> {
           errorMessage: 'Error inesperado al cargar catálogos: $e',
         ),
       );
+    }
+  }
+
+  Map<String, dynamic> _parseCatalogs(Map<String, dynamic> data) {
+    return {
+      'suppliers': data['suppliers'] as List<Map<String, dynamic>>? ?? [],
+      'warehouses': data['warehouses'] as List<WarehouseModel>? ?? [],
+      'accounts': data['accounts'] as List<FinancialAccountModel>? ?? [],
+      'activeShiftsByAccount':
+          data['activeShiftsByAccount'] as Map<String, String>? ?? {},
+    };
+  }
+
+  Future<_DraftData> _loadDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftStr = prefs.getString(_draftKey);
+      if (draftStr != null) {
+        final draftData = jsonDecode(draftStr) as Map<String, dynamic>;
+        final initialSupplier = draftData['supplierId'] as String?;
+        final initialWarehouse = draftData['warehouseId'] as String?;
+        List<InventoryEntryItemEntity> initialItems = [];
+        if (draftData['items'] != null) {
+          final rawItems = draftData['items'] as List;
+          initialItems =
+              rawItems.map((e) {
+                return InventoryEntryItemEntity(
+                  productId: e['productId'],
+                  variantId: e['variantId'],
+                  productName: e['productName'],
+                  variantLabel: e['variantLabel'] ?? '',
+                  imageUrl: e['imageUrl'] ?? e['image_url'],
+                  batchNumber: e['batchNumber'],
+                  usesBatches: e['usesBatches'] ?? false,
+                  expiryDate:
+                      e['expiryDate'] != null
+                          ? DateTime.tryParse(e['expiryDate'])
+                          : null,
+                  unitCost: (e['unitCost'] as num?)?.toDouble() ?? 0.0,
+                  quantity: (e['quantity'] as num?)?.toDouble() ?? 0.0,
+                );
+              }).toList();
+        }
+        final isRestored =
+            initialItems.isNotEmpty ||
+            initialSupplier != null ||
+            initialWarehouse != null;
+        return _DraftData(
+          items: initialItems,
+          supplierId: initialSupplier,
+          warehouseId: initialWarehouse,
+          isRestored: isRestored,
+        );
+      }
+    } catch (e, st) {
+      developer.log(
+        'Error restaurando borrador en SharedPreferences',
+        error: e,
+        stackTrace: st,
+        name: 'PurchaseOrderFormCubit',
+      );
+    }
+    return const _DraftData();
+  }
+
+  Future<void> _revalidateCatalogsInBackground(bool forceRefresh) async {
+    try {
+      final catalogsResult = await getPurchaseOrderFormCatalogsUseCase(
+        forceRefresh: forceRefresh,
+      );
+      catalogsResult.fold(
+        (failure) {
+          if (state is PurchaseOrderFormLoaded) {
+            emit(
+              (state as PurchaseOrderFormLoaded).copyWith(
+                isBackgroundLoading: false,
+              ),
+            );
+          }
+        },
+        (data) {
+          if (state is PurchaseOrderFormLoaded) {
+            final parsed = _parseCatalogs(data);
+            emit(
+              (state as PurchaseOrderFormLoaded).copyWith(
+                suppliers: parsed['suppliers'] as List<Map<String, dynamic>>,
+                warehouses: parsed['warehouses'] as List<WarehouseModel>,
+                accounts: parsed['accounts'] as List<FinancialAccountModel>,
+                activeShiftsByAccount:
+                    parsed['activeShiftsByAccount'] as Map<String, String>,
+                isBackgroundLoading: false,
+              ),
+            );
+          }
+        },
+      );
+    } catch (_) {
+      if (state is PurchaseOrderFormLoaded) {
+        emit(
+          (state as PurchaseOrderFormLoaded).copyWith(
+            isBackgroundLoading: false,
+          ),
+        );
+      }
     }
   }
 

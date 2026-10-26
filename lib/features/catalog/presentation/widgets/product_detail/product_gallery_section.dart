@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:go_router/go_router.dart';
@@ -75,22 +74,16 @@ class ProductGallerySection extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: effectiveUrls[index],
                   fit: BoxFit.contain,
+                  fadeInDuration: const Duration(milliseconds: 120),
+                  placeholderFadeInDuration: Duration.zero,
                   placeholder:
-                      (context, url) => Shimmer.fromColors(
-                        baseColor:
-                            isDark
-                                ? AppColors.darkSurfaceElevated
-                                : Colors.grey.shade200,
-                        highlightColor:
-                            isDark
-                                ? AppColors.darkBorder
-                                : Colors.grey.shade100,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                isDark ? AppColors.darkSurface : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                      (context, url) => Container(
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? AppColors.darkSurfaceElevated
+                                  : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                   errorWidget:

@@ -141,6 +141,8 @@ import '../../features/catalog/presentation/bloc/customer_catalog/customer_catal
     as _i991;
 import '../../features/catalog/presentation/bloc/ingredients/ingredients_cubit.dart'
     as _i635;
+import '../../features/catalog/presentation/bloc/product_detail/product_detail_cache.dart'
+    as _i679;
 import '../../features/catalog/presentation/bloc/product_detail/product_detail_cubit.dart'
     as _i1039;
 import '../../features/catalog/presentation/bloc/product_form/product_form_cubit.dart'
@@ -286,6 +288,8 @@ import '../../features/inventory/domain/usecases/get_inventory_exits_usecase.dar
     as _i136;
 import '../../features/inventory/domain/usecases/get_kardex_movements_usecase.dart'
     as _i392;
+import '../../features/inventory/domain/usecases/get_open_cash_shifts_usecase.dart'
+    as _i121;
 import '../../features/inventory/domain/usecases/get_warehouses_usecase.dart'
     as _i71;
 import '../../features/inventory/domain/usecases/save_warehouse_usecase.dart'
@@ -553,6 +557,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i962.SystemDiagnosticsCubit>(
       () => _i962.SystemDiagnosticsCubit(),
     );
+    gh.lazySingleton<_i679.ProductDetailCache>(
+      () => _i679.ProductDetailCache(),
+    );
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
       () => _i1021.ExportCustomersPdfUseCase(),
     );
@@ -809,6 +816,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i94.GetInventoryEntriesUseCase(
         gh<_i74.InventoryEntriesRepository>(),
       ),
+    );
+    gh.factory<_i121.GetOpenCashShiftsUseCase>(
+      () =>
+          _i121.GetOpenCashShiftsUseCase(gh<_i74.InventoryEntriesRepository>()),
     );
     gh.factory<_i611.GetPurchaseOrderByIdUseCase>(
       () => _i611.GetPurchaseOrderByIdUseCase(
@@ -1543,15 +1554,6 @@ extension GetItInjectableX on _i174.GetIt {
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),
       ),
     );
-    gh.factory<_i977.InventoryEntryFormCubit>(
-      () => _i977.InventoryEntryFormCubit(
-        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
-        getActiveSuppliers: gh<_i664.GetActiveSuppliersUseCase>(),
-        getActiveAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
-        createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
-        getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
-      ),
-    );
     gh.lazySingleton<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
@@ -1596,6 +1598,17 @@ extension GetItInjectableX on _i174.GetIt {
         getOrderDetails: gh<_i93.GetOrderDetailsUc>(),
         posRepository: gh<_i511.PosRepository>(),
         checkActiveShiftUc: gh<_i1006.CheckActiveShiftUc>(),
+      ),
+    );
+    gh.factory<_i977.InventoryEntryFormCubit>(
+      () => _i977.InventoryEntryFormCubit(
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+        getActiveSuppliers: gh<_i664.GetActiveSuppliersUseCase>(),
+        getActiveAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
+        createInventoryEntry: gh<_i419.CreateInventoryEntryUseCase>(),
+        getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
+        getOpenCashShifts: gh<_i121.GetOpenCashShiftsUseCase>(),
+        fetchPurchaseOrderItems: gh<_i731.FetchPurchaseOrderItemsUseCase>(),
       ),
     );
     gh.lazySingleton<_i1038.CreateBrandUseCase>(

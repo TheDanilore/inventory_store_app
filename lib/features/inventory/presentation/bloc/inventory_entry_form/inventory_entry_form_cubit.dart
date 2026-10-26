@@ -7,6 +7,8 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/purchases/domain/entities/supplier_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
@@ -14,6 +16,7 @@ import 'package:inventory_store_app/features/inventory/domain/usecases/get_activ
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_active_suppliers_uc.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_financial_accounts_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_entry_usecase.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_open_cash_shifts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
@@ -27,6 +30,8 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
   final GetFinancialAccountsUseCase getActiveAccounts;
   final CreateInventoryEntryUseCase createInventoryEntry;
   final GetPurchaseOrderByIdUseCase getPurchaseOrderById;
+  final GetOpenCashShiftsUseCase getOpenCashShifts;
+  final FetchPurchaseOrderItemsUseCase fetchPurchaseOrderItems;
 
   static const _draftKey = 'inventory_entry_draft';
   Timer? _draftTimer;
@@ -37,7 +42,12 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     required this.getActiveAccounts,
     required this.createInventoryEntry,
     required this.getPurchaseOrderById,
-  }) : super(const InventoryEntryFormState());
+    GetOpenCashShiftsUseCase? getOpenCashShifts,
+    FetchPurchaseOrderItemsUseCase? fetchPurchaseOrderItems,
+  }) : getOpenCashShifts = getOpenCashShifts ?? sl<GetOpenCashShiftsUseCase>(),
+       fetchPurchaseOrderItems =
+           fetchPurchaseOrderItems ?? sl<FetchPurchaseOrderItemsUseCase>(),
+       super(const InventoryEntryFormState());
 
   @override
   Future<void> close() {
@@ -54,16 +64,27 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     String? prefillDocumentNumber,
     DateTime? prefillDocumentDate,
   }) async {
+    // ── Política Zero-Shimmer (Cache-First / Stale-While-Revalidate) ───────────
+    final hasCachedCatalogs =
+        state.warehouses.isNotEmpty && state.accounts.isNotEmpty;
+    final isSameContext = state.purchaseOrderId == purchaseOrderId;
+
+    if (hasCachedCatalogs && isSameContext) {
+      // Revalidación silenciosa de turnos sin borrar ni bloquear la UI
+      await refreshCashShifts();
+      return;
+    }
+
     emit(
       state.copyWith(
-        isLoading: true,
+        isLoading: !hasCachedCatalogs,
         errorMessage: '',
         purchaseOrderId: purchaseOrderId,
-        selectedSupplierId: prefillSupplierId,
-        selectedWarehouseId: prefillWarehouseId,
-        documentType: prefillDocumentType ?? 'NINGUNO',
-        documentNumber: prefillDocumentNumber,
-        documentDate: prefillDocumentDate,
+        selectedSupplierId: prefillSupplierId ?? state.selectedSupplierId,
+        selectedWarehouseId: prefillWarehouseId ?? state.selectedWarehouseId,
+        documentType: prefillDocumentType ?? state.documentType,
+        documentNumber: prefillDocumentNumber ?? state.documentNumber,
+        documentDate: prefillDocumentDate ?? state.documentDate,
       ),
     );
 
@@ -72,7 +93,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         getActiveWarehouses.call(),
         getActiveSuppliers.call(),
         getActiveAccounts.call(page: 0, pageSize: 100),
-        createInventoryEntry.repository.getOpenCashShifts(),
+        getOpenCashShifts.call(),
       ]);
 
       final warehouses = futures[0] as List<WarehouseEntity>;
@@ -204,7 +225,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
   Future<void> refreshCashShifts() async {
     try {
-      final shifts = await createInventoryEntry.repository.getOpenCashShifts();
+      final shifts = await getOpenCashShifts.call();
       final shiftId =
           state.selectedAccountId != null
               ? shifts[state.selectedAccountId]
@@ -223,6 +244,40 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
         stackTrace: st,
         name: 'InventoryEntryFormCubit',
       );
+    }
+  }
+
+  /// Maneja productos escaneados (cámara o pistola física) con deduplicación y asignación de variante por defecto.
+  bool handleScannedProduct({
+    required ProductEntity product,
+    ProductVariantEntity? variant,
+  }) {
+    final targetVariant = variant ?? product.defaultVariant;
+    final existingIndex = state.items.indexWhere(
+      (item) =>
+          item.productId == product.id &&
+          (targetVariant == null || item.variantId == targetVariant.id),
+    );
+
+    if (existingIndex != -1) {
+      final currentItem = state.items[existingIndex];
+      updateItemQuantity(existingIndex, currentItem.quantity + 1);
+      return false; // Indicador de que fue incremento (+1)
+    } else {
+      final entryItem = InventoryEntryItemEntity(
+        productId: product.id,
+        productName: product.name,
+        variantId: targetVariant?.id ?? product.id,
+        variantLabel: targetVariant?.label ?? targetVariant?.sku ?? 'Estándar',
+        usesBatches: product.usesBatches,
+        quantity: 1.0,
+        unitCost: targetVariant?.unitCost ?? 0.0,
+        batchNumber: '',
+        expiryDate: null,
+        imageUrl: product.primaryImageUrl,
+      );
+      addItem(entryItem);
+      return true; // Indicador de que es nuevo item agregado
     }
   }
 
@@ -523,8 +578,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
 
       if (poResp == null) return;
 
-      final fetchItemsUseCase = sl<FetchPurchaseOrderItemsUseCase>();
-      final itemsResult = await fetchItemsUseCase.call(poId);
+      final itemsResult = await fetchPurchaseOrderItems.call(poId);
 
       final List<InventoryEntryItemEntity> loadedItems = [];
       itemsResult.fold(

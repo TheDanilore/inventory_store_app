@@ -9,7 +9,11 @@ class GetPurchaseOrderFormCatalogsUseCase {
 
   GetPurchaseOrderFormCatalogsUseCase(this.repository);
 
-  Future<Either<Failure, Map<String, dynamic>>> call() {
-    return repository.getFormCatalogs();
+  Future<Either<Failure, Map<String, dynamic>>> call({
+    bool forceRefresh = false,
+  }) {
+    return repository.getFormCatalogs(forceRefresh: forceRefresh);
   }
+
+  Map<String, dynamic>? getCached() => repository.getCachedFormCatalogs();
 }

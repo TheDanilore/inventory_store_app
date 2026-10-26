@@ -24,6 +24,8 @@ class ProductDetailState extends Equatable {
   final List<Map<String, dynamic>> reviewsList;
   final List<Map<String, dynamic>> activeIngredients;
 
+  final bool isRefreshing;
+
   // Admin Data
   final int totalSold;
   final double reinvestmentNeeded;
@@ -35,6 +37,7 @@ class ProductDetailState extends Equatable {
   const ProductDetailState({
     this.product,
     this.viewState = ViewState.initial,
+    this.isRefreshing = false,
     this.showVariantImage = false,
     this.errorMessage,
     this.successMessage,
@@ -59,6 +62,7 @@ class ProductDetailState extends Equatable {
   ProductDetailState copyWith({
     ProductEntity? product,
     ViewState? viewState,
+    bool? isRefreshing,
     bool? showVariantImage,
     String? errorMessage,
     String? successMessage,
@@ -83,6 +87,7 @@ class ProductDetailState extends Equatable {
     return ProductDetailState(
       product: product ?? this.product,
       viewState: viewState ?? this.viewState,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
       showVariantImage: showVariantImage ?? this.showVariantImage,
       errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
       successMessage:
@@ -273,10 +278,51 @@ class ProductDetailState extends Equatable {
     return false;
   }
 
+  // ── Retail & Inventory Domain Computations ──
+  double get retailProfit =>
+      effectivePrice > effectiveCost ? effectivePrice - effectiveCost : 0.0;
+
+  double get retailMargin =>
+      effectivePrice > 0 ? (retailProfit / effectivePrice) * 100 : 0.0;
+
+  int get reorderPoint =>
+      selectedVariant?.reorderPoint ??
+      product?.defaultVariant?.reorderPoint ??
+      0;
+
+  bool get isLowStock => reorderPoint > 0 && effectiveStock <= reorderPoint;
+
+  double get totalInventoryValue => effectiveStock * effectiveCost;
+
+  Map<String, dynamic> get mergedDetails {
+    if (product == null) return const {};
+    final map = Map<String, dynamic>.from(product!.details);
+    if (product!.brandName != null && product!.brandName!.isNotEmpty) {
+      map['Marca'] = product!.brandName!;
+    }
+    map['Control de Stock'] = product!.stockControl ? 'Sí' : 'No';
+    map['Usa Lotes'] = product!.usesBatches ? 'Sí' : 'No';
+    final n = product!.productType.replaceAll('_', ' ').trim();
+    map['Tipo de Producto'] =
+        n.isEmpty
+            ? product!.productType
+            : n
+                .split(RegExp(r'\s+'))
+                .map(
+                  (p) =>
+                      p.isEmpty
+                          ? p
+                          : p[0].toUpperCase() + p.substring(1).toLowerCase(),
+                )
+                .join(' ');
+    return map;
+  }
+
   @override
   List<Object?> get props => [
     product,
     viewState,
+    isRefreshing,
     showVariantImage,
     errorMessage,
     successMessage,

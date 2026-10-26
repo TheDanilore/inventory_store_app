@@ -14,6 +14,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/add_product
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_financial_summary_entity.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_cache.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/product_detail/product_detail_state.dart';
 import 'package:injectable/injectable.dart';
 
@@ -64,6 +65,44 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     String? initialVariantId,
   }) async {
     this.initialVariantId = initialVariantId;
+
+    // 1. Revisar caché en memoria L1 (SWR)
+    final cached = ProductDetailCache.instance.get(productId);
+    if (cached != null && cached.product != null) {
+      product = cached.product;
+      final effectiveVariantId =
+          initialVariantId ??
+          (cached.product!.productVariants.isNotEmpty
+              ? cached.product!.productVariants.first.id
+              : null);
+      this.initialVariantId = effectiveVariantId;
+      emit(
+        state.copyWith(
+          product: cached.product,
+          selectedVariantId: effectiveVariantId,
+          viewState: ViewState.success,
+          isRefreshing: true,
+          warehouseStocks: cached.warehouseStocks,
+          batchesList: cached.batchesList,
+          images: cached.images,
+          variants:
+              cached.variants.isNotEmpty
+                  ? cached.variants
+                  : cached.product!.productVariants,
+          reviewsList: cached.reviewsList,
+          activeIngredients: cached.activeIngredients,
+          averageRating: cached.averageRating,
+          totalSold: cached.totalSold,
+          reinvestmentNeeded: cached.reinvestmentNeeded,
+          totalRevenue: cached.totalRevenue,
+          inventoryValue: cached.inventoryValue,
+          variantSummaries: cached.variantSummaries,
+        ),
+      );
+      _revalidateData();
+      return;
+    }
+
     emit(state.copyWith(viewState: ViewState.loading));
 
     final result = await _getProductById(productId);
@@ -108,11 +147,52 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
             : null);
     this.initialVariantId = effectiveVariantId;
 
-    emit(
-      state.copyWith(product: product, selectedVariantId: effectiveVariantId),
-    );
+    // 1. Revisar caché en memoria L1
+    final cached = ProductDetailCache.instance.get(product.id);
+    if (cached != null) {
+      // CACHE HIT: Emisión inmediata en ViewState.success -> ¡CERO SHIMMER / LOADING!
+      emit(
+        state.copyWith(
+          product: product,
+          selectedVariantId: effectiveVariantId,
+          viewState: ViewState.success,
+          isRefreshing: true,
+          warehouseStocks: cached.warehouseStocks,
+          batchesList: cached.batchesList,
+          images: cached.images,
+          variants:
+              cached.variants.isNotEmpty
+                  ? cached.variants
+                  : product.productVariants,
+          reviewsList: cached.reviewsList,
+          activeIngredients: cached.activeIngredients,
+          averageRating: cached.averageRating,
+          totalSold: cached.totalSold,
+          reinvestmentNeeded: cached.reinvestmentNeeded,
+          totalRevenue: cached.totalRevenue,
+          inventoryValue: cached.inventoryValue,
+          variantSummaries: cached.variantSummaries,
+        ),
+      );
+      // Revalidación en segundo plano sin alterar viewState a loading
+      _revalidateData();
+    } else {
+      // Primera carga fría
+      emit(
+        state.copyWith(
+          product: product,
+          selectedVariantId: effectiveVariantId,
+          viewState: ViewState.loading,
+        ),
+      );
+      _initData();
+    }
+  }
 
-    _initData();
+  Future<void> _revalidateData() async {
+    await _fetchExtraData();
+    if (isClosed) return;
+    emit(state.copyWith(isRefreshing: false, viewState: ViewState.success));
   }
 
   Future<void> _initData() async {
@@ -124,7 +204,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
     emit(state.copyWith(viewState: ViewState.loading));
     await _fetchExtraData();
     if (isClosed) return;
-    emit(state.copyWith(viewState: ViewState.success));
+    emit(state.copyWith(viewState: ViewState.success, isRefreshing: false));
   }
 
   Future<void> _fetchExtraData() async {
@@ -209,6 +289,26 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           state.selectedVariantId ??
           (variants.isNotEmpty ? variants.first.id : null);
 
+      // Guardar en la caché L1 en memoria
+      ProductDetailCache.instance.put(
+        product!.id,
+        CachedProductDetail(
+          product: product,
+          warehouseStocks: extraData.stocks,
+          batchesList: extraData.batches,
+          images: images,
+          variants: variants,
+          reviewsList: extraData.reviews,
+          activeIngredients: extraData.ingredients,
+          averageRating: averageRating,
+          totalSold: totalSold,
+          reinvestmentNeeded: reinvestmentNeeded,
+          totalRevenue: totalRevenue,
+          inventoryValue: inventoryValue,
+          variantSummaries: variantSummaries,
+        ),
+      );
+
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -225,6 +325,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
           totalRevenue: totalRevenue,
           inventoryValue: inventoryValue,
           variantSummaries: variantSummaries,
+          isRefreshing: false,
         ),
       );
     } catch (e, st) {
@@ -234,6 +335,8 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         stackTrace: st,
         tag: 'ProductDetailCubit',
       );
+      if (isClosed) return;
+      emit(state.copyWith(isRefreshing: false));
     }
   }
 
@@ -398,6 +501,7 @@ class ProductDetailCubit extends Cubit<ProductDetailState> {
         ),
       );
 
+      ProductDetailCache.instance.invalidate(product!.id);
       await loadData();
     } catch (e, st) {
       LoggerService.e(

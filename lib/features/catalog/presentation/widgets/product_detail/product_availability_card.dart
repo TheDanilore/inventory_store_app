@@ -55,7 +55,7 @@ class ProductAvailabilityCard extends StatelessWidget {
               title: 'Stock por almacén',
             ),
             const SizedBox(height: 14),
-            if (state.viewState == ViewState.loading)
+            if (state.viewState == ViewState.loading && displayStocks.isEmpty)
               const Center(
                 child: CircularProgressIndicator(
                   color: AppColors.primary,

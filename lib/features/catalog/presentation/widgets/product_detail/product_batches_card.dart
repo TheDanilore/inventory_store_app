@@ -12,7 +12,8 @@ class ProductBatchesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = context.watch<ProductDetailCubit>().state;
-    final isLoading = state.viewState == ViewState.loading;
+    final isLoading =
+        state.viewState == ViewState.loading && state.batchesList.isEmpty;
 
     if (state.batchesList.isEmpty && !isLoading) {
       return const SizedBox.shrink();

@@ -48,6 +48,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
 
   // Helpers
   final bool isSaving;
+  final bool isBackgroundLoading;
   final String? errorMessage;
   final bool isDraftRestored;
   final String? editOrderId;
@@ -74,6 +75,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     this.currencyCode = 'PEN',
     this.exchangeRate = 1.0,
     this.isSaving = false,
+    this.isBackgroundLoading = false,
     this.errorMessage,
     this.isDraftRestored = false,
     this.editOrderId,
@@ -155,6 +157,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     String? currencyCode,
     double? exchangeRate,
     bool? isSaving,
+    bool? isBackgroundLoading,
     String? errorMessage,
     bool? isDraftRestored,
     String? editOrderId,
@@ -181,6 +184,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       currencyCode: currencyCode ?? this.currencyCode,
       exchangeRate: exchangeRate ?? this.exchangeRate,
       isSaving: isSaving ?? this.isSaving,
+      isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored ?? this.isDraftRestored,
       editOrderId: editOrderId ?? this.editOrderId,
@@ -208,6 +212,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       currencyCode: currencyCode,
       exchangeRate: exchangeRate,
       isSaving: isSaving,
+      isBackgroundLoading: isBackgroundLoading,
       errorMessage: null,
       isDraftRestored: isDraftRestored,
       editOrderId: editOrderId,
@@ -235,6 +240,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       currencyCode: currencyCode,
       exchangeRate: exchangeRate,
       isSaving: isSaving,
+      isBackgroundLoading: isBackgroundLoading,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
       editOrderId: editOrderId,
@@ -262,6 +268,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
       currencyCode: currencyCode,
       exchangeRate: exchangeRate,
       isSaving: isSaving,
+      isBackgroundLoading: isBackgroundLoading,
       errorMessage: errorMessage,
       isDraftRestored: isDraftRestored,
       editOrderId: editOrderId,
@@ -289,6 +296,7 @@ class PurchaseOrderFormLoaded extends PurchaseOrderFormState {
     currencyCode,
     exchangeRate,
     isSaving,
+    isBackgroundLoading,
     errorMessage,
     isDraftRestored,
     editOrderId,
