@@ -83,12 +83,13 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     required int pageSize,
     String searchText = '',
     String statusFilter = 'Todos',
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
     bool forceRefresh = false,
   }) async {
     final cacheKey =
-        '${page}_${pageSize}_${searchText}_${statusFilter}_${startDate?.toIso8601String()}_${endDate?.toIso8601String()}';
+        '${page}_${pageSize}_${searchText}_${statusFilter}_${warehouseFilter ?? 'ALL'}_${startDate?.toIso8601String()}_${endDate?.toIso8601String()}';
 
     if (!forceRefresh && _ordersCache.containsKey(cacheKey)) {
       final cached = _ordersCache[cacheKey]!;
@@ -114,6 +115,13 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
 
       if (statusFilter != 'Todos') {
         query = query.eq('status', statusFilter);
+      }
+
+      if (warehouseFilter != null &&
+          warehouseFilter.isNotEmpty &&
+          warehouseFilter != 'Todos' &&
+          warehouseFilter != 'TODOS') {
+        query = query.eq('warehouses.name', warehouseFilter);
       }
 
       if (startDate != null && endDate != null) {

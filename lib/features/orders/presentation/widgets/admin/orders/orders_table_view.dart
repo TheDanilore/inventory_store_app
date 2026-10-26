@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
+import 'package:inventory_store_app/core/widgets/admin_table_action_pill.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 
@@ -421,126 +422,48 @@ class _OrdersTableViewState extends State<OrdersTableView> {
             final hasDoc =
                 order.documentNumber != null &&
                 order.documentNumber!.trim().isNotEmpty;
+            final isFactura = order.documentType.toUpperCase() == 'FACTURA';
+            final isBoleta = order.documentType.toUpperCase() == 'BOLETA';
+            final docAccent =
+                isFactura
+                    ? const Color(0xFF8B5CF6)
+                    : (isBoleta
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFF10B981));
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                InkWell(
+                AdminTableActionPill(
+                  text: '#$shortId',
+                  icon: Icons.copy_rounded,
+                  tooltip: 'Clic para copiar ID del pedido (#$shortId)',
+                  isMonospace: true,
+                  accentColor: AppColors.teal,
                   onTap: () => _copyToClipboard(context, shortId, 'ID'),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? AppColors.darkSurfaceElevated
-                              : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? AppColors.darkBorder
-                                : const Color(0xFFCBD5E1),
-                      ),
-                    ),
-                    child: Text(
-                      '#$shortId',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            isDark
-                                ? AppColors.darkTextPrimary
-                                : const Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
                 ),
                 if (hasDoc) ...[
                   const SizedBox(height: 3),
-                  InkWell(
+                  AdminTableActionPill(
+                    text: order.documentNumber!.trim(),
+                    icon: Icons.copy_rounded,
+                    tooltip:
+                        'Clic para copiar comprobante (${order.documentNumber!.trim()})',
+                    isMonospace: true,
+                    fontSize: 10.5,
+                    iconSize: 11.0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2.5,
+                    ),
+                    accentColor: docAccent,
                     onTap:
                         () => _copyToClipboard(
                           context,
                           order.documentNumber!.trim(),
                           'Comprobante',
                         ),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            (order.documentType.toUpperCase() == 'FACTURA')
-                                ? (isDark
-                                    ? const Color(
-                                      0xFF4C1D95,
-                                    ).withValues(alpha: 0.35)
-                                    : const Color(0xFFF3E8FF))
-                                : ((order.documentType.toUpperCase() ==
-                                        'BOLETA')
-                                    ? (isDark
-                                        ? const Color(
-                                          0xFF1E3A8A,
-                                        ).withValues(alpha: 0.35)
-                                        : const Color(0xFFEFF6FF))
-                                    : (isDark
-                                        ? const Color(
-                                          0xFF064E3B,
-                                        ).withValues(alpha: 0.35)
-                                        : const Color(0xFFECFDF5))),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color:
-                              (order.documentType.toUpperCase() == 'FACTURA')
-                                  ? (isDark
-                                      ? const Color(
-                                        0xFF7C3AED,
-                                      ).withValues(alpha: 0.5)
-                                      : const Color(0xFFD8B4FE))
-                                  : ((order.documentType.toUpperCase() ==
-                                          'BOLETA')
-                                      ? (isDark
-                                          ? const Color(
-                                            0xFF2563EB,
-                                          ).withValues(alpha: 0.5)
-                                          : const Color(0xFFBFDBFE))
-                                      : (isDark
-                                          ? const Color(
-                                            0xFF059669,
-                                          ).withValues(alpha: 0.5)
-                                          : const Color(0xFFA7F3D0))),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Text(
-                        order.documentNumber!.trim(),
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w800,
-                          color:
-                              (order.documentType.toUpperCase() == 'FACTURA')
-                                  ? (isDark
-                                      ? const Color(0xFFA78BFA)
-                                      : const Color(0xFF7E22CE))
-                                  : ((order.documentType.toUpperCase() ==
-                                          'BOLETA')
-                                      ? (isDark
-                                          ? const Color(0xFF60A5FA)
-                                          : const Color(0xFF1D4ED8))
-                                      : (isDark
-                                          ? const Color(0xFF34D399)
-                                          : const Color(0xFF047857))),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ],

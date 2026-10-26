@@ -23,6 +23,7 @@ abstract class OrdersRepository {
     String? customerIdFilter,
     required String statusFilter,
     required String paymentStatusFilter,
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
     required String searchQuery,

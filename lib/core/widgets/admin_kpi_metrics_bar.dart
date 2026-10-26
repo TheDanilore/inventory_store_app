@@ -395,8 +395,8 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    widget.value,
+                  _AnimatedKpiValue(
+                    rawValue: widget.value,
                     style: TextStyle(
                       fontSize: isMobile ? 16.5 : 18.5,
                       fontWeight: FontWeight.w900,
@@ -404,8 +404,6 @@ class _AdminKpiCardState extends State<AdminKpiCard> {
                       letterSpacing: -0.4,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 1),
                   Text(
@@ -635,8 +633,6 @@ class AdminKpiMetricsBar extends StatelessWidget {
             if (second != null) ...[
               SizedBox(width: spacing),
               Expanded(child: AdminKpiCard.fromItem(second)),
-            ] else ...[
-              const Spacer(),
             ],
           ],
         ),
@@ -683,6 +679,79 @@ class AdminKpiMetricsBar extends StatelessWidget {
               ),
             ),
       ),
+    );
+  }
+}
+
+/// Muestra cifras numéricas con animación fluida de conteo (de valor anterior a nuevo)
+/// y respeta la accesibilidad desactivando la animación si el sistema lo requiere.
+class _AnimatedKpiValue extends StatelessWidget {
+  final String rawValue;
+  final TextStyle style;
+
+  const _AnimatedKpiValue({required this.rawValue, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) {
+      return Text(
+        rawValue,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    // Intentar extraer prefijo, número y sufijo (ej: "S/ 3117.00", "68", "12 uds.")
+    final regex = RegExp(r'^([^0-9\-\.]*)([\-0-9\.]+)(.*)$');
+    final match = regex.firstMatch(rawValue.trim());
+
+    if (match == null) {
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: Text(
+          rawValue,
+          key: ValueKey(rawValue),
+          style: style,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
+
+    final prefix = match.group(1) ?? '';
+    final numStr = match.group(2) ?? '';
+    final suffix = match.group(3) ?? '';
+    final targetNum = double.tryParse(numStr);
+
+    if (targetNum == null) {
+      return Text(
+        rawValue,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    final hasDecimals = numStr.contains('.');
+    final decimalPlaces = hasDecimals ? numStr.split('.')[1].length : 0;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: targetNum),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      builder: (context, val, _) {
+        final formatted =
+            decimalPlaces > 0
+                ? val.toStringAsFixed(decimalPlaces)
+                : val.round().toString();
+        return Text(
+          '$prefix$formatted$suffix',
+          style: style,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
     );
   }
 }

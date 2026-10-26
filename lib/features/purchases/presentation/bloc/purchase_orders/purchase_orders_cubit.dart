@@ -1,5 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_orders_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/update_purchase_order_status_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/register_order_payment_usecase.dart';
@@ -13,6 +15,7 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   final UpdatePurchaseOrderStatusUseCase updatePurchaseOrderStatusUseCase;
   final RegisterOrderPaymentUseCase registerOrderPaymentUseCase;
   final UpdateOrderPaymentMethodUseCase updateOrderPaymentMethodUseCase;
+  final GetActiveWarehousesUseCase _getActiveWarehouses;
 
   static const int pageSize = PurchaseOrdersState.pageSize;
 
@@ -21,8 +24,20 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     required this.updatePurchaseOrderStatusUseCase,
     required this.registerOrderPaymentUseCase,
     required this.updateOrderPaymentMethodUseCase,
-  }) : super(PurchaseOrdersInitial()) {
-    loadOrders();
+    GetActiveWarehousesUseCase? getActiveWarehouses,
+  }) : _getActiveWarehouses =
+           getActiveWarehouses ?? sl<GetActiveWarehousesUseCase>(),
+       super(PurchaseOrdersInitial()) {
+    init();
+  }
+
+  Future<void> init() async {
+    List<String> warehouses = ['Todos'];
+    try {
+      final whList = await _getActiveWarehouses.call();
+      warehouses.addAll(whList.map((w) => w.name).toList());
+    } catch (_) {}
+    loadOrders(availableWarehouses: warehouses);
   }
 
   Future<void> refresh() => loadOrders(refresh: true, forceRefresh: true);
@@ -32,6 +47,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   Future<void> loadOrders({
     String? searchText,
     String? statusFilter,
+    String? warehouseFilter,
+    List<String>? availableWarehouses,
     DateTime? startDate,
     DateTime? endDate,
     int? page,
@@ -44,6 +61,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     final currentState = state;
     String currentSearchText = '';
     String currentStatusFilter = 'Todos';
+    String currentWarehouseFilter = 'Todos';
+    List<String> currentAvailableWarehouses = const ['Todos'];
     DateTime? currentStartDate;
     DateTime? currentEndDate;
     int currentPage = 0;
@@ -54,6 +73,9 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     if (currentState is PurchaseOrdersLoaded) {
       currentSearchText = searchText ?? currentState.searchText;
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
+      currentWarehouseFilter = warehouseFilter ?? currentState.warehouseFilter;
+      currentAvailableWarehouses =
+          availableWarehouses ?? currentState.availableWarehouses;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage =
@@ -67,6 +89,9 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     } else if (currentState is PurchaseOrdersLoading) {
       currentSearchText = searchText ?? currentState.searchText;
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
+      currentWarehouseFilter = warehouseFilter ?? currentState.warehouseFilter;
+      currentAvailableWarehouses =
+          availableWarehouses ?? currentState.availableWarehouses;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage =
@@ -80,6 +105,9 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     } else if (currentState is PurchaseOrdersError) {
       currentSearchText = searchText ?? currentState.searchText;
       currentStatusFilter = statusFilter ?? currentState.statusFilter;
+      currentWarehouseFilter = warehouseFilter ?? currentState.warehouseFilter;
+      currentAvailableWarehouses =
+          availableWarehouses ?? currentState.availableWarehouses;
       currentStartDate = startDate ?? currentState.startDate;
       currentEndDate = endDate ?? currentState.endDate;
       currentPage = page ?? (refresh ? 0 : currentState.currentPage);
@@ -89,6 +117,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
     } else {
       currentSearchText = searchText ?? '';
       currentStatusFilter = statusFilter ?? 'Todos';
+      currentWarehouseFilter = warehouseFilter ?? 'Todos';
+      currentAvailableWarehouses = availableWarehouses ?? const ['Todos'];
       currentStartDate = startDate;
       currentEndDate = endDate;
       currentPage = page ?? 0;
@@ -100,6 +130,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
         currentOrders: currentOrders,
         searchText: currentSearchText,
         statusFilter: currentStatusFilter,
+        warehouseFilter: currentWarehouseFilter,
+        availableWarehouses: currentAvailableWarehouses,
         startDate: currentStartDate,
         endDate: currentEndDate,
         currentPage: currentPage,
@@ -108,11 +140,17 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       ),
     );
 
+    final whParam =
+        (currentWarehouseFilter == 'Todos' || currentWarehouseFilter == 'TODOS')
+            ? null
+            : currentWarehouseFilter;
+
     final result = await fetchPurchaseOrdersUseCase(
       page: currentPage,
       pageSize: currentPageSize,
       searchText: currentSearchText,
       statusFilter: currentStatusFilter,
+      warehouseFilter: whParam,
       startDate: currentStartDate,
       endDate: currentEndDate,
       forceRefresh: forceRefresh,
@@ -135,6 +173,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             currentOrders: currentOrders,
             searchText: currentSearchText,
             statusFilter: currentStatusFilter,
+            warehouseFilter: currentWarehouseFilter,
+            availableWarehouses: currentAvailableWarehouses,
             startDate: currentStartDate,
             endDate: currentEndDate,
             currentPage: currentPage,
@@ -149,6 +189,8 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
             orders: data['data'] as List<dynamic>,
             searchText: currentSearchText,
             statusFilter: currentStatusFilter,
+            warehouseFilter: currentWarehouseFilter,
+            availableWarehouses: currentAvailableWarehouses,
             startDate: currentStartDate,
             endDate: currentEndDate,
             currentPage: currentPage,
@@ -170,6 +212,10 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
 
   void setStatusFilter(String status) {
     loadOrders(statusFilter: status, page: 0, refresh: true);
+  }
+
+  void setWarehouseFilter(String warehouse) {
+    loadOrders(warehouseFilter: warehouse, page: 0, refresh: true);
   }
 
   void setDateRange(DateTime? start, DateTime? end) {

@@ -8,6 +8,7 @@ class GetFilteredOrdersParams {
   final String? customerIdFilter;
   final String statusFilter;
   final String paymentStatusFilter;
+  final String? warehouseFilter;
   final DateTime? startDate;
   final DateTime? endDate;
   final String searchQuery;
@@ -19,6 +20,7 @@ class GetFilteredOrdersParams {
     this.customerIdFilter,
     required this.statusFilter,
     required this.paymentStatusFilter,
+    this.warehouseFilter,
     this.startDate,
     this.endDate,
     required this.searchQuery,
@@ -41,6 +43,7 @@ class GetFilteredOrdersUc {
       customerIdFilter: params.customerIdFilter,
       statusFilter: params.statusFilter,
       paymentStatusFilter: params.paymentStatusFilter,
+      warehouseFilter: params.warehouseFilter,
       startDate: params.startDate,
       endDate: params.endDate,
       searchQuery: params.searchQuery,

@@ -789,10 +789,7 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Salidas',
           value: totalCount > 0 ? '$totalCount' : '$count',
-          subtitle:
-              isFilteredByWarehouse
-                  ? 'En $warehouseName'
-                  : 'Salidas registradas',
+          subtitle: isFilteredByWarehouse ? 'En $warehouseName' : 'Registradas',
           icon: Icons.outbox_rounded,
           accentColor: AppColors.primary,
           gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
@@ -803,7 +800,7 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Costo Total Salidas',
           value: 'S/ ${totalCost.toStringAsFixed(2)}',
-          subtitle: 'Costo total de salidas',
+          subtitle: 'Costo acumulado',
           icon: Icons.payments_rounded,
           accentColor: AppColors.dangerDark,
           gradientColors: const [Colors.white, Color(0xFFFEF2F2)],
@@ -816,7 +813,7 @@ class _InventoryExitsBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Unidades Despachadas',
           value: '$totalUnits uds.',
-          subtitle: 'Productos descargados',
+          subtitle: 'Despachadas',
           icon: Icons.inventory_2_rounded,
           accentColor: AppColors.tealDark,
           gradientColors: const [Colors.white, Color(0xFFF0FDFA)],

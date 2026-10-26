@@ -79,8 +79,10 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final state = cubit.state;
-      if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
-        cubit.loadOrders(refresh: true);
+      if (state is! PurchaseOrdersLoaded ||
+          state.orders.isEmpty ||
+          state.availableWarehouses.length <= 1) {
+        cubit.init();
       } else {
         // Revalidación silenciosa en background sin borrar la tabla (Stale-While-Revalidate)
         cubit.loadOrders(background: true);
@@ -913,6 +915,9 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                             SliverToBoxAdapter(
                               child: AdminProToolbar(
                                 isDesktop: constraints.maxWidth >= 1024,
+                                isLoading:
+                                    viewModel.isLoading ||
+                                    viewModel.isBackgroundLoading,
                                 searchController: _searchCtrl,
                                 searchFocusNode: _searchFocusNode,
                                 searchHint:
@@ -934,6 +939,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     icon: Icons.filter_list_rounded,
                                     selected: viewModel.statusFilter,
                                     defaultValue: 'Todos',
+                                    displayType: AdminFilterDisplayType.chips,
                                     onSelected: viewModel.setStatusFilter,
                                     options: [
                                       const AdminFilterOption(
@@ -973,6 +979,25 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                       ),
                                     ],
                                   ),
+                                  AdminFilterGroup<String>(
+                                    title: 'Almacén',
+                                    icon: Icons.storefront_rounded,
+                                    selected: viewModel.warehouseFilter,
+                                    defaultValue: 'Todos',
+                                    onSelected: viewModel.setWarehouseFilter,
+                                    options: [
+                                      for (final w
+                                          in viewModel.availableWarehouses)
+                                        AdminFilterOption<String>(
+                                          value: w,
+                                          label:
+                                              (w == 'TODOS' || w == 'Todos')
+                                                  ? 'Todos'
+                                                  : w,
+                                          icon: Icons.storefront_rounded,
+                                        ),
+                                    ],
+                                  ),
                                 ],
                                 // Fecha: filtro en desktop y sección dentro del sheet móvil
                                 mobileExtraFilters: [
@@ -992,9 +1017,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
                                     (viewModel.statusFilter != 'Todos'
                                         ? 1
                                         : 0) +
+                                    (viewModel.warehouseFilter != 'Todos' &&
+                                            viewModel.warehouseFilter != 'TODOS'
+                                        ? 1
+                                        : 0) +
                                     (viewModel.dateRange != null ? 1 : 0),
                                 onClearFilters: () {
                                   viewModel.setStatusFilter('Todos');
+                                  viewModel.setWarehouseFilter('Todos');
                                   viewModel.setDateRange(null);
                                 },
                                 viewToggleConfig: AdminProViewToggleConfig(
@@ -1072,7 +1102,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Órdenes',
           value: totalRecords > 0 ? '$totalRecords' : '$orderCount',
-          subtitle: 'Órdenes registradas',
+          subtitle: 'Registradas',
           icon: Icons.receipt_long_rounded,
           accentColor: AppColors.tealDark,
           gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
@@ -1083,7 +1113,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Monto Compras',
           value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-          subtitle: 'Total compras',
+          subtitle: 'Acumulado',
           icon: Icons.payments_rounded,
           accentColor: AppColors.successDark,
           gradientColors: const [Colors.white, Color(0xFFECFDF5)],
@@ -1094,7 +1124,7 @@ class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Por Recibir / Pend.',
           value: '$pendingCount',
-          subtitle: pendingCount > 0 ? 'Requieren atención' : 'Todo al día',
+          subtitle: pendingCount > 0 ? 'Pendientes' : 'Al día',
           icon:
               pendingCount > 0
                   ? Icons.pending_actions_rounded
@@ -1217,6 +1247,32 @@ class _PurchaseOrdersViewModel {
     return 'Todos';
   }
 
+  String get warehouseFilter {
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).warehouseFilter;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).warehouseFilter;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).warehouseFilter;
+    }
+    return 'Todos';
+  }
+
+  List<String> get availableWarehouses {
+    if (state is PurchaseOrdersLoaded) {
+      return (state as PurchaseOrdersLoaded).availableWarehouses;
+    }
+    if (state is PurchaseOrdersLoading) {
+      return (state as PurchaseOrdersLoading).availableWarehouses;
+    }
+    if (state is PurchaseOrdersError) {
+      return (state as PurchaseOrdersError).availableWarehouses;
+    }
+    return const ['Todos'];
+  }
+
   DateTimeRange? get dateRange {
     DateTime? start;
     DateTime? end;
@@ -1307,6 +1363,7 @@ class _PurchaseOrdersViewModel {
   void loadOrders({bool reset = false}) => cubit.loadOrders(refresh: reset);
   void setSearchText(String v) => cubit.setSearchText(v);
   void setStatusFilter(String v) => cubit.setStatusFilter(v);
+  void setWarehouseFilter(String v) => cubit.setWarehouseFilter(v);
   void setDateRange(DateTimeRange? v) => cubit.setDateRange(v?.start, v?.end);
   void setPage(int p) => cubit.loadOrders(page: p);
   void setPageSize(int s) => cubit.setPageSize(s);

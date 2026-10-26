@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_table.dart';
+import 'package:inventory_store_app/core/widgets/admin_table_action_pill.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 
@@ -103,6 +104,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sortedCustomers = _getSortedList();
 
     return Column(
@@ -168,10 +170,13 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                               Flexible(
                                 child: Text(
                                   c.fullName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary,
+                                    color:
+                                        isDark
+                                            ? AppColors.darkTextPrimary
+                                            : AppColors.textPrimary,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -253,43 +258,30 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               isSortable: true,
               cellBuilder: (context, c) {
                 if (c.documentNumber != null && c.documentNumber!.isNotEmpty) {
-                  return InkWell(
+                  final docType = c.documentType ?? 'DOC';
+                  return AdminTableActionPill(
+                    prefix: '$docType: ',
+                    text: c.documentNumber!,
+                    icon: Icons.copy_rounded,
+                    tooltip:
+                        'Clic para copiar documento ($docType: ${c.documentNumber})',
+                    isMonospace: true,
+                    accentColor: AppColors.teal,
                     onTap:
                         () => _copyToClipboard(
                           context,
                           c.documentNumber!,
-                          'Doc ${c.documentNumber}',
+                          '$docType ${c.documentNumber}',
                         ),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '${c.documentType ?? 'DOC'}: ${c.documentNumber}',
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              fontFamily: 'monospace',
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.copy_rounded,
-                          size: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ],
-                    ),
                   );
                 }
-                return const Text(
+                return Text(
                   '—',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(
+                    color:
+                        isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    fontSize: 12,
+                  ),
                 );
               },
             ),
@@ -301,33 +293,22 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               flex: 2,
               cellBuilder: (context, c) {
                 if (c.phone != null && c.phone!.isNotEmpty) {
-                  return InkWell(
+                  return AdminTableActionPill(
+                    text: c.phone!,
+                    icon: Icons.chat_bubble_outline_rounded,
+                    tooltip:
+                        'Clic para contactar por WhatsApp (+51 ${c.phone})',
+                    accentColor: const Color(0xFF25D366),
                     onTap: () => widget.onWhatsApp(c.phone!),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.phone_outlined,
-                          size: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          c.phone!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
                   );
                 }
-                return const Text(
+                return Text(
                   '—',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: TextStyle(
+                    color:
+                        isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                    fontSize: 12,
+                  ),
                 );
               },
             ),
@@ -338,7 +319,7 @@ class _CustomersTableViewState extends State<CustomersTableView> {
               label: 'ESTADO',
               flex: 2,
               isSortable: true,
-              cellBuilder: (context, c) => _buildStatusBadge(c),
+              cellBuilder: (context, c) => _buildStatusBadge(c, isDark: isDark),
             ),
 
             // 5. Compras
@@ -444,11 +425,14 @@ class _CustomersTableViewState extends State<CustomersTableView> {
                   children: [
                     Text(
                       'S/ ${c.totalRevenue.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        fontFeatures: [FontFeature.tabularFigures()],
+                        color:
+                            isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     if (c.lastOrderAt != null)
@@ -770,20 +754,25 @@ class _CustomersTableViewState extends State<CustomersTableView> {
     );
   }
 
-  Widget _buildStatusBadge(CustomerEntity c) {
+  Widget _buildStatusBadge(CustomerEntity c, {bool isDark = false}) {
     if (!c.isActive) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: AppColors.slateLight.withValues(alpha: 0.6),
+          color:
+              isDark
+                  ? AppColors.darkSurfaceElevated
+                  : AppColors.slateLight.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+          ),
         ),
-        child: const Text(
+        child: Text(
           'Inactivo',
           style: TextStyle(
             fontSize: 10.5,
-            color: AppColors.slate,
+            color: isDark ? AppColors.darkTextMuted : AppColors.slate,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -794,15 +783,23 @@ class _CustomersTableViewState extends State<CustomersTableView> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: AppColors.warning.withValues(alpha: 0.12),
+          color:
+              isDark
+                  ? const Color(0xFF78350F).withValues(alpha: 0.35)
+                  : AppColors.warning.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+          border: Border.all(
+            color:
+                isDark
+                    ? const Color(0xFFD97706).withValues(alpha: 0.5)
+                    : AppColors.warning.withValues(alpha: 0.3),
+          ),
         ),
-        child: const Text(
+        child: Text(
           'Con deuda',
           style: TextStyle(
             fontSize: 10.5,
-            color: AppColors.warningDark,
+            color: isDark ? const Color(0xFFFBBF24) : AppColors.warningDark,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -812,15 +809,23 @@ class _CustomersTableViewState extends State<CustomersTableView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.successLight.withValues(alpha: 0.6),
+        color:
+            isDark
+                ? const Color(0xFF064E3B).withValues(alpha: 0.35)
+                : AppColors.successLight.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        border: Border.all(
+          color:
+              isDark
+                  ? const Color(0xFF059669).withValues(alpha: 0.5)
+                  : AppColors.success.withValues(alpha: 0.3),
+        ),
       ),
-      child: const Text(
+      child: Text(
         'Activo',
         style: TextStyle(
           fontSize: 10.5,
-          color: AppColors.successDark,
+          color: isDark ? const Color(0xFF34D399) : AppColors.successDark,
           fontWeight: FontWeight.w700,
         ),
       ),

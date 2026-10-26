@@ -68,8 +68,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final cubit = context.read<OrdersCubit>();
-      if (cubit.state.orders.isEmpty) {
-        cubit.loadOrders(reset: true);
+      if (cubit.state.orders.isEmpty ||
+          cubit.state.availableWarehouses.length <= 1) {
+        cubit.init();
       } else {
         // Revalidación silenciosa en background (Stale-While-Revalidate)
         cubit.loadOrders(background: true);
@@ -506,6 +507,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   p.generatingPdfOrderId != c.generatingPdfOrderId ||
                   p.statusFilter != c.statusFilter ||
                   p.paymentStatusFilter != c.paymentStatusFilter ||
+                  p.warehouseFilter != c.warehouseFilter ||
+                  p.availableWarehouses != c.availableWarehouses ||
                   p.startDate != c.startDate ||
                   p.endDate != c.endDate ||
                   p.searchQuery != c.searchQuery ||
@@ -615,6 +618,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   SliverToBoxAdapter(
                     child: AdminProToolbar(
                       isDesktop: width >= 1024,
+                      isLoading: state.isLoading || state.isBackgroundLoading,
                       searchController: _searchCtrl,
                       searchFocusNode: _searchFocusNode,
                       searchHint: 'Buscar por cliente o ID de pedido...',
@@ -629,6 +633,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           icon: Icons.filter_list_rounded,
                           selected: state.statusFilter,
                           defaultValue: 'ALL',
+                          displayType: AdminFilterDisplayType.chips,
                           onSelected: cubit.setStatusFilter,
                           options: const [
                             AdminFilterOption(
@@ -667,6 +672,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           icon: Icons.payments_outlined,
                           selected: state.paymentStatusFilter,
                           defaultValue: 'ALL',
+                          displayType: AdminFilterDisplayType.chips,
                           onSelected: cubit.setPaymentStatusFilter,
                           options: const [
                             AdminFilterOption(value: 'ALL', label: 'Todos'),
@@ -688,6 +694,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               value: 'PARTIAL',
                               label: 'Parciales',
                             ),
+                          ],
+                        ),
+                        AdminFilterGroup<String>(
+                          title: 'Almacén',
+                          icon: Icons.storefront_rounded,
+                          selected: state.warehouseFilter,
+                          defaultValue: 'Todos',
+                          onSelected: cubit.setWarehouseFilter,
+                          options: [
+                            for (final w in state.availableWarehouses)
+                              AdminFilterOption<String>(
+                                value: w,
+                                label:
+                                    (w == 'TODOS' || w == 'Todos')
+                                        ? 'Todos'
+                                        : w,
+                                icon: Icons.storefront_rounded,
+                              ),
                           ],
                         ),
                       ],
@@ -714,10 +738,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       activeFiltersCount:
                           (state.statusFilter != 'ALL' ? 1 : 0) +
                           (state.paymentStatusFilter != 'ALL' ? 1 : 0) +
+                          (state.warehouseFilter != 'Todos' &&
+                                  state.warehouseFilter != 'TODOS'
+                              ? 1
+                              : 0) +
                           (state.startDate != null ? 1 : 0),
                       onClearFilters: () {
                         cubit.setStatusFilter('ALL');
                         cubit.setPaymentStatusFilter('ALL');
+                        cubit.setWarehouseFilter('Todos');
                         cubit.setDateRange(null, null);
                       },
                       viewToggleConfig: AdminProViewToggleConfig(
@@ -982,7 +1011,7 @@ class _OrdersBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Pedidos',
           value: '$totalRecords',
-          subtitle: 'Pedidos registrados',
+          subtitle: 'Registrados',
           icon: Icons.receipt_long_rounded,
           gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
           iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
@@ -993,7 +1022,7 @@ class _OrdersBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Facturado',
           value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-          subtitle: 'Total facturado en pág.',
+          subtitle: 'Facturado',
           icon: Icons.payments_rounded,
           gradientColors: const [Colors.white, Color(0xFFECFDF5)],
           iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
@@ -1002,15 +1031,12 @@ class _OrdersBentoKpiBar extends StatelessWidget {
           glowColor: const Color(0x2E10B981),
         ),
         AdminKpiItem(
-          title: pendingDebt > 0 ? 'Por Cobrar' : 'Pedidos Pendientes',
+          title: pendingDebt > 0 ? 'Por Cobrar' : 'Pendientes',
           value:
               pendingDebt > 0
                   ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
                   : '$pendingCount',
-          subtitle:
-              pendingDebt > 0
-                  ? 'Créditos pendientes'
-                  : 'Borradores por completar',
+          subtitle: pendingDebt > 0 ? 'Créditos' : 'Borradores',
           icon:
               pendingDebt > 0
                   ? Icons.credit_card_rounded

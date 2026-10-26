@@ -533,7 +533,10 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
                     isRegistered
                         ? () {
                           AppFeedbackService.selectionClick();
-                          context.push(
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          }
+                          context.go(
                             '/customers/customer-detail/$effectiveCustomerId',
                           );
                         }

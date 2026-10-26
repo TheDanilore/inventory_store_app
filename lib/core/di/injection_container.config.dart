@@ -1092,6 +1092,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i175.ToggleSupplierStatusUseCase>(
       () => _i175.ToggleSupplierStatusUseCase(gh<_i943.SuppliersRepository>()),
     );
+    gh.lazySingleton<_i971.PurchaseOrdersCubit>(
+      () => _i971.PurchaseOrdersCubit(
+        fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
+        updatePurchaseOrderStatusUseCase:
+            gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
+        registerOrderPaymentUseCase: gh<_i598.RegisterOrderPaymentUseCase>(),
+        updateOrderPaymentMethodUseCase:
+            gh<_i515.UpdateOrderPaymentMethodUseCase>(),
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+      ),
+    );
     gh.factory<_i832.ChangePasswordUseCase>(
       () => _i832.ChangePasswordUseCase(gh<_i787.AuthRepository>()),
     );
@@ -1152,16 +1163,6 @@ extension GetItInjectableX on _i174.GetIt {
         getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
         getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),
         getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
-      ),
-    );
-    gh.lazySingleton<_i971.PurchaseOrdersCubit>(
-      () => _i971.PurchaseOrdersCubit(
-        fetchPurchaseOrdersUseCase: gh<_i831.FetchPurchaseOrdersUseCase>(),
-        updatePurchaseOrderStatusUseCase:
-            gh<_i549.UpdatePurchaseOrderStatusUseCase>(),
-        registerOrderPaymentUseCase: gh<_i598.RegisterOrderPaymentUseCase>(),
-        updateOrderPaymentMethodUseCase:
-            gh<_i515.UpdateOrderPaymentMethodUseCase>(),
       ),
     );
     gh.factory<_i525.ExportInventoryExcelUseCase>(
@@ -1546,14 +1547,6 @@ extension GetItInjectableX on _i174.GetIt {
         getPurchaseOrderById: gh<_i611.GetPurchaseOrderByIdUseCase>(),
       ),
     );
-    gh.lazySingleton<_i1051.OrdersCubit>(
-      () => _i1051.OrdersCubit(
-        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
-        updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),
-        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
-        repository: gh<_i992.OrdersRepository>(),
-      ),
-    );
     gh.lazySingleton<_i52.AuthCubit>(
       () => _i52.AuthCubit(
         getCurrentUserUseCase: gh<_i813.GetCurrentUserUseCase>(),
@@ -1673,6 +1666,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i41.SidebarBadgeCubit>(
       () => _i41.SidebarBadgeCubit(gh<_i981.WatchPendingOrdersCountUc>()),
+    );
+    gh.lazySingleton<_i1051.OrdersCubit>(
+      () => _i1051.OrdersCubit(
+        getFilteredOrdersUc: gh<_i617.GetFilteredOrdersUc>(),
+        updateOrderStatusUc: gh<_i624.UpdateOrderStatusUc>(),
+        getOrderItemsUc: gh<_i812.GetOrderItemsUc>(),
+        repository: gh<_i992.OrdersRepository>(),
+        getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
+      ),
     );
     gh.factory<_i129.AttributesCubit>(
       () => _i129.AttributesCubit(

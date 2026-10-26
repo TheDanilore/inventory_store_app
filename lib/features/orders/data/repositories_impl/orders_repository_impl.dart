@@ -166,6 +166,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? customerIdFilter,
     required String statusFilter,
     required String paymentStatusFilter,
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
     required String searchQuery,
@@ -174,7 +175,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     bool forceRefresh = false,
   }) async {
     final cacheKey =
-        '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
+        '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${warehouseFilter ?? ""}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
 
     if (!forceRefresh) {
       final cached = _ordersCache[cacheKey];
@@ -229,6 +230,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
         } else {
           query = query.eq('payment_status', paymentStatusFilter);
         }
+      }
+
+      if (warehouseFilter != null &&
+          warehouseFilter != 'ALL' &&
+          warehouseFilter != 'Todos' &&
+          warehouseFilter != 'TODOS') {
+        query = query.eq('warehouses.name', warehouseFilter);
       }
 
       if (customerIdFilter != null) {

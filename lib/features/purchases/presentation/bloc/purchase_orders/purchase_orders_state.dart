@@ -14,6 +14,8 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
   final List<dynamic> currentOrders;
   final String searchText;
   final String statusFilter;
+  final String warehouseFilter;
+  final List<String> availableWarehouses;
   final DateTime? startDate;
   final DateTime? endDate;
   final int currentPage;
@@ -24,6 +26,8 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     this.currentOrders = const [],
     this.searchText = '',
     this.statusFilter = 'Todos',
+    this.warehouseFilter = 'Todos',
+    this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
     this.currentPage = 0,
@@ -38,6 +42,8 @@ class PurchaseOrdersLoading extends PurchaseOrdersState {
     currentOrders,
     searchText,
     statusFilter,
+    warehouseFilter,
+    availableWarehouses,
     startDate,
     endDate,
     currentPage,
@@ -50,6 +56,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
   final List<dynamic> orders;
   final String searchText;
   final String statusFilter;
+  final String warehouseFilter;
+  final List<String> availableWarehouses;
   final DateTime? startDate;
   final DateTime? endDate;
   final int currentPage;
@@ -60,6 +68,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     required this.orders,
     required this.searchText,
     required this.statusFilter,
+    this.warehouseFilter = 'Todos',
+    this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
     required this.currentPage,
@@ -73,6 +83,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     List<dynamic>? orders,
     String? searchText,
     String? statusFilter,
+    String? warehouseFilter,
+    List<String>? availableWarehouses,
     DateTime? startDate,
     DateTime? endDate,
     int? currentPage,
@@ -83,6 +95,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
       orders: orders ?? this.orders,
       searchText: searchText ?? this.searchText,
       statusFilter: statusFilter ?? this.statusFilter,
+      warehouseFilter: warehouseFilter ?? this.warehouseFilter,
+      availableWarehouses: availableWarehouses ?? this.availableWarehouses,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       currentPage: currentPage ?? this.currentPage,
@@ -96,6 +110,8 @@ class PurchaseOrdersLoaded extends PurchaseOrdersState {
     orders,
     searchText,
     statusFilter,
+    warehouseFilter,
+    availableWarehouses,
     startDate,
     endDate,
     currentPage,
@@ -109,6 +125,8 @@ class PurchaseOrdersError extends PurchaseOrdersState {
   final List<dynamic> currentOrders;
   final String searchText;
   final String statusFilter;
+  final String warehouseFilter;
+  final List<String> availableWarehouses;
   final DateTime? startDate;
   final DateTime? endDate;
   final int currentPage;
@@ -120,6 +138,8 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     this.currentOrders = const [],
     this.searchText = '',
     this.statusFilter = 'Todos',
+    this.warehouseFilter = 'Todos',
+    this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
     this.currentPage = 0,
@@ -135,6 +155,8 @@ class PurchaseOrdersError extends PurchaseOrdersState {
     currentOrders,
     searchText,
     statusFilter,
+    warehouseFilter,
+    availableWarehouses,
     startDate,
     endDate,
     currentPage,

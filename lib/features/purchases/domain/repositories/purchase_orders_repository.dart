@@ -8,6 +8,7 @@ abstract class PurchaseOrdersRepository {
     required int pageSize,
     String searchText = '',
     String statusFilter = 'Todos',
+    String? warehouseFilter,
     DateTime? startDate,
     DateTime? endDate,
     bool forceRefresh = false,

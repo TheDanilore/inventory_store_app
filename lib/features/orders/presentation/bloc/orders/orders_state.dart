@@ -11,6 +11,8 @@ class OrdersState extends Equatable {
   final String? generatingPdfOrderId;
   final String statusFilter;
   final String paymentStatusFilter;
+  final String warehouseFilter;
+  final List<String> availableWarehouses;
   final DateTime? startDate;
   final DateTime? endDate;
   final String searchQuery;
@@ -30,6 +32,8 @@ class OrdersState extends Equatable {
     this.generatingPdfOrderId,
     this.statusFilter = 'ALL',
     this.paymentStatusFilter = 'ALL',
+    this.warehouseFilter = 'Todos',
+    this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
     this.searchQuery = '',
@@ -51,6 +55,8 @@ class OrdersState extends Equatable {
     bool clearPdfOrderId = false,
     String? statusFilter,
     String? paymentStatusFilter,
+    String? warehouseFilter,
+    List<String>? availableWarehouses,
     DateTime? startDate,
     DateTime? endDate,
     bool clearDates = false,
@@ -74,6 +80,8 @@ class OrdersState extends Equatable {
               : (generatingPdfOrderId ?? this.generatingPdfOrderId),
       statusFilter: statusFilter ?? this.statusFilter,
       paymentStatusFilter: paymentStatusFilter ?? this.paymentStatusFilter,
+      warehouseFilter: warehouseFilter ?? this.warehouseFilter,
+      availableWarehouses: availableWarehouses ?? this.availableWarehouses,
       startDate: clearDates ? null : (startDate ?? this.startDate),
       endDate: clearDates ? null : (endDate ?? this.endDate),
       searchQuery: searchQuery ?? this.searchQuery,
@@ -96,6 +104,8 @@ class OrdersState extends Equatable {
     generatingPdfOrderId,
     statusFilter,
     paymentStatusFilter,
+    warehouseFilter,
+    availableWarehouses,
     startDate,
     endDate,
     searchQuery,

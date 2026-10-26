@@ -1,7 +1,9 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/orders/data/utils/order_pdf_generator.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
@@ -20,19 +22,29 @@ class OrdersCubit extends Cubit<OrdersState> {
   final GetOrderItemsUc _getOrderItemsUc;
   final OrdersRepository
   _repository; // For fetchOrderItemsForPdf and general access
+  final GetActiveWarehousesUseCase _getActiveWarehouses;
 
   OrdersCubit({
     required GetFilteredOrdersUc getFilteredOrdersUc,
     required UpdateOrderStatusUc updateOrderStatusUc,
     required GetOrderItemsUc getOrderItemsUc,
     required OrdersRepository repository,
+    GetActiveWarehousesUseCase? getActiveWarehouses,
   }) : _getFilteredOrdersUc = getFilteredOrdersUc,
        _updateOrderStatusUc = updateOrderStatusUc,
        _getOrderItemsUc = getOrderItemsUc,
        _repository = repository,
+       _getActiveWarehouses =
+           getActiveWarehouses ?? sl<GetActiveWarehousesUseCase>(),
        super(const OrdersState());
 
-  void init() {
+  Future<void> init() async {
+    List<String> warehouses = ['Todos'];
+    try {
+      final whList = await _getActiveWarehouses.call();
+      warehouses.addAll(whList.map((w) => w.name).toList());
+    } catch (_) {}
+    emit(state.copyWith(availableWarehouses: warehouses));
     loadOrders(reset: true);
   }
 
@@ -76,11 +88,17 @@ class OrdersCubit extends Cubit<OrdersState> {
 
     final startRow = state.currentPage * state.pageSize;
 
+    final warehouseFilter =
+        (state.warehouseFilter == 'Todos' || state.warehouseFilter == 'TODOS')
+            ? null
+            : state.warehouseFilter;
+
     final result = await _getFilteredOrdersUc(
       GetFilteredOrdersParams(
         customerIdFilter: state.customerIdFilter,
         statusFilter: state.statusFilter,
         paymentStatusFilter: state.paymentStatusFilter,
+        warehouseFilter: warehouseFilter,
         startDate: state.startDate,
         endDate: state.endDate,
         searchQuery: state.searchQuery,
@@ -151,6 +169,12 @@ class OrdersCubit extends Cubit<OrdersState> {
   void setPaymentStatusFilter(String val) {
     if (state.paymentStatusFilter == val) return;
     emit(state.copyWith(paymentStatusFilter: val));
+    loadOrders(reset: true);
+  }
+
+  void setWarehouseFilter(String val) {
+    if (state.warehouseFilter == val) return;
+    emit(state.copyWith(warehouseFilter: val));
     loadOrders(reset: true);
   }
 

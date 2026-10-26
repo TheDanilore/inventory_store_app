@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 
 /// Configuración para la acción principal del toolbar (CTA).
 /// El atajo de teclado [keyHint] se muestra exclusivamente en el Tooltip (tooltext).
@@ -218,6 +219,10 @@ class AdminProToolbar extends StatefulWidget {
   /// Tooltip del botón de escaneo de código.
   final String scanBarcodeTooltip;
 
+  /// Si es true, el botón de refresco entra en animación giratoria continua
+  /// para comunicar carga en progreso.
+  final bool isLoading;
+
   const AdminProToolbar({
     super.key,
     required this.searchController,
@@ -253,6 +258,7 @@ class AdminProToolbar extends StatefulWidget {
     this.searchOnSubmitOnly = true,
     this.onScanBarcode,
     this.scanBarcodeTooltip = 'Escanear código (QR / Barras)',
+    this.isLoading = false,
   });
 
   @override
@@ -312,13 +318,19 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   @override
   void initState() {
     super.initState();
+    _effectiveSearchFocusNode.addListener(_onSearchFocusChanged);
     if (widget.enableKeyboardShortcuts) {
       HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     }
   }
 
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _effectiveSearchFocusNode.removeListener(_onSearchFocusChanged);
     if (widget.enableKeyboardShortcuts) {
       HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     }
@@ -474,6 +486,9 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             suffixIcon: ValueListenableBuilder<TextEditingValue>(
               valueListenable: widget.searchController,
               builder: (context, value, _) {
+                final hasFocus = _effectiveSearchFocusNode.hasFocus;
+                final showSearchBtn = value.text.isNotEmpty || hasFocus;
+
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -505,68 +520,90 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                           widget.onScanBarcode!();
                         },
                       ),
-                    Tooltip(
-                      message: 'Buscar (Atajo: Enter)',
-                      waitDuration: const Duration(milliseconds: 400),
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _executeSearch(),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Ink(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(
-                                          0xFF60A5FA,
-                                        ).withValues(alpha: 0.15)
-                                        : AppColors.teal.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      isDark
-                                          ? const Color(
-                                            0xFF60A5FA,
-                                          ).withValues(alpha: 0.4)
-                                          : AppColors.teal.withValues(
-                                            alpha: 0.35,
-                                          ),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.search_rounded,
-                                    size: 14,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF60A5FA)
-                                            : AppColors.tealDark,
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        opacity: showSearchBtn ? 1.0 : 0.0,
+                        child:
+                            showSearchBtn
+                                ? Tooltip(
+                                  message: 'Buscar (Atajo: Enter)',
+                                  waitDuration: const Duration(
+                                    milliseconds: 400,
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Buscar',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF60A5FA)
-                                              : AppColors.tealDark,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () => _executeSearch(),
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Ink(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                isDark
+                                                    ? const Color(
+                                                      0xFF60A5FA,
+                                                    ).withValues(alpha: 0.15)
+                                                    : AppColors.teal.withValues(
+                                                      alpha: 0.1,
+                                                    ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color:
+                                                  isDark
+                                                      ? const Color(
+                                                        0xFF60A5FA,
+                                                      ).withValues(alpha: 0.4)
+                                                      : AppColors.teal
+                                                          .withValues(
+                                                            alpha: 0.35,
+                                                          ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.search_rounded,
+                                                size: 14,
+                                                color:
+                                                    isDark
+                                                        ? const Color(
+                                                          0xFF60A5FA,
+                                                        )
+                                                        : AppColors.tealDark,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Buscar',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
+                                                      isDark
+                                                          ? const Color(
+                                                            0xFF60A5FA,
+                                                          )
+                                                          : AppColors.tealDark,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                                )
+                                : const SizedBox.shrink(),
                       ),
                     ),
                   ],
@@ -735,108 +772,97 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             color: isDark ? AppColors.darkBorderSubtle : AppColors.border,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Tooltip(
-              message: '${config.tableTooltip} (Atajo: V)',
-              waitDuration: const Duration(milliseconds: 300),
-              child: InkWell(
-                onTap: () {
-                  AppFeedbackService.selectionClick();
-                  config.onToggleTableView(true);
-                },
-                borderRadius: BorderRadius.circular(7),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  alignment: Alignment.center,
+        child: SizedBox(
+          width: 76,
+          child: Stack(
+            children: [
+              // Pill deslizante con micro-física fluida (iOS Segmented Control)
+              AnimatedAlign(
+                alignment:
+                    config.isTableView
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                child: Container(
+                  width: 35,
+                  height: 34,
                   decoration: BoxDecoration(
                     color:
-                        config.isTableView
-                            ? (isDark
-                                ? AppColors.darkSurfaceElevated
-                                : AppColors.surface)
-                            : Colors.transparent,
+                        isDark
+                            ? AppColors.darkSurfaceElevated
+                            : AppColors.surface,
                     borderRadius: BorderRadius.circular(7),
-                    boxShadow:
-                        config.isTableView
-                            ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.2 : 0.06,
-                                ),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                            : null,
-                  ),
-                  child: Icon(
-                    config.tableIcon,
-                    size: 18,
-                    color:
-                        config.isTableView
-                            ? activeColor
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.textMuted),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.25 : 0.08,
+                        ),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 2),
-            Tooltip(
-              message: '${config.cardsTooltip} (Atajo: V)',
-              waitDuration: const Duration(milliseconds: 300),
-              child: InkWell(
-                onTap: () {
-                  AppFeedbackService.selectionClick();
-                  config.onToggleTableView(false);
-                },
-                borderRadius: BorderRadius.circular(7),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color:
-                        !config.isTableView
-                            ? (isDark
-                                ? AppColors.darkSurfaceElevated
-                                : AppColors.surface)
-                            : Colors.transparent,
-                    borderRadius: BorderRadius.circular(7),
-                    boxShadow:
-                        !config.isTableView
-                            ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: isDark ? 0.2 : 0.06,
-                                ),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                            : null,
+              // Botones interactivos superpuestos
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: '${config.tableTooltip} (Atajo: V)',
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: InkWell(
+                        onTap: () {
+                          AppFeedbackService.selectionClick();
+                          config.onToggleTableView(true);
+                        },
+                        borderRadius: BorderRadius.circular(7),
+                        child: Center(
+                          child: Icon(
+                            config.tableIcon,
+                            size: 18,
+                            color:
+                                config.isTableView
+                                    ? activeColor
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textMuted),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    config.cardsIcon,
-                    size: 18,
-                    color:
-                        !config.isTableView
-                            ? activeColor
-                            : (isDark
-                                ? AppColors.darkTextSecondary
-                                : AppColors.textMuted),
+                  Expanded(
+                    child: Tooltip(
+                      message: '${config.cardsTooltip} (Atajo: V)',
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: InkWell(
+                        onTap: () {
+                          AppFeedbackService.selectionClick();
+                          config.onToggleTableView(false);
+                        },
+                        borderRadius: BorderRadius.circular(7),
+                        child: Center(
+                          child: Icon(
+                            config.cardsIcon,
+                            size: 18,
+                            color:
+                                !config.isTableView
+                                    ? activeColor
+                                    : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textMuted),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -940,26 +966,42 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
             padding: const EdgeInsets.all(10),
           ),
         ),
-        if (hasActive)
-          Positioned(
-            top: -4,
-            right: -4,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: AppColors.accent,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '$count',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+        Positioned(
+          top: -4,
+          right: -4,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder:
+                (c, a) => ScaleTransition(
+                  scale: CurvedAnimation(parent: a, curve: Curves.easeOutBack),
+                  child: c,
                 ),
-              ),
-            ),
+            child:
+                hasActive
+                    ? Container(
+                      key: ValueKey(count),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    )
+                    : const SizedBox.shrink(key: ValueKey(0)),
           ),
+        ),
       ],
     );
   }
@@ -1127,6 +1169,8 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
       child: _AdminProRefreshButton(
         onRefresh: widget.onRefresh,
         tooltip: widget.refreshTooltip,
+        isDesktop: false,
+        isLoading: widget.isLoading,
       ),
     );
   }
@@ -1208,6 +1252,8 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           _AdminProRefreshButton(
             onRefresh: widget.onRefresh,
             tooltip: widget.refreshTooltip,
+            isDesktop: true,
+            isLoading: widget.isLoading,
           ),
         ],
 
@@ -1290,6 +1336,8 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
                 _AdminProRefreshButton(
                   onRefresh: widget.onRefresh,
                   tooltip: widget.refreshTooltip,
+                  isDesktop: true,
+                  isLoading: widget.isLoading,
                 ),
               ],
               if (widget.trailingActions != null)
@@ -1369,12 +1417,19 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
   }
 }
 
-/// Botón de refresco con rotación interactiva de 360° al presionar y feedback háptico.
+/// Botón de refresco con rotación interactiva de 360° al presionar, contenedor estilizado en desktop y rotación continua si está cargando.
 class _AdminProRefreshButton extends StatefulWidget {
   final VoidCallback? onRefresh;
   final String tooltip;
+  final bool isDesktop;
+  final bool isLoading;
 
-  const _AdminProRefreshButton({this.onRefresh, required this.tooltip});
+  const _AdminProRefreshButton({
+    this.onRefresh,
+    required this.tooltip,
+    this.isDesktop = false,
+    this.isLoading = false,
+  });
 
   @override
   State<_AdminProRefreshButton> createState() => _AdminProRefreshButtonState();
@@ -1389,8 +1444,25 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
     );
+    if (widget.isLoading) {
+      _animCtrl.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AdminProRefreshButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading != oldWidget.isLoading) {
+      if (widget.isLoading) {
+        _animCtrl.repeat();
+      } else {
+        _animCtrl.animateTo(1.0, curve: Curves.easeOutCubic).then((_) {
+          if (mounted) _animCtrl.reset();
+        });
+      }
+    }
   }
 
   @override
@@ -1408,10 +1480,64 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final effectiveTooltip =
         widget.tooltip.contains('Atajo')
             ? widget.tooltip
             : '${widget.tooltip} (Atajo: R o Alt+R)';
+
+    final iconWidget = RotationTransition(
+      turns: _animCtrl,
+      child: const Icon(Icons.refresh_rounded, size: 20),
+    );
+
+    if (widget.isDesktop) {
+      return Tooltip(
+        message: effectiveTooltip,
+        waitDuration: const Duration(milliseconds: 300),
+        child: Container(
+          height: 40,
+          width: 40,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.border,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    isDark
+                        ? Colors.black.withValues(alpha: 0.15)
+                        : const Color(0x050F172A),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onRefresh != null ? _handleTap : null,
+              borderRadius: BorderRadius.circular(10),
+              hoverColor:
+                  isDark ? AppColors.darkSurfaceElevated : AppColors.background,
+              child: Center(
+                child: IconTheme(
+                  data: IconThemeData(
+                    color:
+                        isDark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                  ),
+                  child: iconWidget,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Tooltip(
       message: effectiveTooltip,
@@ -1426,10 +1552,7 @@ class _AdminProRefreshButtonState extends State<_AdminProRefreshButton>
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        icon: RotationTransition(
-          turns: _animCtrl,
-          child: const Icon(Icons.refresh_rounded, size: 20),
-        ),
+        icon: iconWidget,
       ),
     );
   }
@@ -1668,7 +1791,25 @@ class _AdminFiltersSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final g in s.groups) _FilterGroupSection(group: g),
+                      ...s.groups.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final g = entry.value;
+                        return TweenAnimationBuilder<double>(
+                          duration: Duration(milliseconds: 180 + index * 40),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          builder: (context, val, child) {
+                            return Opacity(
+                              opacity: val,
+                              child: Transform.translate(
+                                offset: Offset(0, (1.0 - val) * 8),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _FilterGroupSection(group: g),
+                        );
+                      }),
                       // Respaldo: filtros antiguos como widgets
                       if (!hasGroups)
                         for (final w in s.legacyWidgets)
@@ -1676,10 +1817,64 @@ class _AdminFiltersSheet extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: w,
                           ),
-                      for (final w in s.extras)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: w,
+                      if (s.extras.isNotEmpty)
+                        TweenAnimationBuilder<double>(
+                          duration: Duration(
+                            milliseconds: 180 + s.groups.length * 40,
+                          ),
+                          curve: Curves.easeOutCubic,
+                          tween: Tween<double>(begin: 0.0, end: 1.0),
+                          builder: (context, val, child) {
+                            return Opacity(
+                              opacity: val,
+                              child: Transform.translate(
+                                offset: Offset(0, (1.0 - val) * 8),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'FECHAS',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.4,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    if (s.extras.any(
+                                      (w) =>
+                                          w is DateFilterCalendar &&
+                                          w.dateRange != null,
+                                    )) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.accent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                for (final w in s.extras)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: w,
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -1798,6 +1993,9 @@ class _AdminFilterSelectField extends StatelessWidget {
     return PopupMenuButton<int>(
       tooltip: 'Seleccionar ${group.title}',
       offset: const Offset(0, 48),
+      constraints: BoxConstraints(
+        minWidth: MediaQuery.of(context).size.width - 40,
+      ),
       color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
@@ -1912,7 +2110,7 @@ class _AdminFilterSelectField extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _FilterChip extends StatefulWidget {
   final AdminFilterOption<dynamic> option;
   final bool selected;
   final bool isDark;
@@ -1926,54 +2124,69 @@ class _FilterChip extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final accent = option.color ?? AppColors.primary;
+  State<_FilterChip> createState() => _FilterChipState();
+}
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+class _FilterChipState extends State<_FilterChip> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.option.color ?? AppColors.primary;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color:
-                selected
-                    ? accent.withValues(alpha: isDark ? 0.22 : 0.10)
-                    : (isDark
+                widget.selected
+                    ? accent.withValues(alpha: widget.isDark ? 0.22 : 0.10)
+                    : (widget.isDark
                         ? AppColors.darkSurfaceElevated
                         : AppColors.background),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color:
-                  selected
+                  widget.selected
                       ? accent
-                      : (isDark ? AppColors.darkBorder : AppColors.border),
-              width: selected ? 1.5 : 1,
+                      : (widget.isDark
+                          ? AppColors.darkBorder
+                          : AppColors.border),
+              width: widget.selected ? 1.5 : 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (selected)
+              if (widget.selected)
                 Icon(Icons.check_rounded, size: 15, color: accent)
-              else if (option.icon != null)
+              else if (widget.option.icon != null)
                 Icon(
-                  option.icon,
+                  widget.option.icon,
                   size: 15,
                   color: accent.withValues(alpha: 0.8),
                 ),
-              if (selected || option.icon != null) const SizedBox(width: 6),
+              if (widget.selected || widget.option.icon != null)
+                const SizedBox(width: 6),
               Text(
-                option.label,
+                widget.option.label,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  fontWeight:
+                      widget.selected ? FontWeight.w700 : FontWeight.w600,
                   color:
-                      selected
+                      widget.selected
                           ? accent
-                          : (isDark
+                          : (widget.isDark
                               ? AppColors.darkTextPrimary
                               : AppColors.textPrimary),
                 ),

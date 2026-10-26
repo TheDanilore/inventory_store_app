@@ -738,7 +738,7 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                               title: 'Almacén',
                               icon: Icons.storefront_rounded,
                               selected: currentState.warehouseFilter,
-                              defaultValue: 'TODOS',
+                              defaultValue: 'Todos',
                               onSelected:
                                   context
                                       .read<InventoryEntriesCubit>()
@@ -748,7 +748,10 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                                     in currentState.availableWarehouses)
                                   AdminFilterOption<String>(
                                     value: w,
-                                    label: w == 'TODOS' ? 'Todos' : w,
+                                    label:
+                                        (w == 'TODOS' || w == 'Todos')
+                                            ? 'Todos'
+                                            : w,
                                     icon: Icons.storefront_rounded,
                                   ),
                               ],
@@ -770,13 +773,14 @@ class _InventoryEntriesScreenState extends State<InventoryEntriesScreen> {
                             ),
                           ],
                           activeFiltersCount:
-                              (currentState.warehouseFilter != 'TODOS'
+                              ((currentState.warehouseFilter != 'Todos' &&
+                                      currentState.warehouseFilter != 'TODOS')
                                   ? 1
                                   : 0) +
                               (currentState.dateRange != null ? 1 : 0),
                           onClearFilters: () {
                             final c = context.read<InventoryEntriesCubit>();
-                            c.setWarehouseFilter('TODOS');
+                            c.setWarehouseFilter('Todos');
                             c.setDateRange(null);
                           },
                           viewToggleConfig: AdminProViewToggleConfig(
@@ -951,7 +955,7 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Total Entradas',
           value: totalCount > 0 ? '$totalCount' : '$count',
-          subtitle: 'Entradas registradas',
+          subtitle: 'Registradas',
           icon: Icons.move_to_inbox_rounded,
           accentColor: AppColors.tealDark,
           gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
@@ -962,7 +966,7 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Inversión Total',
           value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-          subtitle: 'Inversión acumulada',
+          subtitle: 'Acumulada',
           icon: Icons.payments_rounded,
           accentColor: AppColors.successDark,
           gradientColors: const [Colors.white, Color(0xFFECFDF5)],
@@ -973,7 +977,9 @@ class _InventoryEntriesBentoKpiBar extends StatelessWidget {
         AdminKpiItem(
           title: 'Almacén Destino',
           value:
-              warehouseName == 'TODOS' ? 'Todos los Almacenes' : warehouseName,
+              (warehouseName == 'TODOS' || warehouseName == 'Todos')
+                  ? 'Todos'
+                  : warehouseName,
           subtitle: 'Filtro aplicado',
           icon: Icons.storefront_rounded,
           accentColor: AppColors.warningDark,
