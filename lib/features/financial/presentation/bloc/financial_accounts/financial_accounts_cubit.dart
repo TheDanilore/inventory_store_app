@@ -5,7 +5,7 @@ import 'package:inventory_store_app/features/financial/domain/usecases/get_finan
 import 'package:inventory_store_app/features/financial/domain/usecases/save_financial_account_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 
-@injectable
+@lazySingleton
 class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
   final GetFinancialAccountsUseCase _getAccounts;
   final SaveFinancialAccountUseCase _saveAccount;
@@ -24,12 +24,27 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
   int get currentPage => _currentPage;
   int get totalPages => _totalPages;
 
-  Future<void> fetchAccounts({int page = 0}) async {
-    emit(const FinancialAccountsLoading());
+  Future<void> fetchAccounts({int page = 0, bool force = false}) async {
+    final currentAccounts =
+        state is FinancialAccountsLoaded
+            ? (state as FinancialAccountsLoaded).accounts
+            : (state is FinancialAccountSaving
+                ? (state as FinancialAccountSaving).previousAccounts
+                : <FinancialAccountEntity>[]);
+
+    // Stale-While-Revalidate: si ya tenemos datos en memoria y no es forzado, no emitimos loading
+    if (currentAccounts.isNotEmpty && !force && page == _currentPage) {
+      return;
+    }
+
+    // Solo mostramos loading inicial si no hay datos en memoria/caché
+    if (currentAccounts.isEmpty) {
+      emit(const FinancialAccountsLoading());
+    }
+
     try {
       _currentPage = page;
       final accounts = await _getAccounts(page: page, pageSize: _pageSize);
-      // Calculamos totalPages a partir del resultado (si devolvemos menos que pageSize, es la última)
       if (accounts.length < _pageSize && page == 0) {
         _totalPages = 1;
       } else if (accounts.length < _pageSize) {
@@ -44,6 +59,9 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
         ),
       );
     } catch (e) {
+      // Si ya teníamos datos mostrándose, no rompemos la UI
+      if (currentAccounts.isNotEmpty) return;
+
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||

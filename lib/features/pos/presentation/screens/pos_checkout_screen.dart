@@ -57,6 +57,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
   bool _isLoadingInitialData = true;
   bool _lastSaleWasDraft = false;
   double _lastSaleTotalAmount = 0.0;
+  double? _lastSaleAmountReceived;
   String _lastSalePaymentMethod = 'EFECTIVO';
   String _lastSaleCustomerName = 'Cliente Varios';
   String _lastSaleDocumentType = 'NOTA_VENTA';
@@ -260,13 +261,35 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       return;
     }
 
-    _lastSaleWasDraft = isDraft;
-    _lastSaleTotalAmount = totalFinal;
-    _lastSalePaymentMethod = posCubit.state.paymentMethod;
-    _lastSaleCustomerName =
+    final clientName =
         _clienteCtrl.text.trim().isNotEmpty
             ? _clienteCtrl.text.trim()
             : (posCubit.state.selectedClientName ?? 'Cliente Varios');
+    final currency = posCubit.state.currencyCode == 'USD' ? '\$' : 'S/';
+
+    double? confirmedAmountReceived;
+    if (!isDraft) {
+      confirmedAmountReceived = await PosConfirmationDialog.show(
+        context,
+        totalFinal: totalFinal,
+        paymentMethod: posCubit.state.paymentMethod,
+        documentType: posCubit.state.documentType,
+        documentSeries: posCubit.state.effectiveSeries,
+        clienteName: clientName,
+        currencySymbol: currency,
+      );
+
+      // Si el usuario cancela la confirmación, se aborta sin tocar el carrito ni procesar nada
+      if (confirmedAmountReceived == null) {
+        return;
+      }
+    }
+
+    _lastSaleWasDraft = isDraft;
+    _lastSaleTotalAmount = totalFinal;
+    _lastSaleAmountReceived = confirmedAmountReceived;
+    _lastSalePaymentMethod = posCubit.state.paymentMethod;
+    _lastSaleCustomerName = clientName;
     _lastSaleDocumentType = posCubit.state.documentType;
     _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
     _lastSalePaymentReference = posCubit.state.paymentReference;
@@ -490,6 +513,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                 (dialogContext) => PosSuccessDialog(
                   isDraft: _lastSaleWasDraft,
                   totalAmount: _lastSaleTotalAmount,
+                  amountReceived: _lastSaleAmountReceived,
                   paymentMethod: _lastSalePaymentMethod,
                   customerName: _lastSaleCustomerName,
                   documentType: _lastSaleDocumentType,

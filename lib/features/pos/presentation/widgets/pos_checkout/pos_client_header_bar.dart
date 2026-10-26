@@ -661,7 +661,7 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                       )
                     else if (!hasClient)
                       const Text(
-                        'Venta rápida • Clic o Alt+C',
+                        'Venta rápida',
                         style: TextStyle(
                           fontSize: 9.5,
                           color: AppColors.textMuted,
@@ -738,10 +738,10 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
     );
   }
 
-  /// Botón + Nuevo Cliente Express (Alt+A)
+  /// Botón + Nuevo Cliente Express
   Widget _buildQuickNewClientButton() {
     return Tooltip(
-      message: 'Nuevo Cliente Express (Alt+A)',
+      message: 'Nuevo Cliente Express',
       child: Material(
         color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
@@ -1146,7 +1146,7 @@ class PosClientHeaderBarState extends State<PosClientHeaderBar> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Atajo: Alt+A para nuevo',
+                      'Crear cliente rápido',
                       style: TextStyle(
                         fontSize: 10.5,
                         color: Colors.grey.shade600,

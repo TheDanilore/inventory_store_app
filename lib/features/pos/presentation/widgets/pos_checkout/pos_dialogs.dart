@@ -6,6 +6,10 @@ class PosConfirmationDialog extends StatefulWidget {
   final double totalFinal;
   final String? clienteName;
   final String paymentMethod;
+  final String? documentType;
+  final String? documentSeries;
+  final String currencySymbol;
+  final double? initialAmountReceived;
   final VoidCallback? onConfirm;
 
   const PosConfirmationDialog({
@@ -13,8 +17,38 @@ class PosConfirmationDialog extends StatefulWidget {
     required this.totalFinal,
     this.clienteName,
     required this.paymentMethod,
+    this.documentType,
+    this.documentSeries,
+    this.currencySymbol = 'S/',
+    this.initialAmountReceived,
     this.onConfirm,
   });
+
+  static Future<double?> show(
+    BuildContext context, {
+    required double totalFinal,
+    String? clienteName,
+    required String paymentMethod,
+    String? documentType,
+    String? documentSeries,
+    String currencySymbol = 'S/',
+    double? initialAmountReceived,
+  }) {
+    return showDialog<double>(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (ctx) => PosConfirmationDialog(
+            totalFinal: totalFinal,
+            clienteName: clienteName,
+            paymentMethod: paymentMethod,
+            documentType: documentType,
+            documentSeries: documentSeries,
+            currencySymbol: currencySymbol,
+            initialAmountReceived: initialAmountReceived,
+          ),
+    );
+  }
 
   @override
   State<PosConfirmationDialog> createState() => _PosConfirmationDialogState();
@@ -32,7 +66,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
   @override
   void initState() {
     super.initState();
-    _montoRecibido = widget.totalFinal;
+    _montoRecibido = widget.initialAmountReceived ?? widget.totalFinal;
     _receivedCtrl = TextEditingController(
       text: widget.totalFinal.toStringAsFixed(2),
     );
@@ -54,12 +88,36 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
     setState(() => _montoRecibido = amount);
   }
 
+  List<double> _calculatePresets() {
+    final t = widget.totalFinal;
+    final candidates = [10.0, 20.0, 50.0, 100.0, 200.0];
+    final list = <double>[];
+
+    for (final c in candidates) {
+      if (c >= t && (c - t).abs() > 0.01) {
+        list.add(c);
+      }
+    }
+    if (t > 150) {
+      final next50 = ((t / 50).ceil()) * 50.0;
+      if (!list.contains(next50) && (next50 - t).abs() > 0.01) {
+        list.add(next50);
+      }
+      final next100 = ((t / 100).ceil()) * 100.0;
+      if (!list.contains(next100) && (next100 - t).abs() > 0.01) {
+        list.add(next100);
+      }
+    }
+    list.sort();
+    return list.take(4).toList();
+  }
+
   bool _isConfirming = false;
 
   void _confirm() {
     if (_isConfirming) return;
     setState(() => _isConfirming = true);
-    Navigator.pop(context, true);
+    Navigator.pop(context, _montoRecibido);
     widget.onConfirm?.call();
   }
 
@@ -68,13 +126,23 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
     final vuelto = _montoRecibido - widget.totalFinal;
     final faltaDinero = _isCashPayment && vuelto < -0.01;
 
+    final docType =
+        (widget.documentType ?? 'NOTA_VENTA')
+            .replaceAll('_', ' ')
+            .toUpperCase();
+    final docSeries = widget.documentSeries;
+    final docLabel =
+        docSeries != null && docSeries.isNotEmpty
+            ? '$docType • $docSeries'
+            : docType;
+
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.enter): () {
           if (!faltaDinero && !_isConfirming) _confirm();
         },
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          Navigator.pop(context, false);
+          Navigator.pop(context, null);
         },
       },
       child: Focus(
@@ -84,9 +152,9 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
             borderRadius: BorderRadius.circular(20),
           ),
           backgroundColor: Colors.white,
-          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+          titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 10),
+          contentPadding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
+          actionsPadding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
           title: Row(
             children: [
               Container(
@@ -117,7 +185,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Verifica los datos antes de procesar',
+                      'Verifica los datos antes de procesar el pedido',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -129,39 +197,121 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
             ],
           ),
           content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
 
-                  // Resumen de cliente y método
+                  // ── Barra informativa de Comprobante y Cliente ──
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    child: Column(
+                    child: Row(
                       children: [
-                        _RowItem(
-                          label: 'Cliente',
-                          value: widget.clienteName ?? 'Público General',
-                          icon: Icons.person_outline_rounded,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.teal.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            docLabel,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.tealDark,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        _RowItem(
-                          label: 'Método de pago',
-                          value: widget.paymentMethod,
-                          icon: Icons.payment_rounded,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              const Icon(
+                                Icons.person_outline_rounded,
+                                size: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  widget.clienteName?.isNotEmpty == true
+                                      ? widget.clienteName!
+                                      : 'Cliente Varios',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+
+                  // Resumen de Método de pago
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(
+                              Icons.payment_rounded,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Método de pago',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          widget.paymentMethod,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // Caja destacada de Total
                   Container(
@@ -189,7 +339,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                           ),
                         ),
                         Text(
-                          'S/ ${widget.totalFinal.toStringAsFixed(2)}',
+                          '${widget.currencySymbol} ${widget.totalFinal.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
@@ -203,13 +353,13 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
 
                   // Calculadora de Vuelto en Efectivo
                   if (_isCashPayment) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     const Text(
                       'PAGO EN EFECTIVO',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
+                        letterSpacing: 0.8,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -231,13 +381,13 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                         color: AppColors.textPrimary,
                       ),
                       decoration: InputDecoration(
-                        prefixText: 'S/ ',
+                        prefixText: '${widget.currencySymbol} ',
                         prefixStyle: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textSecondary,
                         ),
-                        labelText: 'Monto recibido',
+                        labelText: '¿Con cuánto paga el cliente?',
                         labelStyle: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -271,23 +421,18 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                       runSpacing: 6,
                       children: [
                         _PresetChip(
-                          label: 'Exacto',
+                          label:
+                              'Exacto (${widget.currencySymbol} ${widget.totalFinal.toStringAsFixed(2)})',
+                          isSelected:
+                              (_montoRecibido - widget.totalFinal).abs() < 0.01,
                           onTap: () => _setPresetAmount(widget.totalFinal),
                         ),
-                        if (widget.totalFinal < 50)
+                        for (final preset in _calculatePresets())
                           _PresetChip(
-                            label: 'S/ 50',
-                            onTap: () => _setPresetAmount(50),
-                          ),
-                        if (widget.totalFinal < 100)
-                          _PresetChip(
-                            label: 'S/ 100',
-                            onTap: () => _setPresetAmount(100),
-                          ),
-                        if (widget.totalFinal < 200)
-                          _PresetChip(
-                            label: 'S/ 200',
-                            onTap: () => _setPresetAmount(200),
+                            label:
+                                '${widget.currencySymbol} ${preset.toStringAsFixed(0)}',
+                            isSelected: (_montoRecibido - preset).abs() < 0.01,
+                            onTap: () => _setPresetAmount(preset),
                           ),
                       ],
                     ),
@@ -339,7 +484,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                             ],
                           ),
                           Text(
-                            'S/ ${(vuelto >= 0 ? vuelto : -vuelto).toStringAsFixed(2)}',
+                            '${widget.currencySymbol} ${(vuelto >= 0 ? vuelto : -vuelto).toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
@@ -358,77 +503,86 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Cancelar',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  _KeyBadge('Esc'),
-                ],
-              ),
-            ),
-            FilledButton(
-              onPressed: (faltaDinero || _isConfirming) ? null : _confirm,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.teal,
-                disabledBackgroundColor: Colors.grey.shade300,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_isConfirming) ...[
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        _isConfirming
+                            ? null
+                            : () => Navigator.pop(context, null),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                  ] else ...[
-                    const Icon(
-                      Icons.check_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    _isConfirming ? 'Procesando...' : 'Confirmar Venta',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                  if (!_isConfirming) ...[
-                    const SizedBox(width: 6),
-                    const _KeyBadge('Enter', isPrimary: true),
-                  ],
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: (faltaDinero || _isConfirming) ? null : _confirm,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child:
+                        _isConfirming
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'Confirmar Venta',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -469,62 +623,13 @@ class PosSuccessDialog extends StatefulWidget {
 
 class _PosSuccessDialogState extends State<PosSuccessDialog> {
   bool _isGenerating = false;
-  late TextEditingController _receivedCtrl;
-  late double _montoRecibido;
 
   bool get _isCashPayment {
     final method = widget.paymentMethod.toUpperCase();
     return method.contains('EFECTIVO') || method.contains('CAJA');
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _montoRecibido = widget.amountReceived ?? widget.totalAmount;
-    _receivedCtrl = TextEditingController(
-      text: _montoRecibido > 0 ? _montoRecibido.toStringAsFixed(2) : '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _receivedCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onReceivedChanged(String text) {
-    final parsed = double.tryParse(text) ?? 0.0;
-    setState(() => _montoRecibido = parsed);
-  }
-
-  void _setPresetAmount(double amount) {
-    _receivedCtrl.text = amount.toStringAsFixed(2);
-    setState(() => _montoRecibido = amount);
-  }
-
-  List<double> _calculatePresets() {
-    final t = widget.totalAmount;
-    final candidates = [10.0, 20.0, 50.0, 100.0, 200.0];
-    final list = <double>[];
-
-    for (final c in candidates) {
-      if (c >= t && (c - t).abs() > 0.01) {
-        list.add(c);
-      }
-    }
-    if (t > 150) {
-      final next50 = ((t / 50).ceil()) * 50.0;
-      if (!list.contains(next50) && (next50 - t).abs() > 0.01) {
-        list.add(next50);
-      }
-      final next100 = ((t / 100).ceil()) * 100.0;
-      if (!list.contains(next100) && (next100 - t).abs() > 0.01) {
-        list.add(next100);
-      }
-    }
-    list.sort();
-    return list.take(4).toList();
-  }
+  double get _montoRecibido => widget.amountReceived ?? widget.totalAmount;
 
   @override
   Widget build(BuildContext context) {
@@ -715,8 +820,6 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
                   // Si es Efectivo: Mostrar la tarjeta HERO DE VUELTO
                   else if (_isCashPayment) ...[
                     _buildCashVueltoHero(vuelto, faltaDinero),
-                    const SizedBox(height: 14),
-                    _buildPresetsAndCustomInput(),
                   ]
                   // Si es otro método (Yape, Plin, Banco, Crédito)
                   else ...[
@@ -727,89 +830,97 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
             ),
           ),
           actions: [
-            Row(
-              children: [
-                if (!widget.isDraft) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed:
-                          _isGenerating
-                              ? null
-                              : () async {
-                                setState(() => _isGenerating = true);
-                                try {
-                                  await widget.onPrint();
-                                } finally {
-                                  if (mounted) {
-                                    setState(() => _isGenerating = false);
-                                  }
-                                }
-                              },
-                      icon:
-                          _isGenerating
-                              ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Icon(Icons.print_rounded, size: 18),
-                      label: Text(
-                        _isGenerating ? 'Generando...' : 'Imprimir Ticket',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.teal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.teal,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Nueva Venta',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                            ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 320;
+
+                final printBtn =
+                    widget.isDraft
+                        ? null
+                        : OutlinedButton.icon(
+                          onPressed:
+                              _isGenerating
+                                  ? null
+                                  : () async {
+                                    setState(() => _isGenerating = true);
+                                    try {
+                                      await widget.onPrint();
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _isGenerating = false);
+                                      }
+                                    }
+                                  },
+                          icon:
+                              _isGenerating
+                                  ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(Icons.print_rounded, size: 18),
+                          label: Text(
+                            _isGenerating ? 'Generando...' : 'Imprimir Ticket',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        SizedBox(width: 6),
-                        _KeyBadge('Enter', isPrimary: true),
-                      ],
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.teal,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+
+                final newSaleBtn = FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                  label: const Text(
+                    'Nueva Venta',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.teal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                ),
-              ],
+                );
+
+                if (isNarrow && printBtn != null) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [printBtn, const SizedBox(height: 8), newSaleBtn],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    if (printBtn != null) ...[
+                      Expanded(child: printBtn),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(child: newSaleBtn),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -932,92 +1043,6 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPresetsAndCustomInput() {
-    final presets = _calculatePresets();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              '¿Pagó con otro billete?',
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            SizedBox(
-              width: 120,
-              height: 34,
-              child: TextField(
-                controller: _receivedCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                onChanged: _onReceivedChanged,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  prefixText: '${widget.currencySymbol} ',
-                  prefixStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                  hintText: '0.00',
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.teal,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            _PresetChip(
-              label:
-                  'Exacto (${widget.currencySymbol} ${widget.totalAmount.toStringAsFixed(2)})',
-              isSelected: (_montoRecibido - widget.totalAmount).abs() < 0.01,
-              onTap: () => _setPresetAmount(widget.totalAmount),
-            ),
-            for (final p in presets)
-              _PresetChip(
-                label: '${widget.currencySymbol} ${p.toInt()}',
-                isSelected: (_montoRecibido - p).abs() < 0.01,
-                onTap: () => _setPresetAmount(p),
-              ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -1190,49 +1215,6 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
   }
 }
 
-class _RowItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _RowItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-            textAlign: TextAlign.right,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PresetChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -1266,36 +1248,6 @@ class _PresetChip extends StatelessWidget {
             fontWeight: FontWeight.w700,
             color: isSelected ? Colors.white : AppColors.textPrimary,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KeyBadge extends StatelessWidget {
-  final String keyText;
-  final bool isPrimary;
-
-  const _KeyBadge(this.keyText, {this.isPrimary = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color:
-            isPrimary
-                ? Colors.white.withValues(alpha: 0.25)
-                : const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        keyText,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: isPrimary ? Colors.white : AppColors.textSecondary,
-          letterSpacing: 0.2,
         ),
       ),
     );

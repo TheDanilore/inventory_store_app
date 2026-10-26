@@ -1532,7 +1532,7 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i1050.CashShiftRepository>(),
       ),
     );
-    gh.factory<_i30.FinancialAccountsCubit>(
+    gh.lazySingleton<_i30.FinancialAccountsCubit>(
       () => _i30.FinancialAccountsCubit(
         getAccounts: gh<_i425.GetFinancialAccountsUseCase>(),
         saveAccount: gh<_i57.SaveFinancialAccountUseCase>(),

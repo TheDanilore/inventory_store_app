@@ -181,14 +181,37 @@ class AppConfigCubit extends Cubit<AppConfigState> {
     if (state.status == ViewState.loading && !force) return;
     if (state.values.isNotEmpty && !force) return;
 
-    emit(state.copyWith(status: ViewState.loading, clearErrorMessage: true));
+    // SWR: Intentar cargar de caché local primero de inmediato (0ms shimmer)
+    if (state.values.isEmpty) {
+      try {
+        final cached = await _appConfigRepository.fetchCachedSettings();
+        if (cached != null && cached.isNotEmpty) {
+          emit(state.copyWith(values: cached, status: ViewState.success));
+        } else {
+          emit(
+            state.copyWith(status: ViewState.loading, clearErrorMessage: true),
+          );
+        }
+      } catch (_) {
+        emit(
+          state.copyWith(status: ViewState.loading, clearErrorMessage: true),
+        );
+      }
+    }
 
     final result = await getAppSettingsUseCase(const NoParams());
 
     result.fold(
-      (failure) => emit(
-        state.copyWith(status: ViewState.error, errorMessage: failure.message),
-      ),
+      (failure) {
+        if (state.values.isEmpty) {
+          emit(
+            state.copyWith(
+              status: ViewState.error,
+              errorMessage: failure.message,
+            ),
+          );
+        }
+      },
       (settings) =>
           emit(state.copyWith(status: ViewState.success, values: settings)),
     );
@@ -203,10 +226,26 @@ class AppConfigCubit extends Cubit<AppConfigState> {
   }
 
   Future<void> loadBusinessInfo({bool force = false}) async {
-    if (state.status == ViewState.loading) return;
+    if (state.status == ViewState.loading && !force) return;
     if (state.businessInfo != null && !force) return;
 
-    emit(state.copyWith(status: ViewState.loading, clearErrorMessage: true));
+    // SWR: Si no tenemos businessInfo en memoria, leemos caché local de inmediato
+    if (state.businessInfo == null) {
+      try {
+        final cached = await _appConfigRepository.fetchCachedBusinessInfo();
+        if (cached != null) {
+          emit(state.copyWith(businessInfo: cached, status: ViewState.success));
+        } else {
+          emit(
+            state.copyWith(status: ViewState.loading, clearErrorMessage: true),
+          );
+        }
+      } catch (_) {
+        emit(
+          state.copyWith(status: ViewState.loading, clearErrorMessage: true),
+        );
+      }
+    }
 
     final result = await getBusinessInfoUseCase(const NoParams());
 
@@ -216,41 +255,28 @@ class AppConfigCubit extends Cubit<AppConfigState> {
           'Fallo al cargar información del negocio en Cubit: ${failure.message}',
           tag: 'AppConfigCubit',
         );
-        emit(
-          state.copyWith(
-            status: ViewState.error,
-            errorMessage: failure.message,
-            businessInfo:
-                state.businessInfo ??
-                const BusinessInfoEntity(
-                  businessName: 'Sin configurar',
-                  taxId: '',
-                  address: '',
-                  phone: '',
-                  logoUrl: '',
-                  loyaltyGlobalEnabled: false,
-                  loyaltyCustomerVisible: false,
-                ),
-          ),
-        );
+        if (state.businessInfo == null) {
+          emit(
+            state.copyWith(
+              status: ViewState.error,
+              errorMessage: failure.message,
+              businessInfo: const BusinessInfoEntity(
+                businessName: 'Sin configurar',
+                taxId: '',
+                address: '',
+                phone: '',
+                logoUrl: '',
+                loyaltyGlobalEnabled: false,
+                loyaltyCustomerVisible: false,
+              ),
+            ),
+          );
+        }
       },
       (info) {
-        emit(
-          state.copyWith(
-            status: ViewState.success,
-            businessInfo:
-                info ??
-                const BusinessInfoEntity(
-                  businessName: 'Sin configurar',
-                  taxId: '',
-                  address: '',
-                  phone: '',
-                  logoUrl: '',
-                  loyaltyGlobalEnabled: false,
-                  loyaltyCustomerVisible: false,
-                ),
-          ),
-        );
+        if (info != null) {
+          emit(state.copyWith(status: ViewState.success, businessInfo: info));
+        }
       },
     );
   }

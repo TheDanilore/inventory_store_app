@@ -17,7 +17,11 @@ class CurrenciesSettingsTab extends StatefulWidget {
   State<CurrenciesSettingsTab> createState() => _CurrenciesSettingsTabState();
 }
 
-class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
+class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +33,7 @@ class _CurrenciesSettingsTabState extends State<CurrenciesSettingsTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final user = context.watch<AuthCubit>().state.currentUser;
     final canEdit = user?.hasPermission('settings.edit') ?? false;
 

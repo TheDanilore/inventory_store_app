@@ -47,6 +47,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   Timer? _debounce;
   bool _lastSaleWasDraft = false;
   double _lastSaleTotalAmount = 0.0;
+  double? _lastSaleAmountReceived;
   String _lastSalePaymentMethod = 'EFECTIVO';
   String _lastSaleCustomerName = 'Cliente Varios';
   String _lastSaleDocumentType = 'NOTA_VENTA';
@@ -240,12 +241,34 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       return;
     }
 
-    _lastSaleWasDraft = isDraft;
-    _lastSalePaymentMethod = posCubit.state.paymentMethod;
-    _lastSaleCustomerName =
+    final clientName =
         _clienteCtrl.text.trim().isNotEmpty
             ? _clienteCtrl.text.trim()
             : (posCubit.state.selectedClientName ?? 'Cliente Varios');
+    final currency = posCubit.state.currencyCode == 'USD' ? '\$' : 'S/';
+
+    double? confirmedAmountReceived;
+    if (!isDraft) {
+      confirmedAmountReceived = await PosConfirmationDialog.show(
+        context,
+        totalFinal: totalFinal,
+        paymentMethod: posCubit.state.paymentMethod,
+        documentType: posCubit.state.documentType,
+        documentSeries: posCubit.state.effectiveSeries,
+        clienteName: clientName,
+        currencySymbol: currency,
+      );
+
+      // Si el usuario cancela la confirmación, se aborta sin tocar el carrito ni procesar nada
+      if (confirmedAmountReceived == null) {
+        return;
+      }
+    }
+
+    _lastSaleWasDraft = isDraft;
+    _lastSaleAmountReceived = confirmedAmountReceived;
+    _lastSalePaymentMethod = posCubit.state.paymentMethod;
+    _lastSaleCustomerName = clientName;
     _lastSaleDocumentType = posCubit.state.documentType;
     _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
     _lastSalePaymentReference = posCubit.state.paymentReference;
@@ -432,6 +455,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                 (dialogContext) => PosSuccessDialog(
                   isDraft: _lastSaleWasDraft,
                   totalAmount: _lastSaleTotalAmount,
+                  amountReceived: _lastSaleAmountReceived,
                   paymentMethod: _lastSalePaymentMethod,
                   customerName: _lastSaleCustomerName,
                   documentType: _lastSaleDocumentType,
@@ -1248,11 +1272,11 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
                 return Row(
                   children: [
-                    // Botón Secundario: Guardar Borrador (Alt+B)
+                    // Botón Secundario: Guardar Borrador
                     SizedBox(
                       height: 50,
                       child: Tooltip(
-                        message: 'Guardar orden como borrador (Alt+B)',
+                        message: 'Guardar orden como borrador',
                         child: OutlinedButton(
                           onPressed:
                               !canDraft
@@ -1278,39 +1302,16 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                           ),
-                          child: Row(
+                          child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.bookmark_add_outlined, size: 18),
-                              const SizedBox(width: 6),
-                              const Text(
+                              Icon(Icons.bookmark_add_outlined, size: 18),
+                              SizedBox(width: 6),
+                              Text(
                                 'Borrador',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 1.5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 0.8,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Alt+B',
-                                  style: TextStyle(
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textSecondary,
-                                  ),
                                 ),
                               ),
                             ],
@@ -1320,7 +1321,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                     ),
                     const SizedBox(width: 10),
 
-                    // Botón Principal: Cobrar (CTA F2 / Alt+Enter)
+                    // Botón Principal: Cobrar
                     Expanded(
                       child: SizedBox(
                         height: 50,
@@ -1328,7 +1329,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                           message:
                               noCajaAbierta
                                   ? 'Abre turno en caja física o cambia de método de pago'
-                                  : 'Completar venta (F2 o Alt+Enter)',
+                                  : 'Completar venta',
                           child: ElevatedButton(
                             onPressed:
                                 !canProceed
