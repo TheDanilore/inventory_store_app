@@ -105,8 +105,9 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
     final res = await _repository.loadActiveVariants(productId);
     if (isClosed ||
         reqId != _variantRequestId ||
-        _currentProductId != productId)
+        _currentProductId != productId) {
       return;
+    }
     res.fold(
       (l) {
         developer.log('Error loading variants', error: l.message);
@@ -123,8 +124,9 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
 
         if (isClosed ||
             reqId != _variantRequestId ||
-            _currentProductId != productId)
+            _currentProductId != productId) {
           return;
+        }
         emit(
           state.copyWithNullError(
             isLoadingVariants: false,
@@ -145,13 +147,15 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
   ) async {
     if (isClosed ||
         reqId != _variantRequestId ||
-        _currentProductId != productId)
+        _currentProductId != productId) {
       return;
+    }
     final res = await _repository.loadActiveVariants(productId);
     if (isClosed ||
         reqId != _variantRequestId ||
-        _currentProductId != productId)
+        _currentProductId != productId) {
       return;
+    }
     res.fold(
       (l) => developer.log(
         'Revalidation failed for variants $productId',
@@ -165,16 +169,18 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
         if (_variantsChanged(stale, fresh)) {
           if (isClosed ||
               reqId != _variantRequestId ||
-              _currentProductId != productId)
+              _currentProductId != productId) {
             return;
+          }
           List<Map<String, dynamic>> batches = [];
           if (fresh.length == 1 && warehouseId != null) {
             batches = await _fetchBatchesRaw(fresh.first.id, warehouseId);
           }
           if (isClosed ||
               reqId != _variantRequestId ||
-              _currentProductId != productId)
+              _currentProductId != productId) {
             return;
+          }
           emit(
             state.copyWithNullError(
               availableVariants: fresh,
@@ -209,8 +215,9 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
       final fresh = await _fetchBatchesRaw(variantId, warehouseId);
       if (isClosed ||
           reqId != _batchRequestId ||
-          _currentVariantId != variantId)
+          _currentVariantId != variantId) {
         return;
+      }
       emit(
         state.copyWithNullError(
           isLoadingBatches: false,
@@ -250,13 +257,15 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
   ]) async {
     if (isClosed) return;
     if (reqId != null &&
-        (reqId != _batchRequestId || _currentVariantId != variantId))
+        (reqId != _batchRequestId || _currentVariantId != variantId)) {
       return;
+    }
     final res = await _repository.getBatchesForVariant(variantId, warehouseId);
     if (isClosed) return;
     if (reqId != null &&
-        (reqId != _batchRequestId || _currentVariantId != variantId))
+        (reqId != _batchRequestId || _currentVariantId != variantId)) {
       return;
+    }
     res.fold(
       (l) => developer.log(
         'Revalidation failed for batches $variantId',
@@ -267,8 +276,9 @@ class AddExitProductCubit extends Cubit<AddExitProductState> {
         if (_batchesChanged(stale, r)) {
           if (isClosed) return;
           if (reqId != null &&
-              (reqId != _batchRequestId || _currentVariantId != variantId))
+              (reqId != _batchRequestId || _currentVariantId != variantId)) {
             return;
+          }
           if (_currentVariantId == null || _currentVariantId == variantId) {
             emit(state.copyWithNullError(availableBatches: r));
           }

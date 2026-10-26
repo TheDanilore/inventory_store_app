@@ -202,17 +202,20 @@ class _LoginFormCardState extends State<LoginFormCard> {
           widget.isFlat
               ? null
               : BoxDecoration(
-                color: AppColors.surface,
+                color: Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  width: 1.2,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                    color: Colors.black.withValues(alpha: 0.28),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
                   BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                    color: Colors.black.withValues(alpha: 0.12),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -233,7 +236,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                     !widget.isLoginMode
                         ? Padding(
                           padding: const EdgeInsets.only(bottom: 14),
-                          child: AppTextField(
+                          child: _GlassField(
                             controller: widget.nameController,
                             label: 'Nombre completo',
                             icon: Icons.person_outline_rounded,
@@ -247,7 +250,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                         : const SizedBox.shrink(),
               ),
 
-              AppTextField(
+              _GlassField(
                 controller: widget.emailController,
                 label: 'Correo electrónico',
                 icon: Icons.email_outlined,
@@ -265,7 +268,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
               ValueListenableBuilder<bool>(
                 valueListenable: _obscurePasswordNotifier,
                 builder: (context, obscure, _) {
-                  return AppTextField(
+                  return _GlassField(
                     controller: widget.passwordController,
                     label: 'Contraseña',
                     icon: Icons.lock_outline_rounded,
@@ -295,7 +298,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                           key: ValueKey<bool>(obscure),
-                          color: AppColors.textSecondary,
+                          color: Colors.white.withValues(alpha: 0.62),
                           size: 20,
                         ),
                       ),
@@ -336,7 +339,7 @@ class _LoginFormCardState extends State<LoginFormCard> {
                                 child: const Text(
                                   '¿Olvidaste tu contraseña?',
                                   style: TextStyle(
-                                    color: Color(0xFF2563EB),
+                                    color: Color(0xFF22D3EE),
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -358,6 +361,89 @@ class _LoginFormCardState extends State<LoginFormCard> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Campo de texto de vidrio oscuro para el login (reemplaza a AppTextField
+/// solo en esta pantalla; el diálogo de recuperar contraseña no cambia).
+class _GlassField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final Iterable<String>? autofillHints;
+  final ValueChanged<String>? onFieldSubmitted;
+  final FormFieldValidator<String>? validator;
+  final Widget? suffixIcon;
+  final bool obscureText;
+
+  const _GlassField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.autofillHints,
+    this.onFieldSubmitted,
+    this.validator,
+    this.suffixIcon,
+    this.obscureText = false,
+  });
+
+  static const _cyan = Color(0xFF22D3EE);
+
+  OutlineInputBorder _border(Color color, [double width = 1.2]) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: color, width: width),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      textCapitalization: textCapitalization,
+      autofillHints: autofillHints,
+      onFieldSubmitted: onFieldSubmitted,
+      validator: validator,
+      obscureText: obscureText,
+      cursorColor: _cyan,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        hintText: label,
+        hintStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.48),
+          fontSize: 15,
+        ),
+        prefixIcon: Icon(icon, size: 20, color: _cyan.withValues(alpha: 0.9)),
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.06),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 17,
+          horizontal: 16,
+        ),
+        errorStyle: const TextStyle(
+          color: Color(0xFFFCA5A5),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        enabledBorder: _border(Colors.white.withValues(alpha: 0.14)),
+        focusedBorder: _border(_cyan, 1.6),
+        errorBorder: _border(const Color(0xFFF87171)),
+        focusedErrorBorder: _border(const Color(0xFFF87171), 1.6),
+        border: _border(Colors.white.withValues(alpha: 0.14)),
       ),
     );
   }

@@ -56,13 +56,15 @@ class _LoginButtonState extends State<LoginButton> {
               colors:
                   success
                       ? const [Color(0xFF059669), Color(0xFF10B981)]
-                      : const [Color(0xFF1E2038), AppColors.primary],
+                      : const [Color(0xFF1D6FF2), Color(0xFF06B6D4)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: (success ? const Color(0xFF10B981) : AppColors.primary)
+                color: (success
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF06B6D4))
                     .withValues(alpha: success ? 0.35 : 0.25),
                 blurRadius: _isPressed ? 8 : 16,
                 offset: Offset(0, _isPressed ? 3 : 6),
@@ -144,14 +146,24 @@ class _LoginButtonState extends State<LoginButton> {
                           ),
                         ],
                       )
-                      : Text(
-                        widget.isLoginMode ? 'Iniciar sesión' : 'Crear cuenta',
+                      : Row(
                         key: ValueKey(widget.isLoginMode),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.2,
-                        ),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.isLoginMode
+                                ? 'Iniciar sesión'
+                                : 'Crear cuenta',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
                       ),
             ),
           ),

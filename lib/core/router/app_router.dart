@@ -386,13 +386,12 @@ class AppRouter {
                   secondaryAnimation,
                   child,
                 ) {
-                  final isDark =
-                      Theme.of(context).brightness == Brightness.dark;
                   return Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Respaldo opaco: evita ver el fondo mientras el login se desvanece
-                      if (!isDark) const ColoredBox(color: Colors.white),
+                      // Respaldo azul marino = color final del login: el panel
+                      // aparece desde el mismo tono sin destello intermedio.
+                      const ColoredBox(color: Color(0xFF061426)),
                       FadeTransition(
                         opacity: CurvedAnimation(
                           parent: animation,
