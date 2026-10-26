@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
@@ -79,78 +80,112 @@ class DashboardBentoGrid extends StatelessWidget {
   Widget _buildEmptyWidgetsPlaceholder(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? const Color(0xFF1E3A8A).withValues(alpha: 0.3)
-                        : const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.dashboard_customize_outlined,
-                size: 28,
-                color:
-                    isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-              ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 52),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+              width: 1.2,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Lienzo de Dashboard Vacío',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color:
-                    isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'No hay componentes visibles o con permisos activos. Personaliza tu vista añadiendo widgets clave.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color:
-                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onOpenAddWidgetSheet,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+            ],
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color:
+                        isDark
+                            ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                            : const Color(0xFFEFF6FF),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.dashboard_customize_outlined,
+                    size: 30,
+                    color:
+                        isDark
+                            ? const Color(0xFF60A5FA)
+                            : const Color(0xFF2563EB),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
+                const SizedBox(height: 18),
+                Text(
+                  'Lienzo de Dashboard Vacío',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    color:
+                        isDark
+                            ? const Color(0xFFF8FAFC)
+                            : const Color(0xFF0F172A),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text(
-                'Añadir Widgets (Atajo: W)',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Text(
+                    'No hay componentes visibles o con permisos activos. Personaliza tu vista añadiendo widgets clave en cualquier momento.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color:
+                          isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                FilledButton.icon(
+                  onPressed: onOpenAddWidgetSheet,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 12,
+                    ),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text(
+                    'Añadir Widgets (Atajo: W)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        )
+        .animate()
+        .fadeIn(duration: 350.ms)
+        .scale(begin: const Offset(0.97, 0.97), curve: Curves.easeOutCubic);
   }
 
   @override
@@ -318,9 +353,13 @@ class DashboardBentoGrid extends StatelessWidget {
                     ? const Color(0xFFEFF6FF).withValues(alpha: 0.25)
                     : Colors.transparent,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: _withSpacers(allLevels, 20),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _withSpacers(allLevels, 20),
+            ),
           ),
         );
       },

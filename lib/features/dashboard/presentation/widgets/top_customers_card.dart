@@ -262,12 +262,12 @@ class TopCustomersCard extends StatelessWidget {
                     Positioned.fill(
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
-                        widthFactor:
-                            (customers.isNotEmpty && customers.first.totalRevenue > 0
-                                    ? customer.totalRevenue /
-                                        customers.first.totalRevenue
-                                    : 1.0)
-                                .clamp(0.04, 1.0),
+                        widthFactor: (customers.isNotEmpty &&
+                                    customers.first.totalRevenue > 0
+                                ? customer.totalRevenue /
+                                    customers.first.totalRevenue
+                                : 1.0)
+                            .clamp(0.04, 1.0),
                         child: Container(
                           decoration: BoxDecoration(
                             color: (isDark
@@ -282,83 +282,83 @@ class TopCustomersCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(
-                  children: [
-                    _buildRankBadge(rank, isDark: isDark),
-                    const SizedBox(width: 14),
-                    _buildAvatar(customer),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            customer.fullName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  isDark
-                                      ? const Color(0xFFF8FAFC)
-                                      : AppColors.textPrimary,
+                          _buildRankBadge(rank, isDark: isDark),
+                          const SizedBox(width: 14),
+                          _buildAvatar(customer),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  customer.fullName,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFF8FAFC)
+                                            : AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${customer.orderCount} compras realizadas · Ticket medio S/ ${averageTicket.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${customer.orderCount} compras realizadas · Ticket medio S/ ${averageTicket.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color:
-                                  isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : AppColors.textSecondary,
-                            ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF34D399)
+                                          : AppColors.tealDark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Facturado',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: AppColors.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.textMuted,
+                            size: 20,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            color:
-                                isDark
-                                    ? const Color(0xFF34D399)
-                                    : AppColors.tealDark,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Facturado',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textMuted,
-                      size: 20,
-                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  },
+            ),
+          );
+        },
       ),
     );
   }
@@ -382,11 +382,10 @@ class TopCustomersCard extends StatelessWidget {
         final customer = customers[index];
         final rank = index + 1;
 
-        final ratio =
-            (customers.isNotEmpty && customers.first.totalRevenue > 0
-                    ? customer.totalRevenue / customers.first.totalRevenue
-                    : 1.0)
-                .clamp(0.04, 1.0);
+        final ratio = (customers.isNotEmpty && customers.first.totalRevenue > 0
+                ? customer.totalRevenue / customers.first.totalRevenue
+                : 1.0)
+            .clamp(0.04, 1.0);
 
         return Material(
           color: Colors.transparent,
@@ -870,8 +869,10 @@ class _DesktopTableState extends State<_DesktopTable> {
                           widget.customers.first.totalRevenue > 0
                       ? widget.customers.first.totalRevenue
                       : 1.0;
-              final ratio =
-                  (customer.totalRevenue / maxRevenue).clamp(0.04, 1.0);
+              final ratio = (customer.totalRevenue / maxRevenue).clamp(
+                0.04,
+                1.0,
+              );
 
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -914,192 +915,194 @@ class _DesktopTableState extends State<_DesktopTable> {
                           vertical: 12,
                         ),
                         child: Row(
-                      children: [
-                        // Rank
-                        SizedBox(
-                          width: 44,
-                          child: Row(
-                            children: [
-                              if (rank <= 3) ...[
-                                Icon(
-                                  Icons.workspace_premium_rounded,
-                                  size: 16,
-                                  color:
-                                      rank == 1
-                                          ? const Color(0xFFF59E0B)
-                                          : rank == 2
-                                          ? const Color(0xFF64748B)
-                                          : const Color(0xFFB45309),
-                                ),
-                                const SizedBox(width: 4),
-                              ],
-                              Text(
-                                '$rank',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color:
-                                      rank <= 3
-                                          ? (isDark
-                                              ? const Color(0xFFF8FAFC)
-                                              : AppColors.textPrimary)
-                                          : (isDark
-                                              ? const Color(0xFF94A3B8)
-                                              : AppColors.textSecondary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Customer Avatar + Name
-                        Expanded(
-                          flex: 4,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  customer.fullName.isNotEmpty
-                                      ? customer.fullName[0].toUpperCase()
-                                      : 'C',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                          children: [
+                            // Rank
+                            SizedBox(
+                              width: 44,
+                              child: Row(
+                                children: [
+                                  if (rank <= 3) ...[
+                                    Icon(
+                                      Icons.workspace_premium_rounded,
+                                      size: 16,
+                                      color:
+                                          rank == 1
+                                              ? const Color(0xFFF59E0B)
+                                              : rank == 2
+                                              ? const Color(0xFF64748B)
+                                              : const Color(0xFFB45309),
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    '$rank',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color:
+                                          rank <= 3
+                                              ? (isDark
+                                                  ? const Color(0xFFF8FAFC)
+                                                  : AppColors.textPrimary)
+                                              : (isDark
+                                                  ? const Color(0xFF94A3B8)
+                                                  : AppColors.textSecondary),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      customer.fullName,
-                                      style: TextStyle(
+                            ),
+                            // Customer Avatar + Name
+                            Expanded(
+                              flex: 4,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      customer.fullName.isNotEmpty
+                                          ? customer.fullName[0].toUpperCase()
+                                          : 'C',
+                                      style: const TextStyle(
+                                        color: Colors.white,
                                         fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          customer.fullName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color:
+                                                isDark
+                                                    ? const Color(0xFFF8FAFC)
+                                                    : AppColors.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (customer.phone != null &&
+                                            customer.phone!.isNotEmpty)
+                                          Text(
+                                            customer.phone!,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color:
+                                                  isDark
+                                                      ? const Color(0xFF94A3B8)
+                                                      : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Orders count
+                            Expanded(
+                              flex: 2,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isDark
+                                              ? const Color(0xFF1E293B)
+                                              : AppColors.slateLight.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '${customer.orderCount} ord.',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
                                         fontWeight: FontWeight.w700,
                                         color:
                                             isDark
-                                                ? const Color(0xFFF8FAFC)
-                                                : AppColors.textPrimary,
+                                                ? const Color(0xFF94A3B8)
+                                                : AppColors.slate,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (customer.phone != null &&
-                                        customer.phone!.isNotEmpty)
-                                      Text(
-                                        customer.phone!,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              isDark
-                                                  ? const Color(0xFF94A3B8)
-                                                  : AppColors.textSecondary,
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        // Orders count
-                        Expanded(
-                          flex: 2,
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
+                            ),
+                            // Average Ticket
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'S/ ${averageTicket.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
                                   color:
                                       isDark
-                                          ? const Color(0xFF1E293B)
-                                          : AppColors.slateLight.withValues(
-                                            alpha: 0.5,
-                                          ),
-                                  borderRadius: BorderRadius.circular(6),
+                                          ? const Color(0xFF94A3B8)
+                                          : AppColors.textSecondary,
                                 ),
-                                child: Text(
-                                  '${customer.orderCount} ord.',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        isDark
-                                            ? const Color(0xFF94A3B8)
-                                            : AppColors.slate,
+                              ),
+                            ),
+                            // Total Facturado
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF34D399)
+                                          : AppColors.tealDark,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                            // Action Button
+                            SizedBox(
+                              width: 80,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: IconButton(
+                                  tooltip: 'Ver detalle de cliente',
+                                  icon: const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 16,
+                                    color: AppColors.primary,
                                   ),
+                                  onPressed:
+                                      () => widget.onCustomerTap(customer),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        // Average Ticket
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${averageTicket.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : AppColors.textSecondary,
                             ),
-                          ),
+                          ],
                         ),
-                        // Total Facturado
-                        Expanded(
-                          flex: 3,
-                          child: Text(
-                            'S/ ${customer.totalRevenue.toStringAsFixed(2)}',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w900,
-                              color:
-                                  isDark
-                                      ? const Color(0xFF34D399)
-                                      : AppColors.tealDark,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ),
-                        // Action Button
-                        SizedBox(
-                          width: 80,
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: IconButton(
-                              tooltip: 'Ver detalle de cliente',
-                              icon: const Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 16,
-                                color: AppColors.primary,
-                              ),
-                              onPressed: () => widget.onCustomerTap(customer),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          );
+                ),
+              );
             },
           ),
         ],

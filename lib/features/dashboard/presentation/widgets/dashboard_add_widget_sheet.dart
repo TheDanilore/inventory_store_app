@@ -70,6 +70,7 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
   final TextEditingController _searchController = TextEditingController();
 
   late Set<String> _currentVisible;
+  String? _hoveredItemId;
 
   @override
   void initState() {
@@ -258,17 +259,39 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_currentVisible.length} de ${allAvailableWidgets.length} activos en el dashboard',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withValues(alpha: 0.55),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_currentVisible.length} de ${allAvailableWidgets.length} activos en el dashboard',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -524,33 +547,52 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
     bool isVisible,
     bool isDark,
   ) {
+    final isHovered = _hoveredItemId == item.id;
+
     final cardWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      transform:
+          isHovered
+              ? Matrix4.translationValues(0, -2.5, 0)
+              : Matrix4.identity(),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceElevated : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color:
-              isVisible
-                  ? (isDark
-                      ? const Color(0xFF3B82F6).withValues(alpha: 0.6)
-                      : const Color(0xFF2563EB).withValues(alpha: 0.4))
-                  : (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
-          width: isVisible ? 1.4 : 1.0,
+              isHovered
+                  ? const Color(
+                    0xFF3B82F6,
+                  ).withValues(alpha: isDark ? 0.8 : 0.6)
+                  : (isVisible
+                      ? (isDark
+                          ? const Color(0xFF3B82F6).withValues(alpha: 0.6)
+                          : const Color(0xFF2563EB).withValues(alpha: 0.4))
+                      : (isDark
+                          ? AppColors.darkBorder
+                          : const Color(0xFFE2E8F0))),
+          width: isHovered ? 1.6 : (isVisible ? 1.4 : 1.0),
         ),
         boxShadow: [
           BoxShadow(
             color:
-                isVisible
-                    ? (isDark
-                        ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
-                        : const Color(0xFF2563EB).withValues(alpha: 0.05))
-                    : (isDark
-                        ? Colors.black.withValues(alpha: 0.25)
-                        : Colors.black.withValues(alpha: 0.02)),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+                isHovered
+                    ? (isVisible
+                        ? const Color(
+                          0xFF3B82F6,
+                        ).withValues(alpha: isDark ? 0.25 : 0.16)
+                        : Colors.black.withValues(alpha: isDark ? 0.45 : 0.08))
+                    : (isVisible
+                        ? (isDark
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+                            : const Color(0xFF2563EB).withValues(alpha: 0.05))
+                        : (isDark
+                            ? Colors.black.withValues(alpha: 0.25)
+                            : Colors.black.withValues(alpha: 0.02))),
+            blurRadius: isHovered ? 14 : 10,
+            offset: isHovered ? const Offset(0, 6) : const Offset(0, 3),
           ),
         ],
       ),
@@ -750,7 +792,11 @@ class _DashboardAddWidgetSheetState extends State<DashboardAddWidgetSheet> {
       ),
     );
 
-    return cardWidget;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredItemId = item.id),
+      onExit: (_) => setState(() => _hoveredItemId = null),
+      child: cardWidget,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────

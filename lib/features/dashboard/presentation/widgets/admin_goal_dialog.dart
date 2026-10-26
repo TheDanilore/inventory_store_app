@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 
 import 'package:inventory_store_app/core/services/logger_service.dart';
@@ -274,7 +275,14 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+
+          // ── Live Forecast Progress Card ─────────────────────────────
+          _buildForecastPreview(isDark)
+              .animate()
+              .fadeIn(duration: const Duration(milliseconds: 300))
+              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
+          const SizedBox(height: 16),
 
           // ── Acción primaria: abonar ──────────────────────────────────
           Text(
@@ -321,33 +329,10 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
                       amount == amount.roundToDouble()
                           ? amount.toStringAsFixed(0)
                           : amount.toStringAsFixed(2);
-                  return ActionChip(
-                    label: Text('+S/$label'),
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12.5,
-                      color:
-                          isDark
-                              ? const Color(0xFF4ADE80)
-                              : const Color(0xFF15803D),
-                    ),
-                    backgroundColor:
-                        isDark
-                            ? const Color(0xFF14532D).withValues(alpha: 0.35)
-                            : const Color(0xFFDCFCE7),
-                    side: BorderSide(
-                      color:
-                          isDark
-                              ? const Color(0xFF15803D)
-                              : const Color(0xFF86EFAC),
-                      width: 0.8,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    onPressed: () => _applyQuickAdd(amount),
+                  return _QuickAddChip(
+                    label: label,
+                    isDark: isDark,
+                    onTap: () => _applyQuickAdd(amount),
                   );
                 }).toList(),
           ),
@@ -555,6 +540,255 @@ class _AdminGoalDialogState extends State<AdminGoalDialog> {
       'Guardar',
       key: ValueKey('idle'),
       style: TextStyle(color: Colors.white),
+    );
+  }
+
+  Widget _buildForecastPreview(bool isDark) {
+    final added =
+        double.tryParse(_addCtrl.text.trim().replaceAll(',', '.')) ?? 0.0;
+    final baseCurrent =
+        double.tryParse(_currentCtrl.text.trim().replaceAll(',', '.')) ??
+        widget.currentAmount;
+    final target =
+        double.tryParse(_targetCtrl.text.trim().replaceAll(',', '.')) ??
+        widget.targetAmount;
+
+    final projected = baseCurrent + (added > 0 ? added : 0.0);
+    final curProgress =
+        target > 0 ? (baseCurrent / target).clamp(0.0, 1.0) : 0.0;
+    final projProgress =
+        target > 0 ? (projected / target).clamp(0.0, 1.0) : 0.0;
+    final curPercent = (curProgress * 100).toInt();
+    final projPercent = (projProgress * 100).toInt();
+    final willReachGoal = projProgress >= 1.0 && target > 0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              willReachGoal
+                  ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                  : (isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progreso Actual: $curPercent%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
+                ),
+              ),
+              if (added > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        willReachGoal
+                            ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                            : const Color(0xFF2563EB).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    willReachGoal
+                        ? '🎉 ¡100% Alcanzado!'
+                        : 'Proyectado: $projPercent%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          willReachGoal
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF2563EB),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Dual-layer Animated Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              height: 8,
+              child: Stack(
+                children: [
+                  // Background Track
+                  Container(
+                    color:
+                        isDark
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0),
+                  ),
+                  // Projected Progress
+                  if (added > 0)
+                    FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: projProgress,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors:
+                                willReachGoal
+                                    ? [
+                                      const Color(0xFF10B981),
+                                      const Color(0xFF34D399),
+                                    ]
+                                    : [
+                                      const Color(0xFF38BDF8),
+                                      const Color(0xFF60A5FA),
+                                    ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Current Solid Progress
+                  FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: curProgress,
+                    child: Container(color: const Color(0xFF10B981)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Bottom Amounts Label
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'S/ ${baseCurrent.toStringAsFixed(2)} acumulados',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark
+                          ? const Color(0xFFF1F5F9)
+                          : const Color(0xFF1E293B),
+                ),
+              ),
+              Text(
+                'Meta: S/ ${target.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAddChip extends StatefulWidget {
+  final String label;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _QuickAddChip({
+    required this.label,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  State<_QuickAddChip> createState() => _QuickAddChipState();
+}
+
+class _QuickAddChipState extends State<_QuickAddChip> {
+  bool _isPressed = false;
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onTap();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedScale(
+          scale: _isPressed ? 0.94 : (_isHovered ? 1.05 : 1.0),
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color:
+                  widget.isDark
+                      ? (_isHovered
+                          ? const Color(0xFF15803D).withValues(alpha: 0.45)
+                          : const Color(0xFF14532D).withValues(alpha: 0.35))
+                      : (_isHovered
+                          ? const Color(0xFFBBF7D0)
+                          : const Color(0xFFDCFCE7)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color:
+                    _isHovered
+                        ? const Color(0xFF22C55E)
+                        : (widget.isDark
+                            ? const Color(0xFF15803D)
+                            : const Color(0xFF86EFAC)),
+                width: _isHovered ? 1.2 : 0.8,
+              ),
+              boxShadow:
+                  _isHovered
+                      ? [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF22C55E,
+                          ).withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
+            ),
+            child: Text(
+              '+S/${widget.label}',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color:
+                    widget.isDark
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFF15803D),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

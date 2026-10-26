@@ -70,52 +70,9 @@ class DashboardRadialGoalCard extends StatelessWidget {
               // Botón Configurar protegido por permisos (solo administradores o con permiso settings)
               PermissionGuard(
                 permission: AppPermissions.settingsEdit,
-                child: InkWell(
-                  onTap: onConfigure,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? AppColors.darkSurfaceElevated
-                              : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? AppColors.darkBorder
-                                : const Color(0xFFE2E8F0),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.tune_rounded,
-                          size: 14,
-                          color:
-                              isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Ajustar',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                child: _AdjustGoalButton(
+                  onConfigure: onConfigure,
+                  isDark: isDark,
                 ),
               ),
             ],
@@ -406,5 +363,141 @@ class _AppleRadialGaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _AppleRadialGaugePainter oldDelegate) {
     return oldDelegate.progress != progress;
+  }
+}
+
+class _AdjustGoalButton extends StatefulWidget {
+  final VoidCallback onConfigure;
+  final bool isDark;
+
+  const _AdjustGoalButton({required this.onConfigure, required this.isDark});
+
+  @override
+  State<_AdjustGoalButton> createState() => _AdjustGoalButtonState();
+}
+
+class _AdjustGoalButtonState extends State<_AdjustGoalButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    return Tooltip(
+      message: 'Configurar meta de ahorro (Atajo: G)',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: InkWell(
+          onTap: widget.onConfigure,
+          borderRadius: BorderRadius.circular(8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color:
+                  _isHovered
+                      ? (isDark
+                          ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                          : const Color(0xFFEFF6FF))
+                      : (isDark
+                          ? AppColors.darkSurfaceElevated
+                          : const Color(0xFFF8FAFC)),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color:
+                    _isHovered
+                        ? (isDark
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.7)
+                            : const Color(0xFF2563EB).withValues(alpha: 0.6))
+                        : (isDark
+                            ? AppColors.darkBorder
+                            : const Color(0xFFE2E8F0)),
+                width: _isHovered ? 1.2 : 1.0,
+              ),
+              boxShadow:
+                  _isHovered
+                      ? [
+                        BoxShadow(
+                          color: const Color(
+                            0xFF2563EB,
+                          ).withValues(alpha: isDark ? 0.2 : 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                      : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  size: 14,
+                  color:
+                      _isHovered
+                          ? (isDark
+                              ? const Color(0xFF60A5FA)
+                              : const Color(0xFF2563EB))
+                          : (isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B)),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Ajustar',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color:
+                        _isHovered
+                            ? (isDark
+                                ? const Color(0xFF60A5FA)
+                                : const Color(0xFF2563EB))
+                            : (isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B)),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        _isHovered
+                            ? (isDark
+                                ? const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.25)
+                                : const Color(0xFFDBEAFE))
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'G',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          _isHovered
+                              ? (isDark
+                                  ? const Color(0xFF93C5FD)
+                                  : const Color(0xFF1D4ED8))
+                              : (isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

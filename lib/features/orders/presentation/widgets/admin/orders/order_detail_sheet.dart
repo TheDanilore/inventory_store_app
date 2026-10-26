@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
 
@@ -387,14 +389,21 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
     OrderDetailState state,
     OrderEntity displayOrder,
   ) {
-    final selectedCustomerLabel = _getCustomerLabel(
-      state.selectedCustomerId,
-      state.profiles,
-      state.order,
-    );
+    final order = state.order ?? displayOrder;
+    final effectiveCustomerId =
+        (state.selectedCustomerId != null &&
+                state.selectedCustomerId!.isNotEmpty)
+            ? state.selectedCustomerId
+            : ((order.customerId != null && order.customerId!.isNotEmpty)
+                ? order.customerId
+                : null);
     final isRegistered =
-        state.selectedCustomerId != null &&
-        state.selectedCustomerId!.isNotEmpty;
+        effectiveCustomerId != null && effectiveCustomerId.isNotEmpty;
+    final selectedCustomerLabel = _getCustomerLabel(
+      effectiveCustomerId,
+      state.profiles,
+      order,
+    );
     final cleanName =
         selectedCustomerLabel.trim().isNotEmpty
             ? selectedCustomerLabel.trim()
@@ -404,8 +413,6 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         parts.isNotEmpty
             ? parts.take(2).map((p) => p[0]).join().toUpperCase()
             : '?';
-
-    final order = state.order ?? displayOrder;
     final orderStatus = order.status.toUpperCase();
     final isCancelled = orderStatus == 'CANCELLED';
     final isReturned = orderStatus == 'RETURNED';
@@ -513,98 +520,159 @@ class _OrderDetailSheetContentState extends State<_OrderDetailSheetContent> {
         children: [
           // --- COLUMNA 1: CLIENTE ---
           Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color:
-                        isRegistered
-                            ? AppColors.teal.withValues(alpha: 0.12)
-                            : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap:
+                    isRegistered
+                        ? () {
+                          AppFeedbackService.selectionClick();
+                          context.push(
+                            '/customers/customer-detail/$effectiveCustomerId',
+                          );
+                        }
+                        : null,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 2,
+                    horizontal: 2,
                   ),
-                  child: Center(
-                    child: Text(
-                      initials,
-                      style: TextStyle(
-                        color:
-                            isRegistered
-                                ? AppColors.tealDark
-                                : AppColors.textSecondary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      Text(
-                        cleanName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        (order.customerDocumentNumber != null &&
-                                order.customerDocumentNumber!.isNotEmpty)
-                            ? '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}'
-                            : (isRegistered
-                                ? 'Cliente registrado'
-                                : 'Cliente mostrador'),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w500,
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
                           color:
                               isRegistered
-                                  ? AppColors.tealDark
-                                  : AppColors.textMuted,
+                                  ? AppColors.teal.withValues(alpha: 0.12)
+                                  : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              isRegistered
+                                  ? Border.all(
+                                    color: AppColors.teal.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                    width: 1,
+                                  )
+                                  : null,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: Center(
+                          child: Text(
+                            initials,
+                            style: TextStyle(
+                              color:
+                                  isRegistered
+                                      ? AppColors.tealDark
+                                      : AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ),
-                      if (order.warehouseName != null &&
-                          order.warehouseName!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.storefront_outlined,
-                              size: 11,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 3),
-                            Flexible(
-                              child: Text(
-                                order.warehouseName!,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    cleanName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color:
+                                          isRegistered
+                                              ? AppColors.tealDark
+                                              : AppColors.textPrimary,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                                if (isRegistered) ...[
+                                  const SizedBox(width: 4),
+                                  Tooltip(
+                                    message: 'Ver perfil del cliente',
+                                    child: Icon(
+                                      Icons.open_in_new_rounded,
+                                      size: 12,
+                                      color: AppColors.tealDark.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              (order.customerDocumentNumber != null &&
+                                      order.customerDocumentNumber!.isNotEmpty)
+                                  ? '${order.customerDocumentType ?? "DOC"}: ${order.customerDocumentNumber}'
+                                  : (isRegistered
+                                      ? 'Cliente registrado'
+                                      : 'Cliente mostrador'),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    isRegistered
+                                        ? AppColors.tealDark
+                                        : AppColors.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (order.warehouseName != null &&
+                                order.warehouseName!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.storefront_outlined,
+                                    size: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      order.warehouseName!,
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                      ],
+                      ),
+                      if (isRegistered)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: AppColors.textMuted.withValues(alpha: 0.6),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
 
