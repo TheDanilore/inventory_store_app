@@ -292,6 +292,8 @@ import '../../features/inventory/domain/usecases/get_open_cash_shifts_usecase.da
     as _i121;
 import '../../features/inventory/domain/usecases/get_warehouses_usecase.dart'
     as _i71;
+import '../../features/inventory/domain/usecases/save_warehouse_layout_usecase.dart'
+    as _i447;
 import '../../features/inventory/domain/usecases/save_warehouse_usecase.dart'
     as _i656;
 import '../../features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart'
@@ -658,6 +660,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i71.GetWarehousesUseCase>(
       () => _i71.GetWarehousesUseCase(gh<_i317.WarehousesRepository>()),
+    );
+    gh.factory<_i447.SaveWarehouseLayoutUseCase>(
+      () => _i447.SaveWarehouseLayoutUseCase(gh<_i317.WarehousesRepository>()),
     );
     gh.factory<_i656.SaveWarehouseUseCase>(
       () => _i656.SaveWarehouseUseCase(gh<_i317.WarehousesRepository>()),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
@@ -19,12 +20,24 @@ class WarehouseDigitalTwinScreen extends StatefulWidget {
     BuildContext context,
     WarehouseEntity warehouse,
   ) {
+    WarehousesCubit? existingCubit;
+    try {
+      existingCubit = context.read<WarehousesCubit>();
+    } catch (_) {}
+
+    final cubit = existingCubit ?? sl<WarehousesCubit>();
+
     return Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (ctx) => WarehouseDigitalTwinScreen(warehouse: warehouse),
+        builder:
+            (ctx) => BlocProvider.value(
+              value: cubit,
+              child: WarehouseDigitalTwinScreen(warehouse: warehouse),
+            ),
       ),
     );
   }
+
 
   @override
   State<WarehouseDigitalTwinScreen> createState() =>
