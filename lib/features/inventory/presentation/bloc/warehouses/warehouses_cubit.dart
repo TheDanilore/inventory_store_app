@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/save_warehouse_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/toggle_warehouse_status_usecase.dart';
@@ -90,6 +91,9 @@ class WarehousesCubit extends Cubit<WarehousesState> {
     required String name,
     required String address,
     required bool isActive,
+    String type = 'warehouse',
+    String? code,
+    WarehouseLayoutConfig? layoutConfig,
   }) async {
     if (state.isSaving) return false;
 
@@ -107,6 +111,9 @@ class WarehousesCubit extends Cubit<WarehousesState> {
         name: name,
         address: address,
         isActive: isActive,
+        type: type,
+        code: code,
+        layoutConfig: layoutConfig,
       );
 
       emit(
@@ -133,6 +140,44 @@ class WarehousesCubit extends Cubit<WarehousesState> {
       }
 
       emit(state.copyWith(isSaving: false, errorMessage: msg));
+      return false;
+    }
+  }
+
+  Future<bool> saveWarehouseLayout({
+    required String warehouseId,
+    required WarehouseLayoutConfig layoutConfig,
+  }) async {
+    emit(
+      state.copyWith(
+        isSaving: true,
+        clearErrorMessage: true,
+        clearSuccessMessage: true,
+      ),
+    );
+
+    try {
+      await saveWarehouseUseCase.repository.updateWarehouseLayout(
+        warehouseId,
+        layoutConfig,
+      );
+
+      emit(
+        state.copyWith(
+          isSaving: false,
+          successMessage: 'Distribución procedural guardada con éxito',
+        ),
+      );
+
+      await loadWarehouses();
+      return true;
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isSaving: false,
+          errorMessage: 'Error al guardar la distribución del almacén',
+        ),
+      );
       return false;
     }
   }

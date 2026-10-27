@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/screens/warehouse_digital_twin_screen.dart';
 
 /// Modal responsivo (BottomSheet en Móvil, Dialog en Desktop/Tablet)
 /// para desplegar y navegar a las operaciones clave vinculadas a un almacén:
@@ -230,6 +231,22 @@ class WarehouseOperationsSheet extends StatelessWidget {
               ),
               const SizedBox(height: 10),
 
+              // ── Opción 0: Gemelo Digital y Mapa 3D / 2.5D ───────────
+              _OperationOptionCard(
+                icon: Icons.view_in_ar_rounded,
+                iconColor: const Color(0xFF6366F1),
+                iconBgColor: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                title: 'Gemelo Digital (Mapa 3D / 2.5D)',
+                subtitle:
+                    'Visualizar plano procedural, pasillos, estanterías y zonas físicas',
+                actionLabel: 'Ver mapa',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  WarehouseDigitalTwinScreen.navigate(context, wh);
+                },
+              ),
+              const SizedBox(height: 10),
+
               // ── Opción 1: Ver Stock e Inventario ─────────────────────
               _OperationOptionCard(
                 icon: Icons.inventory_2_outlined,
@@ -244,6 +261,7 @@ class WarehouseOperationsSheet extends StatelessWidget {
                   context.go('/inventory?warehouseId=${wh.id}');
                 },
               ),
+
               const SizedBox(height: 10),
 
               // ── Opción 2: Punto de Venta / Mostrador (POS) ───────────

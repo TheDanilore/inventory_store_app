@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/screens/warehouse_digital_twin_screen.dart';
 
 /// Tarjeta responsiva de Almacén para Móvil, Tablet y Grid View.
 /// Cumple con las directrices de Apple HIG y área táctil mínima de 48x48dp.
@@ -60,21 +61,25 @@ class WarehouseCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color:
                             wh.isActive
-                                ? AppColors.primary.withValues(alpha: 0.08)
+                                ? wh.warehouseType.brandColor.withValues(
+                                  alpha: 0.12,
+                                )
                                 : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color:
                               wh.isActive
-                                  ? AppColors.primary.withValues(alpha: 0.16)
+                                  ? wh.warehouseType.brandColor.withValues(
+                                    alpha: 0.25,
+                                  )
                                   : const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: Icon(
-                        Icons.store_mall_directory_rounded,
+                        wh.warehouseType.icon,
                         color:
                             wh.isActive
-                                ? AppColors.primary
+                                ? wh.warehouseType.brandColor
                                 : AppColors.textMuted,
                         size: 22,
                       ),
@@ -84,25 +89,77 @@ class WarehouseCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            wh.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.2,
-                            ),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  wh.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ),
+                              if (wh.code != null && wh.code!.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 5,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    wh.code!,
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'ID: #${wh.id.length > 8 ? wh.id.substring(0, 8).toUpperCase() : wh.id.toUpperCase()}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontFamily: 'monospace',
-                              color: AppColors.textMuted,
-                            ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: wh.warehouseType.brandColor.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  wh.warehouseType.label,
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: wh.warehouseType.brandColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'ID: #${wh.id.length > 8 ? wh.id.substring(0, 8).toUpperCase() : wh.id.toUpperCase()}',
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontFamily: 'monospace',
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -196,6 +253,50 @@ class WarehouseCard extends StatelessWidget {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        onTap:
+                            () => WarehouseDigitalTwinScreen.navigate(
+                              context,
+                              wh,
+                            ),
+                        borderRadius: BorderRadius.circular(9),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF6366F1,
+                            ).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF6366F1,
+                              ).withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.view_in_ar_rounded,
+                                size: 15,
+                                color: Color(0xFF6366F1),
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                'Mapa 3D',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF6366F1),
                                 ),
                               ),
                             ],

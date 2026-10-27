@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -77,6 +78,9 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     required String name,
     required String address,
     required bool isActive,
+    String type = 'warehouse',
+    String? code,
+    WarehouseLayoutConfig? layoutConfig,
   }) async {
     final authUserId = _supabase.auth.currentUser?.id;
     String? profileId;
@@ -90,10 +94,14 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
       profileId = p?['id'] as String?;
     }
 
-    final payload = {
+    final payload = <String, dynamic>{
       'name': name.trim(),
       'address': address.trim().isNotEmpty ? address.trim() : null,
       'is_active': isActive,
+      'type': type,
+      if (code != null && code.trim().isNotEmpty)
+        'code': code.trim().toUpperCase(),
+      if (layoutConfig != null) 'layout_config': layoutConfig.toJson(),
     };
 
     if (existingWarehouse != null) {
@@ -145,6 +153,31 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         }
       }
     }
+  }
+
+  @override
+  Future<void> updateWarehouseLayout(
+    String warehouseId,
+    WarehouseLayoutConfig layoutConfig,
+  ) async {
+    final authUserId = _supabase.auth.currentUser?.id;
+    String? profileId;
+    if (authUserId != null) {
+      final p =
+          await _supabase
+              .from('profiles')
+              .select('id')
+              .eq('auth_user_id', authUserId)
+              .maybeSingle();
+      profileId = p?['id'] as String?;
+    }
+
+    final payload = <String, dynamic>{
+      'layout_config': layoutConfig.toJson(),
+      if (profileId != null) 'updated_by': profileId,
+    };
+
+    await _supabase.from('warehouses').update(payload).eq('id', warehouseId);
   }
 
   @override

@@ -4,10 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/warehouses/warehouses_state.dart';
 
-/// Formulario inteligente adaptable para Almacenes.
+/// Formulario inteligente adaptable para Almacenes y Tiendas.
 /// Muta entre BottomSheet táctil (Móvil) y Diálogo centrado con atajos (Desktop/Tablet).
 class WarehouseFormSheet extends StatefulWidget {
   final WarehouseEntity? warehouseToEdit;
@@ -28,10 +29,13 @@ class WarehouseFormSheet extends StatefulWidget {
 class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
+  late final TextEditingController _codeCtrl;
   late final TextEditingController _addressCtrl;
   late final FocusNode _nameFocusNode;
+  late final FocusNode _codeFocusNode;
   late final FocusNode _addressFocusNode;
   late bool _isActive;
+  late String _type;
 
   bool get _isEditing => widget.warehouseToEdit != null;
 
@@ -39,12 +43,15 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.warehouseToEdit?.name ?? '');
+    _codeCtrl = TextEditingController(text: widget.warehouseToEdit?.code ?? '');
     _addressCtrl = TextEditingController(
       text: widget.warehouseToEdit?.address ?? '',
     );
     _nameFocusNode = FocusNode();
+    _codeFocusNode = FocusNode();
     _addressFocusNode = FocusNode();
     _isActive = widget.warehouseToEdit?.isActive ?? true;
+    _type = widget.warehouseToEdit?.type ?? 'warehouse';
 
     if (widget.isDialog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,8 +63,10 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _codeCtrl.dispose();
     _addressCtrl.dispose();
     _nameFocusNode.dispose();
+    _codeFocusNode.dispose();
     _addressFocusNode.dispose();
     super.dispose();
   }
@@ -66,11 +75,22 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
     if (!_formKey.currentState!.validate()) return;
 
     final cubit = context.read<WarehousesCubit>();
+    final initialLayout =
+        widget.warehouseToEdit?.layoutConfig ??
+        (_type == 'store'
+            ? WarehouseLayoutConfig.generateDefaultStore()
+            : _type == 'dark_store'
+            ? WarehouseLayoutConfig.generateDefaultDarkStore()
+            : WarehouseLayoutConfig.generateDefaultCentral());
+
     final success = await cubit.saveWarehouse(
       existingWarehouse: widget.warehouseToEdit,
       name: _nameCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
       isActive: _isActive,
+      type: _type,
+      code: _codeCtrl.text.trim().isNotEmpty ? _codeCtrl.text.trim() : null,
+      layoutConfig: widget.warehouseToEdit != null ? null : initialLayout,
     );
 
     if (!mounted) return;
@@ -80,8 +100,8 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
         context,
         message:
             _isEditing
-                ? 'Almacén actualizado correctamente'
-                : 'Almacén registrado con éxito',
+                ? 'Establecimiento actualizado correctamente'
+                : 'Establecimiento registrado con éxito',
         type: SnackbarType.success,
       );
       widget.onSaved?.call();
@@ -143,74 +163,197 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
 
                     SizedBox(height: isDesktop ? 20 : 16),
 
-                    // --- CAMPO: NOMBRE ---
+                    // --- SELECTOR: TIPO DE ESTABLECIMIENTO ---
                     _buildFieldLabel(
-                      label: 'Nombre del almacén',
+                      label: 'Tipo de Establecimiento',
                       isRequired: true,
                     ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _nameCtrl,
-                      focusNode: _nameFocusNode,
-                      textCapitalization: TextCapitalization.words,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Ej. Almacén Central, Tienda Chimbote...',
-                        hintStyle: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary.withValues(alpha: 0.6),
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.warehouse_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTypeOption(
+                            type: 'store',
+                            label: 'Tienda / Sucursal',
+                            icon: Icons.storefront_rounded,
+                            color: const Color(0xFF10B981),
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildTypeOption(
+                            type: 'warehouse',
+                            label: 'Almacén Central',
+                            icon: Icons.warehouse_rounded,
+                            color: const Color(0xFF3B82F6),
                           ),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 1.6,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildTypeOption(
+                            type: 'dark_store',
+                            label: 'Dark Store',
+                            icon: Icons.bolt_rounded,
+                            color: const Color(0xFF8B5CF6),
                           ),
                         ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.error,
-                            width: 1.2,
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // --- CAMPO: CÓDIGO CORTO Y NOMBRE ---
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 110,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(
+                                label: 'Código',
+                                isRequired: false,
+                              ),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: _codeCtrl,
+                                focusNode: _codeFocusNode,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      _type == 'store' ? 'TDA-01' : 'ALM-01',
+                                  hintStyle: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 1.6,
+                                    ),
+                                  ),
+                                ),
+                                onFieldSubmitted:
+                                    (_) => _nameFocusNode.requestFocus(),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Ingresa un nombre para el almacén';
-                        }
-                        return null;
-                      },
-                      onFieldSubmitted: (_) {
-                        _addressFocusNode.requestFocus();
-                      },
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(
+                                label: 'Nombre comercial',
+                                isRequired: true,
+                              ),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: _nameCtrl,
+                                focusNode: _nameFocusNode,
+                                textCapitalization: TextCapitalization.words,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      _type == 'store'
+                                          ? 'Ej. Tienda Central, Sucursal Norte'
+                                          : 'Ej. Depósito Principal',
+                                  hintStyle: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.6,
+                                    ),
+                                  ),
+                                  prefixIcon: Icon(
+                                    _type == 'store'
+                                        ? Icons.storefront_rounded
+                                        : Icons.warehouse_rounded,
+                                    color:
+                                        _type == 'store'
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF3B82F6),
+                                    size: 20,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primary,
+                                      width: 1.6,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.error,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                ),
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Ingresa un nombre';
+                                  }
+                                  return null;
+                                },
+                                onFieldSubmitted: (_) {
+                                  _addressFocusNode.requestFocus();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 16),
@@ -596,6 +739,56 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
               ? 'Guardando...'
               : (_isEditing ? 'Guardar Cambios' : 'Crear Almacén'),
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeOption({
+    required String type,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = _type == type;
+
+    return InkWell(
+      onTap: () => setState(() => _type = type),
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? color.withValues(alpha: 0.12)
+                  : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : const Color(0xFFE2E8F0),
+            width: isSelected ? 2.0 : 1.0,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? color : AppColors.textSecondary,
+              size: 22,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? color : AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/presentation/screens/warehouse_digital_twin_screen.dart';
 
 /// Tabla Pro de nivel empresarial para Almacenes en Desktop.
 /// Implementa aislamiento de hover a nivel de fila y colores 100% seguros frente
@@ -102,7 +103,7 @@ class WarehousesTableView extends StatelessWidget {
                           ),
                         ),
                         SizedBox(
-                          width: 176,
+                          width: 215,
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: Text(
@@ -214,23 +215,25 @@ class _WarehouseTableRowState extends State<_WarehouseTableRow> {
                           decoration: BoxDecoration(
                             color:
                                 wh.isActive
-                                    ? AppColors.primary.withValues(alpha: 0.08)
+                                    ? wh.warehouseType.brandColor.withValues(
+                                      alpha: 0.12,
+                                    )
                                     : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color:
                                   wh.isActive
-                                      ? AppColors.primary.withValues(
-                                        alpha: 0.16,
+                                      ? wh.warehouseType.brandColor.withValues(
+                                        alpha: 0.25,
                                       )
                                       : const Color(0xFFE2E8F0),
                             ),
                           ),
                           child: Icon(
-                            Icons.store_mall_directory_rounded,
+                            wh.warehouseType.icon,
                             color:
                                 wh.isActive
-                                    ? AppColors.primary
+                                    ? wh.warehouseType.brandColor
                                     : AppColors.textMuted,
                             size: 19,
                           ),
@@ -240,24 +243,76 @@ class _WarehouseTableRowState extends State<_WarehouseTableRow> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                wh.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      wh.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (wh.code != null &&
+                                      wh.code!.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        wh.code!,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                'ID: #${wh.id.length > 8 ? wh.id.substring(0, 8).toUpperCase() : wh.id.toUpperCase()}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontFamily: 'monospace',
-                                  color: AppColors.textMuted,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: wh.warehouseType.brandColor
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      wh.warehouseType.label,
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: wh.warehouseType.brandColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'ID: #${wh.id.length > 8 ? wh.id.substring(0, 8).toUpperCase() : wh.id.toUpperCase()}',
+                                    style: const TextStyle(
+                                      fontSize: 10.5,
+                                      fontFamily: 'monospace',
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -330,10 +385,27 @@ class _WarehouseTableRowState extends State<_WarehouseTableRow> {
 
                   // --- Columna: Acciones ---
                   SizedBox(
-                    width: 176,
+                    width: 215,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.view_in_ar_rounded, size: 18),
+                          tooltip: 'Gemelo Digital (Mapa 3D / 2.5D)',
+                          color: const Color(0xFF6366F1),
+                          onPressed:
+                              () => WarehouseDigitalTwinScreen.navigate(
+                                context,
+                                wh,
+                              ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFEEF2FF),
+                            hoverColor: const Color(0xFFE0E7FF),
+                            padding: const EdgeInsets.all(7),
+                            minimumSize: const Size(32, 32),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
                         IconButton(
                           icon: const Icon(
                             Icons.inventory_2_outlined,

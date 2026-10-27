@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 
 abstract class WarehousesRepository {
   Future<List<WarehouseEntity>> getActiveWarehouses();
@@ -14,7 +15,15 @@ abstract class WarehousesRepository {
     required String name,
     required String address,
     required bool isActive,
+    String type = 'warehouse',
+    String? code,
+    WarehouseLayoutConfig? layoutConfig,
   });
+
+  Future<void> updateWarehouseLayout(
+    String warehouseId,
+    WarehouseLayoutConfig layoutConfig,
+  );
 
   Future<void> toggleWarehouseStatus(WarehouseEntity wh, bool isActive);
 

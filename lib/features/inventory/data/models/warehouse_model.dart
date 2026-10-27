@@ -1,4 +1,5 @@
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 
 class WarehouseModel {
   final String? id;
@@ -8,6 +9,9 @@ class WarehouseModel {
   final DateTime? createdAt;
   final String? createdBy;
   final String? updatedBy;
+  final String type;
+  final String? code;
+  final WarehouseLayoutConfig layoutConfig;
 
   static var warehouseNames = <String, String>{};
 
@@ -19,6 +23,9 @@ class WarehouseModel {
     this.createdAt,
     this.createdBy,
     this.updatedBy,
+    this.type = 'warehouse',
+    this.code,
+    this.layoutConfig = const WarehouseLayoutConfig(),
   });
 
   factory WarehouseModel.fromJson(Map<String, dynamic> json) {
@@ -33,6 +40,14 @@ class WarehouseModel {
               : null,
       createdBy: json['created_by'] as String?,
       updatedBy: json['updated_by'] as String?,
+      type: json['type'] as String? ?? 'warehouse',
+      code: json['code'] as String?,
+      layoutConfig:
+          json['layout_config'] is Map
+              ? WarehouseLayoutConfig.fromJson(
+                Map<String, dynamic>.from(json['layout_config'] as Map),
+              )
+              : const WarehouseLayoutConfig(),
     );
   }
 
@@ -44,6 +59,9 @@ class WarehouseModel {
       'is_active': isActive,
       if (createdBy != null) 'created_by': createdBy,
       if (updatedBy != null) 'updated_by': updatedBy,
+      'type': type,
+      if (code != null) 'code': code,
+      'layout_config': layoutConfig.toJson(),
     };
   }
 
@@ -56,6 +74,9 @@ class WarehouseModel {
       createdAt: createdAt,
       createdBy: createdBy,
       updatedBy: updatedBy,
+      type: type,
+      code: code,
+      layoutConfig: layoutConfig,
     );
   }
 }
