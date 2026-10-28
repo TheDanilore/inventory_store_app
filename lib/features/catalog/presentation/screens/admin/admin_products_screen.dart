@@ -831,7 +831,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                         color: AppColors.background,
                         child: RefreshIndicator(
                           color: Theme.of(context).colorScheme.primary,
-                          onRefresh: () async => cubit.refreshProducts(),
+                          onRefresh:
+                              () async =>
+                                  cubit.refreshProducts(forceRefresh: true),
                           child: CustomScrollView(
                             controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -950,7 +952,10 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                         (val) =>
                                             setState(() => _isTableView = val),
                                   ),
-                                  onRefresh: () => cubit.refreshProducts(),
+                                  onRefresh:
+                                      () => cubit.refreshProducts(
+                                        forceRefresh: true,
+                                      ),
                                   refreshTooltip:
                                       'Recargar catálogo (Atajo: R)',
                                   filterGroups: [

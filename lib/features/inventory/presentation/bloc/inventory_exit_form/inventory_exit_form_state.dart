@@ -3,14 +3,14 @@ import 'package:inventory_store_app/features/catalog/data/models/product_model.d
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 
-class ExitItemUI {
+class ExitItemUI extends Equatable {
   final ProductModel product;
   final ProductVariantModel variant;
   final Map<String, dynamic>? selectedBatch;
-  double quantity;
+  final double quantity;
   final double unitCost;
 
-  ExitItemUI({
+  const ExitItemUI({
     required this.product,
     required this.variant,
     this.selectedBatch,
@@ -19,6 +19,22 @@ class ExitItemUI {
   });
 
   double get totalCost => quantity * unitCost;
+
+  ExitItemUI copyWith({
+    ProductModel? product,
+    ProductVariantModel? variant,
+    Map<String, dynamic>? selectedBatch,
+    double? quantity,
+    double? unitCost,
+  }) {
+    return ExitItemUI(
+      product: product ?? this.product,
+      variant: variant ?? this.variant,
+      selectedBatch: selectedBatch ?? this.selectedBatch,
+      quantity: quantity ?? this.quantity,
+      unitCost: unitCost ?? this.unitCost,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -41,6 +57,15 @@ class ExitItemUI {
       unitCost: (json['unit_cost'] as num).toDouble(),
     );
   }
+
+  @override
+  List<Object?> get props => [
+    product.id,
+    variant.id,
+    selectedBatch?['id'] ?? selectedBatch?['batch_number'],
+    quantity,
+    unitCost,
+  ];
 }
 
 class InventoryExitFormState extends Equatable {

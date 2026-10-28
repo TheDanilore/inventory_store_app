@@ -16,6 +16,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/delete_prod
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 import 'package:inventory_store_app/features/catalog/data/utils/catalog_excel_exporter.dart';
+import 'package:inventory_store_app/features/catalog/data/cache/catalog_lru_cache.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 
 @injectable
@@ -51,8 +52,15 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   }) : super(const AdminCatalogState());
 
   Future<void> loadInitialData() async {
-    await Future.wait([_fetchCategories(), _fetchBrands()]);
-    await refreshProducts();
+    final futures = <Future<void>>[];
+    if (state.categories.isEmpty) futures.add(_fetchCategories());
+    if (state.brands.isEmpty) futures.add(_fetchBrands());
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+    }
+    if (state.products.isEmpty) {
+      await refreshProducts();
+    }
   }
 
   // Categories
@@ -195,6 +203,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> refreshProducts({bool forceRefresh = false}) async {
     if (forceRefresh) {
       _productsCache.clear();
+      CatalogLruCache.instance.invalidateCatalog();
     }
     await _loadProducts();
   }
@@ -231,6 +240,27 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   Future<void> _loadProducts() async {
     final currentRequestId = ++_loadRequestId;
     final cacheKey = _buildCacheKey();
+
+    final lruKey = CatalogLruCache.buildKey(
+      searchQuery: state.searchTerm,
+      categoryId: state.selectedCategoryId,
+      brandId: state.selectedBrandId,
+      isActive: state.filterIsActive,
+      searchByIngredient: state.searchByIngredient,
+      forCustomer: false,
+      limit: state.itemsPerPage,
+      offset: state.currentPage * state.itemsPerPage,
+      sortOption: state.sortOption,
+      stockFilter: state.stockFilter,
+    );
+
+    // Stale-While-Revalidate: si la caché LRU global ya contiene la página y
+    // el mapa de sesión no la tiene, la sincronizamos síncronamente (Zero-Shimmer en Frame 0).
+    final lruCached = CatalogLruCache.instance.getPage(lruKey);
+    if (lruCached != null && !_productsCache.containsKey(cacheKey)) {
+      _productsCache[cacheKey] = lruCached;
+    }
+
     if (_productsCache.containsKey(cacheKey)) {
       final cached = _productsCache[cacheKey]!;
       final matchedMap = <String, String>{};
@@ -304,6 +334,11 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           _productsCache.remove(_productsCache.keys.first);
         }
         _productsCache[cacheKey] = data;
+        CatalogLruCache.instance.putPage(
+          lruKey,
+          data.products,
+          data.totalCount,
+        );
         final enriched = data.products;
 
         final matchedMap = <String, String>{};
@@ -360,6 +395,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       },
       (_) async {
         _productsCache.clear();
+        CatalogLruCache.instance.invalidateCatalog();
         // Borrado optimista para ahorrar Data Egress
         final updatedProducts =
             state.products.map((p) {
@@ -404,6 +440,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       },
       (_) {
         _productsCache.clear();
+        CatalogLruCache.instance.invalidateCatalog();
         // Optimización Data Egress: remover localmente en lugar de llamar refreshProducts()
         final updatedProducts = List<ProductEntity>.from(state.products)
           ..removeWhere((p) => p.id == productId);

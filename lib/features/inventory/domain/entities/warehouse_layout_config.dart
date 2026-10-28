@@ -74,7 +74,8 @@ class WarehouseZone extends Equatable {
     this.colorValue,
   });
 
-  bool get isRack => type == 'industrial_rack';
+  bool get isRack =>
+      type == 'industrial_rack' || type == 'wall_shelf' || type == 'gondola';
   bool get isGondola => type == 'gondola';
   bool get isCheckout => type == 'checkout';
   bool get isDock => type == 'loading_dock';
@@ -229,94 +230,144 @@ class WarehouseLayoutConfig extends Equatable {
     );
   }
 
-  /// Generador procedural para Tienda Física / Retail Store con mostradores y góndolas.
+  /// Generador procedural para Tienda Agrícola / Retail (Local Comercial)
+  /// Basado en distribución real:
+  /// - Estantes perimetrales en pared superior y lateral para productos de pomo (frascos) y sobres.
+  /// - Mostrador de vidrio central con vitrinas.
+  /// - Estación de atención / PC vendedor y caja.
+  /// - Zona de sacos de abono y fertilizantes apilados en el suelo.
+  /// - Puerta principal de acceso en esquina inferior derecha.
   factory WarehouseLayoutConfig.generateDefaultStore({
-    double width = 16.0,
-    double length = 22.0,
-    double height = 3.8,
+    double width = 12.0,
+    double length = 16.0,
+    double height = 3.6,
     int gondolaColumns = 3,
     int gondolasPerColumn = 3,
+    int levels = 4,
   }) {
     final zones = <WarehouseZone>[];
 
-    // 1. Puerta de Acceso Principal (Frente inferior)
+    // 1. Estantes Pared Fondo (Pared Superior) - Para productos de pomo / frascos
+    final topShelfModules = gondolaColumns.clamp(1, 8);
+    final topAvailWidth = (width - 2.8).clamp(2.0, width);
+    final moduleWidth = topAvailWidth / topShelfModules;
+
+    for (int i = 0; i < topShelfModules; i++) {
+      final code = 'EST-P${i + 1}';
+      zones.add(
+        WarehouseZone(
+          id: 'shelf_top_$i',
+          name: 'Estante Pomos P${i + 1}',
+          type: 'wall_shelf',
+          code: code,
+          x: 2.2 + (i * moduleWidth),
+          y: 0.5,
+          width: (moduleWidth - 0.25).clamp(1.0, 5.0),
+          length: 0.9,
+          height: 2.6,
+          levels: levels,
+          colorValue: 0xFF059669, // Verde esmeralda (estantería principal)
+        ),
+      );
+    }
+
+    // 2. Estantes Pared Lateral (Pared Izquierda) - Para sobres, semillas y foliares
+    final sideShelfModules = gondolasPerColumn.clamp(1, 6);
+    final sideAvailLength = (length - 6.5).clamp(2.0, length);
+    final sideModuleLength = sideAvailLength / sideShelfModules;
+
+    for (int j = 0; j < sideShelfModules; j++) {
+      final code = 'EST-S${j + 1}';
+      zones.add(
+        WarehouseZone(
+          id: 'shelf_side_$j',
+          name: 'Estante Sobres S${j + 1}',
+          type: 'wall_shelf',
+          code: code,
+          x: 0.5,
+          y: 1.8 + (j * sideModuleLength),
+          width: 0.9,
+          length: (sideModuleLength - 0.25).clamp(1.0, 5.0),
+          height: 2.6,
+          levels: levels,
+          colorValue: 0xFF10B981, // Verde menta vivo
+        ),
+      );
+    }
+
+    // 3. Mostrador de Vidrio (Vitrinas para pomos y atención comercial)
+    final counterW = (width * 0.44).clamp(3.2, 6.0);
+    final counterX = (width * 0.26).clamp(1.8, width - counterW - 1.0);
+    final counterY = (length * 0.50).clamp(3.5, length - 4.0);
+
+    zones.add(
+      WarehouseZone(
+        id: 'glass_counter_main',
+        name: 'Mostrador de Vidrio / Vitrina',
+        type: 'glass_counter',
+        code: 'MOSTRADOR',
+        x: counterX,
+        y: counterY,
+        width: counterW,
+        length: 1.2,
+        height: 1.1,
+        levels: 2,
+        colorValue: 0xFFF59E0B, // Ámbar dorado cristal
+      ),
+    );
+
+    // 4. Estación de Ventas / Computadora y Control de Stock
+    // Situada inmediatamente detrás del mostrador de vidrio
+    zones.add(
+      WarehouseZone(
+        id: 'seller_desk_pc',
+        name: 'Caja / Computadora Vendedor',
+        type: 'checkout',
+        code: 'CAJA-PC',
+        x: counterX + (counterW / 2) - 1.4,
+        y: (counterY - 2.1).clamp(0.8, length - 2.5),
+        width: 2.8,
+        length: 1.5,
+        height: 1.0,
+        levels: 1,
+        colorValue: 0xFF2563EB, // Azul cobalto POS
+      ),
+    );
+
+    // 5. Zona de Abonos y Fertilizantes en el Suelo (Esquina inferior izquierda)
+    final abonoW = (width * 0.32).clamp(2.5, 4.2);
+    final abonoL = (length * 0.25).clamp(2.2, 4.0);
+    zones.add(
+      WarehouseZone(
+        id: 'fertilizer_floor_area',
+        name: 'Abonos y Fertilizantes (Suelo)',
+        type: 'floor_fertilizer',
+        code: 'ABONOS',
+        x: 0.6,
+        y: length - abonoL - 0.6,
+        width: abonoW,
+        length: abonoL,
+        height: 0.65, // Altura baja de sacos apilados
+        levels: 1,
+        colorValue: 0xFFB45309, // Ocre / Tierra
+      ),
+    );
+
+    // 6. Puerta de Acceso Principal (Esquina inferior derecha, frente a la entrada del cliente)
+    final doorW = 2.4;
     zones.add(
       WarehouseZone(
         id: 'door_main',
-        name: 'Acceso Clientes',
+        name: 'Puerta Principal / Acceso',
         type: 'door',
-        code: 'ACCESO',
-        x: (width / 2) - 1.5,
-        y: 0.5,
-        width: 3.0,
+        code: 'ENTRADA',
+        x: (width - doorW - 0.6).clamp(1.0, width - 0.8),
+        y: length - 0.9,
+        width: doorW,
         length: 0.6,
-        height: 2.8,
+        height: 2.4,
         levels: 1,
-        colorValue: 0xFF0284C7,
-      ),
-    );
-
-    // 2. Área de Cajas Registradoras / Mostrador POS
-    zones.add(
-      WarehouseZone(
-        id: 'pos_counter_1',
-        name: 'Caja 1 / Mostrador',
-        type: 'checkout',
-        code: 'CAJA-01',
-        x: 2.0,
-        y: 2.5,
-        width: 3.5,
-        length: 1.8,
-        height: 1.1,
-        levels: 1,
-        colorValue: 0xFF10B981,
-      ),
-    );
-
-    // 3. Góndolas de Exhibición en Pasillos Amplios
-    final startX = 2.0;
-    final startY = 6.0;
-    final spacingX = (width - 4.0) / gondolaColumns;
-    final gondolaW = 1.8;
-    final gondolaL = 3.5;
-
-    for (int col = 0; col < gondolaColumns; col++) {
-      final currentX = startX + (col * spacingX);
-      for (int row = 0; row < gondolasPerColumn; row++) {
-        final currentY = startY + (row * (gondolaL + 1.8));
-        final code = 'G-${String.fromCharCode(65 + col)}${row + 1}';
-        zones.add(
-          WarehouseZone(
-            id: 'gondola_${col}_$row',
-            name: 'Góndola $code',
-            type: 'gondola',
-            code: code,
-            x: currentX,
-            y: currentY,
-            width: gondolaW,
-            length: gondolaL,
-            height: 1.7,
-            levels: 3,
-            colorValue: 0xFF6366F1,
-          ),
-        );
-      }
-    }
-
-    // 4. Trastienda / Almacén de Reposición (Fondo)
-    zones.add(
-      WarehouseZone(
-        id: 'backroom_area',
-        name: 'Trastienda / Reposición',
-        type: 'backroom',
-        code: 'TRASTIENDA',
-        x: 1.0,
-        y: length - 4.0,
-        width: width - 2.0,
-        length: 3.2,
-        height: 2.8,
-        levels: 2,
-        colorValue: 0xFF64748B,
+        colorValue: 0xFFEF4444, // Rojo coral de acceso
       ),
     );
 
@@ -329,7 +380,7 @@ class WarehouseLayoutConfig extends Equatable {
       zones: zones,
       aislesCount: gondolaColumns,
       shelvesPerAisle: gondolasPerColumn,
-      levelsPerShelf: 3,
+      levelsPerShelf: levels,
     );
   }
 

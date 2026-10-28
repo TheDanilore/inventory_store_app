@@ -8999,17 +8999,3 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
-
--- ============================================================================
--- 20261028_fix_warehouse_permissions_and_fields
--- ============================================================================
-ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS type text DEFAULT 'warehouse';
-ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS code text;
-ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS layout_config jsonb DEFAULT '{}'::jsonb;
-
-DROP POLICY IF EXISTS "Warehouses: manage for authenticated" ON public.warehouses;
-CREATE POLICY "Warehouses: manage for authenticated" ON public.warehouses
-FOR ALL TO authenticated
-USING (true)
-WITH CHECK (true);

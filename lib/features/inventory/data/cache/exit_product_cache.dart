@@ -1,7 +1,8 @@
 import 'dart:collection';
+import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 
-/// Caché LRU en memoria para variantes y lotes del módulo de salidas.
+/// Caché LRU en memoria para variantes, lotes y búsquedas del módulo de salidas.
 ///
 /// Capacidad fija [maxEntries] entradas. Al superar el límite se expulsa la
 /// entrada más antigua (LRU). Además cuenta con un TTL de 5 minutos para
@@ -10,6 +11,7 @@ import 'package:inventory_store_app/features/catalog/data/models/product_variant
 /// ### Claves
 /// - **Variantes**: `"v:<productId>"`
 /// - **Lotes**:     `"b:<variantId>:<warehouseId>"`
+/// - **Búsquedas**: `"s:<normalizedQuery>"`
 class ExitProductCache {
   ExitProductCache._();
 
@@ -22,6 +24,8 @@ class ExitProductCache {
   _variantCache = LinkedHashMap();
   final LinkedHashMap<String, _CacheEntry<List<Map<String, dynamic>>>>
   _batchCache = LinkedHashMap();
+  final LinkedHashMap<String, _CacheEntry<List<ProductModel>>> _searchCache =
+      LinkedHashMap();
 
   // ── Variantes ──────────────────────────────────────────────────────────────
 
@@ -91,6 +95,36 @@ class ExitProductCache {
     );
   }
 
+  // ── Búsqueda de Productos ──────────────────────────────────────────────────
+
+  String _searchKey(String query) => 's:${query.trim().toLowerCase()}';
+
+  List<ProductModel>? getSearchResults(String query) {
+    final key = _searchKey(query);
+    final entry = _searchCache[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > _ttl) {
+      _searchCache.remove(key);
+      return null;
+    }
+    _searchCache
+      ..remove(key)
+      ..[key] = entry;
+    return entry.data;
+  }
+
+  void putSearchResults(String query, List<ProductModel> products) {
+    final key = _searchKey(query);
+    _searchCache.remove(key);
+    if (_searchCache.length >= _maxEntries) {
+      _searchCache.remove(_searchCache.keys.first);
+    }
+    _searchCache[key] = _CacheEntry(
+      List.unmodifiable(products),
+      DateTime.now(),
+    );
+  }
+
   // ── Utilidades ─────────────────────────────────────────────────────────────
 
   /// Invalida las variantes de un producto en caché.
@@ -99,15 +133,22 @@ class ExitProductCache {
   }
 
   /// Invalida los lotes de una variante en un almacén concreto.
-  /// Útil tras confirmar una salida real.
   void invalidateBatches(String variantId, String warehouseId) {
     _batchCache.remove(_batchKey(variantId, warehouseId));
+  }
+
+  /// Invalida todos los lotes cacheados para un almacén específico
+  /// (usado tras guardar una salida exitosa para garantizar consistencia ACID).
+  void invalidateWarehouseBatches(String warehouseId) {
+    final suffix = ':$warehouseId';
+    _batchCache.removeWhere((key, _) => key.endsWith(suffix));
   }
 
   /// Limpia toda la caché (ej. al cerrar sesión o recargar almacén).
   void clear() {
     _variantCache.clear();
     _batchCache.clear();
+    _searchCache.clear();
   }
 }
 

@@ -15,30 +15,61 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   final GetExitItemsUseCase getItemsUseCase;
   final GetActiveWarehousesUseCase getActiveWarehouses;
 
+  // ── Caché de Estado en Memoria (Zero-Shimmer Policy) ──────────────────────
+  static InventoryExitsState? _lastState;
+
   InventoryExitsCubit({
     required this.getExitsUseCase,
     required this.getItemsUseCase,
     GetActiveWarehousesUseCase? getActiveWarehouses,
   }) : getActiveWarehouses =
            getActiveWarehouses ?? sl<GetActiveWarehousesUseCase>(),
-       super(const InventoryExitsState());
+       super(_lastState ?? const InventoryExitsState());
 
-  Future<void> initLoad() async {
-    List<String> warehouses = ['Todos'];
-    try {
-      final whList = await getActiveWarehouses.call();
-      warehouses.addAll(whList.map((w) => w.name).toList());
-    } catch (_) {}
-    emit(state.copyWith(availableWarehouses: warehouses));
-    loadExits(isRefresh: true);
+  @override
+  void onChange(Change<InventoryExitsState> change) {
+    super.onChange(change);
+    _lastState = change.nextState;
   }
 
-  Future<void> loadExits({bool isRefresh = false}) async {
+  /// Invalida la caché del listado en memoria para forzar recarga en frío.
+  static void invalidateCache() {
+    _lastState = null;
+  }
+
+  Future<void> initLoad() async {
+    final hasCachedExits = state.exits.isNotEmpty;
+
+    if (state.availableWarehouses.length <= 1) {
+      List<String> warehouses = ['Todos'];
+      try {
+        final whList = await getActiveWarehouses.call();
+        warehouses.addAll(whList.map((w) => w.name).toList());
+        emit(state.copyWith(availableWarehouses: warehouses));
+      } catch (_) {}
+    }
+
+    if (hasCachedExits) {
+      // Política Zero-Shimmer (Stale-While-Revalidate):
+      // Si ya existen datos en memoria, se muestran de inmediato sin activar
+      // isLoading ni disparar el Shimmer. Se revalida en background de forma silenciosa.
+      await loadExits(isRefresh: false, isSilent: true);
+    } else {
+      await loadExits(isRefresh: true);
+    }
+  }
+
+  Future<void> loadExits({
+    bool isRefresh = false,
+    bool isSilent = false,
+  }) async {
     if (isRefresh) {
       emit(state.copyWith(currentPage: 0));
     }
 
-    emit(state.copyWith(isLoading: true, clearErrorMessage: true));
+    if (!isSilent) {
+      emit(state.copyWith(isLoading: true, clearErrorMessage: true));
+    }
 
     try {
       final int start = state.currentPage * state.pageSize;

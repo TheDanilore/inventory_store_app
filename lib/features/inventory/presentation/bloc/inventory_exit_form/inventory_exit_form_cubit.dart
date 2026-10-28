@@ -3,11 +3,13 @@ import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/features/inventory/data/cache/exit_product_cache.dart';
 import 'package:inventory_store_app/features/inventory/data/models/warehouse_model.dart';
 import 'package:inventory_store_app/features/inventory/data/services/inventory_exit_draft_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_exits_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_exit_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_cubit.dart';
 
 @injectable
 class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
@@ -15,21 +17,48 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   final CreateInventoryExitUseCase createInventoryExitUseCase;
   final InventoryExitDraftService _draftService = InventoryExitDraftService();
 
+  static List<WarehouseModel>? _cachedWarehouses;
+
   InventoryExitFormCubit({
     required this.getActiveWarehousesUseCase,
     required this.createInventoryExitUseCase,
-  }) : super(const InventoryExitFormState());
+  }) : super(
+         InventoryExitFormState(
+           warehouses: _cachedWarehouses ?? const [],
+           isLoading: _cachedWarehouses == null || _cachedWarehouses!.isEmpty,
+         ),
+       );
 
   Future<void> loadInitialData() async {
+    final hasCache = _cachedWarehouses != null && _cachedWarehouses!.isNotEmpty;
+
+    if (hasCache) {
+      String? initialWarehouseId =
+          state.selectedWarehouseId ?? _cachedWarehouses!.first.id;
+      emit(
+        state.copyWith(
+          warehouses: _cachedWarehouses!,
+          selectedWarehouseId: initialWarehouseId,
+          isLoading: false,
+          errorMessage: '',
+          isSuccess: false,
+        ),
+      );
+      await _loadDraft();
+      _revalidateWarehouses();
+      return;
+    }
+
     emit(state.copyWith(isLoading: true, errorMessage: '', isSuccess: false));
 
     try {
       final warehousesData = await getActiveWarehousesUseCase.call();
-
       final warehouses =
           warehousesData
               .map((w) => WarehouseModel(id: w.id, name: w.name))
               .toList();
+      _cachedWarehouses = warehouses;
+
       String? initialWarehouseId =
           warehouses.isNotEmpty ? warehouses.first.id : null;
 
@@ -60,6 +89,20 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
         );
       }
     }
+  }
+
+  Future<void> _revalidateWarehouses() async {
+    try {
+      final warehousesData = await getActiveWarehousesUseCase.call();
+      final fresh =
+          warehousesData
+              .map((w) => WarehouseModel(id: w.id, name: w.name))
+              .toList();
+      _cachedWarehouses = fresh;
+      if (!isClosed) {
+        emit(state.copyWith(warehouses: fresh));
+      }
+    } catch (_) {}
   }
 
   Timer? _draftDebounceTimer;
@@ -98,7 +141,9 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           item.selectedBatch?['id'] == newItem.selectedBatch?['id'],
     );
     if (existingIdx >= 0) {
-      newItems[existingIdx].quantity += newItem.quantity;
+      newItems[existingIdx] = newItems[existingIdx].copyWith(
+        quantity: newItems[existingIdx].quantity + newItem.quantity,
+      );
     } else {
       newItems.add(newItem);
     }
@@ -114,9 +159,9 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   }
 
   void updateQuantity(int index, double newQuantity) {
-    if (newQuantity > 0) {
+    if (newQuantity > 0 && index >= 0 && index < state.items.length) {
       final newItems = List<ExitItemUI>.from(state.items);
-      newItems[index].quantity = newQuantity;
+      newItems[index] = newItems[index].copyWith(quantity: newQuantity);
       emit(state.copyWith(items: newItems));
       _scheduleSaveDraft();
     }
@@ -138,15 +183,15 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           state.copyWith(
             errorMessage:
                 'El producto "${item.product.name}" requiere un lote válido seleccionado.',
-            isSaving: false,
           ),
         );
         return;
       }
     }
 
-    _draftDebounceTimer?.cancel();
-    emit(state.copyWith(isSaving: true, errorMessage: '', isSuccess: false));
+    emit(state.copyWith(isSaving: true, errorMessage: ''));
+
+    final warehouseId = state.selectedWarehouseId!;
 
     try {
       final itemsData =
@@ -164,12 +209,17 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           }).toList();
 
       await createInventoryExitUseCase.call(
-        warehouseId: state.selectedWarehouseId!,
+        warehouseId: warehouseId,
         reason: state.selectedReason,
         notes: notes?.isEmpty == true ? null : notes,
         createdByProfileId: null,
         items: itemsData,
       );
+
+      // Invalidar lotes de ese almacén en caché para evitar lectura de stock obsoleto
+      ExitProductCache.instance.invalidateWarehouseBatches(warehouseId);
+      // Invalidar caché del listado de salidas para que la pantalla de listado se refresque
+      InventoryExitsCubit.invalidateCache();
 
       await clearDraft();
 
@@ -184,7 +234,6 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           ),
         );
       } else {
-        // Here we can directly get the exception message since the repository handles it
         emit(
           state.copyWith(
             errorMessage: e.toString().replaceAll('Exception: ', ''),

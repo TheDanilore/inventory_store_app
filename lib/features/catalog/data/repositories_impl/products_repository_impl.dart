@@ -1,31 +1,37 @@
 import 'dart:typed_data';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/core/utils/isolate_utils.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/core/utils/friendly_error_message.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_image_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/bulk_import_models.dart';
-import 'package:inventory_store_app/features/catalog/data/models/product_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_variant_model.dart';
 import 'package:inventory_store_app/features/catalog/data/models/product_image_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.dart';
 import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/catalog/data/cache/catalog_lru_cache.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/products_catalog_remote_datasource.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/product_attributes_remote_datasource.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/product_stock_remote_datasource.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/product_media_remote_datasource.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/product_bulk_import_remote_datasource.dart';
+import 'package:inventory_store_app/features/catalog/data/datasources/product_reviews_remote_datasource.dart';
 
 @LazySingleton(as: ProductsRepository)
 class ProductsRepositoryImpl implements ProductsRepository {
   final SupabaseClient _supabase;
-
-  // L1 In-Memory Cache para detalles de producto (5 min TTL)
-  final Map<String, ({ProductEntity product, DateTime timestamp})>
-  _productDetailCache = {};
-  static const Duration _productCacheTtl = Duration(minutes: 5);
+  late final ProductsCatalogRemoteDataSource _catalogDataSource;
+  late final ProductAttributesRemoteDataSource _attributesDataSource;
+  late final ProductStockRemoteDataSource _stockDataSource;
+  late final ProductMediaRemoteDataSource _mediaDataSource;
+  late final ProductBulkImportRemoteDataSource _bulkImportDataSource;
+  late final ProductReviewsRemoteDataSource _reviewsDataSource;
 
   // L1 In-Memory Cache para variantes activas y lotes (5 min TTL)
   final Map<String, ({List<Map<String, dynamic>> data, DateTime timestamp})>
@@ -34,7 +40,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
   _batchesForVariantCache = {};
   static const Duration _variantsBatchesCacheTtl = Duration(minutes: 5);
 
-  ProductsRepositoryImpl(this._supabase);
+  ProductsRepositoryImpl(this._supabase) {
+    _catalogDataSource = ProductsCatalogRemoteDataSource(_supabase);
+    _attributesDataSource = ProductAttributesRemoteDataSource(_supabase);
+    _stockDataSource = ProductStockRemoteDataSource(_supabase);
+    _mediaDataSource = ProductMediaRemoteDataSource(_supabase);
+    _bulkImportDataSource = ProductBulkImportRemoteDataSource(_supabase);
+    _reviewsDataSource = ProductReviewsRemoteDataSource(_supabase);
+  }
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
     LoggerService.e(
@@ -46,19 +59,38 @@ class ProductsRepositoryImpl implements ProductsRepository {
     if (e is PostgrestException) {
       if (e.code == '23503') {
         return left(
-          Failure.from(
-            'No se puede eliminar: Este registro o sus valores están siendo utilizados por otros elementos (productos, variantes o inventario) en el sistema.',
+          const ServerFailure(
+            message:
+                'No se puede eliminar: Este registro o sus valores están siendo utilizados por otros elementos (productos, variantes o inventario) en el sistema.',
+            code: '23503',
           ),
         );
       }
-      return left(Failure.from('Error de BD: ${e.message}'));
+      return left(
+        ServerFailure(
+          message: FriendlyErrorMessage.format(e),
+          code: e.code ?? 'POSTGREST_ERROR',
+        ),
+      );
     } else if (e is StorageException) {
-      return left(Failure.from('Error en Storage (Imágenes): ${e.message}'));
+      return left(
+        ServerFailure(
+          message: 'Error en almacenamiento de imágenes: ${e.message}',
+          code: e.statusCode?.toString() ?? 'STORAGE_ERROR',
+        ),
+      );
     } else if (e is AuthException) {
-      return left(Failure.from('Error de autenticación: ${e.message}'));
+      return left(
+        ServerFailure(
+          message: 'Error de autenticación: ${e.message}',
+          code: e.statusCode?.toString() ?? 'AUTH_ERROR',
+        ),
+      );
     }
-    return left(Failure.from('Ocurrió un error inesperado: ${e.toString()}'));
+    return left(Failure.from(e));
   }
+
+  // ───────────────────────── Reseñas y Compras ─────────────────────────
 
   @override
   Future<Either<Failure, bool>> checkCustomerPurchase(
@@ -66,13 +98,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String profileId,
   ) async {
     try {
-      final purchases = await _supabase
-          .from('order_items')
-          .select('id, orders!inner(customer_id)')
-          .eq('product_id', productId)
-          .eq('orders.customer_id', profileId)
-          .limit(1);
-      return right(purchases.isNotEmpty);
+      final purchased = await _reviewsDataSource.checkCustomerPurchase(
+        productId,
+        profileId,
+      );
+      return right(purchased);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -87,20 +117,21 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String? comment,
   }) async {
     try {
-      await _supabase.from('product_reviews').insert({
-        'product_id': productId,
-        'profile_id': profileId,
-        'user_name': userName,
-        'rating': rating,
-        'comment': comment,
-      });
+      await _reviewsDataSource.addProductReview(
+        productId: productId,
+        profileId: profileId,
+        userName: userName,
+        rating: rating,
+        comment: comment,
+      );
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
     }
   }
 
-  // Mutaciones complejas
+  // ───────────────────────── Catálogo y Productos ─────────────────────────
+
   @override
   Future<Either<Failure, ({List<ProductEntity> products, int totalCount})>>
   getProducts({
@@ -117,163 +148,19 @@ class ProductsRepositoryImpl implements ProductsRepository {
     CatalogSortOption? sortOption,
   }) async {
     try {
-      String variantSelect =
-          forCustomer
-              ? 'product_variants(id, product_id, sku, sale_price, is_active, variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))'
-              : 'product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, is_active, variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))';
-      final bool isInStockFilter = stockFilter == CatalogStockFilter.inStock;
-      // OJO: se deben traer TODAS las columnas del lote, no solo
-      // available_quantity. El stock por variante se calcula en la UI
-      // filtrando los lotes por `variant_id`; si esa columna no viene en el
-      // select, el modelo la deja vacía ('') y todas las variantes terminaban
-      // marcadas como "Agotado" aunque el total global del producto fuera
-      // correcto.
-      const String batchesColumns =
-          'id, variant_id, warehouse_id, product_id, batch_number, expiry_date, available_quantity';
-      final String batchesJoin =
-          isInStockFilter
-              ? 'warehouse_stock_batches!inner($batchesColumns)'
-              : 'warehouse_stock_batches($batchesColumns)';
-
-      String selectString =
-          'id, name, is_active, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), $batchesJoin, $variantSelect';
-
-      if (searchByIngredient &&
-          searchQuery != null &&
-          searchQuery.trim().isNotEmpty) {
-        selectString +=
-            ', product_active_ingredients!inner(active_ingredients!inner(name))';
-      } else if (searchByIngredient) {
-        selectString +=
-            ', product_active_ingredients(active_ingredients(name))';
-      }
-
-      var query = _supabase.from('products').select(selectString);
-
-      if (isActive != null) {
-        query = query.eq('is_active', isActive);
-      }
-      if (categoryId != null && categoryId.isNotEmpty) {
-        query = query.eq('category_id', categoryId);
-      }
-      if (brandId != null && brandId.isNotEmpty) {
-        query = query.eq('brand_id', brandId);
-      }
-      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-        final clean = searchQuery.trim();
-        if (searchByIngredient) {
-          query = query.ilike(
-            'product_active_ingredients.active_ingredients.name',
-            '%$clean%',
-          );
-        } else {
-          try {
-            // Coincidencia multicanal: Nombre de producto O variantes (SKU / Código de barras)
-            final variantMatches = await _supabase
-                .from('product_variants')
-                .select('product_id')
-                .or('sku.ilike.%$clean%,barcode.ilike.%$clean%')
-                .limit(50);
-
-            final matchingProductIds =
-                (variantMatches as List)
-                    .map((row) => row['product_id'] as String?)
-                    .where((id) => id != null && id.isNotEmpty)
-                    .toSet()
-                    .toList();
-
-            if (matchingProductIds.isNotEmpty) {
-              query = query.or(
-                'name.ilike.%$clean%,id.in.(${matchingProductIds.join(',')})',
-              );
-            } else {
-              query = query.ilike('name', '%$clean%');
-            }
-          } catch (_) {
-            query = query.ilike('name', '%$clean%');
-          }
-        }
-      }
-
-      if (isInStockFilter) {
-        // Filtrado nativo relacional en PostgreSQL vía PostgREST inner join
-        query = query.gt('warehouse_stock_batches.available_quantity', 0);
-      } else if (stockFilter == CatalogStockFilter.outOfStock) {
-        final summaryRes = await _supabase
-            .from('product_stock_summary')
-            .select('product_id, total_stock');
-
-        final stockByProduct = <String, num>{};
-        for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
-          final pid = row['product_id'] as String?;
-          if (pid != null && pid.isNotEmpty) {
-            stockByProduct[pid] =
-                (stockByProduct[pid] ?? 0) +
-                ((row['total_stock'] as num?) ?? 0);
-          }
-        }
-
-        final outOfStockIds =
-            stockByProduct.entries
-                .where((e) => e.value <= 0)
-                .map((e) => e.key)
-                .toList();
-
-        if (outOfStockIds.isEmpty) {
-          return right((products: <ProductEntity>[], totalCount: 0));
-        }
-        query = query.inFilter('id', outOfStockIds);
-      }
-
-      var transformQuery = query.order(
-        'is_active',
-        ascending: false,
-      ); // Productos activos primero
-
-      if (sortOption == CatalogSortOption.recent) {
-        transformQuery = transformQuery.order('created_at', ascending: false);
-      } else if (sortOption == CatalogSortOption.nameAsc) {
-        transformQuery = transformQuery.order('name', ascending: true);
-      } else if (sortOption == CatalogSortOption.priceAsc) {
-        transformQuery = transformQuery.order(
-          'sale_price',
-          referencedTable: 'product_variants',
-          ascending: true,
-        );
-      } else if (sortOption == CatalogSortOption.priceDesc) {
-        transformQuery = transformQuery.order(
-          'sale_price',
-          referencedTable: 'product_variants',
-          ascending: false,
-        );
-      } else {
-        transformQuery = transformQuery.order('created_at', ascending: false);
-      }
-      transformQuery = transformQuery.range(offset, offset + limit - 1);
-      final response = await transformQuery.count(CountOption.exact);
-
-      final responseData = response.data as List;
-      var entities = await IsolateUtils.run(() {
-        final models =
-            List<Map<String, dynamic>>.from(
-              responseData,
-            ).map(ProductModel.fromJson).toList();
-        return models.map((m) => m.toEntity()).toList();
-      });
-
-      if (sortOption == CatalogSortOption.priceAsc) {
-        entities.sort(
-          (a, b) =>
-              (a.displaySalePrice ?? 0).compareTo(b.displaySalePrice ?? 0),
-        );
-      } else if (sortOption == CatalogSortOption.priceDesc) {
-        entities.sort(
-          (a, b) =>
-              (b.displaySalePrice ?? 0).compareTo(a.displaySalePrice ?? 0),
-        );
-      } else if (sortOption == CatalogSortOption.highStock) {
-        entities.sort((a, b) => b.totalStock.compareTo(a.totalStock));
-      }
+      final res = await _catalogDataSource.getProducts(
+        searchQuery: searchQuery,
+        categoryId: categoryId,
+        brandId: brandId,
+        isActive: isActive,
+        searchByIngredient: searchByIngredient,
+        forCustomer: forCustomer,
+        limit: limit,
+        offset: offset,
+        sortByPriceAsc: sortByPriceAsc,
+        stockFilter: stockFilter,
+        sortOption: sortOption,
+      );
 
       final cacheKey = CatalogLruCache.buildKey(
         searchQuery: searchQuery,
@@ -287,9 +174,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
         sortOption: sortOption,
         stockFilter: stockFilter,
       );
-      CatalogLruCache.instance.putPage(cacheKey, entities, response.count);
+      CatalogLruCache.instance.putPage(cacheKey, res.products, res.totalCount);
 
-      return right((products: entities, totalCount: response.count));
+      return right(res);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -325,14 +212,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   ProductEntity? getCachedProductById(String id) {
-    final cached = CatalogLruCache.instance.getProduct(id);
-    if (cached != null) return cached;
-    final entry = _productDetailCache[id];
-    if (entry != null &&
-        DateTime.now().difference(entry.timestamp) < _productCacheTtl) {
-      return entry.product;
-    }
-    return null;
+    return CatalogLruCache.instance.getProduct(id);
   }
 
   @override
@@ -366,28 +246,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }) async {
     if (!forceRefresh) {
       final cached = getCachedProductById(id);
-      if (cached != null) {
-        return right(cached);
-      }
+      if (cached != null) return right(cached);
     }
     try {
-      final response =
-          await _supabase
-              .from('products')
-              .select(
-                'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), brands(id, name, logo_url), warehouse_stock_batches(id, variant_id, warehouse_id, available_quantity, batch_number, expiry_date, product_id), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))',
-              )
-              .eq('id', id)
-              .maybeSingle();
-
-      if (response == null) {
-        _productDetailCache.remove(id);
+      final entity = await _catalogDataSource.getProductById(id);
+      if (entity == null) {
         CatalogLruCache.instance.invalidateProduct(id);
         return right(null);
       }
-      final model = ProductModel.fromJson(response);
-      final entity = model.toEntity();
-      _productDetailCache[id] = (product: entity, timestamp: DateTime.now());
       CatalogLruCache.instance.putProduct(id, entity);
       return right(entity);
     } catch (e, st) {
@@ -400,21 +266,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
     List<String>? productIds,
   }) async {
     try {
-      var query = _supabase
-          .from('warehouse_stock_batches')
-          .select('product_id, available_quantity');
-      if (productIds != null && productIds.isNotEmpty) {
-        query = query.inFilter('product_id', productIds);
-      }
-      final response = await query;
-      final map = <String, int>{};
-      for (final row in response) {
-        final pId = row['product_id'] as String?;
-        final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
-        if (pId != null) {
-          map[pId] = (map[pId] ?? 0) + qty;
-        }
-      }
+      final map = await _stockDataSource.getProductStock(
+        productIds: productIds,
+      );
       return right(map);
     } catch (e, st) {
       return _handleError(e, st);
@@ -427,11 +281,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     required bool isActive,
   }) async {
     try {
-      await _supabase
-          .from('products')
-          .update({'is_active': isActive})
-          .eq('id', productId);
-      _productDetailCache.remove(productId);
+      await _catalogDataSource.setProductActive(productId, isActive);
       CatalogLruCache.instance.invalidateProduct(productId);
       CatalogLruCache.instance.invalidateCatalog();
       return right(null);
@@ -445,18 +295,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String variantId,
   ) async {
     try {
-      final response =
-          await _supabase
-              .from('product_variants')
-              .select(
-                'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
-              )
-              .eq('id', variantId)
-              .maybeSingle();
-
-      if (response == null) return right(null);
-      final model = ProductVariantModel.fromJson(response);
-      return right(model.toEntity());
+      final variant = await _catalogDataSource.getVariantById(variantId);
+      return right(variant);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -467,19 +307,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String productId,
   ) async {
     try {
-      final response = await _supabase
-          .from('warehouse_stock_batches')
-          .select('variant_id, available_quantity')
-          .eq('product_id', productId);
-
-      final map = <String, int>{};
-      for (final row in response) {
-        final vId = row['variant_id'] as String?;
-        final qty = (row['available_quantity'] as num?)?.toInt() ?? 0;
-        if (vId != null) {
-          map[vId] = (map[vId] ?? 0) + qty;
-        }
-      }
+      final map = await _stockDataSource.getStockByVariant(productId);
       return right(map);
     } catch (e, st) {
       return _handleError(e, st);
@@ -491,20 +319,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String productId,
   ) async {
     try {
-      final response = await _supabase
-          .from('product_variants')
-          .select(
-            'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
-          )
-          .eq('product_id', productId)
-          .eq('is_active', true)
-          .order('created_at');
-
-      final drafts =
-          List<Map<String, dynamic>>.from(response).map((json) {
-            final variant = ProductVariantModel.fromJson(json);
-            return VariantDraftEntity.fromVariant(variant.toEntity());
-          }).toList();
+      final drafts = await _catalogDataSource.getVariantsDrafts(productId);
       return right(drafts);
     } catch (e, st) {
       return _handleError(e, st);
@@ -515,32 +330,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
   Future<Either<Failure, Map<String, dynamic>>>
   getActiveProductsAndVariants() async {
     try {
-      final response = await _supabase
-          .from('products')
-          .select(
-            'id, name, is_active, product_variants(id, product_id, sku, sale_price, is_active)',
-          )
-          .eq('is_active', true)
-          .eq('product_variants.is_active', true);
-
-      final products = <Map<String, dynamic>>[];
-      final variants = <Map<String, dynamic>>[];
-
-      for (var product in response) {
-        final pVariants = product['product_variants'] as List<dynamic>? ?? [];
-        products.add({
-          'id': product['id'],
-          'name': product['name'],
-          'is_active': product['is_active'],
-        });
-        variants.addAll(pVariants.map((v) => Map<String, dynamic>.from(v)));
-      }
-
-      return right({'products': products, 'variants': variants});
+      final res = await _catalogDataSource.getActiveProductsAndVariants();
+      return right(res);
     } catch (e, st) {
       return _handleError(e, st);
     }
   }
+
+  // ───────────────────────── Atributos ─────────────────────────
 
   @override
   Future<Either<Failure, AttributeEntity>> createAttribute(
@@ -548,24 +345,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String? description,
   }) async {
     try {
-      final payload = {
-        'name': name.trim(),
-        if (description != null && description.trim().isNotEmpty)
-          'description': description.trim(),
-      };
-      final res =
-          await _supabase
-              .from('attributes')
-              .insert(payload)
-              .select('id, name, description')
-              .single();
-      return right(
-        AttributeEntity(
-          id: res['id'],
-          name: res['name'],
-          description: res['description'] as String?,
-        ),
+      final attr = await _attributesDataSource.createAttribute(
+        name,
+        description: description,
       );
+      return right(attr);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -578,14 +362,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String? description,
   }) async {
     try {
-      final payload = {
-        'name': name.trim(),
-        'description':
-            (description != null && description.trim().isNotEmpty)
-                ? description.trim()
-                : null,
-      };
-      await _supabase.from('attributes').update(payload).eq('id', id);
+      await _attributesDataSource.updateAttribute(
+        id,
+        name,
+        description: description,
+      );
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -595,30 +376,18 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteAttribute(String id) async {
     try {
-      final valuesRes = await _supabase
-          .from('attribute_values')
-          .select('id')
-          .eq('attribute_id', id);
-      final valueIds =
-          (valuesRes as List).map((v) => v['id'] as String).toList();
-
-      if (valueIds.isNotEmpty) {
-        final usageCheck = await _supabase
-            .from('variant_attribute_values')
-            .select('variant_id')
-            .inFilter('attribute_value_id', valueIds)
-            .limit(1);
-
-        if ((usageCheck as List).isNotEmpty) {
-          return left(
-            Failure.from(
-              'No se puede eliminar: Esta propiedad o algunos de sus valores están asignados a variantes de productos existentes en el sistema.',
-            ),
-          );
-        }
+      final hasAssigned = await _attributesDataSource
+          .hasAttributeValuesAssigned(id);
+      if (hasAssigned) {
+        return left(
+          const ServerFailure(
+            message:
+                'No se puede eliminar: Esta propiedad o algunos de sus valores están asignados a variantes de productos existentes en el sistema.',
+            code: '23503',
+          ),
+        );
       }
-
-      await _supabase.from('attributes').delete().eq('id', id);
+      await _attributesDataSource.deleteAttribute(id);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -631,19 +400,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String value,
   ) async {
     try {
-      final res =
-          await _supabase
-              .from('attribute_values')
-              .insert({'attribute_id': attributeId, 'value': value.trim()})
-              .select('id, attribute_id, value')
-              .single();
-      return right(
-        AttributeValueEntity(
-          id: res['id'],
-          attributeId: res['attribute_id'],
-          value: res['value'],
-        ),
+      final val = await _attributesDataSource.createAttributeValue(
+        attributeId,
+        value,
       );
+      return right(val);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -655,105 +416,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String value,
   ) async {
     try {
-      await _supabase
-          .from('attribute_values')
-          .update({'value': value.trim()})
-          .eq('id', valueId);
+      await _attributesDataSource.updateAttributeValue(valueId, value);
       return right(null);
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  // --- BÚSQUEDA PARA UI (ATRIBUTOS) ---
-  @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(
-    String term,
-  ) async {
-    try {
-      var query = _supabase.from('attributes').select('id, name');
-      if (term.trim().isNotEmpty) {
-        query = query.ilike('name', '%${term.trim()}%');
-      }
-      final res = await query.order('name').limit(15);
-      return right(List<Map<String, dynamic>>.from(res));
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(
-    String attributeId,
-    String term,
-  ) async {
-    try {
-      var query = _supabase
-          .from('attribute_values')
-          .select('id, value')
-          .eq('attribute_id', attributeId);
-      if (term.trim().isNotEmpty) {
-        query = query.ilike('value', '%${term.trim()}%');
-      }
-      final res = await query.order('value').limit(15);
-      return right(List<Map<String, dynamic>>.from(res));
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  @override
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(
-    String name,
-  ) async {
-    try {
-      // Uso de un RPC o query atómico sería ideal, pero simulamos un upsert atómico:
-      // Supabase no tiene 'ON CONFLICT DO NOTHING RETURNING id' directo en insert simple si no hay un constraint unique definido en 'name',
-      // pero asumiendo que 'name' es unique, podemos intentar insertar y si falla buscar,
-      // o usar el método seguro de Supabase upsert (onConflict).
-      // Para no romper la DB si 'name' no es un constraint real, hacemos el select primero por ahora o preferiblemente upsert.
-      final exist =
-          await _supabase
-              .from('attributes')
-              .select('id, name')
-              .ilike('name', name.trim())
-              .maybeSingle();
-      if (exist != null) return right(exist);
-
-      final res =
-          await _supabase
-              .from('attributes')
-              .insert({'name': name.trim()})
-              .select('id, name')
-              .single();
-      return right(res);
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  @override
-  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(
-    String attributeId,
-    String value,
-  ) async {
-    try {
-      final exist =
-          await _supabase
-              .from('attribute_values')
-              .select('id, value')
-              .eq('attribute_id', attributeId)
-              .ilike('value', value.trim())
-              .maybeSingle();
-      if (exist != null) return right(exist);
-
-      final res =
-          await _supabase
-              .from('attribute_values')
-              .insert({'attribute_id': attributeId, 'value': value.trim()})
-              .select('id, value')
-              .single();
-      return right(res);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -770,13 +434,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
       if ((usageCheck as List).isNotEmpty) {
         return left(
-          Failure.from(
-            'No se puede eliminar: Este valor está siendo utilizado en una o más variantes de productos existentes.',
+          const ServerFailure(
+            message:
+                'No se puede eliminar: Este valor está siendo utilizado en una o más variantes de productos existentes.',
+            code: '23503',
           ),
         );
       }
-
-      await _supabase.from('attribute_values').delete().eq('id', valueId);
+      await _attributesDataSource.deleteAttributeValue(valueId);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -786,33 +451,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, List<AttributeEntity>>> getAttributes() async {
     try {
-      final response = await _supabase
-          .from('attributes')
-          .select(
-            'id, name, description, attribute_values(id, attribute_id, value)',
-          )
-          .order('name');
-
-      final list =
-          List<Map<String, dynamic>>.from(response).map((row) {
-            final valuesList = (row['attribute_values'] as List?) ?? [];
-            return AttributeEntity(
-              id: row['id'],
-              name: row['name'],
-              description: row['description'],
-              values:
-                  valuesList
-                      .map(
-                        (v) => AttributeValueEntity(
-                          id: v['id'],
-                          attributeId: v['attribute_id'] ?? row['id'],
-                          value: v['value'],
-                        ),
-                      )
-                      .toList(),
-            );
-          }).toList();
-
+      final list = await _attributesDataSource.getAttributes();
       return right(list);
     } catch (e, st) {
       return _handleError(e, st);
@@ -820,20 +459,104 @@ class ProductsRepositoryImpl implements ProductsRepository {
   }
 
   @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributes(
+    String term,
+  ) async {
+    try {
+      final res = await _attributesDataSource.searchAttributes(term);
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchAttributeValues(
+    String attributeId,
+    String term,
+  ) async {
+    try {
+      final res = await _attributesDataSource.searchAttributeValues(
+        attributeId,
+        term,
+      );
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttribute(
+    String name,
+  ) async {
+    try {
+      final res = await _attributesDataSource.getOrCreateAttribute(name);
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> getOrCreateAttributeValue(
+    String attributeId,
+    String value,
+  ) async {
+    try {
+      final res = await _attributesDataSource.getOrCreateAttributeValue(
+        attributeId,
+        value,
+      );
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  // ───────────────────────── Entradas y Lotes ─────────────────────────
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(
+    String term,
+  ) async {
+    try {
+      final res = await _catalogDataSource.searchProductsForEntry(term);
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(
+    String variantId,
+    String warehouseId,
+  ) async {
+    try {
+      final list = await _stockDataSource.getBatchesForVariant(
+        variantId,
+        warehouseId,
+      );
+      _batchesForVariantCache['$variantId:$warehouseId'] = (
+        data: list,
+        timestamp: DateTime.now(),
+      );
+      return right(list);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  // ───────────────────────── Imágenes y Variantes ─────────────────────────
+
+  @override
   Future<Either<Failure, List<ProductImageEntity>>> getProductImages(
     String productId,
   ) async {
     try {
-      final response = await _supabase
-          .from('product_images')
-          .select('id, product_id, image_url, is_main, display_order')
-          .eq('product_id', productId)
-          .order('display_order');
-      final models =
-          List<Map<String, dynamic>>.from(
-            response,
-          ).map(ProductImageModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
+      final list = await _mediaDataSource.getProductImages(productId);
+      return right(list);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -845,20 +568,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String folder,
   ) async {
     try {
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final path = '$folder/$fileName';
-      await _supabase.storage
-          .from('products')
-          .uploadBinary(
-            path,
-            bytes,
-            fileOptions: const FileOptions(
-              contentType: 'image/jpeg',
-              upsert: false,
-            ),
-          );
-      final publicUrl = _supabase.storage.from('products').getPublicUrl(path);
-      return right(publicUrl);
+      final url = await _mediaDataSource.uploadImageToStorage(bytes, folder);
+      return right(url);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -870,15 +581,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     String imageUrl,
   ) async {
     try {
-      await _supabase.from('product_images').delete().eq('id', id);
-      final uri = Uri.tryParse(imageUrl);
-      if (uri != null && uri.pathSegments.isNotEmpty) {
-        final pathIdx = uri.pathSegments.indexOf('products');
-        if (pathIdx != -1 && pathIdx + 1 < uri.pathSegments.length) {
-          final filePath = uri.pathSegments.sublist(pathIdx + 1).join('/');
-          await _supabase.storage.from('products').remove([filePath]);
-        }
-      }
+      await _mediaDataSource.deleteProductImage(id, imageUrl);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -890,7 +593,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
     List<Map<String, dynamic>> payload,
   ) async {
     try {
-      await _supabase.from('product_images').upsert(payload, onConflict: 'id');
+      await _mediaDataSource.syncProductImages(payload);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -900,7 +603,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteVariant(String variantId) async {
     try {
-      await _supabase.from('product_variants').delete().eq('id', variantId);
+      await _catalogDataSource.deleteVariant(variantId);
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -910,25 +613,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deactivateVariant(String variantId) async {
     try {
-      await _supabase
-          .from('product_variants')
-          .update({'is_active': false})
-          .eq('id', variantId);
+      await _catalogDataSource.deactivateVariant(variantId);
       return right(null);
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  @override
-  Future<Either<Failure, bool>> hasVariantSales(String variantId) async {
-    try {
-      final rows = await _supabase
-          .from('order_items')
-          .select('id')
-          .eq('variant_id', variantId)
-          .limit(1);
-      return right((rows as List).isNotEmpty);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -973,6 +659,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
             .from('products')
             .update(dataToSave)
             .eq('id', product.id);
+        CatalogLruCache.instance.invalidateProduct(product.id);
+        CatalogLruCache.instance.invalidateCatalog();
         return right(product.id);
       } else {
         final res =
@@ -981,6 +669,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
                 .insert(dataToSave)
                 .select('id')
                 .single();
+        CatalogLruCache.instance.invalidateCatalog();
         return right(res['id'] as String);
       }
     } catch (e, st) {
@@ -1371,12 +1060,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
 
   @override
   Future<Either<Failure, void>> clearCache() async {
-    _productDetailCache.clear();
     _activeVariantsCache.clear();
     _batchesForVariantCache.clear();
     CatalogLruCache.instance.clear();
     return right(null);
   }
+
+  // ───────────────────────── Guardado Completo ─────────────────────────
 
   @override
   Future<Either<Failure, void>> saveProductComplete(
@@ -1454,45 +1144,31 @@ class ProductsRepositoryImpl implements ProductsRepository {
               newImageUrl = _supabase.storage
                   .from('products')
                   .getPublicUrl(path);
-            } else if (draft.externalImageUrl != null) {
-              newImageUrl = draft.externalImageUrl;
             }
+
+            final effectiveImageUrl = newImageUrl ?? draft.externalImageUrl;
+
             return {
               'id': draft.id,
               'sku': draft.sku,
               'barcode': draft.barcode,
               'unit_cost': draft.unitCost,
-              'sale_price': draft.salePrice ?? payload.baseSalePrice,
-              'wholesale_price':
-                  draft.wholesalePrice ?? payload.baseWholesalePrice,
-              'wholesale_min_quantity':
-                  draft.wholesaleMinQuantity ??
-                  payload.baseWholesaleMinQuantity,
-              'reorder_point': draft.reorderPoint ?? 3,
+              'sale_price': draft.salePrice,
+              'wholesale_price': draft.wholesalePrice,
+              'wholesale_min_quantity': draft.wholesaleMinQuantity,
+              'reorder_point': draft.reorderPoint,
               'is_active': draft.isActive,
-              'clear_images': draft.clearImages,
-              'new_image_url': newImageUrl,
               'attribute_value_ids': draft.attributeValueIds,
+              'clear_images': draft.clearImages,
+              if (effectiveImageUrl != null) 'image_url': effectiveImageUrl,
             };
           }).toList();
 
-      final imagesResults = await Future.wait(imageUploadFutures);
-      final variantsResults = await Future.wait(variantFutures);
-
-      final productImagesJson = imagesResults.where((e) => e != null).toList();
-      final variantsJson = variantsResults.toList();
-
-      if (variantsJson.isEmpty) {
-        variantsJson.add({
-          'is_active': true,
-          'barcode': null,
-          'sale_price': payload.baseSalePrice,
-          'wholesale_price': payload.baseWholesalePrice,
-          'wholesale_min_quantity': payload.baseWholesaleMinQuantity,
-          'unit_cost': 0.0,
-          'attribute_value_ids': [],
-        });
-      }
+      final productImagesJson =
+          (await Future.wait(
+            imageUploadFutures,
+          )).whereType<Map<String, dynamic>>().toList();
+      final variantsJson = await Future.wait(variantFutures);
 
       final ingredientsJson =
           payload.ingredientsEnabled
@@ -1550,12 +1226,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         'ingredients': ingredientsJson,
       };
 
-      await _supabase.rpc(
-        'save_product_complete',
-        params: {'payload': jsonPayload},
-      );
+      await _catalogDataSource.saveProductComplete(jsonPayload);
       if (payload.product.id.isNotEmpty) {
-        _productDetailCache.remove(payload.product.id);
         CatalogLruCache.instance.invalidateProduct(payload.product.id);
       }
       CatalogLruCache.instance.invalidateCatalog();
@@ -1572,95 +1244,14 @@ class ProductsRepositoryImpl implements ProductsRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> searchProductsForEntry(
-    String term,
-  ) async {
-    try {
-      final res = await _supabase
-          .from('products')
-          .select(
-            'id, name, uses_batches, product_images!left(image_url), product_variants(id, product_id, sku, unit_cost, sale_price, is_active)',
-          )
-          .eq('is_active', true)
-          .ilike('name', '%$term%')
-          .eq('product_images.is_main', true)
-          .limit(20);
-      return right(List<Map<String, dynamic>>.from(res));
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<Map<String, dynamic>>>> getBatchesForVariant(
-    String variantId,
-    String warehouseId,
-  ) async {
-    try {
-      final response = await _supabase
-          .from('warehouse_stock_batches')
-          .select('id, batch_number, expiry_date, available_quantity')
-          .eq('variant_id', variantId)
-          .eq('warehouse_id', warehouseId)
-          .gt('available_quantity', 0)
-          .order('expiry_date', ascending: true, nullsFirst: false)
-          .order('created_at', ascending: true);
-      final list = List<Map<String, dynamic>>.from(response);
-      _batchesForVariantCache['$variantId:$warehouseId'] = (
-        data: list,
-        timestamp: DateTime.now(),
-      );
-      return right(list);
-    } catch (e, st) {
-      return _handleError(e, st);
-    }
-  }
-  // ───────────────────────── Importación masiva ─────────────────────────
+  // ───────────────────────── Importación Masiva ─────────────────────────
 
   @override
   Future<Either<Failure, ImportCatalogContext>>
   getImportCatalogContext() async {
     try {
-      Future<List<String>> allNames(String table) async {
-        final out = <String>[];
-        const page = 1000;
-        for (var from = 0; ; from += page) {
-          final res = await _supabase
-              .from(table)
-              .select('name')
-              .order('name')
-              .range(from, from + page - 1);
-          final rows = List<Map<String, dynamic>>.from(res);
-          out.addAll(rows.map((r) => (r['name'] ?? '').toString()));
-          if (rows.length < page) break;
-        }
-        return out;
-      }
-
-      final warehousesRes = await _supabase
-          .from('warehouses')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
-      final brands = await allNames('brands');
-      final categories = await allNames('categories');
-
-      return right(
-        ImportCatalogContext(
-          warehouses:
-              List<Map<String, dynamic>>.from(warehousesRes)
-                  .map(
-                    (w) => ImportWarehouse(
-                      id: w['id'].toString(),
-                      name: (w['name'] ?? '').toString(),
-                    ),
-                  )
-                  .toList(),
-          brandNames: brands,
-          categoryNames: categories,
-        ),
-      );
+      final ctx = await _bulkImportDataSource.getImportCatalogContext();
+      return right(ctx);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -1673,53 +1264,12 @@ class ProductsRepositoryImpl implements ProductsRepository {
     required String? warehouseId,
   }) async {
     try {
-      const chunk = 150;
-      final names = productNames.map(normalizeKey).toSet().toList();
-      final skuList =
-          skus
-              .map((s) => s.trim().toLowerCase())
-              .where((s) => s.isNotEmpty)
-              .toSet()
-              .toList();
-
-      final found = <String, ExistingVariant>{};
-
-      Future<void> run(List<String> n, List<String> k) async {
-        final res = await _supabase.rpc(
-          'find_existing_variants_for_import',
-          params: {'p_names': n, 'p_skus': k, 'p_warehouse_id': warehouseId},
-        );
-        for (final row in List<Map<String, dynamic>>.from(res as List)) {
-          final id = row['variant_id'].toString();
-          found[id] = ExistingVariant(
-            variantId: id,
-            productId: row['product_id'].toString(),
-            productName: (row['product_name'] ?? '').toString(),
-            brandName: (row['brand_name'] ?? '').toString(),
-            sku: (row['sku'] ?? '').toString(),
-            variantName: (row['variant_name'] ?? '').toString(),
-            usesLots: row['uses_lots'] == true,
-            currentStock: ((row['current_stock'] ?? 0) as num).round(),
-          );
-        }
-      }
-
-      for (var i = 0; i < names.length; i += chunk) {
-        await run(
-          names.sublist(i, i + chunk > names.length ? names.length : i + chunk),
-          const [],
-        );
-      }
-      for (var i = 0; i < skuList.length; i += chunk) {
-        await run(
-          const [],
-          skuList.sublist(
-            i,
-            i + chunk > skuList.length ? skuList.length : i + chunk,
-          ),
-        );
-      }
-      return right(found.values.toList());
+      final list = await _bulkImportDataSource.findExistingVariants(
+        productNames: productNames,
+        skus: skus,
+        warehouseId: warehouseId,
+      );
+      return right(list);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -1734,28 +1284,29 @@ class ProductsRepositoryImpl implements ProductsRepository {
     required String batchId,
   }) async {
     try {
-      final res = await _supabase.rpc(
-        'import_catalog_batch_v2',
-        params: {
-          'p_products': products,
-          'p_warehouse_id': warehouseId,
-          'p_stock_mode': stockMode,
-          'p_update_prices': updatePrices,
-          'p_batch_id': batchId,
-        },
+      final res = await _bulkImportDataSource.importCatalogBatch(
+        products: products,
+        warehouseId: warehouseId,
+        stockMode: stockMode,
+        updatePrices: updatePrices,
+        batchId: batchId,
       );
-      final m = Map<String, dynamic>.from(res as Map);
-      int n(String k) => ((m[k] ?? 0) as num).toInt();
       CatalogLruCache.instance.clear();
-      _productDetailCache.clear();
-      return right(
-        ImportBatchResult(
-          createdProducts: n('created_products'),
-          createdVariants: n('created_variants'),
-          updatedVariants: n('updated_variants'),
-          stockMovements: n('stock_movements'),
-        ),
-      );
+      return right(res);
+    } catch (e, st) {
+      return _handleError(e, st);
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> hasVariantSales(String variantId) async {
+    try {
+      final rows = await _supabase
+          .from('order_items')
+          .select('id')
+          .eq('variant_id', variantId)
+          .limit(1);
+      return right((rows as List).isNotEmpty);
     } catch (e, st) {
       return _handleError(e, st);
     }
@@ -1764,34 +1315,13 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, void>> deleteProduct(String id) async {
     try {
-      final response = await _supabase.rpc(
-        'delete_product_safely',
-        params: {'p_product_id': id},
-      );
-      _productDetailCache.remove(id);
+      final imageUrls = await _catalogDataSource.deleteProductSafely(id);
       CatalogLruCache.instance.invalidateProduct(id);
       CatalogLruCache.instance.invalidateCatalog();
 
-      final imageUrls =
-          (response as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
-
       if (imageUrls.isNotEmpty) {
-        // Extraer los paths relativos asumiendo que están en el bucket 'products'
-        // El image_url podría ser un path relativo o una URL completa, pero usualmente
-        // Supabase storage espera el path (ej. 'folder/file.jpg').
-        // Intentaremos borrarlos pero si falla no abortaremos la eliminación en BD.
         try {
-          // Extraemos los paths después del nombre del bucket si es URL completa,
-          // o lo usamos tal cual si es relativo.
-          final paths =
-              imageUrls.map((url) {
-                if (url.contains('/storage/v1/object/public/products/')) {
-                  return url.split('/storage/v1/object/public/products/').last;
-                }
-                return url;
-              }).toList();
-
-          await _supabase.storage.from('products').remove(paths);
+          await _mediaDataSource.deleteImagesFromUrls(imageUrls);
         } catch (e, st) {
           LoggerService.e(
             'Error al borrar imágenes del bucket',
@@ -1802,7 +1332,7 @@ class ProductsRepositoryImpl implements ProductsRepository {
         }
       }
 
-      return const Right(null);
+      return right(null);
     } catch (e, st) {
       return _handleError(e, st);
     }

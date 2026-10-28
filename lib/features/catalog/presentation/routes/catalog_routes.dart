@@ -73,22 +73,40 @@ class CatalogRoutes {
     ),
     GoRoute(
       path: '/products',
-      builder:
-          (context, state) => BlocProvider(
+      builder: (context, state) {
+        // En el shell administrativo, AdminCatalogCubit ya reside en el árbol superior
+        // (inyectado en StatefulShellRoute de app_router.dart). Reutilizarlo evita
+        // la destrucción del cubit y la pérdida del caché en memoria (Zero-Shimmer).
+        try {
+          context.read<AdminCatalogCubit>();
+          return const AdminProductsScreen();
+        } catch (_) {
+          return BlocProvider(
             create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
             child: const AdminProductsScreen(),
-          ),
+          );
+        }
+      },
     ),
     GoRoute(
       path: '/products/bulk-import',
-      builder:
-          (context, state) => MultiBlocProvider(
+      builder: (context, state) {
+        try {
+          context.read<AdminCatalogCubit>();
+          return BlocProvider(
+            create: (_) => sl<BulkImportCubit>(),
+            child: const BulkImportScreen(),
+          );
+        } catch (_) {
+          return MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => sl<AdminCatalogCubit>()),
               BlocProvider(create: (_) => sl<BulkImportCubit>()),
             ],
             child: const BulkImportScreen(),
-          ),
+          );
+        }
+      },
     ),
     GoRoute(
       path: '/products/product-form',

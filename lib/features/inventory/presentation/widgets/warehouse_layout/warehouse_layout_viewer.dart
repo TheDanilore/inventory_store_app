@@ -337,15 +337,57 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
             ],
           ),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              _buildLegendDot(const Color(0xFF10B981), 'Cajas / POS'),
-              _buildLegendDot(const Color(0xFF6366F1), 'Góndolas'),
-              _buildLegendDot(const Color(0xFF3B82F6), 'Racks'),
-              _buildLegendDot(const Color(0xFFF59E0B), 'Muelles / Docks'),
-            ],
+          Builder(
+            builder: (context) {
+              final types = widget.layout.zones.map((z) => z.type).toSet();
+              final dots = <Widget>[];
+
+              if (types.contains('checkout')) {
+                dots.add(_buildLegendDot(const Color(0xFF2563EB), 'Caja / PC'));
+              }
+              if (types.contains('wall_shelf') || types.contains('gondola')) {
+                dots.add(
+                  _buildLegendDot(
+                    const Color(0xFF059669),
+                    'Estantes (Pomos / Sobres)',
+                  ),
+                );
+              }
+              if (types.contains('glass_counter') ||
+                  types.contains('counter')) {
+                dots.add(
+                  _buildLegendDot(const Color(0xFFF59E0B), 'Mostrador Vidrio'),
+                );
+              }
+              if (types.contains('floor_fertilizer') ||
+                  types.contains('pallet_area')) {
+                dots.add(
+                  _buildLegendDot(const Color(0xFFB45309), 'Abonos Suelo'),
+                );
+              }
+              if (types.contains('door')) {
+                dots.add(
+                  _buildLegendDot(const Color(0xFFEF4444), 'Acceso / Puerta'),
+                );
+              }
+              if (types.contains('industrial_rack')) {
+                dots.add(_buildLegendDot(const Color(0xFF3B82F6), 'Racks'));
+              }
+              if (types.contains('loading_dock')) {
+                dots.add(_buildLegendDot(const Color(0xFFF59E0B), 'Muelles'));
+              }
+
+              if (dots.isEmpty) {
+                dots.addAll([
+                  _buildLegendDot(const Color(0xFF2563EB), 'Caja / POS'),
+                  _buildLegendDot(const Color(0xFF059669), 'Estantes'),
+                  _buildLegendDot(const Color(0xFFF59E0B), 'Mostrador'),
+                  _buildLegendDot(const Color(0xFFB45309), 'Abonos'),
+                ]);
+              }
+
+              return Wrap(spacing: 8, runSpacing: 4, children: dots);
+            },
           ),
         ],
       ),

@@ -22,6 +22,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
   final int currentPage;
   final int totalCount;
   final int totalPages;
+  final bool isBackgroundLoading;
 
   const InventoryEntriesLoaded({
     required this.entries,
@@ -32,6 +33,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
     required this.currentPage,
     required this.totalCount,
     required this.totalPages,
+    this.isBackgroundLoading = false,
   });
 
   InventoryEntriesLoaded copyWith({
@@ -43,6 +45,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
     int? currentPage,
     int? totalCount,
     int? totalPages,
+    bool? isBackgroundLoading,
     bool clearDateRange = false,
   }) {
     return InventoryEntriesLoaded(
@@ -54,6 +57,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       totalPages: totalPages ?? this.totalPages,
+      isBackgroundLoading: isBackgroundLoading ?? this.isBackgroundLoading,
     );
   }
 
@@ -67,6 +71,7 @@ class InventoryEntriesLoaded extends InventoryEntriesState {
     currentPage,
     totalCount,
     totalPages,
+    isBackgroundLoading,
   ];
 }
 

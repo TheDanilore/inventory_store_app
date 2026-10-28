@@ -97,6 +97,7 @@ class _WarehouseLayoutEditorSheetState
         height: _heightMeters,
         gondolaColumns: _aislesCount,
         gondolasPerColumn: _shelvesPerAisle,
+        levels: _levelsPerShelf,
       );
     } else if (_presetType == 'dark_store') {
       return WarehouseLayoutConfig.generateDefaultDarkStore(
@@ -218,10 +219,10 @@ class _WarehouseLayoutEditorSheetState
                 Expanded(
                   child: _buildPresetCard(
                     id: 'store',
-                    title: 'Tienda / Retail',
-                    subtitle: 'Cajas + Góndolas',
+                    title: 'Tienda Agrícola',
+                    subtitle: 'Estantes + Mostrador',
                     icon: Icons.storefront_rounded,
-                    color: const Color(0xFF10B981),
+                    color: const Color(0xFF059669),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -306,9 +307,11 @@ class _WarehouseLayoutEditorSheetState
             const SizedBox(height: 16),
 
             // 3. Pasillos y Estanterías
-            const Text(
-              'ORGANIZACIÓN DE PASILLOS Y ESTANTES',
-              style: TextStyle(
+            Text(
+              _presetType == 'store'
+                  ? 'ORGANIZACIÓN DE ESTANTERÍAS (TIENDA)'
+                  : 'ORGANIZACIÓN DE PASILLOS Y ESTANTES',
+              style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey,
@@ -318,31 +321,39 @@ class _WarehouseLayoutEditorSheetState
             const SizedBox(height: 10),
 
             _buildCounterRow(
-              label: 'Número de Pasillos / Columnas',
+              label:
+                  _presetType == 'store'
+                      ? 'Estantes Pared Fondo (Pomos)'
+                      : 'Número de Pasillos / Columnas',
               value: _aislesCount,
-              min: 2,
+              min: 1,
               max: 10,
+              isDark: isDark,
               onChanged: (v) => setState(() => _aislesCount = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
             _buildCounterRow(
-              label: 'Estantes / Módulos por Pasillo',
+              label:
+                  _presetType == 'store'
+                      ? 'Estantes Pared Lateral (Sobres)'
+                      : 'Estantes / Módulos por Pasillo',
               value: _shelvesPerAisle,
-              min: 2,
+              min: 1,
               max: 8,
+              isDark: isDark,
               onChanged: (v) => setState(() => _shelvesPerAisle = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
-            if (_presetType != 'store')
-              _buildCounterRow(
-                label: 'Niveles de Altura (Bandejas)',
-                value: _levelsPerShelf,
-                min: 1,
-                max: 6,
-                onChanged: (v) => setState(() => _levelsPerShelf = v),
-              ),
+            _buildCounterRow(
+              label: 'Niveles de Altura (Bandejas)',
+              value: _levelsPerShelf,
+              min: 1,
+              max: 6,
+              isDark: isDark,
+              onChanged: (v) => setState(() => _levelsPerShelf = v),
+            ),
 
             const SizedBox(height: 24),
 
@@ -529,42 +540,137 @@ class _WarehouseLayoutEditorSheetState
     required int value,
     required int min,
     required int max,
+    required bool isDark,
     required ValueChanged<int> onChanged,
   }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+    final canDecrease = value > min;
+    final canIncrease = value < max;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          width: 1,
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton.filledTonal(
-              icon: const Icon(Icons.remove, size: 16),
-              visualDensity: VisualDensity.compact,
-              onPressed: value > min ? () => onChanged(value - 1) : null,
-            ),
-            SizedBox(
-              width: 36,
-              child: Text(
-                '$value',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AppColors.textPrimary,
               ),
             ),
-            IconButton.filledTonal(
-              icon: const Icon(Icons.add, size: 16),
-              visualDensity: VisualDensity.compact,
-              onPressed: value < max ? () => onChanged(value + 1) : null,
-            ),
-          ],
-        ),
-      ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Botón Disminuir (-)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: canDecrease ? () => onChanged(value - 1) : null,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color:
+                          canDecrease
+                              ? AppColors.primary.withValues(alpha: 0.12)
+                              : (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color:
+                            canDecrease
+                                ? AppColors.primary.withValues(alpha: 0.35)
+                                : (isDark
+                                    ? const Color(0xFF334155)
+                                    : const Color(0xFFCBD5E1)),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.remove_rounded,
+                      size: 18,
+                      color:
+                          canDecrease
+                              ? AppColors.primary
+                              : (isDark
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 38,
+                child: Text(
+                  '$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              // Botón Aumentar (+)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: canIncrease ? () => onChanged(value + 1) : null,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color:
+                          canIncrease
+                              ? AppColors.primary
+                              : (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow:
+                          canIncrease
+                              ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                              : null,
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color:
+                          canIncrease
+                              ? Colors.white
+                              : (isDark
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF94A3B8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

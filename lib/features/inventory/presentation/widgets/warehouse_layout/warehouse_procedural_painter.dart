@@ -622,7 +622,17 @@ class WarehouseProceduralPainter extends CustomPainter {
   int _getDefaultColor(String type) {
     switch (type) {
       case 'checkout':
-        return 0xFF10B981; // Verde esmeralda (dinero/caja)
+        return 0xFF2563EB; // Azul cobalto (Caja / PC vendedor)
+      case 'glass_counter':
+      case 'counter':
+        return 0xFFF59E0B; // Ámbar dorado cristal (Mostrador de vidrio / vitrina)
+      case 'wall_shelf':
+        return 0xFF059669; // Verde esmeralda bosque (Estantería pared)
+      case 'floor_fertilizer':
+      case 'pallet_area':
+        return 0xFFB45309; // Ocre tierra (Sacos de abono en suelo)
+      case 'door':
+        return 0xFFEF4444; // Rojo coral (Puerta / Acceso)
       case 'gondola':
         return 0xFF6366F1; // Índigo moderno (exhibición tienda)
       case 'industrial_rack':
@@ -633,8 +643,6 @@ class WarehouseProceduralPainter extends CustomPainter {
         return 0xFF8B5CF6; // Púrpura (preparación y despacho)
       case 'backroom':
         return 0xFF64748B; // Pizarra / Gris acero (trastienda)
-      case 'door':
-        return 0xFF0284C7; // Celeste agua (acceso)
       default:
         return 0xFF6B7280;
     }

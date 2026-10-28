@@ -20,6 +20,20 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   }) : super(InventoryEntriesInitial());
 
   Future<void> init() async {
+    // Zero-Shimmer Policy: Si ya existen entradas en memoria/caché,
+    // revalidar en background sin vaciar el estado ni emitir InventoryEntriesLoading.
+    if (state is InventoryEntriesLoaded) {
+      final current = state as InventoryEntriesLoaded;
+      if (current.entries.isNotEmpty) {
+        await loadEntries(silent: true);
+        return;
+      }
+    } else if (_lastLoaded != null && _lastLoaded!.entries.isNotEmpty) {
+      emit(_lastLoaded!);
+      await loadEntries(silent: true);
+      return;
+    }
+
     List<String> warehouses = ['Todos'];
     try {
       final whList = await getActiveWarehouses.call();
@@ -55,6 +69,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
     DateTimeRange? dateRange,
     int? page,
     bool clearDateRange = false,
+    bool silent = false,
   }) async {
     final currentState =
         state is InventoryEntriesLoaded
@@ -69,7 +84,12 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         clearDateRange ? null : (dateRange ?? currentState.dateRange);
     final currentPage = page ?? currentState.currentPage;
 
-    emit(InventoryEntriesLoading());
+    final hasData = currentState.entries.isNotEmpty;
+    if (!silent && !hasData) {
+      emit(InventoryEntriesLoading());
+    } else if (hasData) {
+      emit(currentState.copyWith(isBackgroundLoading: true));
+    }
 
     try {
       final start = currentPage * pageSize;
@@ -88,18 +108,19 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       final totalRecords = response.count;
       final totalPages = (totalRecords / pageSize).ceil();
 
-      emit(
-        currentState.copyWith(
-          entries: entries,
-          searchQuery: currentQuery,
-          warehouseFilter: currentWarehouse,
-          dateRange: currentDateRange,
-          clearDateRange: clearDateRange,
-          currentPage: currentPage,
-          totalCount: totalRecords,
-          totalPages: totalPages == 0 ? 1 : totalPages,
-        ),
+      final updatedState = currentState.copyWith(
+        entries: entries,
+        searchQuery: currentQuery,
+        warehouseFilter: currentWarehouse,
+        dateRange: currentDateRange,
+        clearDateRange: clearDateRange,
+        currentPage: currentPage,
+        totalCount: totalRecords,
+        totalPages: totalPages == 0 ? 1 : totalPages,
+        isBackgroundLoading: false,
       );
+      _lastLoaded = updatedState;
+      emit(updatedState);
     } catch (e, st) {
       LoggerService.e(
         'Error loading inventory entries',
@@ -107,6 +128,13 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         stackTrace: st,
         tag: 'InventoryEntriesCubit',
       );
+
+      // Si ya teníamos datos, preservarlos y solo desactivar el indicador de fondo
+      if (hasData) {
+        emit(currentState.copyWith(isBackgroundLoading: false));
+        return;
+      }
+
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
