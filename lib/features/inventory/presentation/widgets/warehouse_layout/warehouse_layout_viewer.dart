@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouse_layout/warehouse_procedural_painter.dart';
 
-/// Visor Interactivo del Gemelo Digital con Zoom, Paneo, Selector de Modo y Hit-Testing.
+/// Visor Interactivo y Editor Drag & Drop del Gemelo Digital con Zoom, Paneo, Arrastre y Hit-Testing.
 class WarehouseLayoutViewer extends StatefulWidget {
   final WarehouseLayoutConfig layout;
   final WarehouseZone? selectedZone;
   final ValueChanged<WarehouseZone?>? onZoneSelected;
+  final ValueChanged<WarehouseLayoutConfig>? onLayoutChanged;
   final VoidCallback? onOpenEditor;
   final bool showControls;
 
@@ -16,6 +18,7 @@ class WarehouseLayoutViewer extends StatefulWidget {
     required this.layout,
     this.selectedZone,
     this.onZoneSelected,
+    this.onLayoutChanged,
     this.onOpenEditor,
     this.showControls = true,
   });
@@ -28,7 +31,16 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
   final TransformationController _transformController =
       TransformationController();
   WarehouseViewMode _viewMode = WarehouseViewMode.isometric25D;
-  late WarehouseZone? _selectedZone;
+  WarehouseZone? _selectedZone;
+
+  // Estado de Arrastre (Drag & Drop)
+  bool _isEditDragMode = true; // Permite arrastrar libremente los bloques
+  WarehouseZone? _draggingZone;
+  Offset? _dragStartMeterPos;
+  Offset? _initialZonePos;
+
+  static const double _meterScale = 28.0;
+  static const double _gridSnapStep = 0.5; // Ajuste magnético cada medio metro
 
   @override
   void initState() {
@@ -72,8 +84,38 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     }
   }
 
+  // ===========================================================================
+  // CONVERSIÓN DE COORDENADAS PANTALLA <-> METROS DEL LOCAL
+  // ===========================================================================
+  Offset _screenToMeter(Offset localPos, Size canvasSize) {
+    final dim = widget.layout.dimensions;
+
+    if (_viewMode == WarehouseViewMode.topDown2D) {
+      final totalW = dim.widthMeters * _meterScale;
+      final totalL = dim.lengthMeters * _meterScale;
+      final originX = (canvasSize.width - totalW) / 2;
+      final originY = (canvasSize.height - totalL) / 2;
+      final mx = (localPos.dx - originX) / _meterScale;
+      final my = (localPos.dy - originY) / _meterScale;
+      return Offset(mx, my);
+    } else {
+      // Inversión geométrica exacta de la proyección isométrica a nivel de suelo (z=0)
+      final scale = _meterScale * 0.88;
+      final origin = Offset(canvasSize.width / 2, canvasSize.height / 3.4);
+      final relPos = localPos - origin;
+
+      final u = relPos.dx / (WarehouseProceduralPainter.cos30 * scale);
+      final v = relPos.dy / (WarehouseProceduralPainter.sin30 * scale);
+      final mx = (u + v) / 2;
+      final my = (v - u) / 2;
+      return Offset(mx, my);
+    }
+  }
+
+  // ===========================================================================
+  // GESTIÓN DE GESTOS (TAP Y DRAG & DROP)
+  // ===========================================================================
   void _handleTap(TapUpDetails details, Size canvasSize) {
-    // Convertir coordenadas del click considerando la matriz de transformación del InteractiveViewer
     final transform = _transformController.value;
     final inverted = Matrix4.inverted(transform);
     final localPos = MatrixUtils.transformPoint(
@@ -84,7 +126,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     final painter = WarehouseProceduralPainter(
       layout: widget.layout,
       viewMode: _viewMode,
-      meterScale: 28.0,
+      meterScale: _meterScale,
     );
 
     final hit = painter.findZoneAt(localPos, canvasSize);
@@ -94,13 +136,361 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     widget.onZoneSelected?.call(hit);
   }
 
+  void _onPanStart(DragStartDetails details, Size canvasSize) {
+    if (!_isEditDragMode) return;
+
+    final transform = _transformController.value;
+    final inverted = Matrix4.inverted(transform);
+    final localPos = MatrixUtils.transformPoint(
+      inverted,
+      details.localPosition,
+    );
+
+    final painter = WarehouseProceduralPainter(
+      layout: widget.layout,
+      viewMode: _viewMode,
+      meterScale: _meterScale,
+    );
+
+    final hit = painter.findZoneAt(localPos, canvasSize);
+    if (hit != null) {
+      setState(() {
+        _selectedZone = hit;
+        _draggingZone = hit;
+        _dragStartMeterPos = _screenToMeter(localPos, canvasSize);
+        _initialZonePos = Offset(hit.x, hit.y);
+      });
+      widget.onZoneSelected?.call(hit);
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  void _onPanUpdate(DragUpdateDetails details, Size canvasSize) {
+    if (!_isEditDragMode ||
+        _draggingZone == null ||
+        _dragStartMeterPos == null ||
+        _initialZonePos == null) {
+      return;
+    }
+
+    final transform = _transformController.value;
+    final inverted = Matrix4.inverted(transform);
+    final localPos = MatrixUtils.transformPoint(
+      inverted,
+      details.localPosition,
+    );
+
+    final currentMeter = _screenToMeter(localPos, canvasSize);
+    final delta = currentMeter - _dragStartMeterPos!;
+
+    double newX = _initialZonePos!.dx + delta.dx;
+    double newY = _initialZonePos!.dy + delta.dy;
+
+    // Snapping magnético a la cuadrícula
+    newX = (newX / _gridSnapStep).round() * _gridSnapStep;
+    newY = (newY / _gridSnapStep).round() * _gridSnapStep;
+
+    // Clamping dentro de los límites físicos del local
+    final maxW = (widget.layout.dimensions.widthMeters - _draggingZone!.width)
+        .clamp(0.0, widget.layout.dimensions.widthMeters);
+    final maxL = (widget.layout.dimensions.lengthMeters - _draggingZone!.length)
+        .clamp(0.0, widget.layout.dimensions.lengthMeters);
+
+    newX = newX.clamp(0.0, maxW);
+    newY = newY.clamp(0.0, maxL);
+
+    if (newX != _draggingZone!.x || newY != _draggingZone!.y) {
+      final updatedZone = _draggingZone!.copyWith(x: newX, y: newY);
+      _updateZoneInLayout(updatedZone);
+      _draggingZone = updatedZone;
+    }
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (_draggingZone != null) {
+      setState(() {
+        _draggingZone = null;
+        _dragStartMeterPos = null;
+        _initialZonePos = null;
+      });
+      HapticFeedback.lightImpact();
+    }
+  }
+
+  void _updateZoneInLayout(WarehouseZone updatedZone) {
+    final zones = List<WarehouseZone>.from(widget.layout.zones);
+    final idx = zones.indexWhere((z) => z.id == updatedZone.id);
+    if (idx != -1) {
+      zones[idx] = updatedZone;
+      final newConfig = widget.layout.copyWith(zones: zones);
+      setState(() {
+        _selectedZone = updatedZone;
+      });
+      widget.onLayoutChanged?.call(newConfig);
+    }
+  }
+
+  // ===========================================================================
+  // ACCIONES RÁPIDAS SOBRE MÓDULOS (ROTAR, DUPLICAR, ELIMINAR, AÑADIR)
+  // ===========================================================================
+  void _rotateZone(WarehouseZone zone) {
+    // Intercambiar Ancho y Largo para girar 90 grados
+    final newW = zone.length;
+    final newL = zone.width;
+
+    final maxW = (widget.layout.dimensions.widthMeters - newW).clamp(
+      0.0,
+      widget.layout.dimensions.widthMeters,
+    );
+    final maxL = (widget.layout.dimensions.lengthMeters - newL).clamp(
+      0.0,
+      widget.layout.dimensions.lengthMeters,
+    );
+
+    final rotated = zone.copyWith(
+      width: newW,
+      length: newL,
+      x: zone.x.clamp(0.0, maxW),
+      y: zone.y.clamp(0.0, maxL),
+    );
+
+    _updateZoneInLayout(rotated);
+    HapticFeedback.mediumImpact();
+  }
+
+  void _duplicateZone(WarehouseZone zone) {
+    final nextX = (zone.x + zone.width + 0.5).clamp(
+      0.0,
+      (widget.layout.dimensions.widthMeters - zone.width).clamp(
+        0.0,
+        widget.layout.dimensions.widthMeters,
+      ),
+    );
+
+    final clone = zone.copyWith(
+      id: 'zone_${DateTime.now().microsecondsSinceEpoch}',
+      name: '${zone.name} (Copia)',
+      x: nextX,
+      y: zone.y,
+    );
+
+    final zones = List<WarehouseZone>.from(widget.layout.zones)..add(clone);
+    final newConfig = widget.layout.copyWith(zones: zones);
+    setState(() {
+      _selectedZone = clone;
+    });
+    widget.onLayoutChanged?.call(newConfig);
+    HapticFeedback.mediumImpact();
+  }
+
+  void _deleteZone(WarehouseZone zone) {
+    final zones = List<WarehouseZone>.from(widget.layout.zones)
+      ..removeWhere((z) => z.id == zone.id);
+    final newConfig = widget.layout.copyWith(zones: zones);
+    setState(() {
+      _selectedZone = null;
+    });
+    widget.onLayoutChanged?.call(newConfig);
+    widget.onZoneSelected?.call(null);
+    HapticFeedback.heavyImpact();
+  }
+
+  void _showAddModuleSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Añadir Módulo a la Tienda',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _buildAddOption(
+                  icon: Icons.storefront_rounded,
+                  color: const Color(0xFFF59E0B),
+                  title: 'Mostrador de Vidrio / Vitrina',
+                  subtitle:
+                      'Vitrinas de atención con tapa de madera y exhibición',
+                  onTap:
+                      () => _createZone(
+                        'glass_counter',
+                        'Mostrador',
+                        'MOSTRADOR',
+                        4.0,
+                        1.2,
+                        1.1,
+                        0xFFF59E0B,
+                      ),
+                ),
+                _buildAddOption(
+                  icon: Icons.inventory_2_rounded,
+                  color: const Color(0xFF059669),
+                  title: 'Estante de Insumos (Pared)',
+                  subtitle:
+                      'Estantería para frascos de pomo, sobres y foliares',
+                  onTap:
+                      () => _createZone(
+                        'wall_shelf',
+                        'Estante Pomos',
+                        'EST-P',
+                        3.0,
+                        0.9,
+                        2.6,
+                        0xFF059669,
+                        levels: 4,
+                      ),
+                ),
+                _buildAddOption(
+                  icon: Icons.grass_rounded,
+                  color: const Color(0xFFB45309),
+                  title: 'Palet de Fertilizantes en Suelo',
+                  subtitle: 'Tarima con sacos apilados (UREA, NPK) y bidones',
+                  onTap:
+                      () => _createZone(
+                        'floor_fertilizer',
+                        'Abonos en Suelo',
+                        'ABONOS',
+                        3.0,
+                        2.5,
+                        0.65,
+                        0xFFB45309,
+                      ),
+                ),
+                _buildAddOption(
+                  icon: Icons.computer_rounded,
+                  color: const Color(0xFF2563EB),
+                  title: 'Caja / Computadora Vendedor',
+                  subtitle: 'Escritorio POS con monitor y terminal de cobro',
+                  onTap:
+                      () => _createZone(
+                        'checkout',
+                        'Caja POS',
+                        'CAJA-PC',
+                        2.6,
+                        1.4,
+                        1.0,
+                        0xFF2563EB,
+                      ),
+                ),
+                _buildAddOption(
+                  icon: Icons.door_front_door_rounded,
+                  color: const Color(0xFFEF4444),
+                  title: 'Puerta Principal de Acceso',
+                  subtitle:
+                      'Acceso de clientes con puerta entreabierta y felpudo',
+                  onTap:
+                      () => _createZone(
+                        'door',
+                        'Puerta Entrada',
+                        'ENTRADA',
+                        2.4,
+                        0.6,
+                        2.4,
+                        0xFFEF4444,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAddOption({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      ),
+      onTap: () {
+        Navigator.of(context).pop();
+        onTap();
+      },
+    );
+  }
+
+  void _createZone(
+    String type,
+    String name,
+    String codePrefix,
+    double w,
+    double l,
+    double h,
+    int colorValue, {
+    int levels = 1,
+  }) {
+    final count = widget.layout.zones.where((z) => z.type == type).length + 1;
+    final newZone = WarehouseZone(
+      id: 'zone_${DateTime.now().microsecondsSinceEpoch}',
+      name: '$name $count',
+      type: type,
+      code: '$codePrefix-$count',
+      x: 2.0,
+      y: 2.0,
+      width: w,
+      length: l,
+      height: h,
+      levels: levels,
+      colorValue: colorValue,
+    );
+
+    final zones = List<WarehouseZone>.from(widget.layout.zones)..add(newZone);
+    final newConfig = widget.layout.copyWith(zones: zones);
+    setState(() {
+      _selectedZone = newZone;
+    });
+    widget.onLayoutChanged?.call(newConfig);
+    widget.onZoneSelected?.call(newZone);
+    HapticFeedback.mediumImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Tamaño virtual amplio para el lienzo de proyección
         final canvasW =
             constraints.maxWidth.isFinite ? constraints.maxWidth : 1000.0;
         final canvasH =
@@ -109,15 +499,21 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
 
         return Stack(
           children: [
-            // 1. LIENZO INTERACTIVO CON GESTOS Y HIT-TESTING
+            // 1. LIENZO INTERACTIVO CON GESTOS Y DRAG & DROP
             GestureDetector(
               onTapUp: (details) => _handleTap(details, canvasSize),
+              onPanStart: (details) => _onPanStart(details, canvasSize),
+              onPanUpdate: (details) => _onPanUpdate(details, canvasSize),
+              onPanEnd: _onPanEnd,
               child: InteractiveViewer(
                 transformationController: _transformController,
                 minScale: 0.35,
                 maxScale: 3.5,
                 boundaryMargin: const EdgeInsets.all(400),
                 constrained: true,
+                panEnabled:
+                    _draggingZone ==
+                    null, // Bloquea el paneo del canvas mientras se arrastra un mueble
                 child: CustomPaint(
                   size: canvasSize,
                   painter: WarehouseProceduralPainter(
@@ -125,13 +521,13 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
                     viewMode: _viewMode,
                     selectedZone: _selectedZone,
                     isDarkMode: isDark,
-                    meterScale: 28.0,
+                    meterScale: _meterScale,
                   ),
                 ),
               ),
             ),
 
-            // 2. BARRA DE HERRAMIENTAS FLOTANTE SUPERIOR (Modo 2D / 2.5D y Zoom)
+            // 2. BARRA DE HERRAMIENTAS FLOTANTE SUPERIOR
             if (widget.showControls)
               Positioned(
                 top: 16,
@@ -143,7 +539,31 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
             if (widget.showControls)
               Positioned(bottom: 16, left: 16, child: _buildLegendCard(isDark)),
 
-            // 4. TARJETA INSPECTORA DE ZONA SELECCIONADA (INFERIOR DERECHA)
+            // 4. BOTÓN FLOTANTE: "+ AÑADIR MÓDULO" (CENTRO INFERIOR)
+            if (widget.showControls)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: FloatingActionButton.extended(
+                    onPressed: _showAddModuleSheet,
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(
+                      'Añadir Módulo',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 5. TARJETA INSPECTORA Y CINTA DE ACCIONES (INFERIOR DERECHA)
             if (_selectedZone != null)
               Positioned(
                 bottom: 16,
@@ -182,14 +602,14 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Botón selector de Modo (2D Plano vs 2.5D Isométrico)
+            // Botón selector de Modo (3D Iso vs 2D Plano)
             SegmentedButton<WarehouseViewMode>(
               segments: [
                 ButtonSegment(
                   value: WarehouseViewMode.isometric25D,
                   icon: const Icon(Icons.view_in_ar_rounded, size: 15),
                   label: Text(
-                    isCompact ? '3D' : '3D Iso',
+                    isCompact ? '3D' : '3D Maqueta',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -231,6 +651,28 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
             const SizedBox(height: 20, child: VerticalDivider(width: 1)),
             const SizedBox(width: 2),
 
+            // Toggle de Modo Arrastre
+            IconButton(
+              icon: Icon(
+                _isEditDragMode
+                    ? Icons.pan_tool_rounded
+                    : Icons.lock_outline_rounded,
+                size: 18,
+                color: _isEditDragMode ? const Color(0xFF059669) : Colors.grey,
+              ),
+              tooltip:
+                  _isEditDragMode
+                      ? 'Arrastre Activo (Toca y mueve)'
+                      : 'Arrastre Bloqueado',
+              onPressed: () {
+                setState(() {
+                  _isEditDragMode = !_isEditDragMode;
+                });
+                HapticFeedback.selectionClick();
+              },
+              visualDensity: VisualDensity.compact,
+            ),
+
             // Zoom In
             IconButton(
               icon: const Icon(Icons.zoom_in_rounded, size: 19),
@@ -256,7 +698,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
               visualDensity: VisualDensity.compact,
             ),
 
-            // Botón Diseñar / Editar Layout
+            // Botón Generador Procedural
             if (widget.onOpenEditor != null) ...[
               const SizedBox(width: 2),
               const SizedBox(height: 20, child: VerticalDivider(width: 1)),
@@ -269,7 +711,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
                   color: Colors.white,
                 ),
                 label: Text(
-                  isCompact ? 'Diseñar' : 'Diseñar Layout',
+                  isCompact ? 'Generador' : 'Generador Layout',
                   style: const TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.bold,
@@ -337,57 +779,16 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
             ],
           ),
           const SizedBox(height: 6),
-          Builder(
-            builder: (context) {
-              final types = widget.layout.zones.map((z) => z.type).toSet();
-              final dots = <Widget>[];
-
-              if (types.contains('checkout')) {
-                dots.add(_buildLegendDot(const Color(0xFF2563EB), 'Caja / PC'));
-              }
-              if (types.contains('wall_shelf') || types.contains('gondola')) {
-                dots.add(
-                  _buildLegendDot(
-                    const Color(0xFF059669),
-                    'Estantes (Pomos / Sobres)',
-                  ),
-                );
-              }
-              if (types.contains('glass_counter') ||
-                  types.contains('counter')) {
-                dots.add(
-                  _buildLegendDot(const Color(0xFFF59E0B), 'Mostrador Vidrio'),
-                );
-              }
-              if (types.contains('floor_fertilizer') ||
-                  types.contains('pallet_area')) {
-                dots.add(
-                  _buildLegendDot(const Color(0xFFB45309), 'Abonos Suelo'),
-                );
-              }
-              if (types.contains('door')) {
-                dots.add(
-                  _buildLegendDot(const Color(0xFFEF4444), 'Acceso / Puerta'),
-                );
-              }
-              if (types.contains('industrial_rack')) {
-                dots.add(_buildLegendDot(const Color(0xFF3B82F6), 'Racks'));
-              }
-              if (types.contains('loading_dock')) {
-                dots.add(_buildLegendDot(const Color(0xFFF59E0B), 'Muelles'));
-              }
-
-              if (dots.isEmpty) {
-                dots.addAll([
-                  _buildLegendDot(const Color(0xFF2563EB), 'Caja / POS'),
-                  _buildLegendDot(const Color(0xFF059669), 'Estantes'),
-                  _buildLegendDot(const Color(0xFFF59E0B), 'Mostrador'),
-                  _buildLegendDot(const Color(0xFFB45309), 'Abonos'),
-                ]);
-              }
-
-              return Wrap(spacing: 8, runSpacing: 4, children: dots);
-            },
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              _buildLegendDot(const Color(0xFF059669), 'Pomos / Sobres'),
+              _buildLegendDot(const Color(0xFFF59E0B), 'Mostrador Vidrio'),
+              _buildLegendDot(const Color(0xFFB45309), 'Abonos Suelo'),
+              _buildLegendDot(const Color(0xFF2563EB), 'Caja / PC'),
+              _buildLegendDot(const Color(0xFFEF4444), 'Acceso'),
+            ],
           ),
         ],
       ),
@@ -413,7 +814,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     final color = Color(zone.colorValue ?? 0xFF3B82F6);
 
     return Container(
-      width: 290,
+      width: 310,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xF01E293B) : Colors.white,
@@ -456,7 +857,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      zone.code ?? zone.type.toUpperCase(),
+                      '${zone.code ?? zone.type.toUpperCase()} • Posición: (${zone.x.toStringAsFixed(1)}m, ${zone.y.toStringAsFixed(1)}m)',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -477,7 +878,58 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
               ),
             ],
           ),
-          const Divider(height: 16),
+          const Divider(height: 14),
+
+          // Botones de acción rápida: Rotar 90°, Duplicar, Eliminar
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _rotateZone(zone),
+                  icon: const Icon(Icons.rotate_right_rounded, size: 15),
+                  label: const Text(
+                    'Girar 90°',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 6,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: () => _duplicateZone(zone),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                ),
+                child: const Icon(Icons.content_copy_rounded, size: 15),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: () => _deleteZone(zone),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, size: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -515,16 +967,20 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     switch (type) {
       case 'checkout':
         return Icons.point_of_sale_rounded;
+      case 'glass_counter':
+      case 'counter':
+        return Icons.storefront_rounded;
+      case 'wall_shelf':
+        return Icons.shelves;
+      case 'floor_fertilizer':
+      case 'pallet_area':
+        return Icons.grass_rounded;
+      case 'door':
+        return Icons.door_front_door_rounded;
       case 'gondola':
         return Icons.store_rounded;
       case 'industrial_rack':
         return Icons.inventory_2_rounded;
-      case 'loading_dock':
-        return Icons.local_shipping_rounded;
-      case 'packing_station':
-        return Icons.all_inbox_rounded;
-      case 'backroom':
-        return Icons.meeting_room_rounded;
       default:
         return Icons.layers_rounded;
     }

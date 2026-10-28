@@ -265,6 +265,12 @@ class _WarehouseDigitalTwinScreenState
             _selectedZone = zone;
           });
         },
+        onLayoutChanged: (newLayout) {
+          setState(() {
+            _currentLayout = newLayout;
+            _hasUnsavedChanges = true;
+          });
+        },
         onOpenEditor: _openEditor,
       ),
     );

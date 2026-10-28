@@ -80,6 +80,10 @@ class WarehouseZone extends Equatable {
   bool get isCheckout => type == 'checkout';
   bool get isDock => type == 'loading_dock';
   bool get isDoor => type == 'door';
+  bool get isGlassCounter => type == 'glass_counter' || type == 'counter';
+  bool get isWallShelf => type == 'wall_shelf';
+  bool get isFloorFertilizer =>
+      type == 'floor_fertilizer' || type == 'pallet_area';
 
   factory WarehouseZone.fromJson(Map<String, dynamic> json) {
     return WarehouseZone(
