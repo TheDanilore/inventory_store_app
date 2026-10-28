@@ -4,7 +4,7 @@ import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouse_layout/warehouse_procedural_painter.dart';
 
-/// Visor Interactivo y Editor Drag & Drop del Gemelo Digital con Zoom, Paneo, Arrastre y Hit-Testing.
+/// Visor Interactivo y Editor Drag & Drop del Gemelo Digital con soporte completo Desktop (Mouse) y Móvil (Touch).
 class WarehouseLayoutViewer extends StatefulWidget {
   final WarehouseLayoutConfig layout;
   final WarehouseZone? selectedZone;
@@ -32,12 +32,16 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
       TransformationController();
   WarehouseViewMode _viewMode = WarehouseViewMode.isometric25D;
   WarehouseZone? _selectedZone;
+  WarehouseZone? _hoveredZone;
 
-  // Estado de Arrastre (Drag & Drop)
-  bool _isEditDragMode = true; // Permite arrastrar libremente los bloques
+  // Estado de Arrastre Desktop (Mouse) y Móvil (Touch)
+  bool _isEditDragMode = true;
+  bool _isDraggingZone = false;
   WarehouseZone? _draggingZone;
   Offset? _dragStartMeterPos;
   Offset? _initialZonePos;
+  Offset? _pointerDownPosition;
+  bool _hasDragged = false;
 
   static const double _meterScale = 28.0;
   static const double _gridSnapStep = 0.5; // Ajuste magnético cada medio metro
@@ -99,7 +103,6 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
       final my = (localPos.dy - originY) / _meterScale;
       return Offset(mx, my);
     } else {
-      // Inversión geométrica exacta de la proyección isométrica a nivel de suelo (z=0)
       final scale = _meterScale * 0.88;
       final origin = Offset(canvasSize.width / 2, canvasSize.height / 3.4);
       final relPos = localPos - origin;
@@ -113,14 +116,15 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
   }
 
   // ===========================================================================
-  // GESTIÓN DE GESTOS (TAP Y DRAG & DROP)
+  // GESTIÓN DE POINTER DIRECTO (SOLUCIÓN NATIVA PARA MOUSE EN DESKTOP)
   // ===========================================================================
-  void _handleTap(TapUpDetails details, Size canvasSize) {
-    final transform = _transformController.value;
-    final inverted = Matrix4.inverted(transform);
+  void _handlePointerDown(PointerDownEvent event, Size canvasSize) {
+    // Solo botón izquierdo del ratón (buttons == 1) o touch primario
+    if (event.buttons != 1 && event.buttons != 0) return;
+
     final localPos = MatrixUtils.transformPoint(
-      inverted,
-      details.localPosition,
+      Matrix4.inverted(_transformController.value),
+      event.localPosition,
     );
 
     final painter = WarehouseProceduralPainter(
@@ -130,31 +134,12 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     );
 
     final hit = painter.findZoneAt(localPos, canvasSize);
-    setState(() {
-      _selectedZone = hit;
-    });
-    widget.onZoneSelected?.call(hit);
-  }
+    _pointerDownPosition = event.localPosition;
+    _hasDragged = false;
 
-  void _onPanStart(DragStartDetails details, Size canvasSize) {
-    if (!_isEditDragMode) return;
-
-    final transform = _transformController.value;
-    final inverted = Matrix4.inverted(transform);
-    final localPos = MatrixUtils.transformPoint(
-      inverted,
-      details.localPosition,
-    );
-
-    final painter = WarehouseProceduralPainter(
-      layout: widget.layout,
-      viewMode: _viewMode,
-      meterScale: _meterScale,
-    );
-
-    final hit = painter.findZoneAt(localPos, canvasSize);
-    if (hit != null) {
+    if (hit != null && _isEditDragMode) {
       setState(() {
+        _isDraggingZone = true;
         _selectedZone = hit;
         _draggingZone = hit;
         _dragStartMeterPos = _screenToMeter(localPos, canvasSize);
@@ -162,22 +147,32 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
       });
       widget.onZoneSelected?.call(hit);
       HapticFeedback.selectionClick();
+    } else {
+      if (hit != _selectedZone) {
+        setState(() {
+          _selectedZone = hit;
+        });
+        widget.onZoneSelected?.call(hit);
+      }
     }
   }
 
-  void _onPanUpdate(DragUpdateDetails details, Size canvasSize) {
-    if (!_isEditDragMode ||
+  void _handlePointerMove(PointerMoveEvent event, Size canvasSize) {
+    if (!_isDraggingZone ||
         _draggingZone == null ||
         _dragStartMeterPos == null ||
         _initialZonePos == null) {
       return;
     }
 
-    final transform = _transformController.value;
-    final inverted = Matrix4.inverted(transform);
+    if (_pointerDownPosition != null &&
+        (event.localPosition - _pointerDownPosition!).distance > 4) {
+      _hasDragged = true;
+    }
+
     final localPos = MatrixUtils.transformPoint(
-      inverted,
-      details.localPosition,
+      Matrix4.inverted(_transformController.value),
+      event.localPosition,
     );
 
     final currentMeter = _screenToMeter(localPos, canvasSize);
@@ -186,11 +181,10 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     double newX = _initialZonePos!.dx + delta.dx;
     double newY = _initialZonePos!.dy + delta.dy;
 
-    // Snapping magnético a la cuadrícula
+    // Snapping magnético a saltos de 0.5m
     newX = (newX / _gridSnapStep).round() * _gridSnapStep;
     newY = (newY / _gridSnapStep).round() * _gridSnapStep;
 
-    // Clamping dentro de los límites físicos del local
     final maxW = (widget.layout.dimensions.widthMeters - _draggingZone!.width)
         .clamp(0.0, widget.layout.dimensions.widthMeters);
     final maxL = (widget.layout.dimensions.lengthMeters - _draggingZone!.length)
@@ -206,14 +200,18 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     }
   }
 
-  void _onPanEnd(DragEndDetails details) {
-    if (_draggingZone != null) {
+  void _handlePointerUp(PointerEvent event) {
+    if (_isDraggingZone) {
       setState(() {
+        _isDraggingZone = false;
         _draggingZone = null;
         _dragStartMeterPos = null;
         _initialZonePos = null;
+        _pointerDownPosition = null;
       });
-      HapticFeedback.lightImpact();
+      if (_hasDragged) {
+        HapticFeedback.lightImpact();
+      }
     }
   }
 
@@ -231,10 +229,27 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
   }
 
   // ===========================================================================
-  // ACCIONES RÁPIDAS SOBRE MÓDULOS (ROTAR, DUPLICAR, ELIMINAR, AÑADIR)
+  // ACCIONES RÁPIDAS SOBRE MÓDULOS (ROTAR, DUPLICAR, ELIMINAR, NUDGE)
   // ===========================================================================
+  void _nudgeZone(WarehouseZone zone, double dx, double dy) {
+    final maxW = (widget.layout.dimensions.widthMeters - zone.width).clamp(
+      0.0,
+      widget.layout.dimensions.widthMeters,
+    );
+    final maxL = (widget.layout.dimensions.lengthMeters - zone.length).clamp(
+      0.0,
+      widget.layout.dimensions.lengthMeters,
+    );
+
+    final newX = (zone.x + dx).clamp(0.0, maxW);
+    final newY = (zone.y + dy).clamp(0.0, maxL);
+
+    final updated = zone.copyWith(x: newX, y: newY);
+    _updateZoneInLayout(updated);
+    HapticFeedback.selectionClick();
+  }
+
   void _rotateZone(WarehouseZone zone) {
-    // Intercambiar Ancho y Largo para girar 90 grados
     final newW = zone.length;
     final newL = zone.width;
 
@@ -499,29 +514,50 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
 
         return Stack(
           children: [
-            // 1. LIENZO INTERACTIVO CON GESTOS Y DRAG & DROP
-            GestureDetector(
-              onTapUp: (details) => _handleTap(details, canvasSize),
-              onPanStart: (details) => _onPanStart(details, canvasSize),
-              onPanUpdate: (details) => _onPanUpdate(details, canvasSize),
-              onPanEnd: _onPanEnd,
-              child: InteractiveViewer(
-                transformationController: _transformController,
-                minScale: 0.35,
-                maxScale: 3.5,
-                boundaryMargin: const EdgeInsets.all(400),
-                constrained: true,
-                panEnabled:
-                    _draggingZone ==
-                    null, // Bloquea el paneo del canvas mientras se arrastra un mueble
-                child: CustomPaint(
-                  size: canvasSize,
-                  painter: WarehouseProceduralPainter(
-                    layout: widget.layout,
-                    viewMode: _viewMode,
-                    selectedZone: _selectedZone,
-                    isDarkMode: isDark,
-                    meterScale: _meterScale,
+            // 1. LIENZO INTERACTIVO CON MOUSE REGION Y LISTENER
+            MouseRegion(
+              cursor:
+                  _isDraggingZone
+                      ? SystemMouseCursors.grabbing
+                      : (_hoveredZone != null
+                          ? SystemMouseCursors.grab
+                          : SystemMouseCursors.basic),
+              onHover: (event) {
+                final localPos = MatrixUtils.transformPoint(
+                  Matrix4.inverted(_transformController.value),
+                  event.localPosition,
+                );
+                final painter = WarehouseProceduralPainter(
+                  layout: widget.layout,
+                  viewMode: _viewMode,
+                  meterScale: _meterScale,
+                );
+                final hit = painter.findZoneAt(localPos, canvasSize);
+                if (hit?.id != _hoveredZone?.id) {
+                  setState(() => _hoveredZone = hit);
+                }
+              },
+              child: Listener(
+                onPointerDown: (event) => _handlePointerDown(event, canvasSize),
+                onPointerMove: (event) => _handlePointerMove(event, canvasSize),
+                onPointerUp: _handlePointerUp,
+                onPointerCancel: _handlePointerUp,
+                child: InteractiveViewer(
+                  transformationController: _transformController,
+                  minScale: 0.35,
+                  maxScale: 3.5,
+                  boundaryMargin: const EdgeInsets.all(400),
+                  constrained: true,
+                  panEnabled: !_isDraggingZone,
+                  child: CustomPaint(
+                    size: canvasSize,
+                    painter: WarehouseProceduralPainter(
+                      layout: widget.layout,
+                      viewMode: _viewMode,
+                      selectedZone: _selectedZone,
+                      isDarkMode: isDark,
+                      meterScale: _meterScale,
+                    ),
                   ),
                 ),
               ),
@@ -602,7 +638,6 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Botón selector de Modo (3D Iso vs 2D Plano)
             SegmentedButton<WarehouseViewMode>(
               segments: [
                 ButtonSegment(
@@ -814,7 +849,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
     final color = Color(zone.colorValue ?? 0xFF3B82F6);
 
     return Container(
-      width: 310,
+      width: 320,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xF01E293B) : Colors.white,
@@ -857,7 +892,7 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      '${zone.code ?? zone.type.toUpperCase()} • Posición: (${zone.x.toStringAsFixed(1)}m, ${zone.y.toStringAsFixed(1)}m)',
+                      '${zone.code ?? zone.type.toUpperCase()} • (${zone.x.toStringAsFixed(1)}m, ${zone.y.toStringAsFixed(1)}m)',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -878,7 +913,55 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
               ),
             ],
           ),
-          const Divider(height: 14),
+          const Divider(height: 12),
+
+          // Pad direccional de movimiento fino (+-0.5m)
+          Row(
+            children: [
+              const Text(
+                'Mover:',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                tooltip: 'Mover Izquierda (-0.5m)',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _nudgeZone(zone, -0.5, 0),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_upward_rounded, size: 16),
+                tooltip: 'Mover Arriba (-0.5m)',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _nudgeZone(zone, 0, -0.5),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_downward_rounded, size: 16),
+                tooltip: 'Mover Abajo (+0.5m)',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _nudgeZone(zone, 0, 0.5),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                tooltip: 'Mover Derecha (+0.5m)',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _nudgeZone(zone, 0.5, 0),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
 
           // Botones de acción rápida: Rotar 90°, Duplicar, Eliminar
           Row(
