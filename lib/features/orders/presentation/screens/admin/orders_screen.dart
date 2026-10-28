@@ -343,7 +343,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      await OrderReceiptExportSheet.show(context, order: order);
+      final cachedItems = sl<OrdersRepository>().getCachedOrderItems(order.id);
+      await OrderReceiptExportSheet.show(
+        context,
+        order: order,
+        initialItems: cachedItems,
+      );
     } catch (e, st) {
       LoggerService.e(
         'Error al generar ticket para pedido ${order.id}',
