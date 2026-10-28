@@ -99,17 +99,26 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
       'address': address.trim().isNotEmpty ? address.trim() : null,
       'is_active': isActive,
       'type': type,
-      if (code != null && code.trim().isNotEmpty)
-        'code': code.trim().toUpperCase(),
+      'code':
+          (code != null && code.trim().isNotEmpty)
+              ? code.trim().toUpperCase()
+              : null,
       if (layoutConfig != null) 'layout_config': layoutConfig.toJson(),
     };
 
     if (existingWarehouse != null) {
       if (profileId != null) payload['updated_by'] = profileId;
-      await _supabase
+      final updateRes = await _supabase
           .from('warehouses')
           .update(payload)
-          .eq('id', existingWarehouse.id);
+          .eq('id', existingWarehouse.id)
+          .select('id');
+
+      if ((updateRes as List).isEmpty) {
+        throw Exception(
+          'No se pudo actualizar el almacén. Verifica que tu usuario cuente con permisos de escritura (RLS) en la tabla warehouses.',
+        );
+      }
 
       // Si el estado activo del almacén cambió, sincronizar sus cajas asociadas
       if (existingWarehouse.isActive != isActive) {
@@ -177,7 +186,17 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
       if (profileId != null) 'updated_by': profileId,
     };
 
-    await _supabase.from('warehouses').update(payload).eq('id', warehouseId);
+    final updateRes = await _supabase
+        .from('warehouses')
+        .update(payload)
+        .eq('id', warehouseId)
+        .select('id');
+
+    if ((updateRes as List).isEmpty) {
+      throw Exception(
+        'No se pudo guardar la distribución procedural. Verifica permisos RLS en warehouses.',
+      );
+    }
   }
 
   @override
@@ -194,13 +213,20 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
       profileId = p?['id'] as String?;
     }
 
-    await _supabase
+    final updateRes = await _supabase
         .from('warehouses')
         .update({
           'is_active': isActive,
           if (profileId != null) 'updated_by': profileId,
         })
-        .eq('id', wh.id);
+        .eq('id', wh.id)
+        .select('id');
+
+    if ((updateRes as List).isEmpty) {
+      throw Exception(
+        'No se pudo cambiar el estado del almacén. Verifica permisos RLS en warehouses.',
+      );
+    }
 
     // Sincronizar estado en las cajas físicas del almacén
     await _supabase

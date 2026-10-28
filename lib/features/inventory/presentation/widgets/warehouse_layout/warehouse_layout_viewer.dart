@@ -157,8 +157,11 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
   }
 
   Widget _buildTopControlBar(bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isCompact = screenWidth < 600;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8, vertical: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xE61E293B) : const Color(0xF2FFFFFF),
         borderRadius: BorderRadius.circular(16),
@@ -173,87 +176,123 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Botón selector de Modo (2D Plano vs 2.5D Isométrico)
-          SegmentedButton<WarehouseViewMode>(
-            segments: const [
-              ButtonSegment(
-                value: WarehouseViewMode.isometric25D,
-                icon: Icon(Icons.view_in_ar_rounded, size: 16),
-                label: Text(
-                  '3D Iso',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Botón selector de Modo (2D Plano vs 2.5D Isométrico)
+            SegmentedButton<WarehouseViewMode>(
+              segments: [
+                ButtonSegment(
+                  value: WarehouseViewMode.isometric25D,
+                  icon: const Icon(Icons.view_in_ar_rounded, size: 15),
+                  label: Text(
+                    isCompact ? '3D' : '3D Iso',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                ButtonSegment(
+                  value: WarehouseViewMode.topDown2D,
+                  icon: const Icon(Icons.grid_on_rounded, size: 15),
+                  label: Text(
+                    isCompact ? '2D' : '2D Plano',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+              selected: {_viewMode},
+              onSelectionChanged: (newSelection) {
+                setState(() {
+                  _viewMode = newSelection.first;
+                });
+              },
+              style: SegmentedButton.styleFrom(
+                selectedBackgroundColor: AppColors.primary,
+                selectedForegroundColor: Colors.white,
+                foregroundColor:
+                    isDark ? const Color(0xFFE2E8F0) : AppColors.textPrimary,
+                backgroundColor:
+                    isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              ButtonSegment(
-                value: WarehouseViewMode.topDown2D,
-                icon: Icon(Icons.grid_on_rounded, size: 16),
+            ),
+            const SizedBox(width: 6),
+            const SizedBox(height: 20, child: VerticalDivider(width: 1)),
+            const SizedBox(width: 2),
+
+            // Zoom In
+            IconButton(
+              icon: const Icon(Icons.zoom_in_rounded, size: 19),
+              tooltip: 'Acercar',
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              onPressed: _zoomIn,
+              visualDensity: VisualDensity.compact,
+            ),
+            // Zoom Out
+            IconButton(
+              icon: const Icon(Icons.zoom_out_rounded, size: 19),
+              tooltip: 'Alejar',
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              onPressed: _zoomOut,
+              visualDensity: VisualDensity.compact,
+            ),
+            // Centrar
+            IconButton(
+              icon: const Icon(Icons.center_focus_strong_rounded, size: 19),
+              tooltip: 'Centrar Vista',
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              onPressed: _resetTransform,
+              visualDensity: VisualDensity.compact,
+            ),
+
+            // Botón Diseñar / Editar Layout
+            if (widget.onOpenEditor != null) ...[
+              const SizedBox(width: 2),
+              const SizedBox(height: 20, child: VerticalDivider(width: 1)),
+              const SizedBox(width: 6),
+              FilledButton.icon(
+                onPressed: widget.onOpenEditor,
+                icon: const Icon(
+                  Icons.tune_rounded,
+                  size: 15,
+                  color: Colors.white,
+                ),
                 label: Text(
-                  '2D Plano',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  isCompact ? 'Diseñar' : 'Diseñar Layout',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
-            selected: {_viewMode},
-            onSelectionChanged: (newSelection) {
-              setState(() {
-                _viewMode = newSelection.first;
-              });
-            },
-            style: SegmentedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          const SizedBox(height: 20, child: VerticalDivider(width: 1)),
-          const SizedBox(width: 4),
-
-          // Zoom In
-          IconButton(
-            icon: const Icon(Icons.zoom_in_rounded, size: 20),
-            tooltip: 'Acercar',
-            onPressed: _zoomIn,
-            visualDensity: VisualDensity.compact,
-          ),
-          // Zoom Out
-          IconButton(
-            icon: const Icon(Icons.zoom_out_rounded, size: 20),
-            tooltip: 'Alejar',
-            onPressed: _zoomOut,
-            visualDensity: VisualDensity.compact,
-          ),
-          // Centrar
-          IconButton(
-            icon: const Icon(Icons.center_focus_strong_rounded, size: 20),
-            tooltip: 'Centrar Vista',
-            onPressed: _resetTransform,
-            visualDensity: VisualDensity.compact,
-          ),
-
-          // Botón Diseñar / Editar Layout
-          if (widget.onOpenEditor != null) ...[
-            const SizedBox(width: 4),
-            const SizedBox(height: 20, child: VerticalDivider(width: 1)),
-            const SizedBox(width: 8),
-            FilledButton.tonalIcon(
-              onPressed: widget.onOpenEditor,
-              icon: const Icon(Icons.tune_rounded, size: 16),
-              label: const Text(
-                'Diseñar Layout',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-              style: FilledButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

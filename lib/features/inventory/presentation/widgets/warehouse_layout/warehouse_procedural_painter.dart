@@ -283,6 +283,21 @@ class WarehouseProceduralPainter extends CustomPainter {
     final p2 = _toIso(dim.widthMeters, dim.lengthMeters, 0, scale);
     final p3 = _toIso(0, dim.lengthMeters, 0, scale);
 
+    // Sombra proyectada del suelo/plataforma en el espacio virtual
+    final floorShadow =
+        Path()
+          ..moveTo(p0.dx, p0.dy + 8)
+          ..lineTo(p1.dx + 6, p1.dy + 8)
+          ..lineTo(p2.dx + 6, p2.dy + 12)
+          ..lineTo(p3.dx - 6, p3.dy + 12)
+          ..close();
+    canvas.drawPath(
+      floorShadow,
+      Paint()
+        ..color = const Color(0x1F000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
+
     // Suelo base
     final floorPath =
         Path()
@@ -295,9 +310,24 @@ class WarehouseProceduralPainter extends CustomPainter {
     final floorPaint =
         Paint()
           ..color =
-              isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)
+              isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)
           ..style = PaintingStyle.fill;
     canvas.drawPath(floorPath, floorPaint);
+
+    // Grosor de la losa arquitectónica (canto 3D)
+    final slabFront =
+        Path()
+          ..moveTo(p3.dx, p3.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..lineTo(p2.dx, p2.dy + 5)
+          ..lineTo(p3.dx, p3.dy + 5)
+          ..close();
+    canvas.drawPath(
+      slabFront,
+      Paint()
+        ..color = isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)
+        ..style = PaintingStyle.fill,
+    );
 
     // Cuadrícula isométrica
     final gridPaint =
@@ -467,10 +497,8 @@ class WarehouseProceduralPainter extends CustomPainter {
       style: const TextStyle(
         color: Colors.white,
         fontSize: 9,
-        fontWeight: FontWeight.bold,
-        shadows: [
-          Shadow(color: Colors.black87, offset: Offset(0, 1), blurRadius: 2),
-        ],
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.3,
       ),
     );
 
@@ -479,6 +507,35 @@ class WarehouseProceduralPainter extends CustomPainter {
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     )..layout();
+
+    final badgeWidth = tp.width + 10;
+    final badgeHeight = tp.height + 4;
+    final badgeRect = Rect.fromCenter(
+      center: centerTop,
+      width: badgeWidth,
+      height: badgeHeight,
+    );
+
+    // Pill de alto contraste tipo HUD / CAD digital twin
+    final pillPaint =
+        Paint()
+          ..color = const Color(0xB80F172A)
+          ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(badgeRect, const Radius.circular(5)),
+      pillPaint,
+    );
+
+    // Borde sutil del badge
+    final borderPaint =
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.28)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(badgeRect, const Radius.circular(5)),
+      borderPaint,
+    );
 
     tp.paint(
       canvas,

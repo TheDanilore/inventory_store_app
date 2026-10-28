@@ -27,7 +27,7 @@ class WarehouseDigitalTwinScreen extends StatefulWidget {
 
     final cubit = existingCubit ?? sl<WarehousesCubit>();
 
-    return Navigator.of(context).push(
+    return Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder:
             (ctx) => BlocProvider.value(
@@ -37,7 +37,6 @@ class WarehouseDigitalTwinScreen extends StatefulWidget {
       ),
     );
   }
-
 
   @override
   State<WarehouseDigitalTwinScreen> createState() =>
@@ -195,6 +194,12 @@ class _WarehouseDigitalTwinScreenState
             icon: const Icon(Icons.tune_rounded, size: 16),
             label: const Text('Reconfigurar'),
             style: OutlinedButton.styleFrom(
+              foregroundColor:
+                  isDark ? const Color(0xFFE2E8F0) : AppColors.textPrimary,
+              side: BorderSide(
+                color:
+                    isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+              ),
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 12),
             ),
@@ -217,15 +222,32 @@ class _WarehouseDigitalTwinScreenState
                             color: Colors.white,
                           ),
                         )
-                        : const Icon(Icons.cloud_upload_rounded, size: 16),
+                        : Icon(
+                          _hasUnsavedChanges
+                              ? Icons.cloud_upload_rounded
+                              : Icons.check_circle_rounded,
+                          size: 16,
+                          color:
+                              _hasUnsavedChanges
+                                  ? Colors.white
+                                  : const Color(0xFF059669),
+                        ),
                 label: Text(
                   _hasUnsavedChanges ? 'Guardar Cambios' : 'Sincronizado',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color:
+                        _hasUnsavedChanges
+                            ? Colors.white
+                            : const Color(0xFF065F46),
+                  ),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor:
                       _hasUnsavedChanges
                           ? AppColors.primary
-                          : Colors.grey.shade400,
+                          : const Color(0xFFD1FAE5),
+                  elevation: 0,
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),

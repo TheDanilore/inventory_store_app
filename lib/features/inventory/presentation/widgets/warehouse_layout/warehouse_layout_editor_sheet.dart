@@ -24,9 +24,14 @@ class WarehouseLayoutEditorSheet extends StatefulWidget {
     if (isDesktop) {
       return showDialog<WarehouseLayoutConfig>(
         context: context,
+        useRootNavigator: true,
         builder:
             (ctx) => Dialog(
               backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 24,
+              ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 580),
                 child: WarehouseLayoutEditorSheet(
@@ -40,7 +45,11 @@ class WarehouseLayoutEditorSheet extends StatefulWidget {
     } else {
       return showModalBottomSheet<WarehouseLayoutConfig>(
         context: context,
+        useRootNavigator: true,
         isScrollControlled: true,
+        useSafeArea: true,
+        isDismissible: true,
+        enableDrag: true,
         backgroundColor: Colors.transparent,
         builder:
             (ctx) => WarehouseLayoutEditorSheet(
@@ -112,12 +121,16 @@ class _WarehouseLayoutEditorSheetState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop = MediaQuery.of(context).size.width >= 700;
     final totalArea = _widthMeters * _lengthMeters;
 
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius:
+            isDesktop
+                ? BorderRadius.circular(24)
+                : const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x26000000),
@@ -126,12 +139,27 @@ class _WarehouseLayoutEditorSheetState
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: EdgeInsets.fromLTRB(24, isDesktop ? 20 : 12, 24, 20),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Drag handle exclusivo para móvil
+            if (!isDesktop) ...[
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ],
+
             // Cabecera
             Row(
               children: [
@@ -319,38 +347,74 @@ class _WarehouseLayoutEditorSheetState
             const SizedBox(height: 24),
 
             // Botones de Acción
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+            SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            isDark
+                                ? const Color(0xFFCBD5E1)
+                                : AppColors.textSecondary,
+                        side: BorderSide(
+                          color:
+                              isDark
+                                  ? const Color(0xFF475569)
+                                  : const Color(0xFFCBD5E1),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
                       ),
                     ),
-                    child: const Text('Cancelar'),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      final newConfig = _generateCurrentConfig();
-                      widget.onApply(newConfig);
-                    },
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: const Text('Aplicar y Visualizar'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        final newConfig = _generateCurrentConfig();
+                        widget.onApply(newConfig);
+                      },
+                      icon: const Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Aplicar Cambios',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

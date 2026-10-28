@@ -121,8 +121,8 @@ class WarehousesCubit extends Cubit<WarehousesState> {
           isSaving: false,
           successMessage:
               existingWarehouse == null
-                  ? 'Almacén creado exitosamente'
-                  : 'Almacén actualizado',
+                  ? 'Establecimiento registrado con éxito'
+                  : 'Establecimiento actualizado correctamente',
         ),
       );
 
@@ -131,7 +131,9 @@ class WarehousesCubit extends Cubit<WarehousesState> {
     } catch (e) {
       final errStr = e.toString().toLowerCase();
       String msg = 'Ocurrió un error inesperado al guardar el almacén.';
-      if (errStr.contains('warehouses_name_key')) {
+      if (errStr.contains('rls') || errStr.contains('permiso')) {
+        msg = e.toString().replaceAll('Exception:', '').trim();
+      } else if (errStr.contains('warehouses_name_key')) {
         msg = 'Ya existe un almacén con ese nombre.';
       } else if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||

@@ -161,9 +161,7 @@ class _WarehousesManagementScreenState
       child: WarehouseFormSheet(
         warehouseToEdit: warehouse,
         isDialog: isDesktop,
-        onSaved: () {
-          cubit.loadWarehouses(isRefresh: true);
-        },
+        onSaved: () {},
       ),
     );
 
@@ -226,12 +224,17 @@ class _WarehousesManagementScreenState
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 800;
 
-    return BlocProvider(
-      create: (_) => sl<WarehousesCubit>()..initLoad(),
+    WarehousesCubit? existingCubit;
+    try {
+      existingCubit = context.read<WarehousesCubit>();
+    } catch (_) {}
+
+    final cubit = existingCubit ?? (sl<WarehousesCubit>()..initLoad());
+
+    return BlocProvider.value(
+      value: cubit,
       child: Builder(
         builder: (context) {
-          final cubit = context.read<WarehousesCubit>();
-
           return Focus(
             autofocus: true,
             onKeyEvent:

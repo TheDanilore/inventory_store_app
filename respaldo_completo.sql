@@ -1668,35 +1668,144 @@ $$;
 ALTER FUNCTION "public"."get_my_permissions"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_my_warehouses"() RETURNS TABLE("id" "uuid", "name" "text", "address" "text", "is_active" boolean, "is_default" boolean)
+CREATE OR REPLACE FUNCTION "public"."get_my_warehouses"() RETURNS TABLE("id" "uuid", "name" "text", "address" "text", "is_active" boolean, "is_default" boolean, "type" "text", "code" "text", "layout_config" "jsonb")
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  -- Si tiene permiso warehouses.view_all, ver todos los almacenes activos
-  IF public.user_has_permission('warehouses.view_all') THEN
+  IF public.user_has_permission('warehouses.view_all') OR public.is_admin() THEN
     RETURN QUERY
-    SELECT w.id, w.name, w.address, w.is_active, FALSE AS is_default
+    SELECT w.id, w.name, w.address, w.is_active, FALSE AS is_default,
+           COALESCE(w.type, 'warehouse') AS type, w.code, w.layout_config
     FROM public.warehouses w
     WHERE w.is_active = TRUE
     ORDER BY w.name;
     RETURN;
   END IF;
 
-  -- Sino, solo almacenes asignados vía user_warehouses
   RETURN QUERY
-  SELECT w.id, w.name, w.address, w.is_active, uw.is_default
+  SELECT w.id, w.name, w.address, w.is_active, uw.is_default,
+         COALESCE(w.type, 'warehouse') AS type, w.code, w.layout_config
   FROM public.user_warehouses uw
   JOIN public.profiles p ON p.id = uw.profile_id
   JOIN public.warehouses w ON w.id = uw.warehouse_id
-  WHERE p.auth_user_id = auth.uid()
-    AND w.is_active = TRUE
-  ORDER BY uw.is_default DESC, w.name;
+  WHERE p.auth_user_id = auth.uid() AND w.is_active = TRUE
+  ORDER BY uw.is_default DESC, w.name ASC;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."get_my_warehouses"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_product_detail_bundle"("p_product_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    SELECT jsonb_build_object(
+        'financials', (
+            SELECT jsonb_build_object(
+                'total_sold', COALESCE(SUM(oi.quantity), 0),
+                'total_revenue', COALESCE(SUM(oi.quantity * oi.applied_price), 0),
+                'reinvestment_needed', COALESCE(SUM(oi.quantity * oi.unit_cost), 0),
+                'variant_sales', COALESCE(
+                    (
+                        SELECT jsonb_object_agg(
+                            oi_var.variant_id,
+                            jsonb_build_object(
+                                'qty', SUM(oi_var.quantity),
+                                'cost', SUM(oi_var.quantity * oi_var.unit_cost),
+                                'revenue', SUM(oi_var.quantity * oi_var.applied_price)
+                            )
+                        )
+                        FROM order_items oi_var
+                        INNER JOIN orders o_var ON o_var.id = oi_var.order_id
+                        WHERE oi_var.product_id = p_product_id
+                          AND o_var.status = 'COMPLETED'
+                        GROUP BY oi_var.variant_id
+                    ), '{}'::jsonb
+                )
+            )
+            FROM order_items oi
+            INNER JOIN orders o ON o.id = oi.order_id
+            WHERE oi.product_id = p_product_id
+              AND o.status = 'COMPLETED'
+        ),
+        'stocks', (
+            SELECT COALESCE(jsonb_agg(s), '[]'::jsonb)
+            FROM (
+                SELECT warehouse_id, variant_id, SUM(available_quantity) AS available_quantity
+                FROM warehouse_stock_batches
+                WHERE product_id = p_product_id
+                GROUP BY warehouse_id, variant_id
+            ) s
+        ),
+        'batches', (
+            SELECT COALESCE(jsonb_agg(b), '[]'::jsonb)
+            FROM (
+                SELECT wsb.id, wsb.available_quantity, wsb.variant_id, wsb.warehouse_id,
+                       wsb.batch_number, wsb.expiry_date,
+                       jsonb_build_object('name', w.name) AS warehouses
+                FROM warehouse_stock_batches wsb
+                LEFT JOIN warehouses w ON w.id = wsb.warehouse_id
+                WHERE wsb.product_id = p_product_id
+                ORDER BY wsb.expiry_date ASC NULLS LAST
+            ) b
+        ),
+        'images', (
+            SELECT COALESCE(jsonb_agg(img), '[]'::jsonb)
+            FROM (
+                SELECT id, product_id, variant_id, image_url, display_order, is_main
+                FROM product_images
+                WHERE product_id = p_product_id
+                ORDER BY display_order ASC
+            ) img
+        ),
+        'variants', (
+            SELECT COALESCE(jsonb_agg(v), '[]'::jsonb)
+            FROM (
+                SELECT pv.id, pv.product_id, pv.sku, pv.sale_price, pv.wholesale_price,
+                       pv.wholesale_min_quantity, pv.reorder_point, pv.is_active, pv.unit_cost,
+                       (
+                           SELECT jsonb_agg(vav)
+                           FROM variant_attribute_values vav
+                           WHERE vav.variant_id = pv.id
+                       ) AS variant_attribute_values
+                FROM product_variants pv
+                WHERE pv.product_id = p_product_id AND pv.is_active = true
+                ORDER BY pv.created_at ASC
+            ) v
+        ),
+        'reviews', (
+            SELECT COALESCE(jsonb_agg(r), '[]'::jsonb)
+            FROM (
+                SELECT rating, comment, user_name, created_at
+                FROM product_reviews
+                WHERE product_id = p_product_id
+                ORDER BY created_at DESC
+                LIMIT 50
+            ) r
+        ),
+        'ingredients', (
+            SELECT COALESCE(jsonb_agg(ing), '[]'::jsonb)
+            FROM (
+                SELECT pai.concentration, pai.unit,
+                       jsonb_build_object('id', ai.id, 'name', ai.name, 'description', ai.description) AS active_ingredients
+                FROM product_active_ingredients pai
+                LEFT JOIN active_ingredients ai ON ai.id = pai.active_ingredient_id
+                WHERE pai.product_id = p_product_id
+            ) ing
+        )
+    ) INTO v_result;
+
+    RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_product_detail_bundle"("p_product_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_purchase_order_items_details"("p_order_id" "uuid") RETURNS "jsonb"
@@ -6052,11 +6161,26 @@ CREATE TABLE IF NOT EXISTS "public"."warehouses" (
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "created_by" "uuid",
-    "updated_by" "uuid"
+    "updated_by" "uuid",
+    "type" character varying(30) DEFAULT 'warehouse'::character varying NOT NULL,
+    "code" character varying(30),
+    "layout_config" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL
 );
 
 
 ALTER TABLE "public"."warehouses" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."warehouses"."type" IS 'Tipo operativo: store (Tienda/Sucursal), warehouse (Almacén Central), dark_store (Micro-Hub), transit (Móvil)';
+
+
+
+COMMENT ON COLUMN "public"."warehouses"."code" IS 'Código o identificador corto del almacén/tienda (ej. TDA-01, ALM-CENTRAL)';
+
+
+
+COMMENT ON COLUMN "public"."warehouses"."layout_config" IS 'Receta procedural JSON con dimensiones, pasillos, estantes y zonas';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."wishlist" (
@@ -6600,6 +6724,10 @@ CREATE INDEX "idx_user_warehouses_profile_id" ON "public"."user_warehouses" USIN
 
 
 CREATE INDEX "idx_user_warehouses_warehouse_id" ON "public"."user_warehouses" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "idx_warehouses_type" ON "public"."warehouses" USING "btree" ("type");
 
 
 
@@ -7750,6 +7878,10 @@ CREATE POLICY "Variantes: Gestión por permiso" ON "public"."product_variants" T
 
 
 
+CREATE POLICY "Warehouses: manage for authenticated" ON "public"."warehouses" TO "authenticated" USING (true) WITH CHECK (true);
+
+
+
 CREATE POLICY "Warehouses: view all or assigned" ON "public"."warehouses" FOR SELECT TO "authenticated" USING (("public"."user_has_permission"('warehouses.view_all'::"text") OR (EXISTS ( SELECT 1
    FROM ("public"."user_warehouses" "uw"
      JOIN "public"."profiles" "p" ON (("p"."id" = "uw"."profile_id")))
@@ -8238,6 +8370,12 @@ GRANT ALL ON FUNCTION "public"."get_my_permissions"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_warehouses"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_product_detail_bundle"("p_product_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_product_detail_bundle"("p_product_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_product_detail_bundle"("p_product_id" "uuid") TO "service_role";
 
 
 
@@ -8861,3 +8999,17 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+
+
+-- ============================================================================
+-- 20261028_fix_warehouse_permissions_and_fields
+-- ============================================================================
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS type text DEFAULT 'warehouse';
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS code text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS layout_config jsonb DEFAULT '{}'::jsonb;
+
+DROP POLICY IF EXISTS "Warehouses: manage for authenticated" ON public.warehouses;
+CREATE POLICY "Warehouses: manage for authenticated" ON public.warehouses
+FOR ALL TO authenticated
+USING (true)
+WITH CHECK (true);

@@ -96,14 +96,6 @@ class _WarehouseFormSheetState extends State<WarehouseFormSheet> {
     if (!mounted) return;
 
     if (success) {
-      AppSnackbar.show(
-        context,
-        message:
-            _isEditing
-                ? 'Establecimiento actualizado correctamente'
-                : 'Establecimiento registrado con éxito',
-        type: SnackbarType.success,
-      );
       widget.onSaved?.call();
       Navigator.of(context).pop();
     } else if (cubit.state.errorMessage != null) {
