@@ -81,6 +81,7 @@ dependencies:
 
 dependency_overrides:
   xml: ^7.0.1
+  archive: ^4.0.2
 
 dev_dependencies:
   flutter_test:
