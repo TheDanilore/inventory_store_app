@@ -968,19 +968,24 @@ ALTER FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") OWNER TO 
 
 CREATE OR REPLACE FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'auth'
     AS $_$
 DECLARE
   v_actor uuid;
-  v_actor_role public.user_role;
+  v_actor_role text;
   v_auth_id uuid;
-  v_target_role public.user_role;
+  v_target_role text;
   v_reassign uuid;
   r record;
 BEGIN
   -- Solo administradores
-  SELECT id, role INTO v_actor, v_actor_role
-  FROM profiles WHERE auth_user_id = auth.uid();
+  SELECT pr.id, COALESCE(r.name, 'customer') INTO v_actor, v_actor_role
+  FROM public.profiles pr
+  LEFT JOIN public.user_roles ur ON ur.profile_id = pr.id
+  LEFT JOIN public.roles r ON r.id = ur.role_id
+  WHERE pr.auth_user_id = auth.uid()
+  ORDER BY CASE WHEN r.name = 'admin' THEN 1 ELSE 2 END
+  LIMIT 1;
 
   IF v_actor IS NULL OR v_actor_role <> 'admin' THEN
     RETURN jsonb_build_object('success', false,
@@ -992,16 +997,23 @@ BEGIN
       'message', 'No puedes eliminar tu propia cuenta.');
   END IF;
 
-  SELECT auth_user_id, role INTO v_auth_id, v_target_role
-  FROM profiles WHERE id = p_user_id;
+  SELECT pr.auth_user_id, COALESCE(r.name, 'customer') INTO v_auth_id, v_target_role
+  FROM public.profiles pr
+  LEFT JOIN public.user_roles ur ON ur.profile_id = pr.id
+  LEFT JOIN public.roles r ON r.id = ur.role_id
+  WHERE pr.id = p_user_id
+  ORDER BY CASE WHEN r.name = 'admin' THEN 1 ELSE 2 END
+  LIMIT 1;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('success', false,
       'message', 'El usuario no fue encontrado.');
   END IF;
 
   IF v_target_role = 'admin' AND
-     (SELECT count(*) FROM profiles
-      WHERE role = 'admin' AND is_active) <= 1 THEN
+     (SELECT count(DISTINCT pr.id) FROM public.profiles pr
+      JOIN public.user_roles ur ON ur.profile_id = pr.id
+      JOIN public.roles r ON r.id = ur.role_id
+      WHERE r.name = 'admin' AND pr.is_active) <= 1 THEN
     RETURN jsonb_build_object('success', false,
       'message', 'No puedes eliminar al único administrador activo.');
   END IF;
@@ -1037,7 +1049,9 @@ BEGIN
     END IF;
   END LOOP;
 
-  DELETE FROM profiles WHERE id = p_user_id;
+  DELETE FROM public.user_roles WHERE profile_id = p_user_id;
+  DELETE FROM public.profiles WHERE id = p_user_id;
+
   IF v_auth_id IS NOT NULL THEN
     DELETE FROM auth.users WHERE id = v_auth_id;
   END IF;
@@ -1333,11 +1347,15 @@ DECLARE
     v_debt_customers_count INT;
 BEGIN
     SELECT COUNT(*),
-           COUNT(*) FILTER (WHERE is_active = true),
-           COUNT(*) FILTER (WHERE is_active = false)
+           COUNT(*) FILTER (WHERE p.is_active = true),
+           COUNT(*) FILTER (WHERE p.is_active = false)
       INTO v_total_customers, v_active_customers, v_inactive_customers
-      FROM public.profiles
-     WHERE role = 'customer';
+      FROM public.profiles p
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.user_roles ur
+       JOIN public.roles r ON r.id = ur.role_id
+       WHERE ur.profile_id = p.id AND r.name IN ('admin', 'employee')
+     );
 
     SELECT COALESCE(SUM(total_amount), 0)
       INTO v_total_revenue
@@ -1933,6 +1951,7 @@ ALTER FUNCTION "public"."get_top_customers"("p_limit" integer) OWNER TO "postgre
 
 CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" integer DEFAULT 5) RETURNS TABLE("id" "uuid", "full_name" "text", "phone" "text", "document_number" "text", "document_type" "text", "avatar_url" "text", "wallet_balance" numeric, "is_active" boolean, "created_at" timestamp with time zone, "total_revenue" numeric, "order_count" bigint)
     LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
     SELECT 
         p.id,
@@ -1941,14 +1960,19 @@ CREATE OR REPLACE FUNCTION "public"."get_top_customers_rpc"("p_limit" integer DE
         p.document_number,
         p.document_type,
         p.avatar_url,
-        p.wallet_balance,
+        p.wallet_balance::numeric,
         p.is_active,
         p.created_at,
         COALESCE(SUM(o.total_amount), 0) AS total_revenue,
         COUNT(o.id) AS order_count
     FROM public.profiles p
     JOIN public.orders o ON o.customer_id = p.id
-    WHERE p.role = 'customer' AND o.status = 'COMPLETED'
+    WHERE o.status = 'COMPLETED'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE ur.profile_id = p.id AND r.name IN ('admin', 'employee')
+      )
     GROUP BY p.id
     ORDER BY total_revenue DESC
     LIMIT p_limit;
@@ -2059,9 +2083,15 @@ DECLARE
   v_updated_variants int := 0;
   v_movements int := 0;
 BEGIN
-  -- Autorización: solo admin / employee
-  SELECT id, role::text INTO v_profile_id, v_role
-  FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
+  -- Autorización: resolver perfil y rol desde user_roles / roles
+  SELECT pr.id, COALESCE(r.name, 'customer') INTO v_profile_id, v_role
+  FROM public.profiles pr
+  LEFT JOIN public.user_roles ur ON ur.profile_id = pr.id
+  LEFT JOIN public.roles r ON r.id = ur.role_id
+  WHERE pr.auth_user_id = auth.uid()
+  ORDER BY CASE WHEN r.name = 'admin' THEN 1 WHEN r.name = 'employee' THEN 2 ELSE 3 END
+  LIMIT 1;
+
   IF v_profile_id IS NULL OR v_role NOT IN ('admin', 'employee') THEN
     RAISE EXCEPTION 'Operación rechazada: solo administradores o empleados pueden importar.';
   END IF;
@@ -2195,8 +2225,6 @@ BEGIN
         v_is_new_variant := true;
         v_created_variants := v_created_variants + 1;
 
-        -- Nombre de variante = atributo "Variante" (las variantes de tu BD
-        -- se describen con attributes / attribute_values)
         IF v_variant_name <> '' THEN
           SELECT id INTO v_attr_id FROM attributes
           WHERE import_norm(name) = 'variante' LIMIT 1;
@@ -2215,7 +2243,6 @@ BEGIN
           ON CONFLICT DO NOTHING;
         END IF;
 
-        -- Imagen
         IF NULLIF(btrim(coalesce(v_var->>'image_url', '')), '') IS NOT NULL THEN
           INSERT INTO product_images (product_id, variant_id, image_url, is_main, display_order)
           VALUES (v_product_id, v_variant_id, btrim(v_var->>'image_url'), true, 0);
@@ -2251,7 +2278,6 @@ BEGIN
           END IF;
 
           IF p_stock_mode = 'add' OR v_is_new_variant THEN
-            -- ============ ENTRADA (suma) ============
             IF v_qty <= 0 THEN CONTINUE; END IF;
 
             IF v_entry_id IS NULL THEN
@@ -2304,7 +2330,6 @@ BEGIN
             v_movements := v_movements + 1;
 
           ELSIF v_uses_lots THEN
-            -- ============ REEMPLAZAR (producto con lotes): ajusta ese lote ============
             SELECT id, available_quantity INTO v_stock_batch_id, v_prev_stock
             FROM warehouse_stock_batches
             WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id AND batch_number = v_lot
@@ -2345,7 +2370,6 @@ BEGIN
             END IF;
 
           ELSE
-            -- ============ REEMPLAZAR (sin lotes): deja el TOTAL del almacén en v_qty ============
             SELECT COALESCE(SUM(available_quantity), 0) INTO v_total_current
             FROM warehouse_stock_batches
             WHERE variant_id = v_variant_id AND warehouse_id = p_warehouse_id;
@@ -3864,7 +3888,11 @@ BEGIN
         SELECT id INTO v_current_profile_id FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
     END IF;
     IF v_current_profile_id IS NULL THEN
-        SELECT id INTO v_current_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+        SELECT ur.profile_id INTO v_current_profile_id
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin'
+        LIMIT 1;
     END IF;
 
     -- 1. Fetch Order Data
@@ -3885,7 +3913,6 @@ BEGIN
             WHERE order_id = v_order_id AND reason = 'SALE'
         LOOP
             IF v_mov.stock_batch_id IS NOT NULL AND v_mov.quantity < 0 THEN
-                -- Revert deduction
                 UPDATE warehouse_stock_batches
                 SET available_quantity = available_quantity + ABS(v_mov.quantity)
                 WHERE id = v_mov.stock_batch_id
@@ -4063,8 +4090,8 @@ DECLARE
     v_take integer;
     v_old_stock numeric;
 BEGIN
-    -- 1. Extraer campos del payload
     v_order_id := (payload->>'order_id')::uuid;
+    v_warehouse_id := (payload->>'warehouse_id')::uuid;
     v_payment_method := payload->>'payment_method';
     v_customer_id := (payload->>'selected_customer_id')::uuid;
     v_customer_name := payload->>'customer_name_to_save';
@@ -4079,7 +4106,11 @@ BEGIN
         SELECT id INTO v_current_profile_id FROM profiles WHERE auth_user_id = auth.uid() LIMIT 1;
     END IF;
     IF v_current_profile_id IS NULL THEN
-        SELECT id INTO v_current_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+        SELECT ur.profile_id INTO v_current_profile_id
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin'
+        LIMIT 1;
     END IF;
 
     v_items := payload->'items';
@@ -4135,13 +4166,12 @@ BEGIN
         END IF;
     END IF;
 
-    -- 4. Procesar deducción de inventario y registrar movimientos (previous_stock & new_stock blindados)
+    -- 4. Procesar deducción de inventario y registrar movimientos
     FOR v_item IN SELECT * FROM jsonb_array_elements(v_items)
     LOOP
         v_qty_needed := (v_item->>'quantity')::integer;
         v_remaining := v_qty_needed;
         
-        -- Escenario A: Overrides manuales de lotes
         IF v_overrides IS NOT NULL AND v_overrides ? (v_item->>'id') THEN
             FOR v_override IN SELECT * FROM jsonb_array_elements(v_overrides->(v_item->>'id'))
             LOOP
@@ -4175,7 +4205,6 @@ BEGIN
                 RAISE EXCEPTION 'Asignación de lotes inválida para producto.';
             END IF;
         ELSE
-            -- Escenario B: FEFO Automático por fecha de vencimiento
             FOR v_batch IN 
                 SELECT id, available_quantity, batch_number
                 FROM warehouse_stock_batches
@@ -4536,7 +4565,6 @@ BEGIN
     
     v_target_profile_id := p_customer_id;
 
-    -- Ajuste de billetera de puntos si aplica
     IF p_wallet_delta <> 0 THEN
       SELECT wallet_balance INTO v_current_wallet FROM profiles WHERE id = v_target_profile_id;
       UPDATE profiles 
@@ -4552,14 +4580,13 @@ BEGIN
       );
     END IF;
   ELSE
-    -- CREACIÓN
+    -- CREACIÓN (sin columna obsoleta 'role')
     INSERT INTO profiles (
       full_name, 
       phone, 
       document_type, 
       document_number, 
       is_active, 
-      role, 
       wallet_balance
     )
     VALUES (
@@ -4568,14 +4595,12 @@ BEGIN
       p_document_type, 
       NULLIF(TRIM(p_document_number), ''), 
       p_is_active, 
-      'customer', 
       0
     )
     RETURNING id INTO v_target_profile_id;
   END IF;
 
   -- 3. GESTIÓN ATÓMICA DE LÍNEA DE CRÉDITO
-  -- Por defecto, todo cliente nuevo o editado tiene línea de crédito activa (p_has_credit = true)
   SELECT id INTO v_credit_id FROM customer_credits WHERE profile_id = v_target_profile_id;
 
   IF v_credit_id IS NOT NULL THEN
@@ -4636,7 +4661,11 @@ BEGIN
         SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = v_auth_user_id LIMIT 1;
     END IF;
     IF v_profile_id IS NULL THEN
-        SELECT id INTO v_profile_id FROM profiles WHERE role = 'admin' LIMIT 1;
+        SELECT ur.profile_id INTO v_profile_id
+        FROM public.user_roles ur
+        JOIN public.roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin'
+        LIMIT 1;
     END IF;
     IF v_profile_id IS NULL THEN
         RAISE EXCEPTION 'Operación rechazada: El usuario autenticado no posee un perfil válido en el sistema.';
@@ -4644,7 +4673,7 @@ BEGIN
 
     v_is_updating := COALESCE((payload->>'is_updating')::boolean, false);
 
-    -- 2. UPSERT del Producto Maestro (con brand_id)
+    -- 2. UPSERT del Producto Maestro
     IF v_is_updating THEN
         v_product_id := (payload->'product'->>'id')::uuid;
         IF v_product_id IS NULL THEN
@@ -4780,7 +4809,7 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- 6. Manejo de Ingredientes Activos (TABLA CORREGIDA: product_active_ingredients)
+    -- 6. Manejo de Ingredientes Activos
     IF COALESCE((payload->>'ingredients_enabled')::boolean, false) AND payload ? 'ingredients' THEN
         DELETE FROM product_active_ingredients WHERE product_id = v_product_id;
         FOR v_ingredient IN SELECT * FROM jsonb_array_elements(payload->'ingredients')
@@ -8301,7 +8330,7 @@ GRANT ALL ON FUNCTION "public"."delete_product_safely"("p_product_id" "uuid") TO
 
 
 
-REVOKE ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_user_force"("p_user_id" "uuid", "p_reassign_to" "uuid") TO "service_role";
 

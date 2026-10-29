@@ -257,7 +257,8 @@ class BulkImportCubit extends Cubit<BulkImportState> {
           sheet.appendRow(cellRow);
         }
 
-        final fileBytes = excel.save();
+        // Usar encode() en lugar de save() para evitar descarga doble de 'FlutterExcel.xlsx' en Web
+        final fileBytes = excel.encode();
         if (fileBytes != null) {
           final result = await FileExportService.save(
             fileName: 'plantilla_productos',
@@ -322,7 +323,8 @@ class BulkImportCubit extends Cubit<BulkImportState> {
           sheet.appendRow(cellRow);
         }
 
-        final fileBytes = excel.save();
+        // Usar encode() en lugar de save() para evitar descarga doble de 'FlutterExcel.xlsx' en Web
+        final fileBytes = excel.encode();
         if (fileBytes != null) {
           final result = await FileExportService.save(
             fileName: 'reporte_importacion',

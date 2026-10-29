@@ -61,7 +61,7 @@ class InventoryAlertSourceImpl implements InventoryAlertSource {
           totalStock += qty;
 
           final expStr = bMap['expiry_date'] as String?;
-          if (expStr != null) {
+          if (qty > 0 && expStr != null) {
             final exp = DateTime.tryParse(expStr);
             if (exp != null) {
               if (exp.isBefore(now) && exp.isAfter(windowStart)) {

@@ -79,7 +79,9 @@ class CatalogExcelExporter {
       }
     }
 
-    final fileBytes = excel.save();
+    // Usar encode() en lugar de save() para evitar que el paquete excel
+    // dispare una descarga automática secundaria ('FlutterExcel.xlsx') en Web.
+    final fileBytes = excel.encode();
     if (fileBytes == null) {
       throw Exception('No se pudo generar el archivo Excel.');
     }

@@ -159,6 +159,9 @@ class InventoryAlertEvaluator {
       final days =
           DateTime(exp.year, exp.month, exp.day).difference(today).inDays;
 
+      // No inundar la bandeja con lotes vencidos hace más de 60 días
+      if (days < -60) continue;
+
       if (days < 0) {
         out.add(
           AppNotification(
