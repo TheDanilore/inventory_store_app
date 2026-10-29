@@ -1160,6 +1160,7 @@ class BulkImportCubit extends Cubit<BulkImportState> {
             _payload.isEmpty ? 0 : _nextBatch * _batchSize / _payload.length,
         clearImportError: true,
         clearErrorMessage: true,
+        clearSuccessMessage: true,
         canResume: false,
       ),
     );

@@ -85,8 +85,9 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
         listenWhen:
             (p, c) =>
                 p.status != c.status ||
-                p.errorMessage != c.errorMessage ||
-                p.successMessage != c.successMessage,
+                (c.errorMessage != null && c.errorMessage != p.errorMessage) ||
+                (c.successMessage != null &&
+                    c.successMessage != p.successMessage),
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppSnackbar.show(
