@@ -4,7 +4,7 @@ project(inventory_store_app LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "inventory_store_app")
+set(BINARY_NAME "danilore_one")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
