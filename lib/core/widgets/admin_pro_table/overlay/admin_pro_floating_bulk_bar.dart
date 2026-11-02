@@ -52,7 +52,8 @@ class AdminProFloatingBulkBar extends StatefulWidget {
   });
 
   @override
-  State<AdminProFloatingBulkBar> createState() => _AdminProFloatingBulkBarState();
+  State<AdminProFloatingBulkBar> createState() =>
+      _AdminProFloatingBulkBarState();
 }
 
 class _AdminProFloatingBulkBarState extends State<AdminProFloatingBulkBar>
@@ -347,4 +348,3 @@ class _AdminProFloatingBulkBarState extends State<AdminProFloatingBulkBar>
     return compact ? Tooltip(message: a.label, child: button) : button;
   }
 }
-

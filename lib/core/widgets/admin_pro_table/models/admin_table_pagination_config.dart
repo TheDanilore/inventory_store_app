@@ -44,4 +44,3 @@ class AdminTablePaginationConfig {
   bool get hasPrevious => currentPage > 1;
   bool get hasNext => currentPage < totalPages;
 }
-

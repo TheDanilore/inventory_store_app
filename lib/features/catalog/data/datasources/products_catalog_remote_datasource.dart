@@ -98,26 +98,18 @@ class ProductsCatalogRemoteDataSource {
     if (isInStockFilter) {
       query = query.gt('warehouse_stock_batches.available_quantity', 0);
     } else if (stockFilter == CatalogStockFilter.outOfStock) {
-      // Optimización crítica de Egress y RAM: filtrar en PostgreSQL total_stock <= 0
-      // para no descargar miles de registros innecesarios en memoria del cliente.
+      // Optimización de Egress y RAM: Proyección mínima con límite seguro de 100 IDs
       final summaryRes = await _supabase
           .from('product_stock_summary')
-          .select('product_id, total_stock')
-          .lte('total_stock', 0);
-
-      final stockByProduct = <String, num>{};
-      for (final row in List<Map<String, dynamic>>.from(summaryRes)) {
-        final pid = row['product_id'] as String?;
-        if (pid != null && pid.isNotEmpty) {
-          stockByProduct[pid] =
-              (stockByProduct[pid] ?? 0) + ((row['total_stock'] as num?) ?? 0);
-        }
-      }
+          .select('product_id')
+          .lte('total_stock', 0)
+          .limit(100);
 
       final outOfStockIds =
-          stockByProduct.entries
-              .where((e) => e.value <= 0)
-              .map((e) => e.key)
+          List<Map<String, dynamic>>.from(summaryRes)
+              .map((row) => row['product_id'] as String?)
+              .where((id) => id != null && id.isNotEmpty)
+              .toSet()
               .toList();
 
       if (outOfStockIds.isEmpty) {
@@ -151,7 +143,7 @@ class ProductsCatalogRemoteDataSource {
     final response = await transformQuery.count(CountOption.exact);
 
     final responseData = response.data as List;
-    var entities = await IsolateUtils.run(() {
+    final entities = await IsolateUtils.run(() {
       final models =
           responseData
               .map(
@@ -162,18 +154,6 @@ class ProductsCatalogRemoteDataSource {
       return models.map((m) => m.toEntity()).toList();
     });
 
-    if (sortOption == CatalogSortOption.priceAsc) {
-      entities.sort(
-        (a, b) => (a.displaySalePrice ?? 0).compareTo(b.displaySalePrice ?? 0),
-      );
-    } else if (sortOption == CatalogSortOption.priceDesc) {
-      entities.sort(
-        (a, b) => (b.displaySalePrice ?? 0).compareTo(a.displaySalePrice ?? 0),
-      );
-    } else if (sortOption == CatalogSortOption.highStock) {
-      entities.sort((a, b) => b.totalStock.compareTo(a.totalStock));
-    }
-
     return (products: entities, totalCount: response.count);
   }
 
@@ -182,7 +162,7 @@ class ProductsCatalogRemoteDataSource {
         await _supabase
             .from('products')
             .select(
-              'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(*), categories(name), brands(id, name, logo_url), warehouse_stock_batches(id, variant_id, warehouse_id, available_quantity, batch_number, expiry_date, product_id), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))',
+              'id, name, is_active, description, category_id, brand_id, details, created_at, updated_at, stock_control, uses_batches, product_type, product_images(id, product_id, image_url, is_main, display_order), categories(name), brands(id, name, logo_url), warehouse_stock_batches(id, variant_id, warehouse_id, available_quantity, batch_number, expiry_date, product_id), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(id, product_id, image_url, is_main, display_order), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name))))',
             )
             .eq('id', id)
             .maybeSingle();
@@ -197,7 +177,7 @@ class ProductsCatalogRemoteDataSource {
         await _supabase
             .from('product_variants')
             .select(
-              'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
+              'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(id, product_id, image_url, is_main, display_order), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
             )
             .eq('id', variantId)
             .maybeSingle();
@@ -211,7 +191,7 @@ class ProductsCatalogRemoteDataSource {
     final response = await _supabase
         .from('product_variants')
         .select(
-          'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(*), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
+          'id, product_id, sku, barcode, unit_cost, sale_price, wholesale_price, wholesale_min_quantity, reorder_point, is_active, created_at, created_by, updated_by, product_images(id, product_id, image_url, is_main, display_order), variant_attribute_values(attribute_value_id, attribute_values(id, value, attributes(id, name)))',
         )
         .eq('product_id', productId)
         .eq('is_active', true)

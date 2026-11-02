@@ -11,6 +11,7 @@ import 'package:inventory_store_app/features/catalog/domain/enums/catalog_enums.
 /// Capacidades:
 ///   - Páginas de catálogo: hasta [maxPages] entradas, TTL [pageTtl].
 ///   - Detalles de producto: hasta [maxProducts] entradas, TTL [productTtl].
+///   - Soporte Patch-in-Place para mutaciones sin purga global destructiva.
 class CatalogLruCache {
   CatalogLruCache._();
   static final CatalogLruCache instance = CatalogLruCache._();
@@ -37,7 +38,7 @@ class CatalogLruCache {
     bool? isActive,
     bool searchByIngredient = false,
     bool forCustomer = false,
-    int limit = 20,
+    int limit = 15,
     int offset = 0,
     CatalogSortOption? sortOption,
     CatalogStockFilter? stockFilter,
@@ -98,7 +99,47 @@ class CatalogLruCache {
     );
   }
 
-  /// Invalida TODAS las páginas del catálogo (tras mutaciones).
+  /// Actualiza un producto existente en todas las páginas cacheadas (Patch in Place).
+  /// Esto preserva el caché L1 de catálogo evitando una purga destructiva que provocaría
+  /// parpadeo de shimmer en las vistas activas o al regresar a ellas.
+  void updateProductInPages(ProductEntity updatedProduct) {
+    putProduct(updatedProduct.id, updatedProduct);
+    final keys = _pages.keys.toList();
+    for (final key in keys) {
+      final entry = _pages[key]!;
+      final index = entry.products.indexWhere((p) => p.id == updatedProduct.id);
+      if (index != -1) {
+        final newProducts = List<ProductEntity>.from(entry.products);
+        newProducts[index] = updatedProduct;
+        _pages[key] = _PageEntry(
+          products: List.unmodifiable(newProducts),
+          totalCount: entry.totalCount,
+          cachedAt: entry.cachedAt,
+        );
+      }
+    }
+  }
+
+  /// Remueve un producto de todas las páginas cacheadas (Soft Eviction).
+  void removeProductFromPages(String productId) {
+    invalidateProduct(productId);
+    final keys = _pages.keys.toList();
+    for (final key in keys) {
+      final entry = _pages[key]!;
+      final index = entry.products.indexWhere((p) => p.id == productId);
+      if (index != -1) {
+        final newProducts = List<ProductEntity>.from(entry.products)
+          ..removeAt(index);
+        _pages[key] = _PageEntry(
+          products: List.unmodifiable(newProducts),
+          totalCount: entry.totalCount > 0 ? entry.totalCount - 1 : 0,
+          cachedAt: entry.cachedAt,
+        );
+      }
+    }
+  }
+
+  /// Invalida TODAS las páginas del catálogo (tras mutaciones globales o cambios drásticos).
   void invalidateCatalog() => _pages.clear();
 
   // ── API de Detalles de Producto Individual ─────────────────────────────────

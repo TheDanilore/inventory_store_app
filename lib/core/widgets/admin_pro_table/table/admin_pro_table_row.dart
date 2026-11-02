@@ -171,4 +171,3 @@ class _AdminProTableRowState<T> extends State<AdminProTableRow<T>> {
     return Expanded(flex: col.flex, child: cellWidget);
   }
 }
-

@@ -172,13 +172,11 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Actualizar',
-                onPressed:
-                    () => cubit.loadIngredients(forceRefresh: true),
+                onPressed: () => cubit.loadIngredients(forceRefresh: true),
               )
             else ...[
               OutlinedButton.icon(
-                onPressed:
-                    () => cubit.loadIngredients(forceRefresh: true),
+                onPressed: () => cubit.loadIngredients(forceRefresh: true),
                 icon: const Icon(
                   Icons.refresh_rounded,
                   size: 16,
@@ -250,7 +248,8 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
                     // Lienzo de Contenido (Skeleton / Grid / Empty)
                     Expanded(
                       child: RefreshIndicator(
-                        onRefresh: () => cubit.loadIngredients(forceRefresh: true),
+                        onRefresh:
+                            () => cubit.loadIngredients(forceRefresh: true),
                         color: AppColors.teal,
                         child: BlocSelector<
                           IngredientsCubit,
@@ -321,10 +320,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     );
   }
 
-  Widget _buildDesktopCommandBar(
-    BuildContext context,
-    IngredientsCubit cubit,
-  ) {
+  Widget _buildDesktopCommandBar(BuildContext context, IngredientsCubit cubit) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -370,10 +366,7 @@ class _ActiveIngredientsScreenState extends State<ActiveIngredientsScreen> {
     );
   }
 
-  Widget _buildMobileCommandBar(
-    BuildContext context,
-    IngredientsCubit cubit,
-  ) {
+  Widget _buildMobileCommandBar(BuildContext context, IngredientsCubit cubit) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(

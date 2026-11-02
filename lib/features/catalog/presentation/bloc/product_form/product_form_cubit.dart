@@ -361,8 +361,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         'social': true,
       };
     }
-    _slug =
-        (d['slug'] as String?) ?? ProductFormSeoHelper.slugify(nombre);
+    _slug = (d['slug'] as String?) ?? ProductFormSeoHelper.slugify(nombre);
     _seoTitle =
         (d['seo_title'] as String?) ??
         ProductFormSeoHelper.defaultSeoTitle(nombre);
@@ -833,9 +832,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         }
       } catch (e) {
         emit(
-          state.copyWith(
-            snackError: ProductFormDtoMapper.parseNetworkError(e),
-          ),
+          state.copyWith(snackError: ProductFormDtoMapper.parseNetworkError(e)),
         );
         return;
       }
@@ -864,8 +861,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     if (file != null) {
       final bytesOriginales = await file.readAsBytes();
-      final bytesOptimizados =
-          await ProductFormImageHelper.optimizeImageBytes(bytesOriginales);
+      final bytesOptimizados = await ProductFormImageHelper.optimizeImageBytes(
+        bytesOriginales,
+      );
 
       final updated = draft.copyWith(
         urlsExistentes: [],
@@ -936,8 +934,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     final sourceIngredients =
         _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
     if (_ingredientsEnabled) {
-      final ingError =
-          ProductFormDtoMapper.validateIngredients(sourceIngredients);
+      final ingError = ProductFormDtoMapper.validateIngredients(
+        sourceIngredients,
+      );
       if (ingError != null) {
         emit(state.copyWith(snackError: ingError));
         return;
@@ -993,8 +992,9 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         (failure) {
           emit(
             state.copyWith(
-              snackError:
-                  ProductFormDtoMapper.parseNetworkError(failure.message),
+              snackError: ProductFormDtoMapper.parseNetworkError(
+                failure.message,
+              ),
             ),
           );
         },
@@ -1014,9 +1014,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         stackTrace: st,
       );
       emit(
-        state.copyWith(
-          snackError: ProductFormDtoMapper.parseNetworkError(e),
-        ),
+        state.copyWith(snackError: ProductFormDtoMapper.parseNetworkError(e)),
       );
     } finally {
       _isSaving = false;

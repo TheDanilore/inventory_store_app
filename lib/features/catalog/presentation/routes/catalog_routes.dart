@@ -74,15 +74,15 @@ class CatalogRoutes {
     GoRoute(
       path: '/products',
       builder: (context, state) {
-        // En el shell administrativo, AdminCatalogCubit ya reside en el árbol superior
+        // En el shell administrativo, AdminCatalogCubit ya reside en el Ã¡rbol superior
         // (inyectado en StatefulShellRoute de app_router.dart). Reutilizarlo evita
-        // la destrucción del cubit y la pérdida del caché en memoria (Zero-Shimmer).
+        // la destrucciÃ³n del cubit y la pÃ©rdida del cachÃ© en memoria (Zero-Shimmer).
         try {
           context.read<AdminCatalogCubit>();
           return const AdminProductsScreen();
         } catch (_) {
-          return BlocProvider(
-            create: (_) => sl<AdminCatalogCubit>()..loadInitialData(),
+          return BlocProvider.value(
+            value: sl<AdminCatalogCubit>()..loadInitialData(),
             child: const AdminProductsScreen(),
           );
         }

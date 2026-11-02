@@ -16,4 +16,3 @@ class AdminBulkAction<T> {
     this.customColor,
   });
 }
-

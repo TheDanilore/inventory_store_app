@@ -26,4 +26,3 @@ class AdminTableColumn<T> {
     this.tooltip,
   });
 }
-

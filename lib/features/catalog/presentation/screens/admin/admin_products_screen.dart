@@ -29,12 +29,12 @@ import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory/inventory_qr_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 
-/// Pantalla Principal de Catálogo e Inventario de Productos para Administradores.
-/// Diseño camaleónico de alta densidad para Desktop, eficiencia híbrida para Tablet
-/// y ergonomía estilo Apple HIG para Móvil.
+/// Pantalla Principal de CatÃ¡logo e Inventario de Productos para Administradores.
+/// DiseÃ±o camaleÃ³nico de alta densidad para Desktop, eficiencia hÃ­brida para Tablet
+/// y ergonomÃ­a estilo Apple HIG para MÃ³vil.
 ///
 /// Optimizado con Frame-0 Zero-Shimmer (SWR), reciclaje de memoria O(1) con slivers virtualizados,
-/// y desacoplamiento de rebuilds mediante widgets atómicos.
+/// y desacoplamiento de rebuilds mediante widgets atÃ³micos.
 class AdminProductsScreen extends StatefulWidget {
   const AdminProductsScreen({super.key});
 
@@ -51,7 +51,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final _gunDetector = HardwareBarcodeGunDetector();
   bool _isTableView = true;
 
-  // Selección múltiple aislada mediante ValueNotifier (previene re-renders globales)
+  // SelecciÃ³n mÃºltiple aislada mediante ValueNotifier (previene re-renders globales)
   final ValueNotifier<Set<String>> _selectedProductIdsNotifier =
       ValueNotifier<Set<String>>({});
 
@@ -63,7 +63,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _screenFocusNode.requestFocus();
-        _searchCtrl.text = context.read<AdminCatalogCubit>().state.searchTerm;
+        final cubit = context.read<AdminCatalogCubit>();
+        _searchCtrl.text = cubit.state.searchTerm;
+        if (cubit.state.products.isEmpty) {
+          cubit.loadInitialData();
+        }
       }
     });
   }
@@ -90,7 +94,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     super.dispose();
   }
 
-  // ── REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ────────────────────
+  // â”€â”€ REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bool get _isInputFieldFocused =>
       FocusUtils.isInputFieldFocused(_searchFocusNode);
 
@@ -101,7 +105,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       context.read<AdminCatalogCubit>().submitSearch(barcode, force: true);
       AppSnackbar.show(
         context,
-        message: 'Lector detectó código: $barcode',
+        message: 'Lector detectÃ³ cÃ³digo: $barcode',
         type: SnackbarType.info,
       );
       return KeyEventResult.handled;
@@ -121,7 +125,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
 
     final key = event.logicalKey;
 
-    // Atajo [/] -> Enfocar buscador con selección total
+    // Atajo [/] -> Enfocar buscador con selecciÃ³n total
     if (key == LogicalKeyboardKey.slash) {
       _searchFocusNode.requestFocus();
       _searchCtrl.selection = TextSelection(
@@ -137,12 +141,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       return KeyEventResult.handled;
     }
 
-    // Atajo [R] -> Recargar catálogo
+    // Atajo [R] -> Recargar catÃ¡logo
     if (key == LogicalKeyboardKey.keyR) {
       context.read<AdminCatalogCubit>().refreshProducts();
       AppSnackbar.show(
         context,
-        message: 'Catálogo de productos actualizado',
+        message: 'CatÃ¡logo de productos actualizado',
         type: SnackbarType.info,
         duration: const Duration(seconds: 2),
       );
@@ -155,7 +159,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       return KeyEventResult.handled;
     }
 
-    // Atajo [Escape] -> Limpiar búsqueda o selección
+    // Atajo [Escape] -> Limpiar bÃºsqueda o selecciÃ³n
     if (key == LogicalKeyboardKey.escape) {
       if (_selectedProductIdsNotifier.value.isNotEmpty) {
         _clearSelection();
@@ -226,7 +230,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       itemName: product.name,
       matchText: product.name,
       description:
-          'Esta acción eliminará permanentemente "${product.name}"$variantText, sus códigos de barra, relaciones de inventario y configuración de precios.\n\nNota de Seguridad: La acción será rechazada si el producto cuenta con existencias activas en almacén, órdenes de compra a proveedores, ventas o movimientos en Kardex.',
+          'Esta acciÃ³n eliminarÃ¡ permanentemente "${product.name}"$variantText, sus cÃ³digos de barra, relaciones de inventario y configuraciÃ³n de precios.\n\nNota de Seguridad: La acciÃ³n serÃ¡ rechazada si el producto cuenta con existencias activas en almacÃ©n, Ã³rdenes de compra a proveedores, ventas o movimientos en Kardex.',
       confirmButtonText: 'Eliminar Producto',
       onConfirmAsync: () async {
         final success = await cubit.deleteProduct(product.id);
@@ -301,7 +305,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
-  // ── PAGINACIÓN SLIVER (Móvil / Tarjetas) ───────────────────────────────────
+  // â”€â”€ PAGINACIÃ“N SLIVER (MÃ³vil / Tarjetas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildPaginationSliver(
     AdminCatalogState state,
@@ -336,14 +340,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
-  // ── CONTENIDO PRINCIPAL SLIVER ─────────────────────────────────────────────
+  // â”€â”€ CONTENIDO PRINCIPAL SLIVER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildSliverBody(
     AdminCatalogState state,
     AdminCatalogCubit cubit, {
     required bool isDesktop,
   }) {
-    // Zero-Shimmer (SWR): Si ya hay datos en memoria/caché, mostrar de inmediato sin skeleton
+    // Zero-Shimmer (SWR): Si ya hay datos en memoria/cachÃ©, mostrar de inmediato sin skeleton
     final hasCachedProducts = state.products.isNotEmpty;
     final isLoadingInitial =
         (state.catalogState == ViewState.loading ||
@@ -436,7 +440,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Prueba ajustando el término de búsqueda o cambiando los filtros seleccionados.',
+                    'Prueba ajustando el tÃ©rmino de bÃºsqueda o cambiando los filtros seleccionados.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.textSecondary,
@@ -517,7 +521,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       );
     }
 
-    // Móvil / Tablet: Virtualización estricta mediante SliverList (reciclaje de widgets y bajo consumo de RAM)
+    // MÃ³vil / Tablet: VirtualizaciÃ³n estricta mediante SliverList (reciclaje de widgets y bajo consumo de RAM)
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       sliver: ProductsMobileSliverList(
@@ -566,7 +570,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
               if (state.actionState == ViewState.error) {
                 AppSnackbar.show(
                   context,
-                  message: state.errorMessage ?? 'Ocurrió un error',
+                  message: state.errorMessage ?? 'OcurriÃ³ un error',
                   type: SnackbarType.error,
                 );
               }
@@ -581,7 +585,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                       ? [
                         IconButton(
                           icon: const Icon(Icons.file_download_outlined),
-                          tooltip: 'Exportar catálogo (Excel / PDF / CSV)',
+                          tooltip: 'Exportar catÃ¡logo (Excel / PDF / CSV)',
                           onPressed:
                               () => _handleExport(cubit, cubit.state.products),
                         ),
@@ -648,9 +652,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                           // 0. Cabecera Ejecutiva Stripe / Linear
                           SliverToBoxAdapter(
                             child: AdminPageHeader(
-                              title: 'Catálogo de Productos',
+                              title: 'CatÃ¡logo de Productos',
                               subtitle:
-                                  'Administra precios, márgenes brutos, inventario en tiempo real y visibilidad multicanal.',
+                                  'Administra precios, mÃ¡rgenes brutos, inventario en tiempo real y visibilidad multicanal.',
                               isDesktop: !isMobile,
                               actions: [
                                 if (context.hasAnyPermission(const [
@@ -670,7 +674,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                   icon: Icons.file_download_outlined,
                                   iconColor: const Color(0xFF10B981),
                                   tooltip:
-                                      'Exportar catálogo en Excel, PDF o CSV',
+                                      'Exportar catÃ¡logo en Excel, PDF o CSV',
                                   onPressed:
                                       () => _handleExport(
                                         cubit,
@@ -741,7 +745,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             },
                           ),
 
-                          // 4. Paginación Móvil / Tarjetas
+                          // 4. PaginaciÃ³n MÃ³vil / Tarjetas
                           BlocBuilder<AdminCatalogCubit, AdminCatalogState>(
                             buildWhen:
                                 (prev, current) =>

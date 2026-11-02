@@ -70,7 +70,10 @@ class _ActiveIngredientCardState extends State<ActiveIngredientCard> {
               duration: const Duration(milliseconds: 120),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
@@ -78,7 +81,9 @@ class _ActiveIngredientCardState extends State<ActiveIngredientCard> {
                     color:
                         _isHovered
                             ? AppColors.teal.withValues(alpha: 0.45)
-                            : (isDark ? AppColors.darkBorder : AppColors.border),
+                            : (isDark
+                                ? AppColors.darkBorder
+                                : AppColors.border),
                     width: _isHovered ? 1.4 : 1.0,
                   ),
                   boxShadow:
@@ -90,7 +95,9 @@ class _ActiveIngredientCardState extends State<ActiveIngredientCard> {
                               offset: const Offset(0, 4),
                             ),
                           ]
-                          : (isDark ? [] : AppColors.cardShadow(opacity: 0.025)),
+                          : (isDark
+                              ? []
+                              : AppColors.cardShadow(opacity: 0.025)),
                 ),
                 child: Row(
                   children: [
@@ -122,7 +129,9 @@ class _ActiveIngredientCardState extends State<ActiveIngredientCard> {
                       child: Icon(
                         Icons.science_rounded,
                         color:
-                            isDark ? const Color(0xFF2DD4BF) : AppColors.tealDark,
+                            isDark
+                                ? const Color(0xFF2DD4BF)
+                                : AppColors.tealDark,
                         size: 22,
                       ),
                     ),

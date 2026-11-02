@@ -5,8 +5,8 @@ import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/admin_catalog/admin_catalog_state.dart';
 
-/// Datos inmutables para el strip de métricas de catálogo.
-/// Permite que `BlocSelector` evite rebuilds innecesarios cuando cambia el término de búsqueda u otros filtros.
+/// Datos inmutables para el strip de mÃ©tricas de catÃ¡logo.
+/// Permite que `BlocSelector` evite rebuilds innecesarios cuando cambia el tÃ©rmino de bÃºsqueda u otros filtros.
 @immutable
 class ProductsMetricsData {
   final int totalCount;
@@ -48,8 +48,8 @@ class ProductsMetricsData {
   );
 }
 
-/// Strip de métricas ejecutivas de catálogo (Bento Grid) de alta densidad.
-/// Utiliza `BlocSelector` para aislar el hilo UI y prevenir recomputación durante keystrokes de búsqueda.
+/// Strip de mÃ©tricas ejecutivas de catÃ¡logo (Bento Grid) de alta densidad.
+/// Utiliza `BlocSelector` para aislar el hilo UI y prevenir recomputaciÃ³n durante keystrokes de bÃºsqueda.
 class ProductsMetricsBar extends StatelessWidget {
   final bool isMobile;
   final bool isTablet;
@@ -69,14 +69,14 @@ class ProductsMetricsBar extends StatelessWidget {
     >(
       selector: (state) {
         final totalCount = state.totalCount;
-        final inStockCount =
-            state.products.where((p) => p.totalStock > 0).length;
-        final outOfStockCount =
-            state.products.where((p) => p.totalStock <= 0).length;
-        final totalUnits = state.products.fold<int>(
-          0,
-          (sum, p) => sum + p.totalStock,
-        );
+                int inStockCount = 0;
+        int totalUnits = 0;
+        for (final p in state.products) {
+          final stock = p.totalStock;
+          if (stock > 0) inStockCount++;
+          totalUnits += stock;
+        }
+        final outOfStockCount = state.products.length - inStockCount;
         final isMultiPage = state.totalPages > 1;
 
         return ProductsMetricsData(
@@ -94,9 +94,9 @@ class ProductsMetricsBar extends StatelessWidget {
           padding: EdgeInsets.zero,
           items: [
             AdminKpiItem(
-              title: 'TOTAL CATÁLOGO',
+              title: 'TOTAL CATÃLOGO',
               value: '${data.totalCount}',
-              subtitle: '${data.categoriesCount} categorías registradas',
+              subtitle: '${data.categoriesCount} categorÃ­as registradas',
               icon: Icons.inventory_2_rounded,
               accentColor: AppColors.primary,
               gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
@@ -106,11 +106,11 @@ class ProductsMetricsBar extends StatelessWidget {
             ),
             AdminKpiItem(
               title:
-                  data.isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
+                  data.isMultiPage ? 'EN STOCK (PÃG)' : 'EN STOCK DISPONIBLE',
               value: '${data.inStockCount}',
               subtitle:
                   data.isMultiPage
-                      ? '${data.inStockCount} en pág. actual'
+                      ? '${data.inStockCount} en pÃ¡g. actual'
                       : (data.totalCount > 0
                           ? '${((data.inStockCount / (data.totalCount > 0 ? data.totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
                           : 'Listo para despacho'),
@@ -123,13 +123,13 @@ class ProductsMetricsBar extends StatelessWidget {
             ),
             AdminKpiItem(
               title:
-                  data.isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
+                  data.isMultiPage ? 'AGOTADOS (PÃG)' : 'AGOTADOS / CRÃTICOS',
               value: '${data.outOfStockCount}',
               subtitle:
                   data.isMultiPage
-                      ? '${data.outOfStockCount} en pág. actual'
+                      ? '${data.outOfStockCount} en pÃ¡g. actual'
                       : (data.outOfStockCount > 0
-                          ? 'Requieren reposición'
+                          ? 'Requieren reposiciÃ³n'
                           : 'Sin quiebres de inventario'),
               icon: Icons.warning_amber_rounded,
               accentColor:
@@ -157,11 +157,11 @@ class ProductsMetricsBar extends StatelessWidget {
               isAlert: data.outOfStockCount > 0,
             ),
             AdminKpiItem(
-              title: 'UNIDADES EN ALMACÉN',
+              title: 'UNIDADES EN ALMACÃ‰N',
               value: '${data.totalUnits} unid.',
               subtitle:
                   data.isMultiPage
-                      ? 'En pág. actual'
+                      ? 'En pÃ¡g. actual'
                       : 'Existencias consolidadas',
               icon: Icons.all_inbox_rounded,
               accentColor: AppColors.info,

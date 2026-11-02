@@ -19,7 +19,7 @@ import 'package:inventory_store_app/features/catalog/data/utils/catalog_excel_ex
 import 'package:inventory_store_app/features/catalog/data/cache/catalog_lru_cache.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/admin_catalog_screen/catalog_dialogs.dart';
 
-@injectable
+@lazySingleton
 class AdminCatalogCubit extends Cubit<AdminCatalogState> {
   final GetCategoriesUC getCategoriesUC;
   final GetBrandsUC getBrandsUC;
@@ -136,8 +136,8 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       }
       await refreshProducts();
     } else {
-      // Revalidación en segundo plano en paralelo (Stale-While-Revalidate)
-      futures.add(refreshProducts());
+      // RevalidaciÃƒÂ³n en segundo plano en paralelo (Stale-While-Revalidate)
+      futures.add(_loadProducts(silent: true));
       await Future.wait(futures);
     }
   }
@@ -148,7 +148,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     final result = await getCategoriesUC();
     result.fold((failure) {
       LoggerService.e(
-        'Error al cargar categorías: ${failure.message}',
+        'Error al cargar categorÃƒÂ­as: ${failure.message}',
         tag: 'ADMIN_CATALOG_CUBIT',
         error: failure,
         stackTrace: StackTrace.current,
@@ -191,7 +191,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     final cleaned = term.trim();
     if (state.searchTerm == cleaned) return;
 
-    // Debounce de 350ms para evitar saturación de red y costos innecesarios en Supabase
+    // Debounce de 350ms para evitar saturaciÃƒÂ³n de red y costos innecesarios en Supabase
     _debounce = Timer(const Duration(milliseconds: 350), () {
       if (isClosed) return;
       emit(state.copyWith(searchTerm: cleaned, currentPage: 0));
@@ -294,16 +294,16 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         state.products.map((product) {
           if (soldQuantities.containsKey(product.id) && product.stockControl) {
             final soldQty = soldQuantities[product.id]!;
-            // Aquí restamos el stock de la entidad principal. Si usa lotes/variantes es más complejo,
+            // AquÃƒÂ­ restamos el stock de la entidad principal. Si usa lotes/variantes es mÃƒÂ¡s complejo,
             // pero para stock general basta con reducir totalStock en UI cache.
             final newStock = product.totalStock - soldQty;
-            // Nota: ProductEntity es inmutable, así que creamos un copyWith.
+            // Nota: ProductEntity es inmutable, asÃƒÂ­ que creamos un copyWith.
             return product.copyWith(totalStock: newStock < 0 ? 0 : newStock);
           }
           return product;
         }).toList();
 
-    // Actualizar la caché en memoria en lugar de vaciarla por completo
+    // Actualizar la cachÃƒÂ© en memoria en lugar de vaciarla por completo
     final cacheKey = _buildCacheKey();
     if (_productsCache.containsKey(cacheKey)) {
       final currentCached = _productsCache[cacheKey]!;
@@ -316,7 +316,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     emit(state.copyWith(products: updatedProducts));
   }
 
-  Future<void> _loadProducts() async {
+  Future<void> _loadProducts({bool silent = false}) async {
     final currentRequestId = ++_loadRequestId;
     final cacheKey = _buildCacheKey();
 
@@ -333,14 +333,14 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       stockFilter: state.stockFilter,
     );
 
-    // Stale-While-Revalidate: si la caché LRU global ya contiene la página y
-    // el mapa de sesión no la tiene, la sincronizamos síncronamente (Zero-Shimmer en Frame 0).
+    // Stale-While-Revalidate: si la cachÃƒÂ© LRU global ya contiene la pÃƒÂ¡gina y
+    // el mapa de sesiÃƒÂ³n no la tiene, la sincronizamos sÃƒÂ­ncronamente (Zero-Shimmer en Frame 0).
     final lruCached = CatalogLruCache.instance.getPage(lruKey);
     if (lruCached != null && !_productsCache.containsKey(cacheKey)) {
       _productsCache[cacheKey] = lruCached;
     }
 
-    if (_productsCache.containsKey(cacheKey)) {
+    if (_productsCache.containsKey(cacheKey) && !silent) {
       final cached = _productsCache[cacheKey]!;
       final matchedMap = <String, String>{};
       for (final p in cached.products) {
@@ -368,7 +368,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       return;
     }
 
-    // Solo emitir estado loading invasivo si la lista actual está vacía y no hay caché L1 disponible
+    // Solo emitir estado loading invasivo si la lista actual estÃƒÂ¡ vacÃƒÂ­a y no hay cachÃƒÂ© L1 disponible
     if (state.products.isEmpty) {
       final fallbackCached = CatalogLruCache.instance.getAnyPage();
       if (fallbackCached != null && fallbackCached.products.isNotEmpty) {
@@ -410,13 +410,13 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
             errStr.contains('clientexception') ||
             errStr.contains('failed host lookup') ||
             errStr.contains('offline') ||
-            errStr.contains('sin conexión');
+            errStr.contains('sin conexiÃƒÂ³n');
 
         emit(
           state.copyWith(
             catalogState: ViewState.error,
             errorMessage:
-                isNetworkError ? 'Sin conexión a internet.' : failure.message,
+                isNetworkError ? 'Sin conexiÃƒÂ³n a internet.' : failure.message,
           ),
         );
       },
@@ -532,7 +532,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       (_) {
         _productsCache.clear();
         CatalogLruCache.instance.invalidateCatalog();
-        // Optimización Data Egress: remover localmente en lugar de llamar refreshProducts()
+        // OptimizaciÃƒÂ³n Data Egress: remover localmente en lugar de llamar refreshProducts()
         final updatedProducts = List<ProductEntity>.from(state.products)
           ..removeWhere((p) => p.id == productId);
 
@@ -704,7 +704,7 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
         emit(state.copyWith(actionState: ViewState.success));
         break;
       case FileExportOutcome.cancelled:
-        // El usuario cerró el diálogo nativo de guardado: no es un error.
+        // El usuario cerrÃƒÂ³ el diÃƒÂ¡logo nativo de guardado: no es un error.
         emit(state.copyWith(actionState: ViewState.initial));
         break;
       case FileExportOutcome.failed:

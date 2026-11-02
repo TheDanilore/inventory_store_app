@@ -202,7 +202,7 @@ class _SlideOverIngredientDrawerState extends State<SlideOverIngredientDrawer> {
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color:
-                                 isDark
+                                  isDark
                                       ? const Color(0xFFF8FAFC)
                                       : AppColors.textPrimary,
                               letterSpacing: -0.2,

@@ -1641,7 +1641,7 @@ extension GetItInjectableX on _i174.GetIt {
         createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
       ),
     );
-    gh.factory<_i613.AdminCatalogCubit>(
+    gh.lazySingleton<_i613.AdminCatalogCubit>(
       () => _i613.AdminCatalogCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         getBrandsUC: gh<_i614.GetBrandsUC>(),

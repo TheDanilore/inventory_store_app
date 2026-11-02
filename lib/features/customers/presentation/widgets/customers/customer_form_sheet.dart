@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/app_sheet_drag_handle.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
+import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form/customer_form_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customer_form/customer_form_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/form/customer_credit_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/form/customer_personal_info_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/form/customer_status_section.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/form/customer_wallet_section.dart';
 
+/// Hoja modal adaptativa para crear o editar perfiles de clientes
 class CustomerFormSheet extends StatelessWidget {
   final CustomerEntity? customer;
   final bool isDialog;
@@ -47,7 +52,7 @@ class CustomerFormSheet extends StatelessWidget {
 }
 
 class _CustomerFormSheetContent extends StatefulWidget {
-  final CustomerEntity? customer; // null = modo crear
+  final CustomerEntity? customer;
   final bool isDialog;
 
   const _CustomerFormSheetContent({this.customer, this.isDialog = false});
@@ -60,36 +65,29 @@ class _CustomerFormSheetContent extends StatefulWidget {
 class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controladores
+  // Controladores de texto
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _docNumberCtrl = TextEditingController();
   final _creditLimitCtrl = TextEditingController();
-
-  // Ajuste de billetera: solo se usa para registrar el DELTA en wallet_movements
   final _walletAdjustCtrl = TextEditingController(text: '0');
 
-  // Estado
+  // Estado del perfil
   String _docType = 'DNI';
   bool _isActive = true;
 
-  // Crédito
-  bool _hasCredit = true; // Activo por defecto para todos los clientes
-  bool _isUnlimited = true; // Límite infinito por defecto
+  // Estado de crédito (inicializado en Frame 0 para Zero-Shimmer)
+  bool _hasCredit = true;
+  bool _isUnlimited = true;
   bool _creditIsActive = true;
   bool _creditExistsInDb = false;
   String? _creditId;
   double _currentDebt = 0;
 
   // Billetera
-  double _currentWalletBalance = 0; // saldo actual en BD
-
-  // UI
-  bool _isLoadingCredit = false;
+  double _currentWalletBalance = 0;
 
   bool get _isEditing => widget.customer != null;
-
-  // Lifecycle
 
   @override
   void initState() {
@@ -122,16 +120,34 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
     _isActive = c.isActive;
     _currentWalletBalance = c.walletBalance;
 
-    context.read<CustomerFormCubit>().loadCredit(c.id);
-  }
+    // Zero-Shimmer: Renderizado instantáneo en Frame 0 desde la entidad existente
+    _currentDebt = c.currentDebt;
+    _hasCredit = c.creditLimit > 0 || c.currentDebt > 0;
+    _isUnlimited = c.creditLimit <= 0 && _hasCredit;
+    if (!_isUnlimited) {
+      _creditLimitCtrl.text = c.creditLimit.toStringAsFixed(2);
+    }
+    _creditExistsInDb = c.creditLimit > 0 || c.currentDebt > 0;
 
-  // GUARDAR
+    final initialCredit = CustomerCreditEntity(
+      id: '',
+      profileId: c.id,
+      creditLimit: c.creditLimit,
+      currentDebt: c.currentDebt,
+      isActive: _hasCredit,
+    );
+
+    // Cargar con initialData y L1 Cache: sin spinners ni saltos visuales
+    context.read<CustomerFormCubit>().loadCredit(
+      c.id,
+      initialData: initialCredit,
+    );
+  }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
     final delta = int.tryParse(_walletAdjustCtrl.text.trim()) ?? 0;
-    // Si _isUnlimited es true, el límite se guarda en 0.0 (representa sin límite)
     final double newLimit =
         (_hasCredit && !_isUnlimited)
             ? (double.tryParse(_creditLimitCtrl.text.trim()) ?? 0.0)
@@ -157,18 +173,15 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
     );
   }
 
-  void _showError(String msg) {
-    if (!mounted) return;
-    AppSnackbar.show(context, message: msg, type: SnackbarType.error);
-  }
-
-  // BUILD
-
   void _onStateListener(BuildContext context, CustomerFormState state) {
     if (state is CustomerFormSuccess) {
       Navigator.pop(context, true);
     } else if (state is CustomerFormError) {
-      _showError(state.message);
+      AppSnackbar.show(
+        context,
+        message: state.message,
+        type: SnackbarType.error,
+      );
     } else if (state is CustomerFormCreditLoaded) {
       final account = state.creditAccount;
       if (account != null && mounted) {
@@ -179,28 +192,20 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
           _hasCredit = account.isActive;
           _currentDebt = account.currentDebt;
           _isUnlimited = account.isUnlimited;
-          _creditLimitCtrl.text =
-              account.isUnlimited ? '' : account.creditLimit.toStringAsFixed(2);
-          _isLoadingCredit = false;
-        });
-      } else if (mounted) {
-        setState(() {
-          _hasCredit = true;
-          _isUnlimited = true;
-          _isLoadingCredit = false;
+          if (!account.isUnlimited) {
+            _creditLimitCtrl.text = account.creditLimit.toStringAsFixed(2);
+          }
         });
       }
-    } else if (state is CustomerFormCreditLoading && mounted) {
-      setState(() => _isLoadingCredit = true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.isDialog) {
-      return BlocConsumer<CustomerFormCubit, CustomerFormState>(
+      return BlocListener<CustomerFormCubit, CustomerFormState>(
         listener: _onStateListener,
-        builder: (context, state) => _buildSheetBody(context, state, null),
+        child: _buildSheetBody(context, null),
       );
     }
 
@@ -210,24 +215,19 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
       maxChildSize: 0.97,
       expand: false,
       builder: (_, scrollCtrl) {
-        return BlocConsumer<CustomerFormCubit, CustomerFormState>(
+        return BlocListener<CustomerFormCubit, CustomerFormState>(
           listener: _onStateListener,
-          builder:
-              (context, state) => _buildSheetBody(context, state, scrollCtrl),
+          child: _buildSheetBody(context, scrollCtrl),
         );
       },
     );
   }
 
-  Widget _buildSheetBody(
-    BuildContext context,
-    CustomerFormState state,
-    ScrollController? scrollCtrl,
-  ) {
+  Widget _buildSheetBody(BuildContext context, ScrollController? scrollCtrl) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final isLoyaltyEnabled =
-        context.watch<AppConfigCubit>().loyaltyGlobalEnabled;
-    final isSaving = state is CustomerFormSaving;
+    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+      (c) => c.loyaltyGlobalEnabled,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -239,7 +239,7 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
       ),
       child: Column(
         children: [
-          // Handle
+          // Drag Handle
           if (!widget.isDialog)
             const AppSheetDragHandle()
           else
@@ -297,7 +297,7 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
 
           const Divider(height: 1),
 
-          // Formulario
+          // Formulario con secciones desacopladas
           Expanded(
             child: Form(
               key: _formKey,
@@ -305,381 +305,46 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
                 controller: scrollCtrl,
                 padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 100),
                 children: [
-                  // SECCIÓN: Datos personales
-                  _SectionHeader(
-                    icon: Icons.person_rounded,
-                    title: 'Datos personales',
-                  ),
-                  const SizedBox(height: 12),
-
-                  _FieldLabel('Nombre completo *'),
-                  _StyledField(
-                    controller: _nameCtrl,
-                    hint: 'Ej: Juan Pérez López',
-                    prefixIcon: Icons.badge_rounded,
-                    textCapitalization: TextCapitalization.words,
-                    validator:
-                        (v) =>
-                            (v == null || v.trim().isEmpty)
-                                ? 'Ingresa el nombre'
-                                : null,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Teléfono'),
-                  _StyledField(
-                    controller: _phoneCtrl,
-                    hint: 'Ej: 987654321',
-                    prefixIcon: Icons.phone_rounded,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(12),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Documento de identidad'),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Tipo de documento
-                      Container(
-                        width: 110,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: _docType,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'DNI',
-                                child: Text('DNI'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'RUC',
-                                child: Text('RUC'),
-                              ),
-                              DropdownMenuItem(value: 'CE', child: Text('CE')),
-                              DropdownMenuItem(
-                                value: 'Pasaporte',
-                                child: Text(
-                                  'Pasaporte',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                            onChanged:
-                                (v) => setState(() => _docType = v ?? 'DNI'),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StyledField(
-                          controller: _docNumberCtrl,
-                          hint: 'Número de documento',
-                          prefixIcon: Icons.numbers_rounded,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(
-                              _docType == 'DNI'
-                                  ? 8
-                                  : _docType == 'RUC'
-                                  ? 11
-                                  : 15,
-                            ),
-                          ],
-                          validator: (v) {
-                            final text = v?.trim() ?? '';
-                            if (text.isEmpty) return null;
-                            if (_docType == 'DNI' && text.length != 8) {
-                              return 'DNI debe tener 8 dígitos';
-                            }
-                            if (_docType == 'RUC' && text.length != 11) {
-                              return 'RUC debe tener 11 dígitos';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
+                  CustomerPersonalInfoSection(
+                    nameCtrl: _nameCtrl,
+                    phoneCtrl: _phoneCtrl,
+                    docNumberCtrl: _docNumberCtrl,
+                    docType: _docType,
+                    onDocTypeChanged: (v) => setState(() => _docType = v),
                   ),
                   const SizedBox(height: 24),
 
-                  // SECCIÓN: Estado
-                  _SectionHeader(icon: Icons.tune_rounded, title: 'Estado'),
-                  const SizedBox(height: 12),
-
-                  _ToggleRow(
-                    icon: Icons.circle,
-                    iconColor:
-                        _isActive ? AppColors.success : AppColors.textMuted,
-                    title: _isActive ? 'Cliente activo' : 'Cliente inactivo',
-                    subtitle:
-                        _isActive
-                            ? 'Puede realizar compras'
-                            : 'No puede realizar compras',
-                    value: _isActive,
+                  CustomerStatusSection(
+                    isActive: _isActive,
                     onChanged: (v) => setState(() => _isActive = v),
                   ),
                   const SizedBox(height: 24),
 
-                  // SECCIÓN: Billetera (solo edición)
                   if (_isEditing && isLoyaltyEnabled) ...[
-                    _SectionHeader(
-                      icon: Icons.stars_rounded,
-                      title: 'Billetera de monedas',
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Saldo actual (solo lectura)
-                    _ReadOnlyInfoRow(
-                      icon: Icons.account_balance_wallet_rounded,
-                      iconColor: Colors.amber.shade700,
-                      label: 'Saldo actual',
-                      value: '$_currentWalletBalance monedas',
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Ajuste manual (puede ser negativo)
-                    _FieldLabel('Ajuste manual (puede ser negativo)'),
-                    _StyledField(
-                      controller: _walletAdjustCtrl,
-                      hint: '0',
-                      prefixIcon: Icons.add_circle_outline_rounded,
-                      prefixIconColor: Colors.amber.shade700,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        signed: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^-?\d*')),
-                        LengthLimitingTextInputFormatter(6),
-                      ],
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty || v == '0') {
-                          return null; // sin cambio, OK
-                        }
-                        final delta = int.tryParse(v.trim());
-                        if (delta == null) return 'Valor inválido';
-                        final newBalance = _currentWalletBalance + delta;
-                        if (newBalance < 0) {
-                          return 'El saldo resultante no puede ser negativo';
-                        }
-                        return null;
-                      },
-                    ),
-                    // Preview del saldo resultante
-                    _WalletAdjustPreview(
-                      currentBalance: _currentWalletBalance,
-                      adjustCtrl: _walletAdjustCtrl,
-                    ),
-                    const SizedBox(height: 6),
-                    const _InfoNote(
-                      text:
-                          'El ajuste queda registrado en el historial de movimientos de billetera.',
+                    CustomerWalletSection(
+                      currentWalletBalance: _currentWalletBalance,
+                      walletAdjustCtrl: _walletAdjustCtrl,
                     ),
                     const SizedBox(height: 24),
                   ],
 
-                  // SECCIÓN: Línea de crédito
-                  _SectionHeader(
-                    icon: Icons.credit_card_rounded,
-                    title: 'Línea de crédito',
+                  CustomerCreditSection(
+                    isEditing: _isEditing,
+                    hasCredit: _hasCredit,
+                    isUnlimited: _isUnlimited,
+                    creditExistsInDb: _creditExistsInDb,
+                    currentDebt: _currentDebt,
+                    creditLimitCtrl: _creditLimitCtrl,
+                    onHasCreditChanged: (v) => setState(() => _hasCredit = v),
+                    onUnlimitedChanged: (v) => setState(() => _isUnlimited = v),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Indicador de carga del crédito
-                  if (_isLoadingCredit)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  else ...[
-                    _ToggleRow(
-                      icon: Icons.credit_score_rounded,
-                      iconColor:
-                          _hasCredit ? AppColors.primary : AppColors.textMuted,
-                      title:
-                          _hasCredit
-                              ? 'Línea de crédito activa'
-                              : 'Sin crédito',
-                      subtitle:
-                          _hasCredit
-                              ? 'El cliente puede comprar a crédito'
-                              : 'Activa para asignar crédito al cliente',
-                      value: _hasCredit,
-                      onChanged: (v) => setState(() => _hasCredit = v),
-                    ),
-
-                    if (_hasCredit) ...[
-                      const SizedBox(height: 14),
-
-                      // Deuda actual (solo lectura en edición)
-                      if (_isEditing && _creditExistsInDb) ...[
-                        _ReadOnlyInfoRow(
-                          icon: Icons.money_off_rounded,
-                          iconColor:
-                              _currentDebt > 0
-                                  ? AppColors.danger
-                                  : AppColors.textMuted,
-                          label: 'Deuda actual acumulada',
-                          value: 'S/ ${_currentDebt.toStringAsFixed(2)}',
-                          note:
-                              _currentDebt > 0
-                                  ? 'Registra abonos desde Cuentas por Cobrar'
-                                  : null,
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-
-                      // Selector de Límite: Infinito vs Tope fijo
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _CreditTypePill(
-                                title: 'Límite Infinito (∞)',
-                                subtitle: 'Sin tope máximo',
-                                icon: Icons.all_inclusive_rounded,
-                                isSelected: _isUnlimited,
-                                onTap: () {
-                                  setState(() {
-                                    _isUnlimited = true;
-                                    _creditLimitCtrl.clear();
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: _CreditTypePill(
-                                title: 'Límite en Soles',
-                                subtitle: 'Tope máximo fijo',
-                                icon: Icons.tune_rounded,
-                                isSelected: !_isUnlimited,
-                                onTap: () {
-                                  setState(() {
-                                    _isUnlimited = false;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      if (!_isUnlimited) ...[
-                        const SizedBox(height: 14),
-                        _FieldLabel('Límite de crédito en Soles *'),
-                        _StyledField(
-                          controller: _creditLimitCtrl,
-                          hint: 'Ej: 500.00',
-                          prefixIcon: Icons.account_balance_wallet_rounded,
-                          prefixText: 'S/ ',
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}'),
-                            ),
-                          ],
-                          validator: (v) {
-                            if (!_hasCredit || _isUnlimited) return null;
-                            final n = double.tryParse(v?.trim() ?? '');
-                            if (n == null || n <= 0) {
-                              return 'Ingresa un límite válido mayor a 0';
-                            }
-                            if (_isEditing &&
-                                n < _currentDebt &&
-                                _currentDebt > 0) {
-                              return 'El límite no puede ser menor a la deuda actual (S/ ${_currentDebt.toStringAsFixed(2)})';
-                            }
-                            return null;
-                          },
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF0FDF4),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFBBF7D0)),
-                          ),
-                          child: Row(
-                            children: const [
-                              Icon(
-                                Icons.verified_rounded,
-                                size: 18,
-                                color: Color(0xFF16A34A),
-                              ),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Crédito ilimitado: el cliente podrá comprar a crédito sin restricción de tope máximo.',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF15803D),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      // Preview de uso de crédito
-                      const SizedBox(height: 12),
-                      _CreditPreview(
-                        limitCtrl: _creditLimitCtrl,
-                        currentDebt: _isEditing ? _currentDebt : 0,
-                        isUnlimited: _isUnlimited,
-                      ),
-
-                      // Nota aclaratoria
-                      const SizedBox(height: 8),
-                      const _InfoNote(
-                        text:
-                            'La deuda se actualiza automáticamente al registrar ventas y pagos. No se edita manualmente.',
-                      ),
-                    ],
-                  ],
-
                   const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
 
-          // Footer
+          // Footer con botón de guardado y rebuild granular
           Container(
             padding: EdgeInsets.fromLTRB(20, 12, 20, bottom + 16),
             decoration: BoxDecoration(
@@ -698,670 +363,63 @@ class _CustomerFormSheetContentState extends State<_CustomerFormSheetContent> {
             child: SizedBox(
               width: double.infinity,
               height: 52,
-              child: ElevatedButton(
-                onPressed: isSaving ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.primary.withValues(
-                    alpha: 0.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-                child:
-                    isSaving
-                        ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                        : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _isEditing
-                                  ? Icons.save_rounded
-                                  : Icons.person_add_rounded,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isEditing ? 'Guardar cambios' : 'Crear cliente',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
+              child: BlocBuilder<CustomerFormCubit, CustomerFormState>(
+                buildWhen:
+                    (prev, curr) =>
+                        (prev is CustomerFormSaving) !=
+                        (curr is CustomerFormSaving),
+                builder: (context, state) {
+                  final isSaving = state is CustomerFormSaving;
+                  return ElevatedButton(
+                    onPressed: isSaving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.primary.withValues(
+                        alpha: 0.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    child:
+                        isSaving
+                            ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
                               ),
+                            )
+                            : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _isEditing
+                                      ? Icons.save_rounded
+                                      : Icons.person_add_rounded,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isEditing
+                                      ? 'Guardar cambios'
+                                      : 'Crear cliente',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                  );
+                },
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// WIDGETS AUXILIARES
-
-class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  const _SectionHeader({required this.icon, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 14, color: AppColors.primary),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Expanded(child: Divider(color: AppColors.border, thickness: 1)),
-      ],
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-// Fila de información de solo lectura (no editable)
-class _ReadOnlyInfoRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final String? note;
-
-  const _ReadOnlyInfoRow({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    this.note,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: iconColor),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (note != null)
-                  Text(
-                    note!,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.lock_outline_rounded,
-            size: 14,
-            color: AppColors.textMuted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Nota informativa pequeña
-class _InfoNote extends StatelessWidget {
-  final String text;
-  const _InfoNote({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.info_outline_rounded,
-          size: 12,
-          color: AppColors.textMuted,
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StyledField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final IconData prefixIcon;
-  final Color? prefixIconColor;
-  final String? prefixText;
-  final TextInputType? keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
-  final String? Function(String?)? validator;
-  final TextCapitalization textCapitalization;
-
-  const _StyledField({
-    required this.controller,
-    required this.hint,
-    required this.prefixIcon,
-    this.prefixIconColor,
-    this.prefixText,
-    this.keyboardType,
-    this.inputFormatters,
-    this.validator,
-    this.textCapitalization = TextCapitalization.none,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      validator: validator,
-      textCapitalization: textCapitalization,
-      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-        prefixIcon: Icon(
-          prefixIcon,
-          size: 18,
-          color: prefixIconColor ?? AppColors.textMuted,
-        ),
-        prefixText: prefixText,
-        prefixStyle: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        filled: true,
-        fillColor: AppColors.background,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.danger),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-class _ToggleRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ToggleRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.3),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// WIDGET: Preview de ajuste de billetera
-class _WalletAdjustPreview extends StatefulWidget {
-  final double currentBalance;
-  final TextEditingController adjustCtrl;
-
-  const _WalletAdjustPreview({
-    required this.currentBalance,
-    required this.adjustCtrl,
-  });
-
-  @override
-  State<_WalletAdjustPreview> createState() => _WalletAdjustPreviewState();
-}
-
-class _WalletAdjustPreviewState extends State<_WalletAdjustPreview> {
-  @override
-  void initState() {
-    super.initState();
-    widget.adjustCtrl.addListener(_rebuild);
-  }
-
-  void _rebuild() => setState(() {});
-
-  @override
-  void dispose() {
-    widget.adjustCtrl.removeListener(_rebuild);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final delta = double.tryParse(widget.adjustCtrl.text.trim()) ?? 0.0;
-    final newBalance = widget.currentBalance + delta;
-    final isValid = newBalance >= 0;
-
-    if (delta == 0) return const SizedBox.shrink();
-
-    final color =
-        !isValid
-            ? AppColors.danger
-            : delta > 0
-            ? AppColors.success
-            : Colors.orange;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              delta > 0
-                  ? Icons.trending_up_rounded
-                  : Icons.trending_down_rounded,
-              size: 16,
-              color: color,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${widget.currentBalance} ${delta > 0 ? "+" : ""}',
-              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-            ),
-            Text(
-              '$newBalance monedas',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// WIDGET: Preview de crédito
-class _CreditPreview extends StatefulWidget {
-  final TextEditingController limitCtrl;
-  final double currentDebt;
-  final bool isUnlimited;
-
-  const _CreditPreview({
-    required this.limitCtrl,
-    required this.currentDebt,
-    this.isUnlimited = false,
-  });
-
-  @override
-  State<_CreditPreview> createState() => _CreditPreviewState();
-}
-
-class _CreditPreviewState extends State<_CreditPreview> {
-  @override
-  void initState() {
-    super.initState();
-    widget.limitCtrl.addListener(_rebuild);
-  }
-
-  void _rebuild() => setState(() {});
-
-  @override
-  void dispose() {
-    widget.limitCtrl.removeListener(_rebuild);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isUnlimited = widget.isUnlimited;
-    final limit =
-        isUnlimited
-            ? 0.0
-            : (double.tryParse(widget.limitCtrl.text.trim()) ?? 0.0);
-    final debt = widget.currentDebt;
-    final pct =
-        (!isUnlimited && limit > 0) ? (debt / limit).clamp(0.0, 1.0) : 0.0;
-    final available =
-        isUnlimited
-            ? double.infinity
-            : (limit - debt).clamp(0.0, double.infinity);
-    final isRisk = !isUnlimited && pct >= 0.8;
-    final color = isRisk ? AppColors.danger : AppColors.success;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Vista previa del crédito',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Text(
-                isUnlimited
-                    ? 'Límite Infinito (∞)'
-                    : '${(pct * 100).toStringAsFixed(0)}% usado',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: isUnlimited ? 0.0 : pct,
-              minHeight: 6,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _PreviewStat(
-                  label: 'Deuda',
-                  value: 'S/ ${debt.toStringAsFixed(2)}',
-                  color: debt > 0 ? AppColors.danger : AppColors.textMuted,
-                ),
-              ),
-              Expanded(
-                child: _PreviewStat(
-                  label: 'Disponible',
-                  value:
-                      isUnlimited
-                          ? 'Ilimitado'
-                          : 'S/ ${available.toStringAsFixed(2)}',
-                  color: AppColors.success,
-                ),
-              ),
-              Expanded(
-                child: _PreviewStat(
-                  label: 'Límite',
-                  value:
-                      isUnlimited
-                          ? 'Sin tope (∞)'
-                          : 'S/ ${limit.toStringAsFixed(2)}',
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _PreviewStat({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-class _CreditTypePill extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CreditTypePill({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            width: 1.2,
-          ),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 15,
-                  color: isSelected ? AppColors.primary : AppColors.textMuted,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color:
-                        isSelected ? AppColors.primary : AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10,
-                color:
-                    isSelected ? AppColors.textSecondary : AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

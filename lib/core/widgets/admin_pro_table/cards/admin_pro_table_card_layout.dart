@@ -128,4 +128,3 @@ class AdminProTableCardLayout<T> extends StatelessWidget {
     );
   }
 }
-

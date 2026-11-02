@@ -110,4 +110,3 @@ class _HorizontalScrollableTableState extends State<HorizontalScrollableTable> {
     );
   }
 }
-

@@ -166,4 +166,3 @@ class AdminProTableHeader<T> extends StatelessWidget {
     return Expanded(flex: col.flex, child: wrappedCell);
   }
 }
-

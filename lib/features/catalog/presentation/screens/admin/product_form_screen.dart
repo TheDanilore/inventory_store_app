@@ -436,8 +436,7 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                                             alpha: 0.1,
                                           ),
                                           child: const Center(
-                                            child:
-                                                CircularProgressIndicator(),
+                                            child: CircularProgressIndicator(),
                                           ),
                                         ),
                                       ),

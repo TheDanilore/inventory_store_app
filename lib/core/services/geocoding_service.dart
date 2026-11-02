@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
+import 'package:inventory_store_app/core/services/cache/geocoding_lru_cache.dart';
 import 'package:latlong2/latlong.dart';
 
 class PlaceResult {
@@ -63,15 +64,22 @@ class GeocodingService {
     'Accept-Language': 'es,es-ES;q=0.9,es-419;q=0.8',
   };
 
-  /// Busca lugares usando Photon (OSM)
+  /// Busca lugares usando Photon (OSM) con caché LRU en memoria.
   Future<List<PlaceResult>> searchPlaces(
     String query, {
     LatLng? locationBias,
   }) async {
     try {
-      if (query.trim().isEmpty) return [];
+      final clean = query.trim();
+      if (clean.isEmpty) return [];
 
-      String url = '$_baseUrl/api/?q=${Uri.encodeComponent(query)}&limit=10';
+      // Si no hay bias o para búsquedas idénticas, consultar el caché LRU
+      final cached = GeocodingLruCache.instance.getSearch(clean);
+      if (cached != null && cached.isNotEmpty) {
+        return cached;
+      }
+
+      String url = '$_baseUrl/api/?q=${Uri.encodeComponent(clean)}&limit=10';
       if (locationBias != null) {
         url += '&lat=${locationBias.latitude}&lon=${locationBias.longitude}';
       }
@@ -83,9 +91,15 @@ class GeocodingService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final features = data['features'] as List<dynamic>? ?? [];
-        return features
-            .map((f) => PlaceResult.fromJson(f as Map<String, dynamic>))
-            .toList();
+        final results =
+            features
+                .map((f) => PlaceResult.fromJson(f as Map<String, dynamic>))
+                .toList();
+
+        if (results.isNotEmpty) {
+          GeocodingLruCache.instance.putSearch(clean, results);
+        }
+        return results;
       } else {
         developer.log(
           '[GeocodingService] searchPlaces devolvió código HTTP ${response.statusCode}: ${response.body}',
@@ -104,9 +118,15 @@ class GeocodingService {
     }
   }
 
-  /// Realiza Geocodificación inversa
+  /// Realiza Geocodificación inversa con caché LRU de ~11 metros de radio.
   Future<String?> reverseGeocode(double lat, double lng) async {
     try {
+      // 1. Consultar caché LRU en memoria (0ms RTT)
+      final cached = GeocodingLruCache.instance.getReverse(lat, lng);
+      if (cached != null) {
+        return cached;
+      }
+
       final url = '$_baseUrl/reverse?lon=$lng&lat=$lat';
       final response = await http
           .get(Uri.parse(url), headers: _headers)
@@ -119,7 +139,9 @@ class GeocodingService {
           final place = PlaceResult.fromJson(
             features.first as Map<String, dynamic>,
           );
-          return place.fullAddress;
+          final fullAddress = place.fullAddress;
+          GeocodingLruCache.instance.putReverse(lat, lng, fullAddress);
+          return fullAddress;
         }
       } else {
         developer.log(
