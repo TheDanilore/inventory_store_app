@@ -2,15 +2,20 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/kardex_movement_entity.dart';
 
 abstract class KardexState extends Equatable {
-  const KardexState();
+  final List<KardexMovementEntity> previousMovements;
+  const KardexState({this.previousMovements = const []});
 
   @override
-  List<Object?> get props => [];
+  List<Object?> get props => [previousMovements];
 }
 
-class KardexInitial extends KardexState {}
+class KardexInitial extends KardexState {
+  const KardexInitial() : super(previousMovements: const []);
+}
 
-class KardexLoading extends KardexState {}
+class KardexLoading extends KardexState {
+  const KardexLoading({super.previousMovements = const []});
+}
 
 class KardexLoaded extends KardexState {
   final List<KardexMovementEntity> movements;
@@ -45,7 +50,7 @@ class KardexLoaded extends KardexState {
     required this.totalPages,
     required this.isExporting,
     this.isSearching = false,
-  });
+  }) : super(previousMovements: movements);
 
   KardexLoaded copyWith({
     List<KardexMovementEntity>? movements,
@@ -122,8 +127,8 @@ class KardexLoaded extends KardexState {
 class KardexError extends KardexState {
   final String message;
 
-  const KardexError(this.message);
+  const KardexError(this.message, {super.previousMovements = const []});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, previousMovements];
 }

@@ -227,6 +227,10 @@ class KardexCard extends StatelessWidget {
                                             item.imageUrl!.isNotEmpty
                                         ? CachedNetworkImage(
                                           imageUrl: item.imageUrl!,
+                                          memCacheWidth: 96,
+                                          memCacheHeight: 96,
+                                          maxWidthDiskCache: 180,
+                                          maxHeightDiskCache: 180,
                                           fit: BoxFit.cover,
                                           placeholder:
                                               (context, url) => Container(

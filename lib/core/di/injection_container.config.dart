@@ -1328,7 +1328,7 @@ extension GetItInjectableX on _i174.GetIt {
         deleteWarehouseUseCase: gh<_i1033.DeleteWarehouseUseCase>(),
       ),
     );
-    gh.factory<_i1068.KardexCubit>(
+    gh.lazySingleton<_i1068.KardexCubit>(
       () => _i1068.KardexCubit(
         getKardexMovements: gh<_i392.GetKardexMovementsUseCase>(),
         exportKardexPdf: gh<_i876.ExportKardexPdfUseCase>(),

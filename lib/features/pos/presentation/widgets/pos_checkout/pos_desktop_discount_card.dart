@@ -299,4 +299,3 @@ class PosDesktopDiscountCard extends StatelessWidget {
     );
   }
 }
-

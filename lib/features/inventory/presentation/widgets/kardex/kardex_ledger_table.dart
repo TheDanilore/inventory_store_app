@@ -321,6 +321,10 @@ class _LedgerRowState extends State<_LedgerRow> {
                             item.imageUrl != null && item.imageUrl!.isNotEmpty
                                 ? CachedNetworkImage(
                                   imageUrl: item.imageUrl!,
+                                  memCacheWidth: 64,
+                                  memCacheHeight: 64,
+                                  maxWidthDiskCache: 120,
+                                  maxHeightDiskCache: 120,
                                   fit: BoxFit.cover,
                                   errorWidget:
                                       (context, url, error) => const Icon(

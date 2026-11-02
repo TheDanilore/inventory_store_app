@@ -171,6 +171,10 @@ class KardexMovementInspectorDrawer extends StatelessWidget {
                       item.imageUrl != null && item.imageUrl!.isNotEmpty
                           ? CachedNetworkImage(
                             imageUrl: item.imageUrl!,
+                            memCacheWidth: 108,
+                            memCacheHeight: 108,
+                            maxWidthDiskCache: 200,
+                            maxHeightDiskCache: 200,
                             fit: BoxFit.cover,
                             errorWidget:
                                 (context, url, error) => const Icon(

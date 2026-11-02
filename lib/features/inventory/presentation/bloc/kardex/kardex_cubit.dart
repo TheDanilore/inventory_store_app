@@ -1,20 +1,20 @@
-import 'dart:developer' as developer;
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_kardex_movements_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/export_kardex_pdf_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/kardex/kardex_state.dart';
 
-@injectable
+@lazySingleton
 class KardexCubit extends Cubit<KardexState> {
   final GetKardexMovementsUseCase getKardexMovements;
   final ExportKardexPdfUseCase exportKardexPdf;
   static const int pageSize = 15;
 
   KardexCubit({required this.getKardexMovements, required this.exportKardexPdf})
-    : super(KardexInitial());
+    : super(const KardexInitial());
 
   Future<void> loadMovements({
     DateTime? startDate,
@@ -31,6 +31,7 @@ class KardexCubit extends Cubit<KardexState> {
     bool clearProductId = false,
     bool clearVariantId = false,
     bool clearBatchId = false,
+    bool forceRefresh = false,
   }) async {
     try {
       final currentState = state is KardexLoaded ? state as KardexLoaded : null;
@@ -61,6 +62,21 @@ class KardexCubit extends Cubit<KardexState> {
       final currentEndDate =
           clearDateRange ? null : (endDate ?? currentState?.endDate);
 
+      // Si no es refresco forzado y los filtros/página son idénticos a los ya cargados, conservamos caché
+      if (!forceRefresh &&
+          currentState != null &&
+          currentState.typeFilter == currentTypeFilter &&
+          currentState.searchText == currentSearchText &&
+          currentState.productId == currentProductId &&
+          currentState.variantId == currentVariantId &&
+          currentState.batchId == currentBatchId &&
+          currentState.currentPage == currentPage &&
+          currentState.startDate == currentStartDate &&
+          currentState.endDate == currentEndDate &&
+          currentState.movements.isNotEmpty) {
+        return;
+      }
+
       if (currentState != null) {
         emit(
           currentState.copyWith(
@@ -78,7 +94,8 @@ class KardexCubit extends Cubit<KardexState> {
           ),
         );
       } else {
-        emit(KardexLoading());
+        // Zero-Shimmer: si teníamos movimientos en memoria, los retenemos durante el loading
+        emit(KardexLoading(previousMovements: state.previousMovements));
       }
 
       final result = await getKardexMovements.call(
@@ -117,15 +134,20 @@ class KardexCubit extends Cubit<KardexState> {
         ),
       );
     } catch (e, st) {
-      developer.log('Error loading kardex', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error al cargar kárdex',
+        tag: 'KardexCubit',
+        error: e,
+        stackTrace: st,
+      );
       if (state is KardexLoaded) {
         emit((state as KardexLoaded).copyWith(isSearching: false));
       } else {
-        if (e is SocketException || e is TimeoutException) {
-          emit(const KardexError('Sin conexión a internet.'));
-        } else {
-          emit(const KardexError('Error al cargar kardex.'));
-        }
+        final message =
+            (e is SocketException || e is TimeoutException)
+                ? 'Sin conexión a internet.'
+                : 'Error al cargar kárdex.';
+        emit(KardexError(message, previousMovements: state.previousMovements));
       }
     }
   }
@@ -150,7 +172,6 @@ class KardexCubit extends Cubit<KardexState> {
     if (state is KardexLoaded && (state as KardexLoaded).searchText == text) {
       return;
     }
-    // Si el usuario borra la búsqueda o escribe texto libre, limpiamos el productId, variantId y batchId
     final clearProd =
         text.isEmpty ||
         (state is KardexLoaded && (state as KardexLoaded).searchText != text);
@@ -213,13 +234,18 @@ class KardexCubit extends Cubit<KardexState> {
       );
       emit(currentState.copyWith(isExporting: false));
     } catch (e, st) {
-      developer.log('Error exporting PDF', error: e, stackTrace: st);
+      LoggerService.e(
+        'Error al exportar PDF de kárdex',
+        tag: 'KardexCubit',
+        error: e,
+        stackTrace: st,
+      );
       emit(currentState.copyWith(isExporting: false));
-      if (e is SocketException || e is TimeoutException) {
-        emit(const KardexError('Sin conexión a internet al exportar PDF.'));
-      } else {
-        emit(const KardexError('Error al exportar PDF.'));
-      }
+      final message =
+          (e is SocketException || e is TimeoutException)
+              ? 'Sin conexión a internet al exportar PDF.'
+              : 'Error al exportar PDF.';
+      emit(KardexError(message, previousMovements: currentState.movements));
     }
   }
 }

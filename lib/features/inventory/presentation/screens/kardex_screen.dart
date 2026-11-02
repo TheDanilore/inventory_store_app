@@ -15,6 +15,7 @@ import 'package:inventory_store_app/features/inventory/presentation/widgets/kard
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_kpi_strip.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_ledger_table.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_movement_inspector_drawer.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_search_input.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
@@ -64,14 +65,27 @@ class _KardexScreenState extends State<KardexScreen> {
       _searchCtrl.text = widget.initialProductName!;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<KardexCubit>().loadMovements(
-        productId: widget.initialProductId,
-        variantId: widget.initialVariantId,
-        variantName: widget.initialVariantName,
-        batchId: widget.initialBatchId,
-        batchNumber: widget.initialBatchNumber,
-        searchText: widget.initialProductName ?? '',
-      );
+      if (!mounted) return;
+      final cubit = context.read<KardexCubit>();
+      final isInitial = cubit.state is KardexInitial;
+      final hasSpecificParams =
+          (widget.initialProductId != null &&
+              widget.initialProductId!.isNotEmpty) ||
+          (widget.initialVariantId != null &&
+              widget.initialVariantId!.isNotEmpty) ||
+          (widget.initialBatchId != null && widget.initialBatchId!.isNotEmpty);
+
+      // Zero-Shimmer: Si ya hay datos en caché en KardexLoaded y no hay parámetros nuevos, no refetch
+      if (isInitial || hasSpecificParams) {
+        cubit.loadMovements(
+          productId: widget.initialProductId,
+          variantId: widget.initialVariantId,
+          variantName: widget.initialVariantName,
+          batchId: widget.initialBatchId,
+          batchNumber: widget.initialBatchNumber,
+          searchText: widget.initialProductName ?? '',
+        );
+      }
     });
   }
 
@@ -344,8 +358,15 @@ class _KardexScreenState extends State<KardexScreen> {
                                 SliverToBoxAdapter(
                                   child: BlocBuilder<KardexCubit, KardexState>(
                                     builder: (context, state) {
-                                      if (state is KardexLoaded &&
-                                          state.movements.isNotEmpty) {
+                                      final movements =
+                                          (state is KardexLoaded)
+                                              ? state.movements
+                                              : state.previousMovements;
+                                      if (movements.isNotEmpty) {
+                                        final totalCount =
+                                            state is KardexLoaded
+                                                ? state.totalCount
+                                                : movements.length;
                                         return Padding(
                                           padding: const EdgeInsets.fromLTRB(
                                             16,
@@ -354,8 +375,8 @@ class _KardexScreenState extends State<KardexScreen> {
                                             8,
                                           ),
                                           child: KardexKpiStrip(
-                                            movements: state.movements,
-                                            totalCount: state.totalCount,
+                                            movements: movements,
+                                            totalCount: totalCount,
                                           ),
                                         );
                                       }
@@ -368,25 +389,54 @@ class _KardexScreenState extends State<KardexScreen> {
                                 SliverToBoxAdapter(
                                   child: BlocBuilder<KardexCubit, KardexState>(
                                     builder: (context, state) {
-                                      final isError = state is KardexError;
                                       final isLoading =
                                           state is KardexInitial ||
                                           state is KardexLoading;
                                       final loadedState =
                                           state is KardexLoaded ? state : null;
                                       final movements =
-                                          loadedState?.movements ?? [];
+                                          loadedState?.movements ??
+                                          state.previousMovements;
 
-                                      if (isError) {
+                                      if (state is KardexError &&
+                                          movements.isEmpty) {
                                         return Padding(
                                           padding: const EdgeInsets.all(40.0),
                                           child: Center(
-                                            child: Text(
-                                              'Error al cargar el kárdex',
-                                              style: TextStyle(
-                                                color: AppColors.textSecondary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.error_outline_rounded,
+                                                  color: AppColors.error,
+                                                  size: 36,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  state.message,
+                                                  style: const TextStyle(
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                OutlinedButton.icon(
+                                                  onPressed:
+                                                      () => context
+                                                          .read<KardexCubit>()
+                                                          .loadMovements(
+                                                            forceRefresh: true,
+                                                          ),
+                                                  icon: const Icon(
+                                                    Icons.refresh_rounded,
+                                                    size: 16,
+                                                  ),
+                                                  label: const Text(
+                                                    'Reintentar',
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         );
@@ -534,7 +584,7 @@ class _KardexScreenState extends State<KardexScreen> {
                   builder: (context, state) {
                     final isSearching =
                         state is KardexLoaded && state.isSearching;
-                    return _SearchInput(
+                    return KardexSearchInput(
                       controller: _searchCtrl,
                       focusNode: _searchFocusNode,
                       hint:
@@ -832,7 +882,7 @@ class _KardexScreenState extends State<KardexScreen> {
                   builder: (context, state) {
                     final isSearching =
                         state is KardexLoaded && state.isSearching;
-                    return _SearchInput(
+                    return KardexSearchInput(
                       controller: _searchCtrl,
                       focusNode: _searchFocusNode,
                       hint: 'Buscar en kárdex...',
@@ -1332,99 +1382,6 @@ class _MobileKardexHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_MobileKardexHeaderDelegate oldDelegate) => true;
-}
-
-class _SearchInput extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final String hint;
-  final bool isLoading;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<String>? onSubmitted;
-  final VoidCallback onClear;
-
-  const _SearchInput({
-    required this.controller,
-    required this.focusNode,
-    required this.hint,
-    required this.isLoading,
-    required this.onChanged,
-    this.onSubmitted,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 38,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12.5,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            size: 18,
-            color: AppColors.textSecondary,
-          ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: controller,
-                builder: (context, value, _) {
-                  if (value.text.isNotEmpty && !isLoading) {
-                    return IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      color: AppColors.textSecondary,
-                      onPressed: onClear,
-                      visualDensity: VisualDensity.compact,
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ],
-          ),
-          filled: true,
-          fillColor: AppColors.background,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _FilterPill extends StatelessWidget {
