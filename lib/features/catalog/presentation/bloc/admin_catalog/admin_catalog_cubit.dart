@@ -416,7 +416,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
           state.copyWith(
             catalogState: ViewState.error,
             errorMessage:
-                isNetworkError ? 'Sin conexiÃƒÂ³n a internet.' : failure.message,
+                isNetworkError
+                    ? 'Sin conexiÃƒÂ³n a internet.'
+                    : failure.message,
           ),
         );
       },

@@ -69,7 +69,7 @@ class ProductsMetricsBar extends StatelessWidget {
     >(
       selector: (state) {
         final totalCount = state.totalCount;
-                int inStockCount = 0;
+        int inStockCount = 0;
         int totalUnits = 0;
         for (final p in state.products) {
           final stock = p.totalStock;

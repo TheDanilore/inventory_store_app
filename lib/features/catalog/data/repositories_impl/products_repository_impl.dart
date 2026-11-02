@@ -75,7 +75,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
     } else if (e is StorageException) {
       return left(
         ServerFailure(
-          message: 'Error en almacenamiento de imÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡genes: ${e.message}',
+          message:
+              'Error en almacenamiento de imÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡genes: ${e.message}',
           code: e.statusCode?.toString() ?? 'STORAGE_ERROR',
         ),
       );
@@ -1234,7 +1235,9 @@ class ProductsRepositoryImpl implements ProductsRepository {
       if (payload.product.id.isNotEmpty) {
         CatalogLruCache.instance.invalidateProduct(payload.product.id);
       }
-      if (!payload.isUpdating) { CatalogLruCache.instance.invalidateCatalog(); }
+      if (!payload.isUpdating) {
+        CatalogLruCache.instance.invalidateCatalog();
+      }
       return right(null);
     } catch (e, st) {
       if (uploadedPaths.isNotEmpty) {
