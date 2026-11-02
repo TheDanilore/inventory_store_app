@@ -389,10 +389,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
           ],
         if (widget.primaryAction != null) ...[
           const SizedBox(width: 8),
-          AdminProPrimaryButton(
-            action: widget.primaryAction!,
-            isMobile: false,
-          ),
+          AdminProPrimaryButton(action: widget.primaryAction!, isMobile: false),
         ],
       ],
     );
@@ -558,10 +555,7 @@ class _AdminProToolbarState extends State<AdminProToolbar> {
         if (!widget.hidePrimaryActionOnMobile &&
             widget.primaryAction != null) ...[
           const SizedBox(height: 10),
-          AdminProPrimaryButton(
-            action: widget.primaryAction!,
-            isMobile: true,
-          ),
+          AdminProPrimaryButton(action: widget.primaryAction!, isMobile: true),
         ],
         if (widget.secondaryRow != null) ...[
           const SizedBox(height: 10),

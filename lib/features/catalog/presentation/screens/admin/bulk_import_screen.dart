@@ -192,13 +192,12 @@ class _BulkImportScreenState extends State<BulkImportScreen> {
   Widget _content(BulkImportState state, bool compact) {
     switch (state.status) {
       case BulkImportStatus.loadingContext:
+        if (state.warehouses.isNotEmpty) {
+          return BulkImportConfigView(state: state, compact: compact);
+        }
+        return const BulkImportBusy(label: 'Cargando configuración...');
       case BulkImportStatus.parsing:
-        return BulkImportBusy(
-          label:
-              state.status == BulkImportStatus.parsing
-                  ? 'Leyendo y validando el archivo...'
-                  : 'Cargando configuración...',
-        );
+        return const BulkImportBusy(label: 'Leyendo y validando el archivo...');
       case BulkImportStatus.initial:
         return BulkImportConfigView(state: state, compact: compact);
       case BulkImportStatus.review:

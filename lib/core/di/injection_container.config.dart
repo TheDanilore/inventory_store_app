@@ -351,6 +351,10 @@ import '../../features/main_navigation/domain/entities/inventory_alert_rules.dar
     as _i833;
 import '../../features/main_navigation/presentation/bloc/sidebar_badge/sidebar_badge_cubit.dart'
     as _i41;
+import '../../features/orders/data/datasources/orders_cache_manager.dart'
+    as _i751;
+import '../../features/orders/data/datasources/orders_remote_datasource.dart'
+    as _i491;
 import '../../features/orders/data/repositories_impl/checkout_repository_impl.dart'
     as _i161;
 import '../../features/orders/data/repositories_impl/orders_repository_impl.dart'
@@ -565,6 +569,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1021.ExportCustomersPdfUseCase>(
       () => _i1021.ExportCustomersPdfUseCase(),
     );
+    gh.lazySingleton<_i751.OrdersCacheManager>(
+      () => _i751.OrdersCacheManager(),
+    );
     gh.lazySingleton<_i728.WishlistRepository>(
       () => _i243.WishlistRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -637,9 +644,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i1050.CashShiftRepository>(
       () => _i399.CashShiftRepositoryImpl(),
-    );
-    gh.lazySingleton<_i992.OrdersRepository>(
-      () => _i647.OrdersRepositoryImpl(),
     );
     gh.lazySingleton<_i123.SupplierCreditsRepository>(
       () => _i329.SupplierCreditsRepositoryImpl(),
@@ -719,6 +723,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i257.AppConfigRepository>(
       () => _i785.AppConfigRepositoryImpl(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i992.OrdersRepository>(
+      () => _i647.OrdersRepositoryImpl(
+        remoteDataSource: gh<_i491.OrdersRemoteDataSource>(),
+        cacheManager: gh<_i751.OrdersCacheManager>(),
+      ),
     );
     gh.lazySingleton<_i85.CalcExpectedCashShiftUseCase>(
       () => _i85.CalcExpectedCashShiftUseCase(gh<_i1050.CashShiftRepository>()),
@@ -808,6 +818,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i528.GetCustomerTopProductsUseCase>(
       () =>
           _i528.GetCustomerTopProductsUseCase(gh<_i875.CustomersRepository>()),
+    );
+    gh.lazySingleton<_i491.OrdersRemoteDataSource>(
+      () => _i491.OrdersRemoteDataSource(supabase: gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i419.CreateInventoryEntryUseCase>(
       () => _i419.CreateInventoryEntryUseCase(

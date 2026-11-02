@@ -1,29 +1,27 @@
-import 'dart:ui' show ImageFilter, lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/core/services/app_feedback_service.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/theme/bloc/theme_cubit.dart';
-import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
 import 'package:inventory_store_app/core/theme/widgets/theme_circular_wave.dart';
+import 'package:inventory_store_app/core/theme/widgets/theme_eclipse_button.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_state.dart';
-import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-
-import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_header_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_back_button.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_desktop_hero_panel.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_form_card.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_header_section.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_mobile_backdrop.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_mobile_sheet.dart';
+import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_success_veil.dart';
 import 'package:inventory_store_app/features/auth/presentation/widgets/login/login_toggle_mode.dart';
 
-// ── Paleta para Modo Oscuro (sale del logo y del fondo nuevo) ─────────────
-const Color _kBackdrop = Color(0xFF01091D); // base oscura profunda
-const Color _kNavy = Color(0xFF061426); // velo final de transición en oscuro
-const Color _kGlassTop = Color(0xFF0B1E3A);
-const Color _kGlassBottom = Color(0xFF040E20);
-const Color _kCyan = Color(0xFF22D3EE);
+const Color _kBackdrop = Color(0xFF01091D);
+const Color _kNavy = Color(0xFF061426);
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,32 +38,30 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Curvas creadas con [_curve]; se liberan juntas en dispose().
   final List<CurvedAnimation> _curved = [];
 
-  // ── 1. Entrada: una sola secuencia orquestada ───────────────────────────
+  // Entrada
   late final AnimationController _entranceCtrl;
   late final Animation<double> _heroAnim;
   late final Animation<double> _sheetAnim;
   late final Animation<double> _fadeAnim;
-  late final List<Animation<double>> _revealAnims; // header, form, toggle
+  late final List<Animation<double>> _revealAnims;
 
-  // ── 2. Ambiente: luz que respira + fondo que flota lentamente ───────────
+  // Ambiente
   late final AnimationController _blobCtrl;
   late final Animation<double> _blobAnim;
   late final AnimationController _floatCtrl;
   late final Animation<double> _floatAnim;
   final ValueNotifier<Offset> _parallax = ValueNotifier<Offset>(Offset.zero);
 
-  // ── 3. Éxito: el sheet sube, el fondo se desenfoca y todo se vuelve velo
-  //       con la marca mientras se abre el panel.
+  // Éxito
   late final AnimationController _successCtrl;
-  late final Animation<double> _riseAnim; // sheet sube al tope (0 → 0.5)
-  late final Animation<double> _contentOutAnim; // formulario se disuelve
-  late final Animation<double> _frostAnim; // blur + velo translúcido
-  late final Animation<double> _logoAnim; // marca aparece
-  late final Animation<double> _progressAnim; // barra de progreso
-  late final Animation<double> _whitenAnim; // termina en color sólido
+  late final Animation<double> _riseAnim;
+  late final Animation<double> _contentOutAnim;
+  late final Animation<double> _frostAnim;
+  late final Animation<double> _logoAnim;
+  late final Animation<double> _progressAnim;
+  late final Animation<double> _whitenAnim;
 
   Animation<double> _curve(
     AnimationController parent,
@@ -181,7 +177,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  /// Aparición escalonada de un bloque del formulario (fade + leve subida).
   Widget _reveal(int index, Widget child) {
     final anim = _revealAnims[index];
     return FadeTransition(
@@ -230,8 +225,6 @@ class _LoginScreenState extends State<LoginScreen>
             );
           }
 
-          // Secuencia: botón verde → el formulario se disuelve → velo de vidrio
-          // con la marca → recién ahí se entrega el control al panel.
           await _successCtrl.forward();
           if (context.mounted) {
             context.read<AuthCubit>().completeLogin();
@@ -264,9 +257,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //  DESKTOP: split-screen (Fondo de marca a la izq / Formulario a la der)
-  // ════════════════════════════════════════════════════════════════════════
   Widget _buildDesktopSplitLayout(
     BuildContext context,
     AuthState state,
@@ -274,35 +264,32 @@ class _LoginScreenState extends State<LoginScreen>
   ) {
     return Stack(
       children: [
-        // Contenido: al éxito se desenfoca y crece apenas
         AnimatedBuilder(
           animation: _successCtrl,
           builder: (context, child) {
-            Widget result = Transform.scale(
+            return Transform.scale(
               scale: 1.0 + 0.015 * _riseAnim.value,
               child: child,
             );
-            final sigma = 16.0 * _frostAnim.value;
-            if (sigma > 0.01) {
-              result = ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-                child: result,
-              );
-            }
-            return result;
           },
           child: FadeTransition(
             opacity: _fadeAnim,
             child: Row(
               children: [
-                Expanded(child: _buildDesktopHeroPanel(isDark)),
+                Expanded(
+                  child: LoginDesktopHeroPanel(
+                    isDark: isDark,
+                    parallax: _parallax,
+                    floatAnim: _floatAnim,
+                    blobAnim: _blobAnim,
+                  ),
+                ),
                 Expanded(child: _buildDesktopFormPanel(context, state, isDark)),
               ],
             ),
           ),
         ),
 
-        // Velo de vidrio + marca (solo visible al iniciar sesión con éxito)
         Positioned.fill(
           child: IgnorePointer(
             child: AnimatedBuilder(
@@ -318,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen>
                 );
               },
               child: Center(
-                child: _SuccessVeilContent(
+                child: LoginSuccessVeil(
                   reveal: _logoAnim,
                   progress: _progressAnim,
                 ),
@@ -327,193 +314,6 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDesktopHeroPanel(bool isDark) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = constraints.biggest;
-        return MouseRegion(
-          onHover: (e) {
-            _parallax.value = Offset(
-              (e.localPosition.dx / size.width - 0.5) * 2,
-              (e.localPosition.dy / size.height - 0.5) * 2,
-            );
-          },
-          onExit: (_) => _parallax.value = Offset.zero,
-          child: ClipRect(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0.0, -0.2),
-                  radius: 1.3,
-                  colors:
-                      isDark
-                          ? const [
-                            Color(0xFF0C1B33),
-                            Color(0xFF061124),
-                            _kBackdrop,
-                          ]
-                          : const [
-                            Color(0xFF1E2138),
-                            Color(0xFF111220),
-                            Color(0xFF090A12),
-                          ],
-                  stops: const [0.0, 0.65, 1.0],
-                ),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Arte/fondo: Parallax con el mouse + flotación lenta
-                  ValueListenableBuilder<Offset>(
-                    valueListenable: _parallax,
-                    builder: (context, p, child) {
-                      return AnimatedSlide(
-                        offset: Offset(p.dx * 0.014, p.dy * 0.014),
-                        duration: const Duration(milliseconds: 450),
-                        curve: Curves.easeOutCubic,
-                        child: child,
-                      );
-                    },
-                    child: AnimatedBuilder(
-                      animation: _floatAnim,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: 1.05 + 0.03 * _floatAnim.value,
-                          alignment: Alignment.topCenter,
-                          child: child,
-                        );
-                      },
-                      child: Image.asset(
-                        'assets/images/login_bg.png',
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                        errorBuilder:
-                            (context, error, stackTrace) =>
-                                const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-
-                  // Degradado inferior para legibilidad del texto
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            isDark
-                                ? const Color(0xD901091D)
-                                : const Color(0xDE090A12),
-                          ],
-                          stops: const [0.45, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Orbe turquesa/azul que respira
-                  Positioned(
-                    top: -80,
-                    left: -80,
-                    child: RepaintBoundary(
-                      child: IgnorePointer(
-                        child: AnimatedBuilder(
-                          animation: _blobAnim,
-                          child: Container(
-                            width: 480,
-                            height: 480,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: RadialGradient(
-                                colors: [
-                                  (isDark ? _kCyan : const Color(0xFF3B82F6))
-                                      .withValues(alpha: 0.12),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _blobAnim.value,
-                              child: child,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Texto de marca abajo
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: SingleChildScrollView(
-                      reverse: true,
-                      padding: const EdgeInsets.fromLTRB(56, 36, 56, 56),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 560),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Gestión Inteligente de Inventario y Ventas',
-                              style: TextStyle(
-                                fontSize: 30,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -0.8,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Accede al panel centralizado para administrar catálogo, pedidos, POS omnicanal y métricas financieras en tiempo real.',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                color: Colors.white.withValues(alpha: 0.76),
-                                height: 1.5,
-                                letterSpacing: -0.1,
-                              ),
-                            ),
-                            const SizedBox(height: 28),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                _buildFeatureBadge(
-                                  'Control de Stock',
-                                  Icons.inventory_2_outlined,
-                                  delayMs: 450,
-                                ),
-                                _buildFeatureBadge(
-                                  'Caja POS',
-                                  Icons.point_of_sale_rounded,
-                                  delayMs: 550,
-                                ),
-                                _buildFeatureBadge(
-                                  'Fidelización',
-                                  Icons.loyalty_outlined,
-                                  delayMs: 650,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -545,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildBackButton(context, isDark: isDark),
+                  LoginBackButton(isDark: isDark),
                   BlocBuilder<ThemeCubit, ThemeMode>(
                     builder: (context, _) {
                       return ThemeEclipseButton(
@@ -617,9 +417,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //  MÓVIL: Hero superior + bottom sheet. Bimodal en Claro / Oscuro.
-  // ════════════════════════════════════════════════════════════════════════
   Widget _buildMobileLayout(
     BuildContext context,
     AuthState state,
@@ -632,139 +429,27 @@ class _LoginScreenState extends State<LoginScreen>
     final heroHeight = (screenHeight * 0.38).clamp(200.0, 320.0);
     final restingSheetTop = isKeyboardOpen ? 64.0 : heroHeight;
 
-    // Contenido del sheet (formulario)
-    final sheetBody = Stack(
-      children: [
-        AnimatedBuilder(
-          animation: _contentOutAnim,
-          builder: (context, child) {
-            final t = _contentOutAnim.value;
-            return IgnorePointer(
-              ignoring: t > 0,
-              child: Opacity(
-                opacity: 1.0 - t,
-                child: Transform.scale(scale: 1.0 - 0.03 * t, child: child),
-              ),
-            );
-          },
-          child: SafeArea(
-            top: false,
-            child: Column(
-              children: [
-                // Handle del sheet
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 44,
-                    height: 4.5,
-                    decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.22)
-                              : const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 8,
-                    ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _reveal(
-                              0,
-                              LoginHeaderSection(
-                                isLoginMode: state.isLoginMode,
-                                showLogo: true,
-                                logoSize: 56,
-                              ),
-                            ),
-                            const SizedBox(height: 22),
-                            _reveal(
-                              1,
-                              LoginFormCard(
-                                formKey: _formKey,
-                                nameController: _nameController,
-                                emailController: _emailController,
-                                passwordController: _passwordController,
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                isSuccess: state.viewState == ViewState.success,
-                                isFlat: true,
-                                onAuthenticate:
-                                    () => _authenticate(state.isLoginMode),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            _reveal(
-                              2,
-                              LoginToggleMode(
-                                isLoginMode: state.isLoginMode,
-                                isLoading: state.viewState == ViewState.loading,
-                                onToggle:
-                                    () => _onToggleMode(state.isLoginMode),
-                              ),
-                            ),
-                            const SizedBox(height: 36),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Marca + progreso, aparece cuando el sheet ya cubre la pantalla
-        Positioned.fill(
-          child: IgnorePointer(
-            child: Center(
-              child: _SuccessVeilContent(
-                reveal: _logoAnim,
-                progress: _progressAnim,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-
     return Stack(
       children: [
-        // 1. FONDO HERO a pantalla completa: al éxito se desenfoca y crece
         Positioned.fill(
           child: AnimatedBuilder(
             animation: _successCtrl,
             builder: (context, child) {
               final f = _frostAnim.value;
-              Widget backdrop = Transform.scale(
-                scale: 1.0 + 0.14 * f,
-                child: child,
-              );
-              if (f > 0.01) {
-                backdrop = ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 26 * f, sigmaY: 26 * f),
-                  child: backdrop,
-                );
-              }
-              return backdrop;
+              return Transform.scale(scale: 1.0 + 0.14 * f, child: child);
             },
-            child: _buildMobileBackdrop(isKeyboardOpen, isDark),
+            child: LoginMobileBackdrop(
+              isKeyboardOpen: isKeyboardOpen,
+              isDark: isDark,
+              heroAnim: _heroAnim,
+              entranceCtrl: _entranceCtrl,
+              floatCtrl: _floatCtrl,
+              floatAnim: _floatAnim,
+              blobAnim: _blobAnim,
+            ),
           ),
         ),
 
-        // 2. Botón volver (se desvanece junto al formulario)
         Positioned(
           top: 0,
           left: 0,
@@ -773,16 +458,15 @@ class _LoginScreenState extends State<LoginScreen>
             builder:
                 (context, child) =>
                     Opacity(opacity: 1.0 - _contentOutAnim.value, child: child),
-            child: SafeArea(
+            child: const SafeArea(
               child: Padding(
-                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                child: _buildBackButton(context, isDark: true),
+                padding: EdgeInsets.only(left: 8.0, top: 4.0),
+                child: LoginBackButton(isDark: true),
               ),
             ),
           ),
         ),
 
-        // 3. Botón de cambio de tema (Eclipse Morphing) en esquina superior derecha
         Positioned(
           top: 0,
           right: 0,
@@ -811,423 +495,29 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
 
-        // 4. SHEET: entra desde abajo, sube al tope y se transforma con suavidad
-        TweenAnimationBuilder<double>(
-          tween: Tween<double>(end: restingSheetTop),
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
-          child: sheetBody,
-          builder: (context, restingTop, sheetChild) {
-            return AnimatedBuilder(
-              animation: Listenable.merge([_successCtrl, _entranceCtrl]),
-              child: sheetChild,
-              builder: (context, child) {
-                final entranceOffsetY =
-                    (1.0 - _sheetAnim.value) * screenHeight * 0.45;
-                final top = (lerpDouble(restingTop, 0.0, _riseAnim.value)! +
-                        entranceOffsetY)
-                    .clamp(0.0, screenHeight);
-                final radius = lerpDouble(32.0, 0.0, _riseAnim.value)!;
-                final glow = 1.0 - _riseAnim.value;
-
-                if (isDark) {
-                  final base = 0.88 - 0.30 * _frostAnim.value;
-                  final alpha = base + (1.0 - base) * _whitenAnim.value;
-
-                  return Positioned(
-                    top: top,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(radius),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35 * glow),
-                            blurRadius: 32,
-                            offset: const Offset(0, -10),
-                          ),
-                          BoxShadow(
-                            color: _kCyan.withValues(alpha: 0.12 * glow),
-                            blurRadius: 36,
-                            offset: const Offset(0, -6),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(radius),
-                        ),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                _kGlassTop.withValues(alpha: alpha),
-                                _kGlassBottom.withValues(alpha: alpha),
-                              ],
-                            ),
-                          ),
-                          child: child,
-                        ),
-                      ),
-                    ),
-                  );
-                } else {
-                  // Modo Claro: blanco puro limpio y consistente
-                  final alpha =
-                      1.0 - 0.20 * _frostAnim.value + 0.20 * _whitenAnim.value;
-                  final shadowAlpha = 0.18 * (1.0 - _riseAnim.value);
-
-                  return Positioned(
-                    top: top,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(radius),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF0F172A,
-                            ).withValues(alpha: shadowAlpha),
-                            blurRadius: 32,
-                            offset: const Offset(0, -10),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(radius),
-                        ),
-                        child: ColoredBox(
-                          color: Colors.white.withValues(alpha: alpha),
-                          child: child,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-              },
-            );
-          },
+        LoginMobileSheet(
+          formKey: _formKey,
+          nameController: _nameController,
+          emailController: _emailController,
+          passwordController: _passwordController,
+          state: state,
+          isDark: isDark,
+          restingSheetTop: restingSheetTop,
+          screenHeight: screenHeight,
+          sheetAnim: _sheetAnim,
+          riseAnim: _riseAnim,
+          frostAnim: _frostAnim,
+          whitenAnim: _whitenAnim,
+          contentOutAnim: _contentOutAnim,
+          logoAnim: _logoAnim,
+          progressAnim: _progressAnim,
+          revealAnims: _revealAnims,
+          successCtrl: _successCtrl,
+          entranceCtrl: _entranceCtrl,
+          onAuthenticate: () => _authenticate(state.isLoginMode),
+          onToggleMode: () => _onToggleMode(state.isLoginMode),
         ),
       ],
-    );
-  }
-
-  /// Fondo de marca adaptado para móvil:
-  /// En Modo Oscuro usa login_bg.png con orbe cian.
-  /// En Modo Claro usa login_hero_3d.jpg con orbes luminosos.
-  Widget _buildMobileBackdrop(bool isKeyboardOpen, bool isDark) {
-    return ColoredBox(
-      color: isDark ? _kBackdrop : const Color(0xFF0F111E),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: AnimatedOpacity(
-              opacity: isKeyboardOpen ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 250),
-              child: AnimatedBuilder(
-                animation: Listenable.merge([_entranceCtrl, _floatCtrl]),
-                builder: (context, child) {
-                  final h = _heroAnim.value;
-                  return Opacity(
-                    opacity: h,
-                    child: Transform.scale(
-                      alignment: Alignment.topCenter,
-                      scale: 1.08 - 0.08 * h + 0.025 * _floatAnim.value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: ShaderMask(
-                  shaderCallback:
-                      (rect) => const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black,
-                          Colors.black,
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, 0.86, 1.0],
-                      ).createShader(rect),
-                  blendMode: BlendMode.dstIn,
-                  child: Image.asset(
-                    'assets/images/login_bg.png',
-                    width: double.infinity,
-                    fit: BoxFit.fitWidth,
-                    errorBuilder:
-                        (context, error, stackTrace) => const SizedBox(
-                          height: 240,
-                          child: Center(
-                            child: Icon(
-                              Icons.storefront_rounded,
-                              size: 84,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Orbe turquesa/azul que respira en la esquina
-          Positioned(
-            top: -60,
-            right: -50,
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _blobAnim,
-                builder:
-                    (context, _) => Transform.scale(
-                      scale: _blobAnim.value,
-                      child: Container(
-                        width: 280,
-                        height: 280,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              (isDark ? _kCyan : const Color(0xFF3B82F6))
-                                  .withValues(alpha: 0.16),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBackButton(BuildContext context, {bool isDark = false}) {
-    if (!context.canPop()) {
-      return const SizedBox.shrink();
-    }
-    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
-
-    if (isDesktop) {
-      return TextButton.icon(
-        onPressed: () => context.pop(),
-        icon: Icon(
-          Icons.arrow_back_rounded,
-          size: 16,
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.7)
-                  : AppColors.textSecondary,
-        ),
-        label: Text(
-          'Volver',
-          style: TextStyle(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.7)
-                    : AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-    }
-
-    return _MobileBackButton(isDark: isDark);
-  }
-
-  Widget _buildFeatureBadge(
-    String label,
-    IconData icon, {
-    required int delayMs,
-  }) {
-    return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.9)),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-        )
-        .animate()
-        .fadeIn(delay: Duration(milliseconds: delayMs), duration: 400.ms)
-        .slideX(begin: -0.1, end: 0, curve: Curves.easeOutCubic);
-  }
-}
-
-/// Marca + barra de progreso al iniciar sesión con éxito.
-/// Bimodal: Blanco/Azul corporativo en Claro, Vidrio Azul/Cian en Oscuro.
-class _SuccessVeilContent extends StatelessWidget {
-  final Animation<double> reveal;
-  final Animation<double> progress;
-
-  const _SuccessVeilContent({required this.reveal, required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnimatedBuilder(
-      animation: Listenable.merge([reveal, progress]),
-      builder: (context, _) {
-        final t = reveal.value;
-        if (t <= 0) return const SizedBox.shrink();
-        return Opacity(
-          opacity: t,
-          child: Transform.translate(
-            offset: Offset(0, 12 * (1 - t)),
-            child: Transform.scale(
-              scale: 0.94 + 0.06 * t,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isDark ? _kCyan : const Color(0xFF0891B2))
-                              .withValues(alpha: isDark ? 0.38 : 0.25),
-                          blurRadius: 44,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/app_icon.png',
-                      fit: BoxFit.contain,
-                      errorBuilder:
-                          (context, error, stackTrace) => Icon(
-                            Icons.storefront_rounded,
-                            size: 64,
-                            color: isDark ? _kCyan : const Color(0xFF0891B2),
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Abriendo tu panel',
-                    style: TextStyle(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.78)
-                              : AppColors.textSecondary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: SizedBox(
-                      width: 120,
-                      height: 3,
-                      child: LinearProgressIndicator(
-                        value: progress.value,
-                        backgroundColor:
-                            isDark
-                                ? Colors.white.withValues(alpha: 0.14)
-                                : const Color(0xFFE2E8F0),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isDark ? _kCyan : const Color(0xFF0891B2),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MobileBackButton extends StatefulWidget {
-  final bool isDark;
-  const _MobileBackButton({this.isDark = false});
-
-  @override
-  State<_MobileBackButton> createState() => _MobileBackButtonState();
-}
-
-class _MobileBackButtonState extends State<_MobileBackButton> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedScale(
-        scale: _isPressed ? 0.90 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        child: IconButton(
-          icon: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color:
-                  widget.isDark
-                      ? Colors.white.withValues(alpha: 0.15)
-                      : AppColors.surface,
-              borderRadius: BorderRadius.circular(11),
-              boxShadow:
-                  widget.isDark ? null : AppColors.cardShadow(opacity: 0.08),
-            ),
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 15,
-              color: widget.isDark ? Colors.white : AppColors.textPrimary,
-            ),
-          ),
-          onPressed: () => context.pop(),
-        ),
-      ),
     );
   }
 }

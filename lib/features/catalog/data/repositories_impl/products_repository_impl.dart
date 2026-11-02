@@ -48,6 +48,11 @@ class ProductsRepositoryImpl implements ProductsRepository {
   >
   _batchesForVariantCache = LinkedHashMap();
 
+  // L1 In-Memory Cache para contexto de importación masiva (15 min TTL)
+  static const Duration _importCatalogContextTtl = Duration(minutes: 15);
+  ImportCatalogContext? _importCatalogContextCache;
+  DateTime? _importCatalogContextCacheTime;
+
   void _cacheActiveVariants(String productId, List<Map<String, dynamic>> list) {
     _activeVariantsCache.remove(productId);
     if (_activeVariantsCache.length >= _maxVariantsBatchesCache) {
@@ -1097,6 +1102,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
   Future<Either<Failure, void>> clearCache() async {
     _activeVariantsCache.clear();
     _batchesForVariantCache.clear();
+    _importCatalogContextCache = null;
+    _importCatalogContextCacheTime = null;
     CatalogLruCache.instance.clear();
     return right(null);
   }
@@ -1286,8 +1293,18 @@ class ProductsRepositoryImpl implements ProductsRepository {
   @override
   Future<Either<Failure, ImportCatalogContext>>
   getImportCatalogContext() async {
+    final cached = _importCatalogContextCache;
+    final cachedTime = _importCatalogContextCacheTime;
+    if (cached != null &&
+        cachedTime != null &&
+        DateTime.now().difference(cachedTime) < _importCatalogContextTtl) {
+      return right(cached);
+    }
+
     try {
       final ctx = await _bulkImportDataSource.getImportCatalogContext();
+      _importCatalogContextCache = ctx;
+      _importCatalogContextCacheTime = DateTime.now();
       return right(ctx);
     } catch (e, st) {
       return _handleError(e, st);
@@ -1328,6 +1345,8 @@ class ProductsRepositoryImpl implements ProductsRepository {
         updatePrices: updatePrices,
         batchId: batchId,
       );
+      _importCatalogContextCache = null;
+      _importCatalogContextCacheTime = null;
       CatalogLruCache.instance.clear();
       return right(res);
     } catch (e, st) {
