@@ -15,11 +15,24 @@ class AccountMovementsInitial extends AccountMovementsState {
 
 class AccountMovementsLoading extends AccountMovementsState {
   final List<AccountMovementEntity> previousMovements;
+  final double totalIncome;
+  final double totalExpense;
+  final MovementFilters? filters;
 
-  const AccountMovementsLoading({this.previousMovements = const []});
+  const AccountMovementsLoading({
+    this.previousMovements = const [],
+    this.totalIncome = 0.0,
+    this.totalExpense = 0.0,
+    this.filters,
+  });
 
   @override
-  List<Object?> get props => [previousMovements];
+  List<Object?> get props => [
+    previousMovements,
+    totalIncome,
+    totalExpense,
+    filters,
+  ];
 }
 
 class AccountMovementsLoaded extends AccountMovementsState {
@@ -52,20 +65,40 @@ class AccountMovementsLoaded extends AccountMovementsState {
 
 class AccountMovementsError extends AccountMovementsState {
   final String message;
+  final List<AccountMovementEntity> previousMovements;
 
-  const AccountMovementsError(this.message);
+  const AccountMovementsError(
+    this.message, {
+    this.previousMovements = const [],
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, previousMovements];
 }
 
 /// Estado emitido mientras se guarda un movimiento.
 class AccountMovementSaving extends AccountMovementsState {
-  const AccountMovementSaving();
+  final List<AccountMovementEntity> previousMovements;
+  final double totalIncome;
+  final double totalExpense;
+
+  const AccountMovementSaving({
+    this.previousMovements = const [],
+    this.totalIncome = 0.0,
+    this.totalExpense = 0.0,
+  });
+
+  @override
+  List<Object?> get props => [previousMovements, totalIncome, totalExpense];
 }
 
 class AccountMovementSaved extends AccountMovementsState {
-  const AccountMovementSaved();
+  final List<AccountMovementEntity> previousMovements;
+
+  const AccountMovementSaved({this.previousMovements = const []});
+
+  @override
+  List<Object?> get props => [previousMovements];
 }
 
 class AccountMovementSaveError extends AccountMovementsState {

@@ -26,10 +26,7 @@ class ProductImagePreviewDialog extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Container(
-            constraints: const BoxConstraints(
-              maxWidth: 600,
-              maxHeight: 600,
-            ),
+            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 600),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(16),
@@ -54,9 +51,7 @@ class ProductImagePreviewDialog extends StatelessWidget {
                 size: 24,
               ),
               tooltip: 'Cerrar vista previa',
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.black54,
-              ),
+              style: IconButton.styleFrom(backgroundColor: Colors.black54),
             ),
           ),
         ],
@@ -107,4 +102,3 @@ class ProductImagePreviewDialog extends StatelessWidget {
     );
   }
 }
-

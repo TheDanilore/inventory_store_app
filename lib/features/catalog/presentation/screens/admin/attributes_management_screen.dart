@@ -288,9 +288,8 @@ class _AttributesManagementScreenState
                               searchQuery: _searchQuery,
                               activeFilter: _activeFilter,
                               onSearchChanged:
-                                  (val) => setState(
-                                    () => _searchQuery = val.trim(),
-                                  ),
+                                  (val) =>
+                                      setState(() => _searchQuery = val.trim()),
                               onClearSearch: () {
                                 _searchCtrl.clear();
                                 setState(() => _searchQuery = '');
@@ -309,9 +308,8 @@ class _AttributesManagementScreenState
                           Expanded(
                             child: RefreshIndicator(
                               onRefresh:
-                                  () => cubit.loadAttributes(
-                                    forceRefresh: true,
-                                  ),
+                                  () =>
+                                      cubit.loadAttributes(forceRefresh: true),
                               color: AppColors.primary,
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 250),

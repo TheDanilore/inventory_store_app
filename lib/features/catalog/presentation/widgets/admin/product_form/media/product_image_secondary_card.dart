@@ -65,7 +65,8 @@ class _ProductImageSecondaryCardState extends State<ProductImageSecondaryCard> {
             ClipRRect(
               borderRadius: BorderRadius.circular(9.5),
               child: GestureDetector(
-                onTap: () => ProductImagePreviewDialog.show(context, widget.item),
+                onTap:
+                    () => ProductImagePreviewDialog.show(context, widget.item),
                 child: _buildSecondaryThumbnail(),
               ),
             ),
@@ -158,8 +159,10 @@ class _ProductImageSecondaryCardState extends State<ProductImageSecondaryCard> {
                     onTap:
                         widget.isSaving
                             ? null
-                            : () =>
-                                widget.cubit.reorderImages(widget.actualIndex, 0),
+                            : () => widget.cubit.reorderImages(
+                              widget.actualIndex,
+                              0,
+                            ),
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(9.5),
                     ),
@@ -275,4 +278,3 @@ class _ProductImageSecondaryCardState extends State<ProductImageSecondaryCard> {
     );
   }
 }
-

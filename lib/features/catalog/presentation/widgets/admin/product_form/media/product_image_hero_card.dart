@@ -160,7 +160,8 @@ class ProductImageHeroCard extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => ProductImagePreviewDialog.show(context, item),
+                      onTap:
+                          () => ProductImagePreviewDialog.show(context, item),
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         padding: const EdgeInsets.all(4.5),
@@ -241,7 +242,8 @@ class ProductImageHeroCard extends StatelessWidget {
               ),
             ),
           ),
-      errorWidget: (context, url, error) => _buildBrokenFallback('Error enlace'),
+      errorWidget:
+          (context, url, error) => _buildBrokenFallback('Error enlace'),
     );
   }
 
@@ -274,4 +276,3 @@ class ProductImageHeroCard extends StatelessWidget {
     );
   }
 }
-

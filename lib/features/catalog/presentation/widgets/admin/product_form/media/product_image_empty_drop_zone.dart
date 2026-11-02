@@ -164,4 +164,3 @@ class ProductImageEmptyDropZone extends StatelessWidget {
     );
   }
 }
-

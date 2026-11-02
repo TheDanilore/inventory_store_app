@@ -126,7 +126,8 @@ class AttributeCommandBar extends StatelessWidget {
                 label: 'Sin valores',
                 filter: AttributeFilter.withoutValues,
                 isSelected: activeFilter == AttributeFilter.withoutValues,
-                onSelected: () => onFilterChanged(AttributeFilter.withoutValues),
+                onSelected:
+                    () => onFilterChanged(AttributeFilter.withoutValues),
               ),
             ],
           ),

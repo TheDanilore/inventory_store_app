@@ -41,26 +41,64 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
 
   MovementFilters get filters => _filters;
 
-  Future<void> fetchMovements({int page = 0}) async {
-    final prevMovements = switch (state) {
-      AccountMovementsLoaded(:final movements) => movements,
-      AccountMovementsLoading(:final previousMovements) => previousMovements,
-      _ => <AccountMovementEntity>[],
+  (List<AccountMovementEntity>, double, double) _extractCurrentSnapshot() {
+    return switch (state) {
+      AccountMovementsLoaded(
+        :final movements,
+        :final totalIncome,
+        :final totalExpense,
+      ) =>
+        (movements, totalIncome, totalExpense),
+      AccountMovementsLoading(
+        :final previousMovements,
+        :final totalIncome,
+        :final totalExpense,
+      ) =>
+        (previousMovements, totalIncome, totalExpense),
+      AccountMovementSaving(
+        :final previousMovements,
+        :final totalIncome,
+        :final totalExpense,
+      ) =>
+        (previousMovements, totalIncome, totalExpense),
+      AccountMovementSaved(:final previousMovements) => (
+        previousMovements,
+        0.0,
+        0.0,
+      ),
+      AccountMovementsError(:final previousMovements) => (
+        previousMovements,
+        0.0,
+        0.0,
+      ),
+      _ => (<AccountMovementEntity>[], 0.0, 0.0),
     };
-    emit(AccountMovementsLoading(previousMovements: prevMovements));
+  }
+
+  Future<void> fetchMovements({int page = 0}) async {
+    final (prevMovements, prevIncome, prevExpense) = _extractCurrentSnapshot();
+    emit(
+      AccountMovementsLoading(
+        previousMovements: prevMovements,
+        totalIncome: prevIncome,
+        totalExpense: prevExpense,
+        filters: _filters,
+      ),
+    );
     try {
       _currentPage = page;
-      final result = await _getMovements(
-        filters: _filters,
-        page: page,
-        pageSize: _pageSize,
-      );
+
+      // Paralelización concurrente para reducir RTT en un 50%
+      final results = await Future.wait([
+        _getMovements(filters: _filters, page: page, pageSize: _pageSize),
+        _getTotals(filters: _filters),
+      ]);
+
+      final result = results[0] as MovementPageResult;
+      final totals = results[1] as MovementTotals;
 
       final totalPages = (result.totalCount / _pageSize).ceil();
       _totalPages = totalPages > 0 ? totalPages : 1;
-
-      // Calculamos totales con los mismos filtros activos desde la BD
-      final totals = await _getTotals(filters: _filters);
 
       emit(
         AccountMovementsLoaded(
@@ -83,9 +121,16 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
           errStr.contains('failed host lookup')) {
-        emit(const AccountMovementsError('Sin conexión a internet.'));
+        emit(
+          AccountMovementsError(
+            'Sin conexión a internet.',
+            previousMovements: prevMovements,
+          ),
+        );
       } else {
-        emit(AccountMovementsError(e.toString()));
+        emit(
+          AccountMovementsError(e.toString(), previousMovements: prevMovements),
+        );
       }
     }
   }
@@ -149,7 +194,14 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     required double amount,
     required String description,
   }) async {
-    emit(const AccountMovementSaving());
+    final (prevMovements, prevIncome, prevExpense) = _extractCurrentSnapshot();
+    emit(
+      AccountMovementSaving(
+        previousMovements: prevMovements,
+        totalIncome: prevIncome,
+        totalExpense: prevExpense,
+      ),
+    );
     try {
       final userResult = await _getCurrentUser(NoParams());
       final profileId = userResult.fold(
@@ -164,7 +216,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         amount: amount,
         description: description,
       );
-      emit(const AccountMovementSaved());
+      emit(AccountMovementSaved(previousMovements: prevMovements));
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
       LoggerService.e(
@@ -183,7 +235,14 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
     required double amount,
     required String description,
   }) async {
-    emit(const AccountMovementSaving());
+    final (prevMovements, prevIncome, prevExpense) = _extractCurrentSnapshot();
+    emit(
+      AccountMovementSaving(
+        previousMovements: prevMovements,
+        totalIncome: prevIncome,
+        totalExpense: prevExpense,
+      ),
+    );
     try {
       final userResult = await _getCurrentUser(NoParams());
       final profileId = userResult.fold(
@@ -198,7 +257,7 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
         amount: amount,
         description: description,
       );
-      emit(const AccountMovementSaved());
+      emit(AccountMovementSaved(previousMovements: prevMovements));
       await fetchMovements(page: _currentPage);
     } catch (e, st) {
       LoggerService.e(

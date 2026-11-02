@@ -129,11 +129,7 @@ class AddValueChipButton extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
-  const AddValueChipButton({
-    super.key,
-    required this.onTap,
-    this.onLongPress,
-  });
+  const AddValueChipButton({super.key, required this.onTap, this.onLongPress});
 
   @override
   State<AddValueChipButton> createState() => _AddValueChipButtonState();
@@ -149,7 +145,8 @@ class _AddValueChipButtonState extends State<AddValueChipButton> {
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: Tooltip(
-        message: 'Añadir valor rápido (Clic) / Diálogo múltiple (Mantener presionado)',
+        message:
+            'Añadir valor rápido (Clic) / Diálogo múltiple (Mantener presionado)',
         child: InkWell(
           onTap: widget.onTap,
           onLongPress: widget.onLongPress,

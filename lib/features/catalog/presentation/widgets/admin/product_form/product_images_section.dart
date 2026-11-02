@@ -169,10 +169,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
                     (state.isSaving || count >= 8)
                         ? null
                         : () => cubit.pickImages(),
-                icon: const Icon(
-                  Icons.add_photo_alternate_rounded,
-                  size: 15,
-                ),
+                icon: const Icon(Icons.add_photo_alternate_rounded, size: 15),
                 label: const Text('Subir foto'),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -298,11 +295,7 @@ class _ProductImagesSectionState extends State<ProductImagesSection> {
         } else {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              heroWidget,
-              const SizedBox(height: 16),
-              galleryGrid,
-            ],
+            children: [heroWidget, const SizedBox(height: 16), galleryGrid],
           );
         }
       },
