@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/core/enums/view_state.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:inventory_store_app/core/utils/app_back_handler.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
@@ -346,18 +344,6 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
-    final posCubit = context.read<PosCubit>();
-
-    // ZERO-SHIMMER: Solo mostramos esqueleto si tanto el catálogo como los almacenes
-    // están vacíos Y en estado de carga (primer arranque en frío absoluto de la app).
-    final isColdStart =
-        _catalogCubit.state.products.isEmpty &&
-        posCubit.state.warehouses.isEmpty &&
-        _catalogCubit.state.catalogState == ViewState.loading;
-
-    if (isColdStart) {
-      return const PosDesktopSkeleton();
-    }
 
     return AppPopScope(
       onCustomBack: _onExitPos,
@@ -578,127 +564,4 @@ class _AdminPosScreenState extends State<AdminPosScreen> {
       ),
     );
   }
-}
-
-/// Esqueleto Shimmer montado únicamente en el primer arranque en frío absoluto de la app
-class PosDesktopSkeleton extends StatelessWidget {
-  const PosDesktopSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (isDesktop)
-          const PosSidebarRail(
-            selectedIndex: 0,
-            onDestinationSelected: _dummyIndex,
-            onExitPos: _dummyVoid,
-          ),
-        Expanded(
-          flex: 6,
-          child: Column(
-            children: [
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: const Column(
-                  children: [
-                    AppShimmer(
-                      width: double.infinity,
-                      height: 44,
-                      borderRadius: 12,
-                    ),
-                    SizedBox(height: 12),
-                    AppShimmer(
-                      width: double.infinity,
-                      height: 36,
-                      borderRadius: 10,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount:
-                        MediaQuery.of(context).size.width >= 1200
-                            ? 6
-                            : MediaQuery.of(context).size.width >= 800
-                            ? 4
-                            : 2,
-                    childAspectRatio: 0.75,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: 8,
-                  itemBuilder:
-                      (_, _) => const AppShimmer(
-                        width: double.infinity,
-                        height: double.infinity,
-                        borderRadius: 16,
-                      ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (isDesktop)
-          Container(
-            width:
-                MediaQuery.of(context).size.width >= 1300
-                    ? 440
-                    : MediaQuery.of(context).size.width >= 1000
-                    ? 400
-                    : 360,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                left: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
-              ),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppShimmer(width: 120, height: 28, borderRadius: 8),
-                SizedBox(height: 16),
-                AppShimmer(
-                  width: double.infinity,
-                  height: 50,
-                  borderRadius: 12,
-                ),
-                SizedBox(height: 16),
-                AppShimmer(
-                  width: double.infinity,
-                  height: 80,
-                  borderRadius: 12,
-                ),
-                Spacer(),
-                AppShimmer(
-                  width: double.infinity,
-                  height: 120,
-                  borderRadius: 12,
-                ),
-                SizedBox(height: 16),
-                AppShimmer(
-                  width: double.infinity,
-                  height: 52,
-                  borderRadius: 14,
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  static void _dummyIndex(int _) {}
-  static void _dummyVoid() {}
 }

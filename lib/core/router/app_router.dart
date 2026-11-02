@@ -372,7 +372,7 @@ class AppRouter {
         // Branch 1 – POS: AdminPosScreen en pantalla completa (sin sidebar ERP).
         //
         // Navegación ERP ↔ POS = swap de visibilidad de 0ms en IndexedStack.
-        // Primer visita al POS: se monta el branch y PosDesktopSkeleton amortigua el frame 0.
+        // Primer visita al POS: se monta el branch y renderiza en Frame 0 desde caché L1 (Zero-Shimmer).
         // Visitas posteriores: instantáneo, sin destrucción ni reconstrucción de widgets.
         //
         // BLoCs compartidos entre ambos branches (AdminCatalogCubit, CartCubit,
