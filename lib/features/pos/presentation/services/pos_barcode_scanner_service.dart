@@ -28,6 +28,17 @@ class PosScanResult {
 
 /// Servicio integral para resolver códigos de barra, QR y SKU en el Punto de Venta.
 class PosBarcodeScannerService {
+  // ─── CACHÉ L1 EN MEMORIA PARA LECTURAS RECURRENTES / CONTINUAS ─────────────
+  static final Map<String, PosScanResult> _barcodeCache = {};
+  static final Map<String, DateTime> _barcodeCacheTime = {};
+  static const Duration _cacheTtl = Duration(minutes: 15);
+
+  /// Limpia la caché en memoria de códigos resueltos
+  static void clearBarcodeCache() {
+    _barcodeCache.clear();
+    _barcodeCacheTime.clear();
+  }
+
   /// Analiza y busca en la base de datos el producto y variante correspondiente al código escaneado.
   ///
   /// Admite:
@@ -42,10 +53,21 @@ class PosBarcodeScannerService {
     final trimmed = rawCode.trim();
     if (trimmed.isEmpty) return null;
 
+    final cacheKey = '$trimmed@${warehouseId ?? ''}';
+    final cachedResult = _barcodeCache[cacheKey];
+    final cachedTime = _barcodeCacheTime[cacheKey];
+    if (cachedResult != null && cachedTime != null) {
+      if (DateTime.now().difference(cachedTime) < _cacheTtl) {
+        return cachedResult;
+      }
+    }
+
     final repo = sl<ProductsRepository>();
     final supabase = Supabase.instance.client;
 
     try {
+      PosScanResult? result;
+
       // 1. Caso QR con URL
       if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         final uri = Uri.tryParse(trimmed);
@@ -70,7 +92,7 @@ class PosBarcodeScannerService {
                     .cast<ProductVariantEntity?>()
                     .firstWhere((v) => v?.id == variantId, orElse: () => null);
               }
-              return PosScanResult(
+              result = PosScanResult(
                 product: product,
                 variant: targetVariant ?? product.defaultVariant,
                 rawCode: trimmed,
@@ -81,93 +103,108 @@ class PosBarcodeScannerService {
       }
 
       // 2. Buscar en Supabase por barcode exacto en product_variants
-      final variantByBarcodeRes =
-          await supabase
-              .from('product_variants')
-              .select('id, product_id, sku, barcode, is_active')
-              .eq('barcode', trimmed)
-              .maybeSingle();
-
-      if (variantByBarcodeRes != null) {
-        final prodId = variantByBarcodeRes['product_id'] as String;
-        final vId = variantByBarcodeRes['id'] as String;
-        final prodRes = await repo.getProductById(prodId);
-        final product = prodRes.fold((l) => null, (r) => r);
-        if (product != null) {
-          final variant = product.productVariants
-              .cast<ProductVariantEntity?>()
-              .firstWhere((v) => v?.id == vId, orElse: () => null);
-          return PosScanResult(
-            product: product,
-            variant: variant ?? product.defaultVariant,
-            rawCode: trimmed,
-          );
-        }
-      }
-
-      // 3. Buscar en Supabase por SKU (insensible a mayúsculas/minúsculas) en product_variants
-      final variantBySkuRes =
-          await supabase
-              .from('product_variants')
-              .select('id, product_id, sku, barcode, is_active')
-              .ilike('sku', trimmed)
-              .maybeSingle();
-
-      if (variantBySkuRes != null) {
-        final prodId = variantBySkuRes['product_id'] as String;
-        final vId = variantBySkuRes['id'] as String;
-        final prodRes = await repo.getProductById(prodId);
-        final product = prodRes.fold((l) => null, (r) => r);
-        if (product != null) {
-          final variant = product.productVariants
-              .cast<ProductVariantEntity?>()
-              .firstWhere((v) => v?.id == vId, orElse: () => null);
-          return PosScanResult(
-            product: product,
-            variant: variant ?? product.defaultVariant,
-            rawCode: trimmed,
-          );
-        }
-      }
-
-      // 4. Si el código parece UUID, intentar buscar directamente por variant ID o product ID
-      final uuidRegex = RegExp(
-        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-      );
-      if (uuidRegex.hasMatch(trimmed)) {
-        // Intentar producto
-        final prodRes = await repo.getProductById(trimmed);
-        final product = prodRes.fold((l) => null, (r) => r);
-        if (product != null) {
-          return PosScanResult(
-            product: product,
-            variant: product.defaultVariant,
-            rawCode: trimmed,
-          );
-        }
-
-        // Intentar variante
-        final variantRow =
+      if (result == null) {
+        final variantByBarcodeRes =
             await supabase
                 .from('product_variants')
-                .select('product_id')
-                .eq('id', trimmed)
+                .select('id, product_id, sku, barcode, is_active')
+                .eq('barcode', trimmed)
                 .maybeSingle();
-        if (variantRow != null) {
-          final parentId = variantRow['product_id'] as String;
-          final pRes = await repo.getProductById(parentId);
-          final p = pRes.fold((l) => null, (r) => r);
-          if (p != null) {
-            final v = p.productVariants
+
+        if (variantByBarcodeRes != null) {
+          final prodId = variantByBarcodeRes['product_id'] as String;
+          final vId = variantByBarcodeRes['id'] as String;
+          final prodRes = await repo.getProductById(prodId);
+          final product = prodRes.fold((l) => null, (r) => r);
+          if (product != null) {
+            final variant = product.productVariants
                 .cast<ProductVariantEntity?>()
-                .firstWhere((item) => item?.id == trimmed, orElse: () => null);
-            return PosScanResult(
-              product: p,
-              variant: v ?? p.defaultVariant,
+                .firstWhere((v) => v?.id == vId, orElse: () => null);
+            result = PosScanResult(
+              product: product,
+              variant: variant ?? product.defaultVariant,
               rawCode: trimmed,
             );
           }
         }
+      }
+
+      // 3. Buscar en Supabase por SKU (insensible a mayúsculas/minúsculas) en product_variants
+      if (result == null) {
+        final variantBySkuRes =
+            await supabase
+                .from('product_variants')
+                .select('id, product_id, sku, barcode, is_active')
+                .ilike('sku', trimmed)
+                .maybeSingle();
+
+        if (variantBySkuRes != null) {
+          final prodId = variantBySkuRes['product_id'] as String;
+          final vId = variantBySkuRes['id'] as String;
+          final prodRes = await repo.getProductById(prodId);
+          final product = prodRes.fold((l) => null, (r) => r);
+          if (product != null) {
+            final variant = product.productVariants
+                .cast<ProductVariantEntity?>()
+                .firstWhere((v) => v?.id == vId, orElse: () => null);
+            result = PosScanResult(
+              product: product,
+              variant: variant ?? product.defaultVariant,
+              rawCode: trimmed,
+            );
+          }
+        }
+      }
+
+      // 4. Si el código parece UUID, intentar buscar directamente por variant ID o product ID
+      if (result == null) {
+        final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+        );
+        if (uuidRegex.hasMatch(trimmed)) {
+          // Intentar producto
+          final prodRes = await repo.getProductById(trimmed);
+          final product = prodRes.fold((l) => null, (r) => r);
+          if (product != null) {
+            result = PosScanResult(
+              product: product,
+              variant: product.defaultVariant,
+              rawCode: trimmed,
+            );
+          } else {
+            // Intentar variante
+            final variantRow =
+                await supabase
+                    .from('product_variants')
+                    .select('product_id')
+                    .eq('id', trimmed)
+                    .maybeSingle();
+            if (variantRow != null) {
+              final parentId = variantRow['product_id'] as String;
+              final pRes = await repo.getProductById(parentId);
+              final p = pRes.fold((l) => null, (r) => r);
+              if (p != null) {
+                final v = p.productVariants
+                    .cast<ProductVariantEntity?>()
+                    .firstWhere(
+                      (item) => item?.id == trimmed,
+                      orElse: () => null,
+                    );
+                result = PosScanResult(
+                  product: p,
+                  variant: v ?? p.defaultVariant,
+                  rawCode: trimmed,
+                );
+              }
+            }
+          }
+        }
+      }
+
+      if (result != null) {
+        _barcodeCache[cacheKey] = result;
+        _barcodeCacheTime[cacheKey] = DateTime.now();
+        return result;
       }
     } catch (e, st) {
       LoggerService.e(

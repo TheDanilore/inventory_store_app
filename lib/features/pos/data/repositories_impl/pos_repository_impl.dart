@@ -12,6 +12,15 @@ import 'package:inventory_store_app/features/pos/data/models/document_series_mod
 import 'package:inventory_store_app/features/pos/domain/entities/sale_entity.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 
+class _PosCacheItem<T> {
+  final T data;
+  final DateTime timestamp;
+
+  _PosCacheItem(this.data) : timestamp = DateTime.now();
+
+  bool isExpired(Duration ttl) => DateTime.now().difference(timestamp) > ttl;
+}
+
 @LazySingleton(as: PosRepository)
 class PosRepositoryImpl implements PosRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -23,6 +32,16 @@ class PosRepositoryImpl implements PosRepository {
   List<WarehouseModel>? _cachedWarehouses;
   List<Map<String, dynamic>>? _cachedAccounts;
   List<DocumentSeriesModel>? _cachedDocumentSeries;
+
+  /// L1 Cache para búsquedas frecuentes de clientes (Zero-Shimmer)
+  final Map<String, _PosCacheItem<List<Map<String, dynamic>>>>
+  _clientsSearchCache = {};
+
+  /// L1 Cache para información de crédito de clientes
+  final Map<String, _PosCacheItem<Map<String, dynamic>?>> _clientCreditCache =
+      {};
+
+  static const Duration _l1CacheTtl = Duration(minutes: 5);
 
   Future<void> _ensureProfileLoaded() async {
     if (_cachedProfileId != null && _cachedRole != null) return;
@@ -271,6 +290,12 @@ class PosRepositoryImpl implements PosRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> searchClients(
     String text,
   ) async {
+    final cleanText = text.trim().toLowerCase();
+    final cached = _clientsSearchCache[cleanText];
+    if (cached != null && !cached.isExpired(_l1CacheTtl)) {
+      return right(cached.data);
+    }
+
     try {
       final response = await _supabase
           .from('profiles')
@@ -280,7 +305,9 @@ class PosRepositoryImpl implements PosRepository {
             'full_name.ilike.%$text%,document_number.ilike.%$text%,phone.ilike.%$text%',
           )
           .limit(10);
-      return right(List<Map<String, dynamic>>.from(response));
+      final list = List<Map<String, dynamic>>.from(response);
+      _clientsSearchCache[cleanText] = _PosCacheItem(list);
+      return right(list);
     } catch (e, stack) {
       LoggerService.e(
         'Error en searchClients',
@@ -296,6 +323,11 @@ class PosRepositoryImpl implements PosRepository {
   Future<Either<Failure, Map<String, dynamic>?>> fetchClientCredit(
     String clientId,
   ) async {
+    final cached = _clientCreditCache[clientId];
+    if (cached != null && !cached.isExpired(_l1CacheTtl)) {
+      return right(cached.data);
+    }
+
     try {
       final response =
           await _supabase
@@ -303,6 +335,7 @@ class PosRepositoryImpl implements PosRepository {
               .select('id, credit_limit, current_debt, is_active')
               .eq('profile_id', clientId)
               .maybeSingle();
+      _clientCreditCache[clientId] = _PosCacheItem(response);
       return right(response);
     } catch (e, stack) {
       LoggerService.e(

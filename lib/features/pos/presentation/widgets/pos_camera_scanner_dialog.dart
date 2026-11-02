@@ -3,19 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/core/services/app_feedback_service.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/utils/camera_stream_stopper.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/product_variant_entity.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/product_ocr_scanner_service.dart';
 
 import 'camera_scanner/quick_product_search_sheet.dart';
-import 'camera_scanner/ocr_variants_sheet.dart';
-import 'camera_scanner/scanner_hud_overlays.dart';
-import 'camera_scanner/scanner_live_cart_panel.dart';
-import 'camera_scanner/scanner_top_toolbar.dart';
+import 'camera_scanner/scanner_standard_layout.dart';
+import 'camera_scanner/scanner_split_layout.dart';
 
 /// Modos de captura disponibles en el visor de cámara del POS
 enum PosScannerMode {
@@ -486,8 +484,100 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
     );
   }
 
+  Future<void> _toggleTorch() async {
+    await _scannerController.toggleTorch();
+    if (mounted) setState(() => _isTorchOn = !_isTorchOn);
+  }
+
+  Future<void> _switchCamera() async {
+    await _scannerController.switchCamera();
+    if (mounted) {
+      setState(() {
+        _cameraFacing =
+            _cameraFacing == CameraFacing.back
+                ? CameraFacing.front
+                : CameraFacing.back;
+      });
+    }
+  }
+
+  void _setScannerMode(PosScannerMode mode) {
+    setState(() {
+      _scannerMode = mode;
+      _pendingAmbiguousResult = null;
+    });
+  }
+
+  Future<void> _onAmbiguousVariantSelectedStandard(
+    ProductVariantEntity variant,
+  ) async {
+    final match = _pendingAmbiguousResult;
+    if (match == null) return;
+    final scanResult = PosScanResult(
+      product: match.product,
+      variant: variant,
+      rawCode: variant.barcode ?? variant.sku ?? match.product.id,
+    );
+    setState(() => _pendingAmbiguousResult = null);
+
+    if (widget.continuousMode || widget.onContinuousScan != null) {
+      if (widget.onContinuousScan != null) {
+        await widget.onContinuousScan!(scanResult);
+      }
+      if (mounted) {
+        setState(() {
+          _scannedCount++;
+          _lastScannedName = '${match.product.name} (${variant.label})';
+        });
+      }
+    } else {
+      await _safeClose(scanResult);
+    }
+  }
+
+  Future<void> _onAmbiguousVariantSelectedSplit(
+    ProductVariantEntity variant,
+  ) async {
+    final match = _pendingAmbiguousResult;
+    if (match == null) return;
+    final scanResult = PosScanResult(
+      product: match.product,
+      variant: variant,
+      rawCode: variant.barcode ?? variant.sku ?? match.product.id,
+    );
+    setState(() => _pendingAmbiguousResult = null);
+
+    if (widget.cartCubit != null) {
+      await PosBarcodeScannerService.addScanResultToCart(
+        context: context,
+        scanResult: scanResult,
+        cartCubit: widget.cartCubit!,
+        warehouseId: widget.warehouseId,
+        showSnackbar: false,
+      );
+      if (mounted) {
+        setState(() {
+          _scannedCount++;
+          _lastScannedName = '${match.product.name} (${variant.label})';
+        });
+        _feedbackTimer?.cancel();
+        _feedbackTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) {
+            setState(() => _lastScannedName = null);
+          }
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final title =
+        widget.title ??
+        (_scannerMode == PosScannerMode.ocrLabel
+            ? 'Reconocer Etiqueta (OCR)'
+            : (widget.continuousMode ? 'Escaneo Continuo' : 'Escanear Código'));
+
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
@@ -498,603 +588,67 @@ class _PosCameraScannerDialogState extends State<PosCameraScannerDialog>
       },
       child:
           widget.cartCubit != null
-              ? _buildSplitCartLayout(context)
-              : _buildStandardScannerLayout(context),
-    );
-  }
-
-  /// Vista estándar de pantalla completa cuando solo se requiere escanear un producto
-  Widget _buildStandardScannerLayout(BuildContext context) {
-    final title =
-        widget.title ??
-        (_scannerMode == PosScannerMode.ocrLabel
-            ? 'Reconocer Etiqueta (OCR)'
-            : (widget.continuousMode ? 'Escaneo Continuo' : 'Escanear Código'));
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 1. Visor de la cámara
-          Positioned.fill(
-            child: MobileScanner(
-              controller: _scannerController,
-              fit: BoxFit.cover,
-              onDetect: (capture) {
-                if (_scannerMode != PosScannerMode.barcode) return;
-                for (final barcode in capture.barcodes) {
-                  final rawValue = barcode.rawValue;
-                  if (rawValue != null && rawValue.isNotEmpty) {
-                    _handleBarcodeDetected(rawValue);
-                    break;
-                  }
-                }
-              },
-              errorBuilder:
-                  (context, error) => CameraErrorView(
-                    errorMessage: error.errorDetails?.message,
-                  ),
-            ),
-          ),
-
-          // 2. Máscara HUD adaptativa según modo
-          Positioned.fill(
-            child:
-                _scannerMode == PosScannerMode.barcode
-                    ? CenteredScanHud(scanAnimation: _scanAnimation)
-                    : OcrScanHud(
-                      isSplit: false,
-                      isOcrProcessing: _isOcrProcessing,
-                      onCaptureCamera:
-                          () => _captureAndScanOcr(fromGallery: false),
-                      onPickGallery:
-                          () => _captureAndScanOcr(fromGallery: true),
-                    ),
-          ),
-
-          // 3. Barra Superior Flotante con Selector de Modos
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 12,
-            right: 12,
-            child: ScannerTopToolbar(
-              title: title,
-              isTorchOn: _isTorchOn,
-              cameraFacing: _cameraFacing,
-              scannerMode: _scannerMode,
-              onClose: () => _safeClose(),
-              onToggleTorch: () async {
-                await _scannerController.toggleTorch();
-                setState(() => _isTorchOn = !_isTorchOn);
-              },
-              onSwitchCamera: () async {
-                await _scannerController.switchCamera();
-                setState(() {
-                  _cameraFacing =
-                      _cameraFacing == CameraFacing.back
-                          ? CameraFacing.front
-                          : CameraFacing.back;
-                });
-              },
-              onModeChanged: (mode) {
-                setState(() {
-                  _scannerMode = mode;
-                  _pendingAmbiguousResult = null;
-                });
-              },
-            ),
-          ),
-
-          // 4. Banner flotante de confirmación continua
-          if (_lastScannedName != null)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 108,
-              left: 16,
-              right: 16,
-              child: ScannedFeedbackBanner(
-                productName: _lastScannedName!,
-                onDismiss: () => setState(() => _lastScannedName = null),
-              ),
-            ),
-
-          // 5. Barra Inferior con Entrada Manual (solo en modo barcode)
-          if (_scannerMode == PosScannerMode.barcode)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildStandardBottomBar(),
-            ),
-
-          // 6. Selector flotante de variantes si el OCR detectó ambigüedad
-          if (_pendingAmbiguousResult != null)
-            OcrVariantsSheet(
-              result: _pendingAmbiguousResult!,
-              onClose: () => setState(() => _pendingAmbiguousResult = null),
-              onVariantSelected: (variant) async {
-                final match = _pendingAmbiguousResult!;
-                final scanResult = PosScanResult(
-                  product: match.product,
-                  variant: variant,
-                  rawCode: variant.barcode ?? variant.sku ?? match.product.id,
-                );
-                setState(() => _pendingAmbiguousResult = null);
-
-                if (widget.continuousMode || widget.onContinuousScan != null) {
-                  if (widget.onContinuousScan != null) {
-                    await widget.onContinuousScan!(scanResult);
-                  }
-                  if (mounted) {
-                    setState(() {
-                      _scannedCount++;
-                      _lastScannedName =
-                          '${match.product.name} (${variant.label})';
-                    });
-                  }
-                } else {
-                  await _safeClose(scanResult);
-                }
-              },
-            ),
-
-          // 7. Indicador de carga de resolución de código
-          if (_isResolving)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black45,
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(
-                        color: AppColors.teal,
-                        strokeWidth: 3,
-                      ),
-                      SizedBox(height: 14),
-                      Text(
-                        'Buscando código...',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // 8. Indicador de carga OCR
-          if (_isOcrProcessing) const OcrProcessingOverlay(),
-        ],
-      ),
-    );
-  }
-
-  /// Vista dividida: Cámara interactiva arriba (~38%) + Carrito en tiempo real abajo
-  Widget _buildSplitCartLayout(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 700;
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 80;
-    final defaultCameraHeight =
-        isDesktop
-            ? 310.0
-            : (MediaQuery.of(context).size.height *
-                (_scannerMode == PosScannerMode.ocrLabel ? 0.42 : 0.36));
-    final cameraHeight = isKeyboardOpen ? 0.0 : defaultCameraHeight;
-    final title =
-        widget.title ??
-        (_scannerMode == PosScannerMode.ocrLabel
-            ? 'Reconocer Etiqueta (OCR)'
-            : (widget.continuousMode ? 'Escaneo Continuo' : 'Escanear Código'));
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: Column(
-          children: [
-            // Barra compacta cuando el teclado está abierto
-            if (isKeyboardOpen)
-              ScannerKeyboardHeader(
-                onClose: () => _safeClose(),
-                onHideKeyboard: () => FocusScope.of(context).unfocus(),
-              ),
-
-            // Visor de Cámara Superior con colapso animado
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              height: cameraHeight,
-              child: ClipRect(
-                child:
-                    cameraHeight == 0.0
-                        ? const SizedBox.shrink()
-                        : Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            MobileScanner(
-                              controller: _scannerController,
-                              fit: BoxFit.cover,
-                              onDetect: (capture) {
-                                if (_scannerMode != PosScannerMode.barcode) {
-                                  return;
-                                }
-                                for (final barcode in capture.barcodes) {
-                                  final rawValue = barcode.rawValue;
-                                  if (rawValue != null && rawValue.isNotEmpty) {
-                                    _handleBarcodeDetected(rawValue);
-                                    break;
-                                  }
-                                }
-                              },
-                              errorBuilder:
-                                  (context, error) => CameraErrorView(
-                                    errorMessage: error.errorDetails?.message,
-                                  ),
-                            ),
-
-                            // HUD adaptado según modo
-                            Positioned.fill(
-                              child:
-                                  _scannerMode == PosScannerMode.barcode
-                                      ? CompactScanHud(
-                                        scanAnimation: _scanAnimation,
-                                      )
-                                      : OcrScanHud(
-                                        isSplit: true,
-                                        isOcrProcessing: _isOcrProcessing,
-                                        onCaptureCamera:
-                                            () => _captureAndScanOcr(
-                                              fromGallery: false,
-                                            ),
-                                        onPickGallery:
-                                            () => _captureAndScanOcr(
-                                              fromGallery: true,
-                                            ),
-                                      ),
-                            ),
-
-                            // Barra superior flotante de controles
-                            Positioned(
-                              top:
-                                  MediaQuery.of(context).padding.top > 0
-                                      ? MediaQuery.of(context).padding.top + 6
-                                      : 10,
-                              left: 12,
-                              right: 12,
-                              child: ScannerTopToolbar(
-                                title: title,
-                                isTorchOn: _isTorchOn,
-                                cameraFacing: _cameraFacing,
-                                scannerMode: _scannerMode,
-                                onClose: () => _safeClose(),
-                                onToggleTorch: () async {
-                                  await _scannerController.toggleTorch();
-                                  setState(() => _isTorchOn = !_isTorchOn);
-                                },
-                                onSwitchCamera: () async {
-                                  await _scannerController.switchCamera();
-                                  setState(() {
-                                    _cameraFacing =
-                                        _cameraFacing == CameraFacing.back
-                                            ? CameraFacing.front
-                                            : CameraFacing.back;
-                                  });
-                                },
-                                onModeChanged: (mode) {
-                                  setState(() {
-                                    _scannerMode = mode;
-                                    _pendingAmbiguousResult = null;
-                                  });
-                                },
-                              ),
-                            ),
-
-                            // Pill Banner Toast flotante
-                            if (_lastScannedName != null)
-                              Positioned(
-                                bottom: 10,
-                                left: 16,
-                                right: 16,
-                                child: ScannedFeedbackBanner(
-                                  productName: _lastScannedName!,
-                                  onDismiss:
-                                      () => setState(
-                                        () => _lastScannedName = null,
-                                      ),
-                                ),
-                              ),
-
-                            // Selector flotante de variantes si el OCR detectó ambigüedad
-                            if (_pendingAmbiguousResult != null)
-                              OcrVariantsSheet(
-                                result: _pendingAmbiguousResult!,
-                                onClose:
-                                    () => setState(
-                                      () => _pendingAmbiguousResult = null,
-                                    ),
-                                onVariantSelected: (variant) async {
-                                  final match = _pendingAmbiguousResult!;
-                                  final scanResult = PosScanResult(
-                                    product: match.product,
-                                    variant: variant,
-                                    rawCode:
-                                        variant.barcode ??
-                                        variant.sku ??
-                                        match.product.id,
-                                  );
-                                  setState(
-                                    () => _pendingAmbiguousResult = null,
-                                  );
-
-                                  if (widget.cartCubit != null) {
-                                    await PosBarcodeScannerService.addScanResultToCart(
-                                      context: context,
-                                      scanResult: scanResult,
-                                      cartCubit: widget.cartCubit!,
-                                      warehouseId: widget.warehouseId,
-                                      showSnackbar: false,
-                                    );
-                                    if (mounted) {
-                                      setState(() {
-                                        _scannedCount++;
-                                        _lastScannedName =
-                                            '${match.product.name} (${variant.label})';
-                                      });
-                                      _feedbackTimer?.cancel();
-                                      _feedbackTimer = Timer(
-                                        const Duration(seconds: 4),
-                                        () {
-                                          if (mounted) {
-                                            setState(
-                                              () => _lastScannedName = null,
-                                            );
-                                          }
-                                        },
-                                      );
-                                    }
-                                  }
-                                },
-                              ),
-
-                            // Overlay de búsqueda en proceso
-                            if (_isResolving)
-                              Positioned.fill(
-                                child: Container(
-                                  color: Colors.black45,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: AppColors.teal,
-                                      strokeWidth: 3,
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                            // Overlay de procesamiento OCR inteligente
-                            if (_isOcrProcessing) const OcrProcessingOverlay(),
-                          ],
-                        ),
-              ),
-            ),
-
-            // Toast si teclado está abierto
-            if (isKeyboardOpen && _lastScannedName != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                child: ScannedFeedbackBanner(
-                  productName: _lastScannedName!,
-                  onDismiss: () => setState(() => _lastScannedName = null),
-                ),
-              ),
-
-            // Panel Interactivo del Carrito en Vivo
-            Expanded(
-              child: ScannerLiveCartPanel(
+              ? ScannerSplitLayout(
+                scannerController: _scannerController,
+                scanAnimation: _scanAnimation,
+                scannerMode: _scannerMode,
+                title: title,
+                isTorchOn: _isTorchOn,
+                cameraFacing: _cameraFacing,
+                isResolving: _isResolving,
+                isOcrProcessing: _isOcrProcessing,
+                lastScannedName: _lastScannedName,
+                pendingAmbiguousResult: _pendingAmbiguousResult,
                 cartCubit: widget.cartCubit!,
                 manualInputCtrl: _manualInputCtrl,
                 manualFocusNode: _manualFocusNode,
+                onBarcodeDetected: _handleBarcodeDetected,
+                onClose: () => _safeClose(),
+                onToggleTorch: _toggleTorch,
+                onSwitchCamera: _switchCamera,
+                onModeChanged: _setScannerMode,
+                onDismissFeedback:
+                    () => setState(() => _lastScannedName = null),
                 onManualSubmit: _onManualSubmit,
                 onOpenSearchModal: () => _openQuickTitleSearchModal(context),
-                onCheckout: () => _safeClose(),
+                onAmbiguousVariantSelected: _onAmbiguousVariantSelectedSplit,
+                onCloseAmbiguousSheet:
+                    () => setState(() => _pendingAmbiguousResult = null),
+                onCaptureCameraOcr:
+                    () => _captureAndScanOcr(fromGallery: false),
+                onPickGalleryOcr: () => _captureAndScanOcr(fromGallery: true),
+              )
+              : ScannerStandardLayout(
+                scannerController: _scannerController,
+                scanAnimation: _scanAnimation,
+                scannerMode: _scannerMode,
+                title: title,
+                isTorchOn: _isTorchOn,
+                cameraFacing: _cameraFacing,
+                isResolving: _isResolving,
+                isOcrProcessing: _isOcrProcessing,
+                lastScannedName: _lastScannedName,
+                scannedCount: _scannedCount,
+                isContinuous:
+                    widget.continuousMode || widget.onContinuousScan != null,
+                pendingAmbiguousResult: _pendingAmbiguousResult,
+                manualInputCtrl: _manualInputCtrl,
+                manualFocusNode: _manualFocusNode,
+                onBarcodeDetected: _handleBarcodeDetected,
+                onClose: () => _safeClose(),
+                onToggleTorch: _toggleTorch,
+                onSwitchCamera: _switchCamera,
+                onModeChanged: _setScannerMode,
+                onDismissFeedback:
+                    () => setState(() => _lastScannedName = null),
+                onManualSubmit: _onManualSubmit,
+                onAmbiguousVariantSelected: _onAmbiguousVariantSelectedStandard,
+                onCloseAmbiguousSheet:
+                    () => setState(() => _pendingAmbiguousResult = null),
+                onCaptureCameraOcr:
+                    () => _captureAndScanOcr(fromGallery: false),
+                onPickGalleryOcr: () => _captureAndScanOcr(fromGallery: true),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStandardBottomBar() {
-    final isContinuous =
-        widget.continuousMode || widget.onContinuousScan != null;
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        14,
-        16,
-        MediaQuery.of(context).padding.bottom + 14,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (isContinuous) ...[
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.teal.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.teal.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.bolt_rounded,
-                        color: AppColors.teal,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$_scannedCount escaneados',
-                        style: const TextStyle(
-                          color: AppColors.teal,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _safeClose(),
-                  icon: const Icon(Icons.check_rounded, size: 16),
-                  label: const Text('Listo / Salir'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.teal,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          // Campo de entrada manual de código
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _manualInputCtrl,
-                    focusNode: _manualFocusNode,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _onManualSubmit(),
-                    cursorColor: AppColors.primary,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: Colors.white,
-                      hintText: 'Ingresar SKU o código manual...',
-                      hintStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF94A3B8),
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.keyboard_alt_outlined,
-                        size: 19,
-                        color: AppColors.primary,
-                      ),
-                      suffixIcon:
-                          _manualInputCtrl.text.isNotEmpty
-                              ? IconButton(
-                                icon: const Icon(
-                                  Icons.cancel_rounded,
-                                  size: 18,
-                                  color: Color(0xFF64748B),
-                                ),
-                                onPressed: () {
-                                  _manualInputCtrl.clear();
-                                  setState(() {});
-                                },
-                              )
-                              : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.teal,
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 11,
-                        horizontal: 14,
-                      ),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed:
-                    _manualInputCtrl.text.trim().isEmpty || _isResolving
-                        ? null
-                        : _onManualSubmit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.teal,
-                  foregroundColor: const Color(0xFF0F172A),
-                  disabledBackgroundColor: Colors.white12,
-                  disabledForegroundColor: Colors.white38,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  minimumSize: const Size(0, 44),
-                  textStyle: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                  ),
-                ),
-                child: const Text('Buscar'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
