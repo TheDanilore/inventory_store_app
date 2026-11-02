@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/account_statement_export_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/credit_movements/customer_credit_movements_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/credit_movements/customer_credit_movements_state.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/date_divider.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movement_card.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movements_filter_toolbar.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movements_ledger_data_table.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movements_ledger_skeleton.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/credit_movements/movements_summary_header.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customer_credits/customer_credit_payment_sheet.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/order_detail/order_detail_cubit.dart';
-import 'package:inventory_store_app/core/widgets/account_statement_export_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 
 class CustomerCreditMovementsScreen extends StatelessWidget {
@@ -97,7 +97,7 @@ class _CustomerCreditMovementsScreenContentState
     CustomerCreditPaymentSheet.show(
       context,
       account: creditEntity,
-      onSaved: () => cubit.loadData(),
+      onSaved: () => cubit.loadData(forceRefresh: true),
       onSavePayment: (amount, accountId, orderId, notes, shiftId) async {
         await cubit.registerPayment(
           amount: amount,
@@ -187,12 +187,6 @@ class _CustomerCreditMovementsScreenContentState
     );
   }
 
-  List<CreditMovementEntity> _filterMovements(
-    List<CreditMovementEntity> movements,
-  ) {
-    return movements;
-  }
-
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
@@ -234,60 +228,71 @@ class _CustomerCreditMovementsScreenContentState
                 message: state.error!,
                 type: SnackbarType.error,
               );
-            } else if (state.isExporting) {
-              AppSnackbar.show(
-                context,
-                message: 'Generando PDF de movimientos...',
-                type: SnackbarType.info,
-              );
             }
           },
           builder: (context, state) {
+            final cubit = context.read<CustomerCreditMovementsCubit>();
+
             return AdminLayout(
               title: 'Historial de Crédito',
               showBackButton: true,
               showDrawerButton: false,
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Refrescar datos',
-                  onPressed: () {
-                    context.read<CustomerCreditMovementsCubit>().loadData();
-                  },
-                ),
-                IconButton(
                   icon:
-                      state.isExporting
+                      state.isRevalidating
                           ? const SizedBox(
-                            width: 18,
-                            height: 18,
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: AppColors.primary,
                             ),
                           )
-                          : const Icon(Icons.picture_as_pdf_rounded),
+                          : const Icon(Icons.refresh_rounded),
+                  tooltip: 'Refrescar datos',
+                  onPressed:
+                      state.isRevalidating
+                          ? null
+                          : () => cubit.loadData(forceRefresh: true),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf_rounded),
                   tooltip: 'Exportar PDF [Alt + E]',
-                  onPressed: state.isExporting ? null : _exportToPdf,
+                  onPressed: _exportToPdf,
                 ),
               ],
-              body: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isDesktop = constraints.maxWidth >= 1050;
-                  final isTablet =
-                      constraints.maxWidth >= 700 &&
-                      constraints.maxWidth < 1050;
+              body: Column(
+                children: [
+                  // SWR: Barra de sincronización discreta de 2px en background (cero shimmer)
+                  if (state.isRevalidating)
+                    const LinearProgressIndicator(
+                      minHeight: 2.5,
+                      color: AppColors.primary,
+                      backgroundColor: Colors.transparent,
+                    ),
 
-                  if (isDesktop) {
-                    return _buildDesktopLayout(context, state);
-                  }
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 1050;
+                        final isTablet =
+                            constraints.maxWidth >= 700 &&
+                            constraints.maxWidth < 1050;
 
-                  if (isTablet) {
-                    return _buildTabletLayout(context, state);
-                  }
+                        if (isDesktop) {
+                          return _buildDesktopLayout(context, state, cubit);
+                        }
 
-                  return _buildMobileLayout(context, state);
-                },
+                        if (isTablet) {
+                          return _buildTabletLayout(context, state, cubit);
+                        }
+
+                        return _buildMobileLayout(context, state, cubit);
+                      },
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -302,10 +307,8 @@ class _CustomerCreditMovementsScreenContentState
   Widget _buildDesktopLayout(
     BuildContext context,
     CustomerCreditMovementsState state,
+    CustomerCreditMovementsCubit cubit,
   ) {
-    final filtered = _filterMovements(state.movements);
-    final cubit = context.read<CustomerCreditMovementsCubit>();
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -317,7 +320,6 @@ class _CustomerCreditMovementsScreenContentState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Resumen Financiero con Gradiente Slate
                 MovementsSummaryHeader(
                   customerName: state.customerName,
                   currentDebt: state.currentDebt,
@@ -390,7 +392,7 @@ class _CustomerCreditMovementsScreenContentState
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
-                        onPressed: state.isExporting ? null : _exportToPdf,
+                        onPressed: _exportToPdf,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textPrimary,
                           side: const BorderSide(color: AppColors.border),
@@ -399,20 +401,11 @@ class _CustomerCreditMovementsScreenContentState
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        icon:
-                            state.isExporting
-                                ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                                : const Icon(
-                                  Icons.picture_as_pdf_rounded,
-                                  size: 18,
-                                  color: AppColors.danger,
-                                ),
+                        icon: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          size: 18,
+                          color: AppColors.danger,
+                        ),
                         label: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -446,29 +439,26 @@ class _CustomerCreditMovementsScreenContentState
         Expanded(
           child: Column(
             children: [
-              if (state.isExporting)
-                const LinearProgressIndicator(
-                  minHeight: 3,
-                  color: AppColors.primary,
-                ),
-
-              // Toolbar Unificada de Filtros
-              _buildProToolbar(
-                context,
-                state: state,
-                cubit: cubit,
-                isDesktop: true,
+              MovementsFilterToolbar(
+                typeFilter: state.typeFilter,
+                dateFilter: state.dateFilter,
+                totalCount: state.totalCount,
+                chargeCount: state.chargeCount,
+                paymentCount: state.paymentCount,
+                onTypeFilterChanged: cubit.setTypeFilter,
+                onDateFilterChanged: cubit.setDateFilter,
               ),
 
               // Contenedor Principal: Data Table o Estados
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: cubit.loadData,
+                  onRefresh: () => cubit.loadData(forceRefresh: true),
                   color: AppColors.primary,
                   child:
+                      // STALE-WHILE-REVALIDATE: Solo muestra esqueleto si no hay absolutamente ningún dato previo
                       state.isLoading && state.movements.isEmpty
-                          ? const _DesktopLedgerSkeleton()
-                          : filtered.isEmpty
+                          ? const DesktopLedgerSkeleton()
+                          : state.movements.isEmpty
                           ? Center(
                             child: AppEmptyState(
                               icon: Icons.receipt_long_outlined,
@@ -503,8 +493,8 @@ class _CustomerCreditMovementsScreenContentState
                           : SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(12, 4, 16, 16),
-                            child: _MovementsLedgerDataTable(
-                              movements: filtered,
+                            child: MovementsLedgerDataTable(
+                              movements: state.movements,
                               onOpenOrder: _openOrderDetails,
                               onCopy: _copyToClipboard,
                             ),
@@ -528,10 +518,8 @@ class _CustomerCreditMovementsScreenContentState
   Widget _buildTabletLayout(
     BuildContext context,
     CustomerCreditMovementsState state,
+    CustomerCreditMovementsCubit cubit,
   ) {
-    final filtered = _filterMovements(state.movements);
-    final cubit = context.read<CustomerCreditMovementsCubit>();
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -575,18 +563,23 @@ class _CustomerCreditMovementsScreenContentState
         Expanded(
           child: Column(
             children: [
-              _buildProToolbar(
-                context,
-                state: state,
-                cubit: cubit,
-                isDesktop: false,
+              MovementsFilterToolbar(
+                typeFilter: state.typeFilter,
+                dateFilter: state.dateFilter,
+                totalCount: state.totalCount,
+                chargeCount: state.chargeCount,
+                paymentCount: state.paymentCount,
+                onTypeFilterChanged: cubit.setTypeFilter,
+                onDateFilterChanged: cubit.setDateFilter,
               ),
               Expanded(
                 child: RefreshIndicator(
-                  onRefresh: cubit.loadData,
+                  onRefresh: () => cubit.loadData(forceRefresh: true),
                   color: AppColors.primary,
                   child:
-                      filtered.isEmpty
+                      state.isLoading && state.movements.isEmpty
+                          ? const DesktopLedgerSkeleton()
+                          : state.movements.isEmpty
                           ? Center(
                             child: AppEmptyState(
                               icon: Icons.receipt_long_outlined,
@@ -603,14 +596,14 @@ class _CustomerCreditMovementsScreenContentState
                           )
                           : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(8, 4, 16, 16),
-                            itemCount: filtered.length,
+                            itemCount: state.movements.length,
                             itemBuilder: (context, index) {
-                              final movement = filtered[index];
+                              final movement = state.movements[index];
                               final showDateLabel =
                                   index == 0 ||
                                   !_sameDay(
                                     movement.createdAt,
-                                    filtered[index - 1].createdAt,
+                                    state.movements[index - 1].createdAt,
                                   );
 
                               return Column(
@@ -644,15 +637,10 @@ class _CustomerCreditMovementsScreenContentState
   Widget _buildMobileLayout(
     BuildContext context,
     CustomerCreditMovementsState state,
+    CustomerCreditMovementsCubit cubit,
   ) {
-    final filtered = _filterMovements(state.movements);
-    final cubit = context.read<CustomerCreditMovementsCubit>();
-
     return Column(
       children: [
-        if (state.isExporting)
-          const LinearProgressIndicator(minHeight: 3, color: AppColors.primary),
-
         // Filtros táctiles en scroll horizontal
         Container(
           color: Colors.white,
@@ -662,7 +650,7 @@ class _CustomerCreditMovementsScreenContentState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _TypePill(
+                TypePill(
                   label: 'Todos',
                   count:
                       (state.chargeCount + state.paymentCount) > 0
@@ -672,7 +660,7 @@ class _CustomerCreditMovementsScreenContentState
                   onTap: () => cubit.setTypeFilter('ALL'),
                 ),
                 const SizedBox(width: 8),
-                _TypePill(
+                TypePill(
                   label: 'Abonos (-)',
                   count: state.paymentCount,
                   isSelected: state.typeFilter == 'PAYMENT',
@@ -680,7 +668,7 @@ class _CustomerCreditMovementsScreenContentState
                   onTap: () => cubit.setTypeFilter('PAYMENT'),
                 ),
                 const SizedBox(width: 8),
-                _TypePill(
+                TypePill(
                   label: 'Cargos (+)',
                   count: state.chargeCount,
                   isSelected: state.typeFilter == 'CHARGE',
@@ -690,19 +678,19 @@ class _CustomerCreditMovementsScreenContentState
                 const SizedBox(width: 12),
                 Container(width: 1, height: 24, color: AppColors.border),
                 const SizedBox(width: 12),
-                _DateFilterChip(
+                DateFilterChip(
                   label: 'Todo',
                   isSelected: state.dateFilter == 'all',
                   onTap: () => cubit.setDateFilter('all'),
                 ),
                 const SizedBox(width: 6),
-                _DateFilterChip(
+                DateFilterChip(
                   label: 'Este mes',
                   isSelected: state.dateFilter == 'this_month',
                   onTap: () => cubit.setDateFilter('this_month'),
                 ),
                 const SizedBox(width: 6),
-                _DateFilterChip(
+                DateFilterChip(
                   label: '30 días',
                   isSelected: state.dateFilter == '30_days',
                   onTap: () => cubit.setDateFilter('30_days'),
@@ -715,7 +703,7 @@ class _CustomerCreditMovementsScreenContentState
 
         Expanded(
           child: RefreshIndicator(
-            onRefresh: cubit.loadData,
+            onRefresh: () => cubit.loadData(forceRefresh: true),
             color: AppColors.primary,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -761,8 +749,7 @@ class _CustomerCreditMovementsScreenContentState
                             ),
                             const SizedBox(width: 10),
                             IconButton.filledTonal(
-                              onPressed:
-                                  state.isExporting ? null : _exportToPdf,
+                              onPressed: _exportToPdf,
                               style: IconButton.styleFrom(
                                 padding: const EdgeInsets.all(12),
                                 shape: RoundedRectangleBorder(
@@ -783,7 +770,7 @@ class _CustomerCreditMovementsScreenContentState
                 ),
 
                 // Lista de movimientos
-                if (filtered.isEmpty && !state.isLoading)
+                if (state.movements.isEmpty && !state.isLoading)
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: Center(
@@ -806,12 +793,12 @@ class _CustomerCreditMovementsScreenContentState
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
-                        final movement = filtered[index];
+                        final movement = state.movements[index];
                         final showDateLabel =
                             index == 0 ||
                             !_sameDay(
                               movement.createdAt,
-                              filtered[index - 1].createdAt,
+                              state.movements[index - 1].createdAt,
                             );
 
                         return Column(
@@ -826,7 +813,7 @@ class _CustomerCreditMovementsScreenContentState
                             const SizedBox(height: 10),
                           ],
                         );
-                      }, childCount: filtered.length),
+                      }, childCount: state.movements.length),
                     ),
                   ),
               ],
@@ -837,88 +824,6 @@ class _CustomerCreditMovementsScreenContentState
         if (state.totalPages > 1)
           _buildPaginationBar(cubit: cubit, state: state),
       ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // SHARED: TOOLBAR UNIFICADA (Desktop / Tablet)
-  // ---------------------------------------------------------------------------
-  Widget _buildProToolbar(
-    BuildContext context, {
-    required CustomerCreditMovementsState state,
-    required CustomerCreditMovementsCubit cubit,
-    required bool isDesktop,
-  }) {
-    final totalMovementsCount =
-        (state.chargeCount + state.paymentCount) > 0
-            ? (state.chargeCount + state.paymentCount)
-            : state.totalCount;
-    final paymentsCount = state.paymentCount;
-    final chargesCount = state.chargeCount;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 16, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Type Pills
-          _TypePill(
-            label: 'Todos',
-            count: totalMovementsCount,
-            isSelected: state.typeFilter == 'ALL',
-            onTap: () => cubit.setTypeFilter('ALL'),
-          ),
-          const SizedBox(width: 8),
-          _TypePill(
-            label: 'Abonos (-)',
-            count: paymentsCount,
-            isSelected: state.typeFilter == 'PAYMENT',
-            color: const Color(0xFF16A34A),
-            onTap: () => cubit.setTypeFilter('PAYMENT'),
-          ),
-          const SizedBox(width: 8),
-          _TypePill(
-            label: 'Cargos (+)',
-            count: chargesCount,
-            isSelected: state.typeFilter == 'CHARGE',
-            color: const Color(0xFFEA580C),
-            onTap: () => cubit.setTypeFilter('CHARGE'),
-          ),
-
-          const Spacer(),
-
-          // Date Filter Pills
-          _DateFilterChip(
-            label: 'Todo',
-            isSelected: state.dateFilter == 'all',
-            onTap: () => cubit.setDateFilter('all'),
-          ),
-          const SizedBox(width: 6),
-          _DateFilterChip(
-            label: 'Este mes',
-            isSelected: state.dateFilter == 'this_month',
-            onTap: () => cubit.setDateFilter('this_month'),
-          ),
-          const SizedBox(width: 6),
-          _DateFilterChip(
-            label: 'Últimos 30 días',
-            isSelected: state.dateFilter == '30_days',
-            onTap: () => cubit.setDateFilter('30_days'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -946,716 +851,5 @@ class _CustomerCreditMovementsScreenContentState
   bool _sameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Component: Segmented Type Pill
-// -----------------------------------------------------------------------------
-class _TypePill extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool isSelected;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _TypePill({
-    required this.label,
-    required this.count,
-    required this.isSelected,
-    this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final activeColor = color ?? AppColors.primary;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? activeColor : AppColors.border,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? Colors.white.withValues(alpha: 0.25)
-                        : const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Component: Date Filter Chip
-// -----------------------------------------------------------------------------
-class _DateFilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _DateFilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppColors.primary : AppColors.textMuted,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Component: High-Density Ledger Data Table (Stripe Style)
-// -----------------------------------------------------------------------------
-class _MovementsLedgerDataTable extends StatelessWidget {
-  final List<CreditMovementEntity> movements;
-  final void Function(String orderId) onOpenOrder;
-  final void Function(String text, String label) onCopy;
-
-  const _MovementsLedgerDataTable({
-    required this.movements,
-    required this.onOpenOrder,
-    required this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFFF8FAFC),
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'FECHA Y HORA',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'CONCEPTO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'REFERENCIA / PEDIDO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'MEDIO / CUENTA',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'RESPONSABLE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'MONTO',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'VER',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-
-          // Table Rows (Iteración directa optimizada sin anidar viewports de scroll)
-          for (int i = 0; i < movements.length; i++) ...[
-            if (i > 0) const Divider(height: 1, color: AppColors.border),
-            _DesktopLedgerRow(
-              key: ValueKey(movements[i].id),
-              movement: movements[i],
-              onOpenOrder: onOpenOrder,
-              onCopy: onCopy,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DesktopLedgerRow extends StatefulWidget {
-  final CreditMovementEntity movement;
-  final void Function(String orderId) onOpenOrder;
-  final void Function(String text, String label) onCopy;
-
-  const _DesktopLedgerRow({
-    super.key,
-    required this.movement,
-    required this.onOpenOrder,
-    required this.onCopy,
-  });
-
-  @override
-  State<_DesktopLedgerRow> createState() => _DesktopLedgerRowState();
-}
-
-class _DesktopLedgerRowState extends State<_DesktopLedgerRow> {
-  bool _isHovered = false;
-
-  void _showContextMenu(TapDownDetails details) {
-    final m = widget.movement;
-    final position = RelativeRect.fromRect(
-      details.globalPosition & const Size(40, 40),
-      Offset.zero & MediaQuery.of(context).size,
-    );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 6,
-      items: [
-        if (m.orderId != null)
-          PopupMenuItem(
-            value: 'order',
-            child: Row(
-              children: const [
-                Icon(
-                  Icons.receipt_long_outlined,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-                SizedBox(width: 10),
-                Text('Ver detalle del pedido'),
-              ],
-            ),
-          ),
-        if (m.orderNumber != null)
-          PopupMenuItem(
-            value: 'copy_order',
-            child: Row(
-              children: const [
-                Icon(Icons.copy_rounded, size: 18, color: AppColors.textMuted),
-                SizedBox(width: 10),
-                Text('Copiar número de pedido'),
-              ],
-            ),
-          ),
-        PopupMenuItem(
-          value: 'copy_amount',
-          child: Row(
-            children: const [
-              Icon(
-                Icons.attach_money_rounded,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-              SizedBox(width: 10),
-              Text('Copiar monto'),
-            ],
-          ),
-        ),
-      ],
-    ).then((value) {
-      if (value == null) return;
-      switch (value) {
-        case 'order':
-          if (m.orderId != null) widget.onOpenOrder(m.orderId!);
-          break;
-        case 'copy_order':
-          if (m.orderNumber != null) {
-            widget.onCopy(m.orderNumber!, 'Nº de Pedido');
-          }
-          break;
-        case 'copy_amount':
-          widget.onCopy(m.amount.toStringAsFixed(2), 'Monto');
-          break;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final m = widget.movement;
-    final isCharge = m.movementType == 'CHARGE';
-    final sign = isCharge ? '+' : '-';
-    final amountColor =
-        isCharge ? const Color(0xFFEA580C) : const Color(0xFF16A34A);
-
-    final dateStr =
-        m.createdAt != null
-            ? DateFormat('d MMM yyyy', 'es').format(m.createdAt!.toLocal())
-            : '--';
-    final timeStr =
-        m.createdAt != null
-            ? DateFormat.jm().format(m.createdAt!.toLocal())
-            : '--:--';
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onSecondaryTapDown: _showContextMenu,
-        onTap: m.orderId != null ? () => widget.onOpenOrder(m.orderId!) : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: _isHovered ? const Color(0xFFF8FAFC) : Colors.white,
-          child: Row(
-            children: [
-              // 1. Fecha y Hora
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      dateStr,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      timeStr,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2. Concepto / Tipo Badge
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isCharge
-                              ? const Color(0xFFFFFBEB)
-                              : const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color:
-                            isCharge
-                                ? const Color(0xFFFDE68A)
-                                : const Color(0xFFBBF7D0),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isCharge
-                              ? Icons.shopping_cart_rounded
-                              : Icons.payments_rounded,
-                          size: 13,
-                          color: amountColor,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isCharge ? 'Cargo por venta' : 'Abono registrado',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: amountColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // 3. Referencia / Pedido
-              Expanded(
-                flex: 2,
-                child:
-                    m.orderNumber != null
-                        ? InkWell(
-                          onTap:
-                              m.orderId != null
-                                  ? () => widget.onOpenOrder(m.orderId!)
-                                  : null,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.background,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Text(
-                                  '#${m.orderNumber!.length > 10 ? m.orderNumber!.substring(0, 8) : m.orderNumber}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'monospace',
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.open_in_new_rounded,
-                                size: 12,
-                                color: AppColors.primary,
-                              ),
-                            ],
-                          ),
-                        )
-                        : Text(
-                          m.notes != null && m.notes!.isNotEmpty
-                              ? m.notes!
-                              : '-',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-              ),
-
-              // 4. Medio / Cuenta
-              Expanded(
-                flex: 2,
-                child: Text(
-                  m.orderPaymentMethod ?? m.paymentMethod ?? 'Caja / General',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-
-              // 5. Responsable
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.person_outline_rounded,
-                      size: 14,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        m.createdByName ?? 'Desconocido',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 6. Monto
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    '$sign S/ ${m.amount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: amountColor,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-              ),
-
-              // 7. Acciones
-              Expanded(
-                flex: 1,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child:
-                      m.orderId != null
-                          ? IconButton(
-                            icon: const Icon(
-                              Icons.visibility_outlined,
-                              size: 17,
-                            ),
-                            tooltip: 'Ver pedido asociado',
-                            splashRadius: 16,
-                            color: AppColors.textSecondary,
-                            onPressed: () => widget.onOpenOrder(m.orderId!),
-                          )
-                          : const SizedBox.shrink(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Component: Desktop Ledger Skeleton
-// -----------------------------------------------------------------------------
-class _DesktopLedgerSkeleton extends StatelessWidget {
-  const _DesktopLedgerSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: const Color(0xFFF8FAFC),
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 90, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 80, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: AppShimmer(width: 70, height: 12, borderRadius: 4),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 60, height: 12, borderRadius: 4),
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: AppShimmer(width: 24, height: 12, borderRadius: 4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.border),
-          for (int i = 0; i < 6; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: const [
-                  Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 90, height: 16, borderRadius: 4),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 80, height: 20, borderRadius: 6),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 70, height: 16, borderRadius: 4),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 75, height: 14, borderRadius: 4),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: AppShimmer(width: 80, height: 14, borderRadius: 4),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 65, height: 16, borderRadius: 4),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: AppShimmer(width: 20, height: 20, borderRadius: 4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (i < 5) const Divider(height: 1, color: AppColors.border),
-          ],
-        ],
-      ),
-    );
   }
 }

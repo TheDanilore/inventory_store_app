@@ -8,7 +8,7 @@ class GetActiveWarehousesUseCase {
 
   GetActiveWarehousesUseCase(this.repository);
 
-  Future<List<WarehouseEntity>> call() {
-    return repository.getActiveWarehouses();
+  Future<List<WarehouseEntity>> call({bool forceRefresh = false}) {
+    return repository.getActiveWarehouses(forceRefresh: forceRefresh);
   }
 }

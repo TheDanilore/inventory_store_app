@@ -28,13 +28,8 @@ class UsersManagementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create:
-          (_) =>
-              sl<UsersCubit>()
-                ..init('staff')
-                ..fetchCounts()
-                ..fetchUsers(),
+    return BlocProvider.value(
+      value: sl<UsersCubit>(),
       child: const _UsersManagementContent(),
     );
   }
@@ -56,6 +51,18 @@ class _UsersManagementContentState extends State<_UsersManagementContent> {
   String _debouncedQuery = '';
   Timer? _debounce;
   bool _isExporting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final cubit = sl<UsersCubit>();
+    if (cubit.state is UsersInitial) {
+      cubit
+        ..init('staff')
+        ..fetchCounts()
+        ..fetchUsers();
+    }
+  }
 
   @override
   void dispose() {

@@ -2,7 +2,11 @@ import 'package:inventory_store_app/features/inventory/domain/entities/warehouse
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
 
 abstract class WarehousesRepository {
-  Future<List<WarehouseEntity>> getActiveWarehouses();
+  Future<List<WarehouseEntity>> getActiveWarehouses({
+    bool forceRefresh = false,
+  });
+
+  void invalidateCache();
 
   Future<({List<WarehouseEntity> data, int count})> getWarehouses({
     required int start,

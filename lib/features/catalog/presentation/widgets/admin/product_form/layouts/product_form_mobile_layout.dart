@@ -367,7 +367,7 @@ class _ProductFormMobileLayoutState extends State<ProductFormMobileLayout> {
               ...filteredIndices.map((index) {
                 final draft = state.variantDrafts[index];
                 return VariantDraftCard(
-                  key: ValueKey(draft.id ?? 'variant_draft_$index'),
+                  key: ValueKey(draft.clientTempId),
                   index: index,
                   draft: draft,
                   isExpanded: widget.allExpanded,

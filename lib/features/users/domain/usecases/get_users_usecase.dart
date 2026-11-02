@@ -15,6 +15,7 @@ class GetUsersUseCase {
     required bool onlyActive,
     required int page,
     required int pageSize,
+    bool forceRefresh = false,
   }) async {
     return await repository.getUsers(
       role: role,
@@ -22,6 +23,7 @@ class GetUsersUseCase {
       onlyActive: onlyActive,
       page: page,
       pageSize: pageSize,
+      forceRefresh: forceRefresh,
     );
   }
 }

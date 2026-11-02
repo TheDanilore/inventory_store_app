@@ -9,7 +9,10 @@ abstract class UsersRepository {
     required bool onlyActive,
     required int page,
     required int pageSize,
+    bool forceRefresh = false,
   });
+
+  void invalidateUsersCache();
 
   Future<Either<Failure, List<UserEntity>>> getAllUsers({
     required String role,

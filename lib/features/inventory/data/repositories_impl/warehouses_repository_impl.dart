@@ -8,31 +8,58 @@ import 'package:inventory_store_app/features/inventory/domain/repositories/wareh
 @LazySingleton(as: WarehousesRepository)
 class WarehousesRepositoryImpl implements WarehousesRepository {
   final SupabaseClient _supabase;
+  List<WarehouseEntity>? _activeWarehousesCache;
+  DateTime? _activeWarehousesCacheTime;
+  static const Duration _cacheTtl = Duration(minutes: 15);
 
   WarehousesRepositoryImpl() : _supabase = Supabase.instance.client;
 
   @override
-  Future<List<WarehouseEntity>> getActiveWarehouses() async {
+  void invalidateCache() {
+    _activeWarehousesCache = null;
+    _activeWarehousesCacheTime = null;
+  }
+
+  @override
+  Future<List<WarehouseEntity>> getActiveWarehouses({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh &&
+        _activeWarehousesCache != null &&
+        _activeWarehousesCacheTime != null) {
+      if (DateTime.now().difference(_activeWarehousesCacheTime!) < _cacheTtl) {
+        return _activeWarehousesCache!;
+      }
+    }
+
     try {
       final response = await _supabase.rpc('get_my_warehouses');
-      return (response as List<dynamic>)
-          .map(
-            (e) =>
-                WarehouseModel.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ).toEntity(),
-          )
-          .toList();
+      final list =
+          (response as List<dynamic>)
+              .map(
+                (e) =>
+                    WarehouseModel.fromJson(
+                      Map<String, dynamic>.from(e as Map),
+                    ).toEntity(),
+              )
+              .toList();
+      _activeWarehousesCache = list;
+      _activeWarehousesCacheTime = DateTime.now();
+      return list;
     } catch (_) {
       final response = await _supabase
           .from('warehouses')
-          .select('*')
+          .select('id, name, address, is_active, type, code')
           .eq('is_active', true)
           .order('name');
 
-      return (response as List<dynamic>)
-          .map((e) => WarehouseModel.fromJson(e).toEntity())
-          .toList();
+      final list =
+          (response as List<dynamic>)
+              .map((e) => WarehouseModel.fromJson(e).toEntity())
+              .toList();
+      _activeWarehousesCache = list;
+      _activeWarehousesCacheTime = DateTime.now();
+      return list;
     }
   }
 
@@ -162,6 +189,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         }
       }
     }
+    invalidateCache();
   }
 
   @override
@@ -197,6 +225,7 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         'No se pudo guardar la distribución procedural. Verifica permisos RLS en warehouses.',
       );
     }
+    invalidateCache();
   }
 
   @override
@@ -234,6 +263,8 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
         .update({'is_active': isActive})
         .eq('warehouse_id', wh.id)
         .eq('type', 'CAJA');
+
+    invalidateCache();
   }
 
   @override
@@ -275,5 +306,6 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     }
 
     await _supabase.from('warehouses').delete().eq('id', id);
+    invalidateCache();
   }
 }

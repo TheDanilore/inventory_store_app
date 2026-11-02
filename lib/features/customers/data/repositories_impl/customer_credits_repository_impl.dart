@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/errors/app_exception.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/data/cache/credit_movements_cache.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_model.dart';
 import 'package:inventory_store_app/features/customers/data/models/customer_credit_movement_model.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
@@ -451,6 +452,30 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
     required String creditId,
     String? dateFilter,
   }) async {
+    // 1. Intento primario ultra-rápido: RPC en PostgreSQL (0 Egress innecesario)
+    try {
+      final rpcRes = await _supabase.rpc(
+        'get_credit_movements_totals_rpc',
+        params: {'p_credit_id': creditId, 'p_date_filter': dateFilter},
+      );
+
+      if (rpcRes is List && rpcRes.isNotEmpty) {
+        final row = rpcRes.first as Map;
+        return (
+          totalCharged: (row['total_charged'] as num?)?.toDouble() ?? 0.0,
+          totalPaid: (row['total_paid'] as num?)?.toDouble() ?? 0.0,
+          chargeCount: (row['charge_count'] as num?)?.toInt() ?? 0,
+          paymentCount: (row['payment_count'] as num?)?.toInt() ?? 0,
+        );
+      }
+    } catch (rpcErr) {
+      LoggerService.w(
+        'get_credit_movements_totals_rpc no disponible o falló ($rpcErr). Aplicando fallback.',
+        tag: 'CUSTOMER_CREDITS_REPO',
+      );
+    }
+
+    // 2. Fallback resiliente a tabla si el RPC aún no se ha ejecutado en Supabase
     try {
       var query = _supabase
           .from('customer_credit_movements')
@@ -552,6 +577,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
             'Error desconocido del servidor al registrar abono.';
         throw ServerException(message: errMsg);
       }
+      CreditMovementsCache().invalidate(creditId);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en register_credit_payment_rpc: ${e.message}',

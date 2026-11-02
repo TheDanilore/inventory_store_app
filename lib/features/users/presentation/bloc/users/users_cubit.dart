@@ -8,7 +8,7 @@ import 'package:inventory_store_app/features/users/domain/usecases/update_user_u
 import 'package:inventory_store_app/features/users/presentation/bloc/users/users_state.dart';
 import 'package:inventory_store_app/features/users/domain/entities/user_entity.dart';
 
-@injectable
+@lazySingleton
 class UsersCubit extends Cubit<UsersState> {
   final GetUsersUseCase _getUsers;
   final GetGlobalUsersCountUseCase _getCounts;
@@ -81,6 +81,7 @@ class UsersCubit extends Cubit<UsersState> {
     String? searchQuery,
     bool? onlyActive,
     int? page,
+    bool forceRefresh = false,
   }) async {
     final q = searchQuery ?? state.searchQuery;
     final act = onlyActive ?? state.onlyActive;
@@ -109,6 +110,7 @@ class UsersCubit extends Cubit<UsersState> {
       onlyActive: act,
       page: p,
       pageSize: pageSize,
+      forceRefresh: forceRefresh,
     );
 
     res.fold(

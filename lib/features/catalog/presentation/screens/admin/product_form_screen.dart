@@ -33,7 +33,10 @@ class ProductFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<ProductFormCubit>(),
+      create:
+          (_) =>
+              sl<ProductFormCubit>()
+                ..hydrateSyncIfCached(productToEdit, productId: productId),
       child: _ProductFormScreenContent(
         productToEdit: productToEdit,
         productId: productId,
@@ -72,21 +75,30 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
     super.initState();
     // Optimización Zero-Shimmer: Si los datos o entidades ya residen en caché L1,
     // precargamos los controladores síncronamente antes del primer frame.
-    final effectiveId = widget.productToEdit?.id ?? widget.productId;
-    final cachedProduct =
-        widget.productToEdit ??
-        (effectiveId != null
-            ? sl<GetProductByIdUC>().getCached(effectiveId)
-            : null);
-
-    if (cachedProduct != null) {
-      _nombreCtrl.text = cachedProduct.name;
-      _descCtrl.text = cachedProduct.description ?? '';
+    final cubit = context.read<ProductFormCubit>();
+    if (!cubit.state.isInitializingData && cubit.state.categories.isNotEmpty) {
       _initialized = true;
-    } else if (widget.productId == null && widget.productToEdit == null) {
-      if (sl<GetCategoriesUC>().getCached() != null &&
-          sl<GetBrandsUC>().getCached() != null) {
+      if (cubit.productToEdit != null) {
+        _nombreCtrl.text = cubit.productToEdit!.name;
+        _descCtrl.text = cubit.productToEdit!.description ?? '';
+      }
+    } else {
+      final effectiveId = widget.productToEdit?.id ?? widget.productId;
+      final cachedProduct =
+          widget.productToEdit ??
+          (effectiveId != null
+              ? sl<GetProductByIdUC>().getCached(effectiveId)
+              : null);
+
+      if (cachedProduct != null) {
+        _nombreCtrl.text = cachedProduct.name;
+        _descCtrl.text = cachedProduct.description ?? '';
         _initialized = true;
+      } else if (widget.productId == null && widget.productToEdit == null) {
+        if (sl<GetCategoriesUC>().getCached() != null &&
+            sl<GetBrandsUC>().getCached() != null) {
+          _initialized = true;
+        }
       }
     }
 

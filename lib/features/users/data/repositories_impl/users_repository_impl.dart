@@ -11,8 +11,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 @LazySingleton(as: UsersRepository)
 class UsersRepositoryImpl implements UsersRepository {
   final SupabaseClient _supabase;
+  final Map<String, ({List<UserEntity> data, int count, DateTime timestamp})>
+  _usersCache = {};
+  static const Duration _cacheTtl = Duration(minutes: 5);
 
   UsersRepositoryImpl(this._supabase);
+
+  @override
+  void invalidateUsersCache() {
+    _usersCache.clear();
+  }
 
   Future<Map<String, List<String>>> _fetchUserRoles(
     List<String> profileIds,
@@ -133,7 +141,16 @@ class UsersRepositoryImpl implements UsersRepository {
     required bool onlyActive,
     required int page,
     required int pageSize,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = '$role:$searchQuery:$onlyActive:$page:$pageSize';
+    if (!forceRefresh && _usersCache.containsKey(cacheKey)) {
+      final entry = _usersCache[cacheKey]!;
+      if (DateTime.now().difference(entry.timestamp) < _cacheTtl) {
+        return Right({'data': entry.data, 'count': entry.count});
+      }
+    }
+
     try {
       var query = _supabase
           .from('profiles_with_email')
@@ -186,6 +203,12 @@ class UsersRepositoryImpl implements UsersRepository {
               warehouseName: assignedWh?.name,
             );
           }).toList();
+
+      _usersCache[cacheKey] = (
+        data: users,
+        count: response.count,
+        timestamp: DateTime.now(),
+      );
 
       return Right({'data': users, 'count': response.count});
     } on PostgrestException catch (e, st) {
@@ -402,6 +425,7 @@ class UsersRepositoryImpl implements UsersRepository {
           'phone': phone,
           'document_type': documentType,
           'document_number': documentNumber,
+          'warehouse_id': warehouseId,
         },
       );
 
@@ -411,31 +435,19 @@ class UsersRepositoryImpl implements UsersRepository {
         );
       }
 
-      // Sincronizar roles y almacén en perfiles si se especificaron
-      if ((roles != null && roles.isNotEmpty) ||
-          (warehouseId != null && warehouseId.isNotEmpty)) {
-        try {
-          final profileData =
-              await _supabase
-                  .from('profiles_with_email')
-                  .select('id')
-                  .eq('email', email)
-                  .maybeSingle();
+      // Si la Edge Function retornó el profile_id pero no pudo enlazar roles/almacén,
+      // usamos ese profile_id directamente sin consultar profiles_with_email.
+      final resData = response.data is Map ? response.data as Map : null;
+      final profileId = resData?['profile_id']?.toString();
 
-          final profileId = profileData?['id']?.toString();
-          if (profileId != null) {
-            if (roles != null && roles.isNotEmpty) {
-              await _syncUserRoles(profileId, roles);
-            }
-            if (warehouseId != null && warehouseId.isNotEmpty) {
-              await _syncUserWarehouse(profileId, warehouseId);
-            }
-          }
-        } catch (e) {
-          developer.log('Aviso al asociar roles/almacén a nuevo usuario: $e');
+      if (profileId != null) {
+        // Fallback de seguridad en caso de fallo parcial en la Edge Function
+        if (warehouseId != null && warehouseId.isNotEmpty) {
+          await _syncUserWarehouse(profileId, warehouseId);
         }
       }
 
+      invalidateUsersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       developer.log(
@@ -514,6 +526,7 @@ class UsersRepositoryImpl implements UsersRepository {
         }
       }
 
+      invalidateUsersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       developer.log(
@@ -558,6 +571,7 @@ class UsersRepositoryImpl implements UsersRepository {
         return Left(ServerFailure(message: message));
       }
 
+      invalidateUsersCache();
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(

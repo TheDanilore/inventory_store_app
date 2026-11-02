@@ -1,34 +1,55 @@
 import 'package:equatable/equatable.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_entity.dart';
 
 abstract class UserFormState extends Equatable {
-  const UserFormState();
+  final List<WarehouseEntity> warehouses;
+  final bool isLoadingWarehouses;
+
+  const UserFormState({
+    this.warehouses = const [],
+    this.isLoadingWarehouses = false,
+  });
 
   @override
-  List<Object?> get props => [];
+  List<Object?> get props => [warehouses, isLoadingWarehouses];
 }
 
 class UserFormInitial extends UserFormState {
-  const UserFormInitial();
+  const UserFormInitial({
+    super.warehouses = const [],
+    super.isLoadingWarehouses = false,
+  });
 }
 
 class UserFormLoading extends UserFormState {
-  const UserFormLoading();
+  const UserFormLoading({
+    super.warehouses = const [],
+    super.isLoadingWarehouses = false,
+  });
 }
 
 class UserFormSuccess extends UserFormState {
   final String message;
 
-  const UserFormSuccess(this.message);
+  const UserFormSuccess(
+    this.message, {
+    super.warehouses = const [],
+    super.isLoadingWarehouses = false,
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, warehouses, isLoadingWarehouses];
 }
 
 class UserFormError extends UserFormState {
   final String message;
 
-  const UserFormError(this.message);
+  const UserFormError(
+    this.message, {
+    super.warehouses = const [],
+    super.isLoadingWarehouses = false,
+  });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, warehouses, isLoadingWarehouses];
 }

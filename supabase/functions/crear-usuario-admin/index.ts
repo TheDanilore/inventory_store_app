@@ -32,6 +32,7 @@ serve(async (req) => {
       document_number,
       document_type,
       phone,
+      warehouse_id,
     } = await req.json()
 
     // 4. Crear el usuario en Auth
@@ -77,6 +78,15 @@ serve(async (req) => {
         }))
         await supabaseAdmin.from('user_roles').insert(rowsToInsert)
       }
+    }
+
+    // 6.1 Asignar almacén en la tabla 'user_warehouses' si se especificó
+    if (warehouse_id && profileData?.id) {
+      await supabaseAdmin.from('user_warehouses').insert({
+        profile_id: profileData.id,
+        warehouse_id: warehouse_id,
+        is_default: true,
+      })
     }
 
     // 7. Responder éxito a Flutter

@@ -9,6 +9,7 @@ class CustomerCreditMovementsState extends Equatable {
   final double creditLimit;
 
   final bool isLoading;
+  final bool isRevalidating;
   final bool isExporting;
   final List<CreditMovementEntity> movements;
   final int totalCount;
@@ -31,6 +32,7 @@ class CustomerCreditMovementsState extends Equatable {
     required this.currentDebt,
     required this.creditLimit,
     this.isLoading = true,
+    this.isRevalidating = false,
     this.isExporting = false,
     this.movements = const [],
     this.totalCount = 0,
@@ -57,6 +59,7 @@ class CustomerCreditMovementsState extends Equatable {
     double? currentDebt,
     double? creditLimit,
     bool? isLoading,
+    bool? isRevalidating,
     bool? isExporting,
     List<CreditMovementEntity>? movements,
     int? totalCount,
@@ -78,6 +81,7 @@ class CustomerCreditMovementsState extends Equatable {
       currentDebt: currentDebt ?? this.currentDebt,
       creditLimit: creditLimit ?? this.creditLimit,
       isLoading: isLoading ?? this.isLoading,
+      isRevalidating: isRevalidating ?? this.isRevalidating,
       isExporting: isExporting ?? this.isExporting,
       movements: movements ?? this.movements,
       totalCount: totalCount ?? this.totalCount,
@@ -102,6 +106,7 @@ class CustomerCreditMovementsState extends Equatable {
     currentDebt,
     creditLimit,
     isLoading,
+    isRevalidating,
     isExporting,
     movements,
     totalCount,

@@ -2,6 +2,8 @@ import 'dart:typed_data';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
 
 class VariantDraftFormModel {
+  static int _tempCounter = 0;
+  final String clientTempId;
   final String? id;
 
   // Campos básicos como primitivos (no controllers)
@@ -23,7 +25,8 @@ class VariantDraftFormModel {
   final List<String> urlsExistentes;
   final String? externalImageUrl;
 
-  const VariantDraftFormModel({
+  VariantDraftFormModel({
+    String? clientTempId,
     this.id,
     String? sku,
     String? barcode,
@@ -37,7 +40,11 @@ class VariantDraftFormModel {
     List<Uint8List>? nuevasImagenes,
     this.externalImageUrl,
     this.isActive = true,
-  }) : sku = sku ?? '',
+  }) : clientTempId =
+           clientTempId ??
+           id ??
+           'vd_${DateTime.now().microsecondsSinceEpoch}_${_tempCounter++}',
+       sku = sku ?? '',
        barcode = barcode ?? '',
        price = price ?? '',
        wholesalePrice = wholesalePrice ?? '',
@@ -50,6 +57,9 @@ class VariantDraftFormModel {
 
   factory VariantDraftFormModel.fromEntity(VariantDraftEntity variant) {
     return VariantDraftFormModel(
+      clientTempId:
+          variant.id ??
+          'vd_${DateTime.now().microsecondsSinceEpoch}_${_tempCounter++}',
       id: variant.id,
       sku: variant.sku ?? '',
       barcode: variant.barcode ?? '',
@@ -66,6 +76,7 @@ class VariantDraftFormModel {
   }
 
   VariantDraftFormModel copyWith({
+    String? clientTempId,
     String? id,
     String? sku,
     String? barcode,
@@ -82,6 +93,7 @@ class VariantDraftFormModel {
     bool clearExternalImageUrl = false,
   }) {
     return VariantDraftFormModel(
+      clientTempId: clientTempId ?? this.clientTempId,
       id: id ?? this.id,
       sku: sku ?? this.sku,
       barcode: barcode ?? this.barcode,

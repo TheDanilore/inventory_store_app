@@ -448,6 +448,49 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     ];
   }
 
+  ProductFormInitialValues? hydrateSyncIfCached(
+    ProductEntity? product, {
+    String? productId,
+  }) {
+    final effectiveId = product?.id ?? productId;
+    final isEditing = effectiveId != null && effectiveId.isNotEmpty;
+
+    final cachedCategories = _getCategoriesUC.getCached();
+    final cachedBrands = _getBrandsUC.getCached();
+    ProductEntity? cachedProduct = product;
+    if (cachedProduct == null && isEditing) {
+      cachedProduct = _getProductByIdUC.getCached(effectiveId);
+    }
+
+    final hasAllDepsCached = cachedCategories != null && cachedBrands != null;
+    final canUseCache =
+        hasAllDepsCached && (!isEditing || cachedProduct != null);
+
+    if (canUseCache) {
+      _categories = cachedCategories;
+      _isLoadingCategories = false;
+      _brands = cachedBrands;
+      _isLoadingBrands = false;
+      _isInitializingData = false;
+      _isBackgroundSyncing = false;
+
+      String nombre = '';
+      String desc = '';
+
+      if (isEditing && cachedProduct != null) {
+        final hydrated = _hydrateProduct(cachedProduct);
+        nombre = hydrated.nombre;
+        desc = hydrated.desc;
+      } else {
+        _initNewProduct();
+      }
+
+      _syncState();
+      return ProductFormInitialValues(nombre: nombre, desc: desc);
+    }
+    return null;
+  }
+
   Future<ProductFormInitialValues> loadInitialData(
     ProductEntity? product, {
     String? productId,

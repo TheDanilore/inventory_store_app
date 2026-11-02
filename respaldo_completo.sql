@@ -1289,6 +1289,36 @@ $$;
 ALTER FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text" DEFAULT NULL::"text") RETURNS TABLE("total_charged" numeric, "total_paid" numeric, "charge_count" bigint, "payment_count" bigint)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    AS $$
+DECLARE
+    v_from_date TIMESTAMPTZ;
+BEGIN
+    IF p_date_filter = '30_days' THEN
+        v_from_date := NOW() - INTERVAL '30 days';
+    ELSIF p_date_filter = 'this_month' THEN
+        v_from_date := DATE_TRUNC('month', NOW());
+    ELSE
+        v_from_date := NULL;
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        COALESCE(SUM(amount) FILTER (WHERE movement_type = 'CHARGE'), 0)::NUMERIC AS total_charged,
+        COALESCE(SUM(amount) FILTER (WHERE movement_type = 'PAYMENT'), 0)::NUMERIC AS total_paid,
+        COUNT(*) FILTER (WHERE movement_type = 'CHARGE')::BIGINT AS charge_count,
+        COUNT(*) FILTER (WHERE movement_type = 'PAYMENT')::BIGINT AS payment_count
+    FROM public.customer_credit_movements
+    WHERE customer_credit_id = p_credit_id
+      AND (v_from_date IS NULL OR created_at >= v_from_date);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text" DEFAULT ''::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -8335,6 +8365,12 @@ GRANT ALL ON FUNCTION "public"."find_existing_variants_for_import"("p_names" "te
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_cash_shifts_summary_rpc"("p_limit" integer, "p_offset" integer, "p_status" "text", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_profile_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_credit_movements_totals_rpc"("p_credit_id" "uuid", "p_date_filter" "text") TO "service_role";
 
 
 

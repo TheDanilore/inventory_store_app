@@ -40,6 +40,57 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     return '${state.searchTerm}_${state.selectedCategoryId}_${state.selectedBrandId}_${state.filterIsActive}_${state.searchByIngredient}_${state.stockFilter}_${state.sortOption}_${state.currentPage}';
   }
 
+  static AdminCatalogState _resolveInitialState({
+    required GetCategoriesUC getCategoriesUC,
+    required GetBrandsUC getBrandsUC,
+  }) {
+    final cachedCats = getCategoriesUC.getCached() ?? const [];
+    final cachedBrands = getBrandsUC.getCached(activeOnly: true) ?? const [];
+
+    final lruKey = CatalogLruCache.buildKey(
+      searchQuery: '',
+      categoryId: null,
+      brandId: null,
+      isActive: null,
+      searchByIngredient: false,
+      forCustomer: false,
+      limit: 15,
+      offset: 0,
+      sortOption: CatalogSortOption.recent,
+      stockFilter: CatalogStockFilter.all,
+    );
+    final lruCached = CatalogLruCache.instance.getPage(lruKey);
+
+    if (lruCached != null && lruCached.products.isNotEmpty) {
+      final matchedMap = <String, String>{};
+      for (final p in lruCached.products) {
+        final ingName =
+            (p.details['active_ingredient'] ??
+                    p.details['active_ingredients'] ??
+                    p.details['principio_activo'] ??
+                    p.details['formula'])
+                ?.toString();
+        if (ingName != null && ingName.isNotEmpty) {
+          matchedMap[p.id] = ingName;
+        }
+      }
+      return AdminCatalogState(
+        catalogState: ViewState.success,
+        categories: cachedCats,
+        brands: cachedBrands,
+        products: lruCached.products,
+        totalCount: lruCached.totalCount,
+        matchedIngredients: matchedMap,
+      );
+    }
+
+    return AdminCatalogState(
+      catalogState: ViewState.initial,
+      categories: cachedCats,
+      brands: cachedBrands,
+    );
+  }
+
   AdminCatalogCubit({
     required this.getCategoriesUC,
     required this.getBrandsUC,
@@ -49,17 +100,43 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
     required this.clearCatalogCacheUC,
     required this.exportCatalogPdfUC,
     required this.getProductStockUC,
-  }) : super(const AdminCatalogState());
+  }) : super(
+         _resolveInitialState(
+           getCategoriesUC: getCategoriesUC,
+           getBrandsUC: getBrandsUC,
+         ),
+       ) {
+    if (state.products.isNotEmpty) {
+      final cacheKey = _buildCacheKey();
+      _productsCache[cacheKey] = (
+        products: state.products,
+        totalCount: state.totalCount,
+      );
+    }
+  }
 
   Future<void> loadInitialData() async {
+    final cacheKey = _buildCacheKey();
+    if (state.products.isNotEmpty && !_productsCache.containsKey(cacheKey)) {
+      _productsCache[cacheKey] = (
+        products: state.products,
+        totalCount: state.totalCount,
+      );
+    }
+
     final futures = <Future<void>>[];
     if (state.categories.isEmpty) futures.add(_fetchCategories());
     if (state.brands.isEmpty) futures.add(_fetchBrands());
-    if (futures.isNotEmpty) {
-      await Future.wait(futures);
-    }
+
     if (state.products.isEmpty) {
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
       await refreshProducts();
+    } else {
+      // Revalidación en segundo plano en paralelo (Stale-While-Revalidate)
+      futures.add(refreshProducts());
+      await Future.wait(futures);
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/features/customers/data/cache/credit_movements_cache.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/credit_movement_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_credit_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customer_credits_repository.dart';
@@ -9,6 +10,7 @@ import 'package:inventory_store_app/features/customers/presentation/bloc/credit_
 @injectable
 class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
   final CustomerCreditsRepository _repository;
+  final CreditMovementsCache _cache = CreditMovementsCache();
 
   CustomerCreditMovementsCubit(this._repository)
     : super(
@@ -27,20 +29,64 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
     required double creditLimit,
     String customerId = '',
   }) {
-    emit(
-      state.copyWith(
-        creditId: creditId,
-        customerId: customerId,
-        customerName: customerName,
-        currentDebt: currentDebt,
-        creditLimit: creditLimit,
-      ),
+    // 1. STALE-WHILE-REVALIDATE: Verificar si ya existen datos en caché para este crédito
+    final cached = _cache.get(
+      creditId: creditId,
+      dateFilter: state.dateFilter,
+      typeFilter: state.typeFilter,
+      page: state.currentPage,
     );
-    loadData();
+
+    if (cached != null) {
+      // CERO SHIMMER: Emitir datos cacheados inmediatamente (0 ms)
+      emit(
+        state.copyWith(
+          creditId: creditId,
+          customerId: customerId,
+          customerName: customerName,
+          currentDebt: cached.currentDebt ?? currentDebt,
+          creditLimit: cached.creditLimit ?? creditLimit,
+          movements: cached.items,
+          totalCount: cached.totalCount,
+          totalCharged: cached.totalCharged,
+          totalPaid: cached.totalPaid,
+          chargeCount: cached.chargeCount,
+          paymentCount: cached.paymentCount,
+          isLoading: false,
+          isRevalidating: true, // Sincroniza en background sin bloquear la UI
+          error: null,
+        ),
+      );
+    } else {
+      // Primera vez: emitir estado inicial con loading
+      emit(
+        state.copyWith(
+          creditId: creditId,
+          customerId: customerId,
+          customerName: customerName,
+          currentDebt: currentDebt,
+          creditLimit: creditLimit,
+          isLoading: true,
+          isRevalidating: false,
+        ),
+      );
+    }
+
+    // 2. Revalidar con el servidor en segundo plano
+    loadData(forceRefresh: false);
   }
 
-  Future<void> loadData() async {
-    emit(state.copyWith(isLoading: true, error: null));
+  Future<void> loadData({
+    bool forceRefresh = false,
+    bool fetchOnlyMovements = false,
+  }) async {
+    // Si ya tenemos movimientos en pantalla, NO ponemos isLoading en true (evita shimmer)
+    // En su lugar, activamos isRevalidating para mostrar un feedback sutil
+    if (state.movements.isEmpty) {
+      emit(state.copyWith(isLoading: true, error: null));
+    } else {
+      emit(state.copyWith(isRevalidating: true, error: null));
+    }
 
     try {
       final dateFilterParam =
@@ -56,14 +102,22 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
         movementType: movementTypeParam,
       );
 
-      final totalsFuture = _repository.getCreditMovementsTotals(
-        creditId: state.creditId,
-        dateFilter: dateFilterParam,
-      );
+      // Si solo cambiamos de página, los totales generales y el saldo no han cambiado
+      final totalsFuture =
+          fetchOnlyMovements
+              ? Future.value((
+                totalCharged: state.totalCharged,
+                totalPaid: state.totalPaid,
+                chargeCount: state.chargeCount,
+                paymentCount: state.paymentCount,
+              ))
+              : _repository.getCreditMovementsTotals(
+                creditId: state.creditId,
+                dateFilter: dateFilterParam,
+              );
 
-      // Si tenemos customerId, refrescamos el estado actual de la cuenta para mantener el saldo al día
       final accountFuture =
-          state.customerId.isNotEmpty
+          (!fetchOnlyMovements && state.customerId.isNotEmpty)
               ? _repository.getCreditAccountByCustomer(state.customerId)
               : Future.value(null);
 
@@ -86,24 +140,45 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
       final updatedAccount = results[2] as CustomerCreditEntity?;
 
       final items = movementsResult.items;
+      final newCurrentDebt =
+          updatedAccount != null
+              ? updatedAccount.currentDebt
+              : state.currentDebt;
+      final newCreditLimit =
+          updatedAccount != null
+              ? updatedAccount.creditLimit
+              : state.creditLimit;
+
+      // 3. Actualizar memoria caché
+      _cache.put(
+        creditId: state.creditId,
+        dateFilter: state.dateFilter,
+        typeFilter: state.typeFilter,
+        page: state.currentPage,
+        entry: CreditMovementsCacheEntry(
+          items: items,
+          totalCount: movementsResult.totalCount,
+          totalCharged: totalResult.totalCharged,
+          totalPaid: totalResult.totalPaid,
+          chargeCount: totalResult.chargeCount,
+          paymentCount: totalResult.paymentCount,
+          currentDebt: newCurrentDebt,
+          creditLimit: newCreditLimit,
+        ),
+      );
 
       emit(
         state.copyWith(
           isLoading: false,
+          isRevalidating: false,
           movements: items,
           totalCount: movementsResult.totalCount,
           totalCharged: totalResult.totalCharged,
           totalPaid: totalResult.totalPaid,
           chargeCount: totalResult.chargeCount,
           paymentCount: totalResult.paymentCount,
-          currentDebt:
-              updatedAccount != null
-                  ? updatedAccount.currentDebt
-                  : state.currentDebt,
-          creditLimit:
-              updatedAccount != null
-                  ? updatedAccount.creditLimit
-                  : state.creditLimit,
+          currentDebt: newCurrentDebt,
+          creditLimit: newCreditLimit,
         ),
       );
     } catch (e, st) {
@@ -116,7 +191,12 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
       emit(
         state.copyWith(
           isLoading: false,
-          error: 'Error al cargar los movimientos: $e',
+          isRevalidating: false,
+          // Si ya teníamos datos mostrados desde el caché, no arruinamos la vista con pantalla de error
+          error:
+              state.movements.isEmpty
+                  ? 'Error al cargar los movimientos: $e'
+                  : null,
         ),
       );
     }
@@ -139,8 +219,10 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
         notes: notes,
         shiftId: shiftId,
       );
+      // Invalida el caché local de este crédito para que refleje el nuevo saldo
+      _cache.invalidate(state.creditId);
       // Recargar datos y saldo inmediatamente
-      await loadData();
+      await loadData(forceRefresh: true);
     } catch (e, st) {
       LoggerService.e(
         'Error al registrar abono en CustomerCreditMovementsCubit',
@@ -154,8 +236,31 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
 
   Future<void> setPage(int page) async {
     if (page == state.currentPage) return;
-    emit(state.copyWith(currentPage: page));
-    await loadData();
+
+    // Si la nueva página ya está en caché, mostrarla al instante
+    final cached = _cache.get(
+      creditId: state.creditId,
+      dateFilter: state.dateFilter,
+      typeFilter: state.typeFilter,
+      page: page,
+    );
+
+    if (cached != null) {
+      emit(
+        state.copyWith(
+          currentPage: page,
+          movements: cached.items,
+          totalCount: cached.totalCount,
+          isLoading: false,
+          isRevalidating: true,
+        ),
+      );
+    } else {
+      emit(state.copyWith(currentPage: page, isLoading: true));
+    }
+
+    // Solo pedimos movimientos de la página (no totales ni balance)
+    await loadData(fetchOnlyMovements: true);
   }
 
   Future<void> setDateFilter(String filter) async {
@@ -168,31 +273,5 @@ class CustomerCreditMovementsCubit extends Cubit<CustomerCreditMovementsState> {
     if (filter == state.typeFilter) return;
     emit(state.copyWith(typeFilter: filter, currentPage: 0));
     await loadData();
-  }
-
-  Future<void> exportToPdf() async {
-    if (state.isExporting) return;
-
-    emit(state.copyWith(isExporting: true, error: null));
-
-    try {
-      // Simular exportación a PDF
-      await Future.delayed(const Duration(seconds: 2));
-
-      emit(state.copyWith(isExporting: false, exportSuccess: true));
-    } catch (e, st) {
-      LoggerService.e(
-        'Error al exportar PDF de movimientos',
-        tag: 'CUSTOMER_CREDIT_MOVEMENTS_CUBIT',
-        error: e,
-        stackTrace: st,
-      );
-      emit(
-        state.copyWith(
-          isExporting: false,
-          error: 'Error al exportar a PDF: $e',
-        ),
-      );
-    }
   }
 }

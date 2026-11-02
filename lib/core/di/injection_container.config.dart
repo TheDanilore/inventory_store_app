@@ -1529,7 +1529,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i624.UpdateOrderStatusUc>(
       () => _i624.UpdateOrderStatusUc(gh<_i992.OrdersRepository>()),
     );
-    gh.factory<_i451.UsersCubit>(
+    gh.lazySingleton<_i451.UsersCubit>(
       () => _i451.UsersCubit(
         gh<_i499.GetUsersUseCase>(),
         gh<_i963.GetGlobalUsersCountUseCase>(),
@@ -1632,6 +1632,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i834.UserFormCubit(
         gh<_i12.CreateUserUseCase>(),
         gh<_i90.UpdateUserUseCase>(),
+        gh<_i945.GetActiveWarehousesUseCase>(),
       ),
     );
     gh.factory<_i401.InventoryExitFormCubit>(
