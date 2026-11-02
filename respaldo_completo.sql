@@ -6758,11 +6758,27 @@ CREATE INDEX "idx_inventory_entries_shift_id" ON "public"."inventory_entries" US
 
 
 
+CREATE INDEX "idx_inventory_movements_batch_created_at" ON "public"."inventory_movements" USING "btree" ("stock_batch_id", "created_at" DESC);
+
+
+
+CREATE INDEX "idx_inventory_movements_created_at_desc" ON "public"."inventory_movements" USING "btree" ("created_at" DESC);
+
+
+
 CREATE INDEX "idx_inventory_movements_created_by" ON "public"."inventory_movements" USING "btree" ("created_by");
 
 
 
+CREATE INDEX "idx_inventory_movements_variant_created_at" ON "public"."inventory_movements" USING "btree" ("variant_id", "created_at" DESC);
+
+
+
 CREATE INDEX "idx_inventory_movements_variant_id" ON "public"."inventory_movements" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "idx_inventory_movements_warehouse_created_at" ON "public"."inventory_movements" USING "btree" ("warehouse_id", "created_at" DESC);
 
 
 

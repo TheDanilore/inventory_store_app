@@ -98,9 +98,12 @@ class ProductsCatalogRemoteDataSource {
     if (isInStockFilter) {
       query = query.gt('warehouse_stock_batches.available_quantity', 0);
     } else if (stockFilter == CatalogStockFilter.outOfStock) {
+      // Optimización crítica de Egress y RAM: filtrar en PostgreSQL total_stock <= 0
+      // para no descargar miles de registros innecesarios en memoria del cliente.
       final summaryRes = await _supabase
           .from('product_stock_summary')
-          .select('product_id, total_stock');
+          .select('product_id, total_stock')
+          .lte('total_stock', 0);
 
       final stockByProduct = <String, num>{};
       for (final row in List<Map<String, dynamic>>.from(summaryRes)) {

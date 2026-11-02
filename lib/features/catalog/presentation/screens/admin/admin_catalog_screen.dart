@@ -44,9 +44,13 @@ class AdminCatalogScreen extends StatefulWidget {
   State<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
 }
 
-class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
+class _AdminCatalogScreenState extends State<AdminCatalogScreen>
+    with AutomaticKeepAliveClientMixin {
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+
+  @override
+  bool get wantKeepAlive => true;
 
   /// Modo de visualización activo: Tarjetas visuales o Tabla Pro de alta densidad.
   CatalogViewMode _viewMode = CatalogViewMode.grid;
@@ -264,6 +268,7 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return LayoutBuilder(
@@ -374,7 +379,9 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                                   cubit.toggleSearchByIngredient,
                               onAddProduct: () => _navigateToProductForm(),
                             ),
-                            if (state.actionState == ViewState.loading)
+                            if (state.actionState == ViewState.loading ||
+                                (state.catalogState == ViewState.loading &&
+                                    state.products.isNotEmpty))
                               const LinearProgressIndicator(
                                 color: AppColors.teal,
                                 minHeight: 2,
@@ -407,8 +414,14 @@ class _AdminCatalogScreenState extends State<AdminCatalogScreen> {
                           : null;
 
                   // ── Estado de Carga (Skeletons Shimmer) ───────────────────
-                  if (state.catalogState == ViewState.loading ||
-                      state.catalogState == ViewState.initial) {
+                  // REGLA ZERO-SHIMMER (Cache-First / Frame 0):
+                  // Solo mostrar esqueletos si la memoria/caché en RAM está COMPLETAMENTE VACÍA.
+                  // Si ya existen productos cargados previamente en el estado/caché,
+                  // se renderizan de inmediato (Frame 0) y cualquier revalidación en
+                  // segundo plano se notifica con la barra superior de progreso (2px).
+                  if (state.products.isEmpty &&
+                      (state.catalogState == ViewState.loading ||
+                          state.catalogState == ViewState.initial)) {
                     return RefreshIndicator(
                       color: Theme.of(context).colorScheme.primary,
                       onRefresh: () async => cubit.refreshProducts(),
