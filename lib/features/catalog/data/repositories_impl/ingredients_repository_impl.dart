@@ -11,7 +11,22 @@ import 'package:inventory_store_app/features/catalog/domain/repositories/ingredi
 class IngredientsRepositoryImpl implements IngredientsRepository {
   final SupabaseClient _supabase;
 
+  // L1 In-Memory Cache con TTL de 5 minutos
+  List<ActiveIngredientEntity>? _cachedIngredients;
+  DateTime? _lastCacheTime;
+  static const Duration _cacheTtl = Duration(minutes: 5);
+
   IngredientsRepositoryImpl(this._supabase);
+
+  void _invalidateCache() {
+    _cachedIngredients = null;
+    _lastCacheTime = null;
+  }
+
+  bool get _isCacheValid =>
+      _cachedIngredients != null &&
+      _lastCacheTime != null &&
+      DateTime.now().difference(_lastCacheTime!) < _cacheTtl;
 
   Either<Failure, T> _handleError<T>(Object e, [StackTrace? st]) {
     LoggerService.e(
@@ -68,8 +83,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
             response,
           ).map(ActiveIngredientModel.fromJson).toList();
       return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -82,8 +97,9 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           await _supabase
               .from('active_ingredients')
               .insert({'name': name.trim()})
-              .select()
+              .select('id, name, created_at')
               .single();
+      _invalidateCache();
       return right(ActiveIngredientModel.fromJson(response).toEntity());
     } catch (e, st) {
       return _handleError(e, st);
@@ -97,6 +113,7 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           .from('active_ingredients')
           .update({'name': name.trim()})
           .eq('id', id);
+      _invalidateCache();
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -119,6 +136,7 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           if (!success) {
             return left(Failure.from(message));
           }
+          _invalidateCache();
           return right(null);
         }
       } on PostgrestException catch (rpcError, rpcSt) {
@@ -160,6 +178,7 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
       }
 
       await _supabase.from('active_ingredients').delete().eq('id', id);
+      _invalidateCache();
       return right(null);
     } catch (e, st) {
       return _handleError(e, st);
@@ -173,9 +192,28 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
     int offset = 0,
   }) async {
     try {
-      var query = _supabase.from('active_ingredients').select();
-      if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-        query = query.ilike('name', '%${searchQuery.trim()}%');
+      final cleanQuery = searchQuery?.trim().toLowerCase();
+      final hasQuery = cleanQuery != null && cleanQuery.isNotEmpty;
+
+      // 1. Servir desde L1 Cache si es válido y la lista cubre la petición
+      if (_isCacheValid) {
+        List<ActiveIngredientEntity> current = _cachedIngredients!;
+        if (hasQuery) {
+          current =
+              current
+                  .where((item) => item.name.toLowerCase().contains(cleanQuery))
+                  .toList();
+        }
+        final paged = current.skip(offset).take(limit).toList();
+        return right(paged);
+      }
+
+      // 2. Fetch desde Supabase con proyección explícita (Egress Optimization)
+      var query = _supabase
+          .from('active_ingredients')
+          .select('id, name, created_at');
+      if (hasQuery) {
+        query = query.ilike('name', '%$cleanQuery%');
       }
       final response = await query
           .order('name')
@@ -184,9 +222,17 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           List<Map<String, dynamic>>.from(
             response,
           ).map(ActiveIngredientModel.fromJson).toList();
-      return right(models.map((m) => m.toEntity()).toList());
-    } catch (e) {
-      return _handleError(e);
+      final entities = models.map((m) => m.toEntity()).toList();
+
+      // Si la consulta fue global (sin filtro y desde offset 0), almacenar en L1 Cache
+      if (!hasQuery && offset == 0) {
+        _cachedIngredients = entities;
+        _lastCacheTime = DateTime.now();
+      }
+
+      return right(entities);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -200,8 +246,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           .delete()
           .eq('product_id', productId);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 
@@ -212,8 +258,8 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
     try {
       await _supabase.from('product_active_ingredients').insert(payload);
       return right(null);
-    } catch (e) {
-      return _handleError(e);
+    } catch (e, st) {
+      return _handleError(e, st);
     }
   }
 }

@@ -355,88 +355,102 @@ class _ProductFormScreenContentState extends State<_ProductFormScreenContent> {
                 actions: const [],
                 body: Scaffold(
                   backgroundColor: AppColors.background,
-                  body:
-                      !_initialized || state.isInitializingData
-                          ? const ProductFormSkeleton()
-                          : state.hasErrorLoading
-                          ? _buildErrorState()
-                          : LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isDesktop = constraints.maxWidth >= 1024;
-                              return Form(
-                                key: _formKey,
-                                child: Stack(
-                                  children: [
-                                    if (isDesktop)
-                                      ProductFormDesktopLayout(
-                                        isEdit: isEdit,
-                                        nombreCtrl: _nombreCtrl,
-                                        descCtrl: _descCtrl,
-                                        onExit: _handleExit,
-                                        onPreview: _openPreview,
-                                        onSave: _guardar,
-                                      )
-                                    else
-                                      ProductFormMobileLayout(
-                                        isEdit: isEdit,
-                                        nombreCtrl: _nombreCtrl,
-                                        descCtrl: _descCtrl,
-                                        allExpanded: _allExpanded,
-                                        onToggleExpandCollapseAll:
-                                            _toggleExpandCollapseAll,
-                                        onExit: _handleExit,
-                                        onPreview: _openPreview,
-                                        onSave: _guardar,
-                                      ),
+                  body: Builder(
+                    builder: (context) {
+                      final hasCategories = state.categories.isNotEmpty;
+                      final hasProductData =
+                          !isEdit || state.productToEdit != null;
+                      final canRenderForm = hasCategories && hasProductData;
 
-                                    // Indicador sutil de sincronización en segundo plano (SWR)
-                                    if (state.isBackgroundSyncing)
-                                      const Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: LinearProgressIndicator(
-                                          minHeight: 2.5,
-                                          color: AppColors.primary,
-                                          backgroundColor: Colors.transparent,
+                      // REGLA ZERO-SHIMMER: Solo mostrar skeleton si no hay NINGÚN dato usable en memoria
+                      if (!canRenderForm &&
+                          (state.isInitializingData || !_initialized)) {
+                        return const ProductFormSkeleton();
+                      }
+
+                      if (!canRenderForm && state.hasErrorLoading) {
+                        return _buildErrorState();
+                      }
+
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isDesktop = constraints.maxWidth >= 1024;
+                          return Form(
+                            key: _formKey,
+                            child: Stack(
+                              children: [
+                                if (isDesktop)
+                                  ProductFormDesktopLayout(
+                                    isEdit: isEdit,
+                                    nombreCtrl: _nombreCtrl,
+                                    descCtrl: _descCtrl,
+                                    onExit: _handleExit,
+                                    onPreview: _openPreview,
+                                    onSave: _guardar,
+                                  )
+                                else
+                                  ProductFormMobileLayout(
+                                    isEdit: isEdit,
+                                    nombreCtrl: _nombreCtrl,
+                                    descCtrl: _descCtrl,
+                                    allExpanded: _allExpanded,
+                                    onToggleExpandCollapseAll:
+                                        _toggleExpandCollapseAll,
+                                    onExit: _handleExit,
+                                    onPreview: _openPreview,
+                                    onSave: _guardar,
+                                  ),
+
+                                // Indicador sutil de sincronización en segundo plano (SWR)
+                                if (state.isBackgroundSyncing)
+                                  const Positioned(
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: LinearProgressIndicator(
+                                      minHeight: 2.5,
+                                      color: AppColors.primary,
+                                      backgroundColor: Colors.transparent,
+                                    ),
+                                  ),
+
+                                // Overlay de guardado
+                                BlocSelector<
+                                  ProductFormCubit,
+                                  ProductFormState,
+                                  bool
+                                >(
+                                  selector: (s) => s.isSaving,
+                                  builder: (context, isSaving) {
+                                    if (!isSaving) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Positioned.fill(
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                          sigmaX: 5.0,
+                                          sigmaY: 5.0,
+                                        ),
+                                        child: Container(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          child: const Center(
+                                            child:
+                                                CircularProgressIndicator(),
+                                          ),
                                         ),
                                       ),
-
-                                    // Overlay de guardado
-                                    BlocSelector<
-                                      ProductFormCubit,
-                                      ProductFormState,
-                                      bool
-                                    >(
-                                      selector: (s) => s.isSaving,
-                                      builder: (context, isSaving) {
-                                        if (!isSaving) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        return Positioned.fill(
-                                          child: BackdropFilter(
-                                            filter: ImageFilter.blur(
-                                              sigmaX: 5.0,
-                                              sigmaY: 5.0,
-                                            ),
-                                            child: Container(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

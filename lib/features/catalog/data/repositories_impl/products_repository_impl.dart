@@ -175,6 +175,10 @@ class ProductsRepositoryImpl implements ProductsRepository {
         stockFilter: stockFilter,
       );
       CatalogLruCache.instance.putPage(cacheKey, res.products, res.totalCount);
+      // Población proactiva de caché L1 individual para Zero-Shimmer al editar:
+      for (final p in res.products) {
+        CatalogLruCache.instance.putProduct(p.id, p);
+      }
 
       return right(res);
     } catch (e, st) {

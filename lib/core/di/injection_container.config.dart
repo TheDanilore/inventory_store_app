@@ -1058,7 +1058,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i557.CustomerLocationsRepository>(),
       ),
     );
-    gh.factory<_i635.IngredientsCubit>(
+    gh.lazySingleton<_i635.IngredientsCubit>(
       () => _i635.IngredientsCubit(
         getIngredientsUC: gh<_i538.GetIngredientsUC>(),
         createIngredientUC: gh<_i498.CreateIngredientUC>(),

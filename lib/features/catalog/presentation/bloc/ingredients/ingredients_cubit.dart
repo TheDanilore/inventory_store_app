@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_ing
 import 'package:inventory_store_app/features/catalog/domain/usecases/create_ingredient_uc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/ingredients/ingredients_state.dart';
 
-@injectable
+@lazySingleton
 class IngredientsCubit extends Cubit<IngredientsState> {
   final GetIngredientsUC getIngredientsUC;
   final CreateIngredientUC createIngredientUC;
@@ -29,10 +29,29 @@ class IngredientsCubit extends Cubit<IngredientsState> {
     return super.close();
   }
 
-  Future<void> loadIngredients({String? query}) async {
+  /// Carga de componentes químicos con política Stale-While-Revalidate (Zero-Shimmer).
+  ///
+  /// Si el estado actual ya posee ingredientes en caché en memoria y no se fuerza refresco,
+  /// se preserva la visualización instantánea sin provocar transiciones destructivas a
+  /// `ViewState.loading` que gatillarían shimmer en pantallas de bajo recurso/navegación.
+  Future<void> loadIngredients({
+    String? query,
+    bool forceRefresh = false,
+  }) async {
+    final hasExistingData = state.ingredients.isNotEmpty;
+    final isQueryChange = query != null && query != state.searchQuery;
+
     if (query != null) {
-      emit(state.copyWith(searchQuery: query, viewState: ViewState.loading));
-    } else {
+      emit(
+        state.copyWith(
+          searchQuery: query,
+          viewState:
+              (hasExistingData && !isQueryChange)
+                  ? state.viewState
+                  : ViewState.loading,
+        ),
+      );
+    } else if (!hasExistingData || forceRefresh) {
       emit(state.copyWith(viewState: ViewState.loading));
     }
 
@@ -44,7 +63,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
     result.fold(
       (failure) => emit(
         state.copyWith(
-          viewState: ViewState.error,
+          viewState: hasExistingData ? state.viewState : ViewState.error,
           errorMessage: failure.message,
           incrementErrorId: true,
         ),
@@ -61,7 +80,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
 
   void onSearchChanged(String query) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
       loadIngredients(query: query);
     });
   }
@@ -93,7 +112,7 @@ class IngredientsCubit extends Cubit<IngredientsState> {
       },
       (_) async {
         emit(state.copyWith(isSaving: false, clearErrorMessage: true));
-        await loadIngredients();
+        await loadIngredients(forceRefresh: true);
         return true;
       },
     );

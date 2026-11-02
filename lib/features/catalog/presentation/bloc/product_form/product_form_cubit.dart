@@ -1,17 +1,16 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:inventory_store_app/core/utils/isolate_utils.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/brand_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/product_entity.dart';
 import 'package:inventory_store_app/features/catalog/domain/entities/variant_draft_entity.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/helpers/product_form_dto_mapper.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/helpers/product_form_image_helper.dart';
+import 'package:inventory_store_app/features/catalog/presentation/bloc/product_form/helpers/product_form_seo_helper.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/product_form_models.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/product_form/variant_draft_form_model.dart';
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_brands_uc.dart';
@@ -162,8 +161,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   void setSlug(String slug) {
-    final clean = slug.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\-]'), '-');
-    _slug = clean;
+    _slug = ProductFormSeoHelper.cleanSlug(slug);
     markAsDirty();
     _syncState();
   }
@@ -181,28 +179,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
   }
 
   void autoGenerateSlug(String name) {
-    final slug = _slugify(name);
+    final slug = ProductFormSeoHelper.slugify(name);
     _slug = slug;
     if (_seoTitle.isEmpty) {
-      _seoTitle = '$name | Tienda Oficial';
+      _seoTitle = ProductFormSeoHelper.defaultSeoTitle(name);
     }
     markAsDirty();
     _syncState();
-  }
-
-  String _slugify(String text) {
-    return text
-        .toLowerCase()
-        .trim()
-        .replaceAll(RegExp(r'[áàäâã]'), 'a')
-        .replaceAll(RegExp(r'[éèëê]'), 'e')
-        .replaceAll(RegExp(r'[íìïî]'), 'i')
-        .replaceAll(RegExp(r'[óòöôõ]'), 'o')
-        .replaceAll(RegExp(r'[úùüû]'), 'u')
-        .replaceAll(RegExp(r'[ñ]'), 'n')
-        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
-        .replaceAll(RegExp(r'[\s-]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   /// Actualiza los campos comerciales de la variante base (variante #0)
@@ -378,13 +361,14 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         'social': true,
       };
     }
-    _slug = (d['slug'] as String?) ?? _slugify(nombre);
+    _slug =
+        (d['slug'] as String?) ?? ProductFormSeoHelper.slugify(nombre);
     _seoTitle =
         (d['seo_title'] as String?) ??
-        (nombre.isNotEmpty ? '$nombre | Tienda Oficial' : '');
+        ProductFormSeoHelper.defaultSeoTitle(nombre);
     _seoDescription =
         (d['seo_description'] as String?) ??
-        (desc.length > 155 ? '${desc.substring(0, 152)}...' : desc);
+        ProductFormSeoHelper.defaultSeoDescription(desc);
     if (d['changelog'] is List) {
       _changelog =
           (d['changelog'] as List)
@@ -457,20 +441,26 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     final cachedCategories = _getCategoriesUC.getCached();
     final cachedBrands = _getBrandsUC.getCached();
+
+    if (cachedCategories != null) {
+      _categories = cachedCategories;
+      _isLoadingCategories = false;
+    }
+    if (cachedBrands != null) {
+      _brands = cachedBrands;
+      _isLoadingBrands = false;
+    }
+
     ProductEntity? cachedProduct = product;
     if (cachedProduct == null && isEditing) {
       cachedProduct = _getProductByIdUC.getCached(effectiveId);
     }
 
-    final hasAllDepsCached = cachedCategories != null && cachedBrands != null;
+    // Zero-Shimmer Frame 0: Si tenemos categorías en RAM y (es producto nuevo o ya tenemos el producto)
     final canUseCache =
-        hasAllDepsCached && (!isEditing || cachedProduct != null);
+        _categories.isNotEmpty && (!isEditing || cachedProduct != null);
 
     if (canUseCache) {
-      _categories = cachedCategories;
-      _isLoadingCategories = false;
-      _brands = cachedBrands;
-      _isLoadingBrands = false;
       _isInitializingData = false;
       _isBackgroundSyncing = false;
 
@@ -498,32 +488,31 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     _hasErrorLoading = false;
     _errorMessage = '';
     _isDirty = false;
-    _detailRows = [];
-    _ingredientRows = [];
-    _formImages = [];
-    _variantDrafts = [];
 
     final effectiveId = product?.id ?? productId;
     final isEditing = effectiveId != null && effectiveId.isNotEmpty;
 
-    // 1. Revisar caché L1 de dependencias
     final cachedCategories = _getCategoriesUC.getCached();
     final cachedBrands = _getBrandsUC.getCached();
+
+    if (cachedCategories != null) {
+      _categories = cachedCategories;
+      _isLoadingCategories = false;
+    }
+    if (cachedBrands != null) {
+      _brands = cachedBrands;
+      _isLoadingBrands = false;
+    }
+
     ProductEntity? cachedProduct = product;
     if (cachedProduct == null && isEditing) {
       cachedProduct = _getProductByIdUC.getCached(effectiveId);
     }
 
-    final hasAllDepsCached = cachedCategories != null && cachedBrands != null;
     final canUseCache =
-        hasAllDepsCached && (!isEditing || cachedProduct != null);
+        _categories.isNotEmpty && (!isEditing || cachedProduct != null);
 
     if (canUseCache) {
-      // Hidratar inmediatamente desde memoria sin Shimmer
-      _categories = cachedCategories;
-      _isLoadingCategories = false;
-      _brands = cachedBrands;
-      _isLoadingBrands = false;
       _isInitializingData = false;
       _isBackgroundSyncing = true;
 
@@ -540,13 +529,13 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
       _syncState();
 
-      // Disparar revalidación silenciosa en background (SWR) sin bloquear la UI
+      // Revalidación en segundo plano respetando TTL de categorías y marcas
       unawaited(_backgroundRevalidate(effectiveId));
 
       return ProductFormInitialValues(nombre: nombre, desc: desc);
     }
 
-    // Cold start (sin caché suficiente): Carga inicial completa con Shimmer
+    // Cold start (sin caché L1 suficiente): Carga inicial completa
     _isInitializingData = true;
     _isBackgroundSyncing = false;
     _syncState();
@@ -597,15 +586,17 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> _backgroundRevalidate(String? effectiveId) async {
     try {
-      final futures = <Future<dynamic>>[
-        _fetchCategories(forceRefresh: true),
-        _fetchBrands(forceRefresh: true),
-      ];
+      // Optimización Egress: Solo solicitar categorías o marcas si no están presentes
+      final futures = <Future<dynamic>>[];
+      if (_categories.isEmpty) futures.add(_fetchCategories());
+      if (_brands.isEmpty) futures.add(_fetchBrands());
       if (effectiveId != null && effectiveId.isNotEmpty) {
         futures.add(_getProductByIdUC.call(effectiveId, forceRefresh: true));
         futures.add(_fetchIngredients(effectiveId));
       }
-      await Future.wait(futures);
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
     } catch (e, st) {
       LoggerService.w(
         'ProductFormCubit: Error menor en revalidación background (se mantienen datos de caché)',
@@ -645,6 +636,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   Future<void> _fetchIngredients(String productId) async {
     final list = await _unwrap(_getProductIngredientsUC.call(productId));
+    _ingredientRows.clear();
     for (final row in list) {
       final activeIng = row['active_ingredients'] as Map<String, dynamic>?;
       _ingredientRows.add(
@@ -714,165 +706,50 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // ── Imágenes ─────────────────────────────────────────────────────────────────
 
-  /// Procesa y agrega archivos arrastrados o soltados directamente en el área multimedia
   Future<void> addDroppedFiles(List<XFile> archivos) async {
-    await _processAndAddImageFiles(archivos);
-  }
-
-  /// Abre el selector de imágenes y procesa las seleccionadas con fallback resiliente.
-  Future<void> pickImages() async {
-    List<XFile> archivos = [];
-    try {
-      final picker = ImagePicker();
-      archivos = await picker.pickMultiImage();
-    } catch (e, st) {
-      LoggerService.w(
-        'ImagePicker no disponible, intentando FilePicker de respaldo',
-        tag: 'PRODUCT_FORM_CUBIT',
-        error: e,
-        stackTrace: st,
-      );
-    }
-
-    if (archivos.isEmpty) {
-      try {
-        final files = await FilePicker.pickFiles(type: FileType.image);
-        if (files.isNotEmpty) {
-          for (final f in files) {
-            final bytes = await f.readAsBytes();
-            if (bytes.isNotEmpty) {
-              archivos.add(XFile(f.path ?? '', bytes: bytes, name: f.name));
-            }
-          }
-        }
-      } catch (e, st) {
-        LoggerService.e(
-          'Error en selección mediante FilePicker',
-          tag: 'PRODUCT_FORM_CUBIT',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
-
-    if (archivos.isEmpty) return;
-    await _processAndAddImageFiles(archivos);
-  }
-
-  Future<void> _processAndAddImageFiles(List<XFile> archivos) async {
-    if (archivos.isEmpty) return;
-
-    const maxImages = 8;
-    const maxSizeBytes = 5 * 1024 * 1024; // 5 MB
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic'];
-
-    final currentCount = _formImages.length;
-
-    if (currentCount >= maxImages) {
-      emit(
-        state.copyWith(
-          snackMessage:
-              'Límite de imágenes alcanzado ($maxImages fotos máximo).',
-        ),
-      );
-      return;
-    }
-
-    var duplicadas = 0;
-    var excedidas = 0;
-    var formatoInvalido = 0;
-    var pesoExcedido = 0;
-    final nuevosItems = <FormImageItem>[];
-
-    for (final archivo in archivos) {
-      final nombre = _normalizarNombreArchivo(archivo);
-      final extension =
-          nombre.contains('.') ? nombre.split('.').last.toLowerCase() : '';
-
-      // Validación 1: Formatos válidos de imagen
-      if (!allowedExtensions.contains(extension)) {
-        formatoInvalido++;
-        continue;
-      }
-
-      // Validación 2: Capacidad máxima
-      if (currentCount + nuevosItems.length >= maxImages) {
-        excedidas++;
-        continue;
-      }
-
-      // Validación 3: Duplicados
-      if (_formImages.any((img) => !img.isExisting && img.newName == nombre)) {
-        duplicadas++;
-        continue;
-      }
-
-      try {
-        final bytesOriginales = await archivo.readAsBytes();
-
-        // Validación 4: Peso máximo de 5MB y archivos vacíos
-        if (bytesOriginales.isEmpty) continue;
-        if (bytesOriginales.lengthInBytes > maxSizeBytes) {
-          pesoExcedido++;
-          continue;
-        }
-
-        final bytesOptimizados = await _optimizarImagen(bytesOriginales);
-        nuevosItems.add(
-          FormImageItem(newBytes: bytesOptimizados, newName: nombre),
-        );
-      } catch (e, st) {
-        LoggerService.e(
-          'Error leyendo bytes de archivo: $nombre',
-          tag: 'PRODUCT_FORM_CUBIT',
-          error: e,
-          stackTrace: st,
-        );
-      }
-    }
-
-    _formImages = [..._formImages, ...nuevosItems];
+    final result = await ProductFormImageHelper.processAndAddImageFiles(
+      archivos,
+      _formImages,
+    );
+    _formImages = result.updatedImages;
     markAsDirty();
-
-    final List<String> feedbackMessages = [];
-    if (formatoInvalido > 0) {
-      feedbackMessages.add(
-        '$formatoInvalido archivo(s) no son imágenes válidas (solo JPG, PNG, WEBP, HEIC).',
-      );
-    }
-    if (pesoExcedido > 0) {
-      feedbackMessages.add(
-        '$pesoExcedido imagen(es) superan el peso máximo permitido (5 MB).',
-      );
-    }
-    if (duplicadas > 0) {
-      feedbackMessages.add('$duplicadas imagen(es) repetidas omitidas.');
-    }
-    if (excedidas > 0) {
-      feedbackMessages.add('$excedidas exceden el cupo de $maxImages fotos.');
-    }
-
     emit(
       state.copyWith(
         formImages: List.of(_formImages),
         isDirty: _isDirty,
-        snackMessage:
-            feedbackMessages.isNotEmpty ? feedbackMessages.join(' ') : null,
+        snackMessage: result.feedbackMessage,
       ),
     );
   }
 
-  /// Agrega una imagen a partir de una URL web externa.
+  Future<void> pickImages() async {
+    final archivos = await ProductFormImageHelper.pickImages();
+    if (archivos.isEmpty) return;
+
+    final result = await ProductFormImageHelper.processAndAddImageFiles(
+      archivos,
+      _formImages,
+    );
+    _formImages = result.updatedImages;
+    markAsDirty();
+    emit(
+      state.copyWith(
+        formImages: List.of(_formImages),
+        isDirty: _isDirty,
+        snackMessage: result.feedbackMessage,
+      ),
+    );
+  }
+
   void addImageUrl(String rawUrl) {
     final url = rawUrl.trim();
     if (url.isEmpty) return;
 
-    const maxImages = 8;
-    if (_formImages.length >= maxImages) {
+    if (_formImages.length >= ProductFormImageHelper.maxImages) {
       emit(
         state.copyWith(
           snackMessage:
-              'Límite de imágenes alcanzado ($maxImages fotos máximo).',
+              'Límite de imágenes alcanzado (${ProductFormImageHelper.maxImages} fotos máximo).',
         ),
       );
       return;
@@ -955,7 +832,11 @@ class ProductFormCubit extends Cubit<ProductFormState> {
           return;
         }
       } catch (e) {
-        emit(state.copyWith(snackError: _parseNetworkError(e)));
+        emit(
+          state.copyWith(
+            snackError: ProductFormDtoMapper.parseNetworkError(e),
+          ),
+        );
         return;
       }
 
@@ -983,7 +864,8 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     if (file != null) {
       final bytesOriginales = await file.readAsBytes();
-      final bytesOptimizados = await _optimizarImagen(bytesOriginales);
+      final bytesOptimizados =
+          await ProductFormImageHelper.optimizeImageBytes(bytesOriginales);
 
       final updated = draft.copyWith(
         urlsExistentes: [],
@@ -1029,10 +911,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
   // ── Guardado ─────────────────────────────────────────────────────────────────
 
-  /// Guarda el producto. No recibe [BuildContext] ni [GlobalKey<FormState>].
-  /// Los datos del formulario (controllers) son leídos por la pantalla y pasados
-  /// como primitivos. El resultado se señala mediante [ProductFormState.saveSuccess]
-  /// o [ProductFormState.snackError].
   Future<void> saveProduct({
     required String nombre,
     required String desc,
@@ -1046,109 +924,22 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       return;
     }
 
-    if (_variantDrafts.isEmpty) {
-      emit(
-        state.copyWith(
-          snackError: 'Agrega al menos una variante con su precio de venta.',
-        ),
-      );
+    final variantError = ProductFormDtoMapper.validateVariants(
+      _variantDrafts,
+      _hasMultipleVariants,
+    );
+    if (variantError != null) {
+      emit(state.copyWith(snackError: variantError));
       return;
     }
 
-    // Validación exhaustiva de cada una de las variantes (precios, costos, unicidad de SKU y barcode)
-    final seenSkus = <String, int>{};
-    final seenBarcodes = <String, int>{};
-
-    for (int i = 0; i < _variantDrafts.length; i++) {
-      final v = _variantDrafts[i];
-      final sku = v.sku.trim();
-      if (sku.isNotEmpty) {
-        if (seenSkus.containsKey(sku)) {
-          final firstIndex = seenSkus[sku]! + 1;
-          emit(
-            state.copyWith(
-              snackError:
-                  'El SKU "$sku" está repetido en la variante #$firstIndex y la variante #${i + 1}. Cada variante debe tener un SKU único.',
-            ),
-          );
-          return;
-        }
-        seenSkus[sku] = i;
-      }
-
-      final barcode = v.barcode.trim();
-      if (barcode.isNotEmpty) {
-        if (seenBarcodes.containsKey(barcode)) {
-          final firstIndex = seenBarcodes[barcode]! + 1;
-          emit(
-            state.copyWith(
-              snackError:
-                  'El código de barras "$barcode" está repetido en la variante #$firstIndex y la variante #${i + 1}.',
-            ),
-          );
-          return;
-        }
-        seenBarcodes[barcode] = i;
-      }
-
-      final p = _parseDecimal(v.price);
-      if (p == null || p <= 0) {
-        emit(
-          state.copyWith(
-            snackError:
-                _hasMultipleVariants
-                    ? 'Variante #${i + 1}: Ingresa un precio de venta válido (> 0).'
-                    : 'Ingresa un precio de venta válido (> 0).',
-          ),
-        );
-        return;
-      }
-      if (v.wholesalePrice.trim().isNotEmpty) {
-        final wp = _parseDecimal(v.wholesalePrice);
-        if (wp == null || wp <= 0) {
-          emit(
-            state.copyWith(
-              snackError:
-                  _hasMultipleVariants
-                      ? 'Variante #${i + 1}: El precio mayorista debe ser mayor a 0.'
-                      : 'El precio mayorista debe ser mayor a 0.',
-            ),
-          );
-          return;
-        }
-      }
-      if (v.unitCost.trim().isNotEmpty) {
-        final cost = _parseDecimal(v.unitCost);
-        if (cost == null || cost < 0) {
-          emit(
-            state.copyWith(
-              snackError:
-                  _hasMultipleVariants
-                      ? 'Variante #${i + 1}: El costo unitario no puede ser negativo.'
-                      : 'El costo unitario no puede ser negativo.',
-            ),
-          );
-          return;
-        }
-      }
-    }
-
-    final firstVariant = _variantDrafts.first;
-    final salePrice = _parseDecimal(firstVariant.price)!;
-
+    final sourceIngredients =
+        _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
     if (_ingredientsEnabled) {
-      final sourceIngredients =
-          _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
-      final hasIncomplete = sourceIngredients.any(
-        (r) => r.ingredientId == null || r.ingredientId!.trim().isEmpty,
-      );
-      if (sourceIngredients.isEmpty || hasIncomplete) {
-        emit(
-          state.copyWith(
-            snackError:
-                'Completa o elimina los componentes activos no seleccionados.',
-          ),
-        );
+      final ingError =
+          ProductFormDtoMapper.validateIngredients(sourceIngredients);
+      if (ingError != null) {
+        emit(state.copyWith(snackError: ingError));
         return;
       }
     }
@@ -1158,8 +949,6 @@ class ProductFormCubit extends Cubit<ProductFormState> {
 
     try {
       final isUpdating = _productToEdit != null;
-      final wholesalePriceVal = _parseDecimal(firstVariant.wholesalePrice);
-
       final profileIdRes = await _getCurrentProfileIdUC.call();
       final profileId = profileIdRes.fold((l) => null, (r) => r);
 
@@ -1174,121 +963,40 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       });
       _changelog = updatedChangelog;
 
-      final productEntity = ProductEntity(
-        id: isUpdating ? _productToEdit!.id : '',
-        name: nombre.trim(),
-        isActive: _isActive,
-        description: desc.trim().isEmpty ? null : desc.trim(),
+      final payload = ProductFormDtoMapper.buildSavePayload(
+        productToEdit: _productToEdit,
+        nombre: nombre,
+        desc: desc,
         categoryId: _selectedCategoryId,
         brandId: _selectedBrandId,
-        details: {
-          for (final d in _detailRows)
-            if (d.key.trim().isNotEmpty) d.key.trim(): d.value.trim(),
-          'sales_channels': _salesChannels,
-          'slug': _slug.trim().isEmpty ? _slugify(nombre) : _slug.trim(),
-          'seo_title':
-              _seoTitle.trim().isEmpty
-                  ? '$nombre | Tienda Oficial'
-                  : _seoTitle.trim(),
-          'seo_description': _seoDescription.trim(),
-          'changelog': _changelog,
-        },
         productType: _productType,
         stockControl: _stockControl,
-        usesBatches: _batchManagementEnabled,
-        createdAt: null,
-        updatedAt: null,
-        createdBy: null,
-        updatedBy: null,
-        images: const [],
-        totalStock: 0,
-        categoryName: null,
-        productVariants: const [],
-        warehouseStockBatches: const [],
-      );
-
-      final imagesPayload =
-          _formImages.map((item) {
-            return ImagePayload(
-              existingId: item.isExisting ? item.existing!.id : null,
-              existingUrl: item.isExisting ? item.existing!.imageUrl : null,
-              newBytes: item.newBytes,
-              externalImageUrl: item.externalUrl,
-            );
-          }).toList();
-
-      final variantsPayload =
-          _variantDrafts.map((draft) {
-            final valueIds =
-                draft.selectedAttributes
-                    .map((attr) => attr['value_id'] as String)
-                    .toList();
-            final skuValue = draft.sku.trim();
-            final barcodeValue = draft.barcode.trim();
-            return VariantPayload(
-              id: draft.id,
-              sku: skuValue.isEmpty ? null : skuValue,
-              barcode: barcodeValue.isEmpty ? null : barcodeValue,
-              unitCost: _parseDecimal(draft.unitCost) ?? 0.0,
-              salePrice: _parseDecimal(draft.price),
-              wholesalePrice: _parseDecimal(draft.wholesalePrice),
-              wholesaleMinQuantity: int.tryParse(draft.wholesaleMinQuantity),
-              reorderPoint: int.tryParse(draft.reorderPoint),
-              isActive: draft.isActive,
-              attributeValueIds: valueIds,
-              clearImages:
-                  draft.id != null &&
-                  (draft.urlsExistentes.isEmpty &&
-                      draft.nuevasImagenes.isEmpty &&
-                      draft.externalImageUrl == null),
-              newImageBytes:
-                  draft.nuevasImagenes.isNotEmpty
-                      ? draft.nuevasImagenes.first
-                      : null,
-              externalImageUrl: draft.externalImageUrl,
-            );
-          }).toList();
-
-      final sourceIngredients =
-          _ingredientRows.isNotEmpty ? _ingredientRows : ingredients;
-
-      final ingredientsPayload =
-          sourceIngredients
-              .where((r) => r.ingredientId != null && r.name.trim().isNotEmpty)
-              .map(
-                (row) => IngredientPayload(
-                  ingredientId: row.ingredientId!,
-                  concentration:
-                      row.concentration.trim().isEmpty
-                          ? null
-                          : double.tryParse(
-                            row.concentration.trim().replaceAll(',', '.'),
-                          ),
-                  unit: row.unit.trim().isEmpty ? null : row.unit.trim(),
-                ),
-              )
-              .toList();
-
-      final payload = SaveProductPayload(
-        product: productEntity,
-        profileId: profileId,
-        isUpdating: isUpdating,
-        baseSalePrice: salePrice,
-        baseWholesalePrice: wholesalePriceVal,
-        baseWholesaleMinQuantity:
-            int.tryParse(firstVariant.wholesaleMinQuantity) ?? 3,
-        images: imagesPayload,
-        removedVariantIds: _removedVariantIds.toList(),
-        variants: variantsPayload,
+        batchManagementEnabled: _batchManagementEnabled,
+        isActive: _isActive,
+        salesChannels: _salesChannels,
+        slug: _slug,
+        seoTitle: _seoTitle,
+        seoDescription: _seoDescription,
+        changelog: _changelog,
+        detailRows: _detailRows,
+        formImages: _formImages,
+        variantDrafts: _variantDrafts,
+        removedVariantIds: _removedVariantIds,
         ingredientsEnabled: _ingredientsEnabled,
-        ingredients: ingredientsPayload,
+        ingredientRows: sourceIngredients,
+        profileId: profileId,
       );
 
       final result = await _saveProductUC.call(payload);
 
       result.fold(
         (failure) {
-          emit(state.copyWith(snackError: _parseNetworkError(failure.message)));
+          emit(
+            state.copyWith(
+              snackError:
+                  ProductFormDtoMapper.parseNetworkError(failure.message),
+            ),
+          );
         },
         (_) {
           _removedVariantIds.clear();
@@ -1305,92 +1013,15 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         error: e,
         stackTrace: st,
       );
-      emit(state.copyWith(snackError: _parseNetworkError(e)));
+      emit(
+        state.copyWith(
+          snackError: ProductFormDtoMapper.parseNetworkError(e),
+        ),
+      );
     } finally {
       _isSaving = false;
-      // Solo sincronizamos si no fue un saveSuccess (que ya emitió estado)
       if (!state.saveSuccess) _syncState();
     }
-  }
-
-  // ── Helpers privados ─────────────────────────────────────────────────────────
-
-  String _parseNetworkError(Object e) {
-    if (e is TimeoutException) {
-      return e.message ?? 'La operación tardó demasiado. Intenta de nuevo.';
-    }
-    final s = e.toString();
-    final sLower = s.toLowerCase();
-    if (sLower.contains('23505') ||
-        sLower.contains('unique_violation') ||
-        sLower.contains('ya existe')) {
-      return 'El código o SKU ingresado ya existe en la base de datos.';
-    }
-    if (sLower.contains('socketexception') ||
-        sLower.contains('clientexception') ||
-        sLower.contains('failed host lookup') ||
-        sLower.contains('timeout')) {
-      return 'Error de red. Verifica tu conexión e intenta de nuevo.';
-    }
-    if (s.contains('PostgrestException') || s.contains('code:')) {
-      final match = RegExp(r'message:\s*([^,)]+)').firstMatch(s);
-      if (match != null && match.group(1) != null) {
-        return 'Error BD (${match.group(1)!.trim()})';
-      }
-      return 'Error en Supabase: $s';
-    }
-    if (e is String &&
-        e.isNotEmpty &&
-        e != 'Ocurrió un error al guardar el producto.') {
-      return e;
-    }
-    return 'Ocurrió un error al guardar el producto: $s';
-  }
-
-  Future<Uint8List> _optimizarImagen(Uint8List bytesOriginales) async {
-    if (bytesOriginales.lengthInBytes < 250 * 1024) return bytesOriginales;
-    if (kIsWeb) {
-      return bytesOriginales; // En Web evita fallos de isolates/workers
-    }
-    try {
-      return await IsolateUtils.run(() async {
-        final bytesComprimidos = await FlutterImageCompress.compressWithList(
-          bytesOriginales,
-          minWidth: 1024,
-          minHeight: 1024,
-          quality: 75,
-          format: CompressFormat.jpeg,
-        );
-        if (bytesComprimidos.isNotEmpty &&
-            bytesComprimidos.lengthInBytes < bytesOriginales.lengthInBytes) {
-          return bytesComprimidos;
-        }
-        return bytesOriginales;
-      });
-    } catch (e, st) {
-      LoggerService.e(
-        'Error crítico comprimiendo imagen',
-        tag: 'PRODUCT_FORM_CUBIT',
-        error: e,
-        stackTrace: st,
-      );
-    }
-    return bytesOriginales;
-  }
-
-  String _normalizarNombreArchivo(XFile archivo) {
-    final rawName = archivo.name.trim();
-    if (rawName.isNotEmpty) return rawName.toLowerCase();
-    final segments = archivo.path.split(RegExp(r'[/\\]'));
-    return segments.isEmpty
-        ? archivo.path.toLowerCase()
-        : segments.last.toLowerCase();
-  }
-
-  double? _parseDecimal(String value) {
-    final normalized = value.trim().replaceAll(',', '.');
-    if (normalized.isEmpty) return null;
-    return double.tryParse(normalized);
   }
 }
 
