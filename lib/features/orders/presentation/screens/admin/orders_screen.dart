@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
 
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
@@ -21,7 +20,6 @@ import 'package:inventory_store_app/features/main_navigation/presentation/widget
 
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
-import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_state.dart';
 
@@ -137,7 +135,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     if (_isFetchingTargetOrder) return;
     _isFetchingTargetOrder = true;
     try {
-      final res = await sl<OrdersRepository>().getOrderById(targetId);
+      final res = await context.read<OrdersCubit>().getOrderById(targetId);
       if (!mounted) return;
       res.fold(
         (failure) {
@@ -343,7 +341,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      final cachedItems = sl<OrdersRepository>().getCachedOrderItems(order.id);
+      final cachedItems = context.read<OrdersCubit>().getCachedOrderItems(order.id);
       await OrderReceiptExportSheet.show(
         context,
         order: order,

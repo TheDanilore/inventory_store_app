@@ -11,7 +11,7 @@ import 'package:inventory_store_app/features/inventory/domain/usecases/create_in
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_cubit.dart';
 
-@injectable
+@lazySingleton
 class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
   final GetActiveWarehousesExitsUseCase getActiveWarehousesUseCase;
   final CreateInventoryExitUseCase createInventoryExitUseCase;
@@ -30,6 +30,15 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
        );
 
   Future<void> loadInitialData() async {
+    // Si ya tenemos almacenes en el estado activo en RAM (Zero-Shimmer al regresar a la vista)
+    if (state.warehouses.isNotEmpty) {
+      if (state.items.isEmpty) {
+        await _loadDraft();
+      }
+      _revalidateWarehouses();
+      return;
+    }
+
     final hasCache = _cachedWarehouses != null && _cachedWarehouses!.isNotEmpty;
 
     if (hasCache) {
@@ -44,7 +53,9 @@ class InventoryExitFormCubit extends Cubit<InventoryExitFormState> {
           isSuccess: false,
         ),
       );
-      await _loadDraft();
+      if (state.items.isEmpty) {
+        await _loadDraft();
+      }
       _revalidateWarehouses();
       return;
     }

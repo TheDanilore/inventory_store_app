@@ -227,6 +227,12 @@ class OrdersCubit extends Cubit<OrdersState> {
     }
   }
 
+  Future<Either<Failure, OrderEntity>> getOrderById(String orderId) =>
+      _repository.getOrderById(orderId);
+
+  List<OrderItemEntity>? getCachedOrderItems(String orderId) =>
+      _repository.getCachedOrderItems(orderId);
+
   Future<Either<Failure, List<OrderItemEntity>>> fetchOrderItems(
     String orderId,
   ) async {

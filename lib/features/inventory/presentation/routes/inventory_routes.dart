@@ -67,8 +67,8 @@ class InventoryRoutes {
       builder: (context, state) {
         final args = state.extra as Map<String, dynamic>? ?? {};
         final query = state.uri.queryParameters;
-        return BlocProvider(
-          create: (_) => sl<InventoryExitFormCubit>(),
+        return BlocProvider.value(
+          value: sl<InventoryExitFormCubit>(),
           child: InventoryExitFormScreen(
             prefillWarehouseId:
                 args['warehouseId'] ??

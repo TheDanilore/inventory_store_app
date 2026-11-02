@@ -87,17 +87,6 @@ class OrdersRepositoryImpl implements OrdersRepository {
     return '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${warehouseFilter ?? ""}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
   }
 
-  void _invalidateOrdersCache([String? orderId]) {
-    _ordersCache.clear();
-    if (orderId != null) {
-      _orderByIdCache.remove(orderId);
-      _orderItemsCache.remove(orderId);
-    } else {
-      _orderByIdCache.clear();
-      _orderItemsCache.clear();
-    }
-  }
-
   void _updateOrderInCache(OrderEntity updatedOrder) {
     _orderByIdCache[updatedOrder.id] = _OrderDetailCacheEntry(
       order: updatedOrder,
@@ -107,6 +96,22 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final index = entry.orders.indexWhere((o) => o.id == updatedOrder.id);
       if (index != -1) {
         entry.orders[index] = updatedOrder;
+      }
+    }
+  }
+
+  void _updateOrderStatusInCache(String orderId, String newStatus) {
+    final cached = _orderByIdCache[orderId];
+    if (cached != null) {
+      _orderByIdCache[orderId] = _OrderDetailCacheEntry(
+        order: cached.order.copyWith(status: newStatus),
+        timestamp: DateTime.now(),
+      );
+    }
+    for (final entry in _ordersCache.values) {
+      final index = entry.orders.indexWhere((o) => o.id == orderId);
+      if (index != -1) {
+        entry.orders[index] = entry.orders[index].copyWith(status: newStatus);
       }
     }
   }
@@ -834,8 +839,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
               'updated_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', order.id);
-        _updateOrderInCache(order.copyWith(status: newStatus));
-        _invalidateOrdersCache(order.id);
+        _updateOrderStatusInCache(order.id, newStatus);
+        _orderItemsCache.remove(order.id);
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
@@ -940,6 +945,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
       // ─── ESCENARIO 1: PENDING → COMPLETED (RPC) ────────────────────────
       if (!wasCompleted && isNowCompleted) {
         await _supabase.rpc('rpc_complete_order', params: {'payload': payload});
+        _updateOrderStatusInCache(orderId, 'COMPLETED');
+        _orderItemsCache.remove(orderId);
         return const Right(null);
       }
       // ─── ESCENARIO 2: COMPLETED → CANCELLED (RPC) ───────────────────────
@@ -1001,7 +1008,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
         await _supabase.from('order_items').upsert(upsertPayload);
       }
 
-      _invalidateOrdersCache();
+      _updateOrderStatusInCache(orderId, newStatus);
+      _orderItemsCache.remove(orderId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -1083,7 +1091,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
       };
 
       await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
-      _invalidateOrdersCache();
+      _updateOrderStatusInCache(orderId, 'CANCELLED');
+      _orderItemsCache.remove(orderId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -1292,7 +1301,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
 
       if (rpcResp != null && rpcResp['success'] == true) {
-        _invalidateOrdersCache(orderId);
+        final cached = _orderByIdCache[orderId]?.order;
+        if (cached != null) {
+          final newPaid = cached.amountPaid + amount;
+          final newStatus = newPaid >= cached.totalAmount ? 'PAID' : 'PARTIAL';
+          _updateOrderInCache(cached.copyWith(
+            amountPaid: newPaid,
+            paymentStatus: newStatus,
+          ));
+        } else {
+          _orderByIdCache.remove(orderId);
+        }
         return const Right(null);
       } else {
         final errorMsg =
@@ -1356,11 +1375,20 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
+  // Variables de multiplexación para canal Realtime compartido
+  StreamController<Either<Failure, int>>? _pendingOrdersCountController;
+  RealtimeChannel? _pendingOrdersCountChannel;
+  Timer? _pendingOrdersCountDebounce;
+  int _pendingOrdersCountListeners = 0;
+
   @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
+    if (_pendingOrdersCountController != null && !_pendingOrdersCountController!.isClosed) {
+      return _pendingOrdersCountController!.stream;
+    }
+
     final controller = StreamController<Either<Failure, int>>.broadcast();
-    RealtimeChannel? channel;
-    Timer? debounceTimer;
+    _pendingOrdersCountController = controller;
 
     Future<void> fetchCount() async {
       try {
@@ -1388,10 +1416,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
       }
     }
 
-    // Suscripción al crearse el stream
+    // Suscripción al crearse el stream con soporte multiplexado
     controller.onListen = () async {
+      _pendingOrdersCountListeners++;
+      if (_pendingOrdersCountChannel != null) {
+        await fetchCount();
+        return;
+      }
       await fetchCount();
-      channel = _supabase
+      _pendingOrdersCountChannel = _supabase
           .channel('public:orders:pending_count')
           .onPostgresChanges(
             event: PostgresChangeEvent.all,
@@ -1408,21 +1441,28 @@ class OrdersRepositoryImpl implements OrdersRepository {
                   payload.eventType == PostgresChangeEvent.delete;
 
               if (isRelevant) {
-                debounceTimer?.cancel();
-                debounceTimer = Timer(const Duration(milliseconds: 2000), () {
+                _pendingOrdersCountDebounce?.cancel();
+                _pendingOrdersCountDebounce = Timer(const Duration(milliseconds: 2000), () {
                   fetchCount();
                 });
               }
             },
           );
-      channel!.subscribe();
+      _pendingOrdersCountChannel!.subscribe();
     };
 
     // Limpieza al cerrarse el stream
     controller.onCancel = () async {
-      debounceTimer?.cancel();
-      await channel?.unsubscribe();
-      await controller.close();
+      _pendingOrdersCountListeners--;
+      if (_pendingOrdersCountListeners <= 0) {
+        _pendingOrdersCountListeners = 0;
+        _pendingOrdersCountDebounce?.cancel();
+        _pendingOrdersCountDebounce = null;
+        await _pendingOrdersCountChannel?.unsubscribe();
+        _pendingOrdersCountChannel = null;
+        await controller.close();
+        _pendingOrdersCountController = null;
+      }
     };
 
     return controller.stream;

@@ -1635,7 +1635,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i401.InventoryExitFormCubit>(
+    gh.lazySingleton<_i401.InventoryExitFormCubit>(
       () => _i401.InventoryExitFormCubit(
         getActiveWarehousesUseCase: gh<_i160.GetActiveWarehousesExitsUseCase>(),
         createInventoryExitUseCase: gh<_i738.CreateInventoryExitUseCase>(),
