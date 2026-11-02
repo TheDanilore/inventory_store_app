@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -31,7 +32,9 @@ Future<void> main() async {
   PaintingBinding.instance.imageCache.maximumSize = 60;
 
   // Optimización web/desktop de URLs
-  usePathUrlStrategy();
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
 
   // Inicialización de formatos locales obligatorios
   await initializeDateFormatting('es', null);

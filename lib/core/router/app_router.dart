@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -234,8 +235,10 @@ class AppRouter {
   static String? _pendingDeepLink;
 
   static void captureInitialRoute() {
+    if (!kIsWeb) return;
     try {
       final uri = Uri.base;
+      if (uri.scheme != 'http' && uri.scheme != 'https') return;
       final path = uri.path;
       if (path.isNotEmpty &&
           path != '/' &&
