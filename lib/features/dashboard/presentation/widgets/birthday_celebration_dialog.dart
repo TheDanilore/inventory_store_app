@@ -7,13 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Modal festivo de felicitación de cumpleaños personalizado.
 /// Se muestra automáticamente una vez al día cuando es el cumpleaños del usuario.
 class BirthdayCelebrationDialog extends StatelessWidget {
-  final UserEntity user;
+  final AuthUserEntity user;
 
   const BirthdayCelebrationDialog({super.key, required this.user});
 
   static Future<void> checkAndShow(
     BuildContext context,
-    UserEntity? user,
+    AuthUserEntity? user,
   ) async {
     if (user == null || !user.isBirthdayToday) return;
 

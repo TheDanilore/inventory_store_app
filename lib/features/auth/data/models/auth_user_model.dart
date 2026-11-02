@@ -95,7 +95,7 @@ class AuthUserModel {
     );
   }
 
-  factory AuthUserModel.fromEntity(UserEntity entity) {
+  factory AuthUserModel.fromEntity(AuthUserEntity entity) {
     return AuthUserModel(
       id: entity.id,
       authUserId: entity.authUserId,
@@ -115,8 +115,8 @@ class AuthUserModel {
     );
   }
 
-  UserEntity toEntity() {
-    return UserEntity(
+  AuthUserEntity toEntity() {
+    return AuthUserEntity(
       id: id,
       authUserId: authUserId,
       email: email,

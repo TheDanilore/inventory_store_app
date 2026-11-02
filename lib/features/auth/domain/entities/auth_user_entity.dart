@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/constants/app_roles.dart';
 
-class UserEntity extends Equatable {
+class AuthUserEntity extends Equatable {
   /// `profiles.id` — UUID real del perfil. Se usa como FK en wishlist, shopping_carts, etc.
   final String id;
 
@@ -33,7 +33,7 @@ class UserEntity extends Equatable {
   /// Fecha de nacimiento del usuario para felicitaciones y métricas
   final DateTime? birthdate;
 
-  const UserEntity({
+  const AuthUserEntity({
     required this.id,
     required this.authUserId,
     required this.email,
@@ -191,7 +191,7 @@ class UserEntity extends Equatable {
     birthdate,
   ];
 
-  UserEntity copyWith({
+  AuthUserEntity copyWith({
     String? id,
     String? authUserId,
     String? email,
@@ -208,7 +208,7 @@ class UserEntity extends Equatable {
     String? warehouseName,
     DateTime? birthdate,
   }) {
-    return UserEntity(
+    return AuthUserEntity(
       id: id ?? this.id,
       authUserId: authUserId ?? this.authUserId,
       email: email ?? this.email,

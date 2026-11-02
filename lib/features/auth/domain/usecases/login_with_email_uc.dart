@@ -12,12 +12,12 @@ class LoginParams {
 }
 
 @injectable
-class LoginWithEmailUseCase implements UseCase<UserEntity, LoginParams> {
+class LoginWithEmailUseCase implements UseCase<AuthUserEntity, LoginParams> {
   final AuthRepository repository;
   LoginWithEmailUseCase(this.repository);
 
   @override
-  Future<Either<Failure, UserEntity>> call(LoginParams params) async {
+  Future<Either<Failure, AuthUserEntity>> call(LoginParams params) async {
     final result = await repository.login(
       email: params.email,
       password: params.password,

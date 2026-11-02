@@ -13,9 +13,9 @@ class FinancialRoutes {
       builder:
           (context, state) => MultiBlocProvider(
             providers: [
-              BlocProvider(create: (_) => sl<FinancialAccountsCubit>()),
-              BlocProvider(create: (_) => sl<AccountMovementsCubit>()),
-              BlocProvider(create: (_) => sl<CashShiftsCubit>()),
+              BlocProvider.value(value: sl<FinancialAccountsCubit>()),
+              BlocProvider.value(value: sl<AccountMovementsCubit>()),
+              BlocProvider.value(value: sl<CashShiftsCubit>()),
             ],
             child: const FinancialAccountsScreen(),
           ),

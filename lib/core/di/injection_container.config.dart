@@ -1304,6 +1304,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i315.GetPendingCustomerOrdersUc>(
       () => _i315.GetPendingCustomerOrdersUc(gh<_i992.OrdersRepository>()),
     );
+    gh.factory<_i834.UserFormCubit>(
+      () => _i834.UserFormCubit(
+        gh<_i12.CreateUserUseCase>(),
+        gh<_i90.UpdateUserUseCase>(),
+        gh<_i945.GetActiveWarehousesUseCase>(),
+      ),
+    );
     gh.factory<_i135.CustomerLocationsCubit>(
       () => _i135.CustomerLocationsCubit(
         gh<_i601.GetCustomerLocationsUseCase>(),
@@ -1543,7 +1550,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i1021.ExportCustomersPdfUseCase>(),
       ),
     );
-    gh.factory<_i1029.CashShiftsCubit>(
+    gh.lazySingleton<_i1029.CashShiftsCubit>(
       () => _i1029.CashShiftsCubit(
         getCashShifts: gh<_i486.GetCashShiftsUseCase>(),
         getCounts: gh<_i582.GetCashShiftsStatusCountUseCase>(),
@@ -1574,7 +1581,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i927.GetCurrentProfileIdUseCase>(
       () => _i927.GetCurrentProfileIdUseCase(gh<_i813.GetCurrentUserUseCase>()),
     );
-    gh.factory<_i218.AccountMovementsCubit>(
+    gh.lazySingleton<_i218.AccountMovementsCubit>(
       () => _i218.AccountMovementsCubit(
         getMovements: gh<_i811.GetAccountMovementsUseCase>(),
         saveMovement: gh<_i625.SaveAccountMovementUseCase>(),
@@ -1626,13 +1633,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1038.UpdateBrandUC(
         gh<_i198.BrandsRepository>(),
         gh<_i927.GetCurrentProfileIdUseCase>(),
-      ),
-    );
-    gh.factory<_i834.UserFormCubit>(
-      () => _i834.UserFormCubit(
-        gh<_i12.CreateUserUseCase>(),
-        gh<_i90.UpdateUserUseCase>(),
-        gh<_i945.GetActiveWarehousesUseCase>(),
       ),
     );
     gh.factory<_i401.InventoryExitFormCubit>(

@@ -7,7 +7,7 @@ enum AuthStatus { initial, unauthenticated, authenticated, error }
 class AuthState extends Equatable {
   final AuthStatus authStatus;
   final ViewState viewState;
-  final UserEntity? currentUser;
+  final AuthUserEntity? currentUser;
   final String? errorMessage;
   final bool isLoginMode;
 
@@ -22,7 +22,7 @@ class AuthState extends Equatable {
   AuthState copyWith({
     AuthStatus? authStatus,
     ViewState? viewState,
-    UserEntity? currentUser,
+    AuthUserEntity? currentUser,
     String? errorMessage,
     bool? isLoginMode,
     bool clearErrorMessage = false,

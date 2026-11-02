@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/auth/domain/usecases/get_current_user_uc.dart';
 import 'package:inventory_store_app/core/usecases/usecase.dart';
+import 'package:inventory_store_app/features/financial/domain/entities/account_movement_entity.dart';
 import 'package:inventory_store_app/features/financial/domain/repositories/account_movements_repository.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movements_usecase.dart';
 import 'package:inventory_store_app/features/financial/domain/usecases/save_account_movement_usecase.dart';
@@ -11,7 +12,7 @@ import 'package:inventory_store_app/features/financial/domain/usecases/transfer_
 import 'package:inventory_store_app/features/financial/domain/usecases/get_account_movement_totals_usecase.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_state.dart';
 
-@injectable
+@lazySingleton
 class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   final GetAccountMovementsUseCase _getMovements;
   final SaveAccountMovementUseCase _saveMovement;
@@ -41,7 +42,12 @@ class AccountMovementsCubit extends Cubit<AccountMovementsState> {
   MovementFilters get filters => _filters;
 
   Future<void> fetchMovements({int page = 0}) async {
-    emit(const AccountMovementsLoading());
+    final prevMovements = switch (state) {
+      AccountMovementsLoaded(:final movements) => movements,
+      AccountMovementsLoading(:final previousMovements) => previousMovements,
+      _ => <AccountMovementEntity>[],
+    };
+    emit(AccountMovementsLoading(previousMovements: prevMovements));
     try {
       _currentPage = page;
       final result = await _getMovements(

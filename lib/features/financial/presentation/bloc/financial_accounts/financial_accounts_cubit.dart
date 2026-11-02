@@ -44,7 +44,11 @@ class FinancialAccountsCubit extends Cubit<FinancialAccountsState> {
 
     try {
       _currentPage = page;
-      final accounts = await _getAccounts(page: page, pageSize: _pageSize);
+      final accounts = await _getAccounts(
+        page: page,
+        pageSize: _pageSize,
+        force: force,
+      );
       if (accounts.length < _pageSize && page == 0) {
         _totalPages = 1;
       } else if (accounts.length < _pageSize) {

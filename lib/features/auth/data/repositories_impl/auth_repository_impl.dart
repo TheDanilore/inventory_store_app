@@ -15,7 +15,7 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._supabase);
 
   @override
-  Future<Either<Failure, UserEntity>> getCurrentUser() async {
+  Future<Either<Failure, AuthUserEntity>> getCurrentUser() async {
     try {
       final session = _supabase.auth.currentSession;
       if (session == null) {
@@ -101,7 +101,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> login({
+  Future<Either<Failure, AuthUserEntity>> login({
     required String email,
     required String password,
   }) async {
@@ -177,7 +177,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> createProfile({
+  Future<Either<Failure, AuthUserEntity>> createProfile({
     required String authUserId,
     required String email,
     required String fullName,
@@ -367,8 +367,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, UserEntity>> updateProfile({
-    required UserEntity user,
+  Future<Either<Failure, AuthUserEntity>> updateProfile({
+    required AuthUserEntity user,
     Uint8List? imageBytes,
   }) async {
     try {

@@ -5,9 +5,9 @@ import 'package:inventory_store_app/features/auth/domain/entities/auth_user_enti
 
 abstract class AuthRepository {
   /// Devuelve el usuario actual si hay sesión y el perfil está activo.
-  Future<Either<Failure, UserEntity>> getCurrentUser();
+  Future<Either<Failure, AuthUserEntity>> getCurrentUser();
 
-  Future<Either<Failure, UserEntity>> login({
+  Future<Either<Failure, AuthUserEntity>> login({
     required String email,
     required String password,
   });
@@ -18,7 +18,7 @@ abstract class AuthRepository {
     String? fullName,
   });
 
-  Future<Either<Failure, UserEntity>> createProfile({
+  Future<Either<Failure, AuthUserEntity>> createProfile({
     required String authUserId,
     required String email,
     required String fullName,
@@ -34,8 +34,8 @@ abstract class AuthRepository {
 
   Future<Either<Failure, void>> deleteAccount(String password);
 
-  Future<Either<Failure, UserEntity>> updateProfile({
-    required UserEntity user,
+  Future<Either<Failure, AuthUserEntity>> updateProfile({
+    required AuthUserEntity user,
     Uint8List? imageBytes,
   });
 }

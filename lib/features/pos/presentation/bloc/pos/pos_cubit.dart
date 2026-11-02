@@ -21,6 +21,46 @@ class PosCubit extends Cubit<PosState> {
   final PosRepository _posRepository;
   final CheckActiveShiftUc _checkActiveShiftUc;
 
+  static PosState _resolveInitialState(PosRepository repository) {
+    final cached = repository.getCachedInitialData();
+    if (cached != null && cached.warehouses.isNotEmpty) {
+      String? initialAccountId;
+      String? initialPaymentMethod;
+      final initialWarehouseId = cached.warehouses.first.id;
+
+      if (cached.accounts.isNotEmpty) {
+        final firstAcc = cached.accounts.firstWhere(
+          (a) =>
+              PosCalculatorUtils.accountRequiresShift(a) &&
+              (a['warehouse_id'] == null ||
+                  a['warehouse_id'] == initialWarehouseId),
+          orElse:
+              () => cached.accounts.firstWhere(
+                (a) => PosCalculatorUtils.accountRequiresShift(a),
+                orElse: () => cached.accounts.first,
+              ),
+        );
+        initialAccountId = firstAcc['id'] as String;
+        final type = firstAcc['type'] as String? ?? '';
+        initialPaymentMethod =
+            type == 'CAJA'
+                ? 'EFECTIVO'
+                : (firstAcc['name'] as String? ?? 'EFECTIVO');
+      }
+
+      return PosState(
+        warehouses: cached.warehouses,
+        accounts: cached.accounts,
+        documentSeries: cached.documentSeries,
+        selectedWarehouseId: initialWarehouseId,
+        selectedAccountId: initialAccountId,
+        paymentMethod: initialPaymentMethod ?? 'EFECTIVO',
+        status: PosStatus.initial,
+      );
+    }
+    return const PosState();
+  }
+
   PosCubit({
     required LoadInitialPosDataUseCase loadInitialPosData,
     required GetOrderDetailsUc getOrderDetails,
@@ -30,7 +70,18 @@ class PosCubit extends Cubit<PosState> {
        _getOrderDetails = getOrderDetails,
        _posRepository = posRepository,
        _checkActiveShiftUc = checkActiveShiftUc,
-       super(const PosState());
+       super(_resolveInitialState(posRepository)) {
+    if (state.accounts.isNotEmpty) {
+      final cashAcc = state.accounts.firstWhere(
+        (a) => PosCalculatorUtils.accountRequiresShift(a),
+        orElse: () => state.accounts.first,
+      );
+      final cashAccId = cashAcc['id'] as String?;
+      if (cashAccId != null) {
+        checkActiveShift(cashAccId);
+      }
+    }
+  }
   int _searchRequestId = 0;
 
   /// Refresca únicamente las cuentas y el turno activo sin descargar almacenes (Data Egress óptimo).

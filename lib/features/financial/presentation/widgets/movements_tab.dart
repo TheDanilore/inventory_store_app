@@ -304,10 +304,12 @@ class _MovementsTabState extends State<MovementsTab> {
           );
         }
 
-        final movements =
-            movState is AccountMovementsLoaded
-                ? movState.movements
-                : <AccountMovementEntity>[];
+        final movements = switch (movState) {
+          AccountMovementsLoaded(:final movements) => movements,
+          AccountMovementsLoading(:final previousMovements) =>
+            previousMovements,
+          _ => <AccountMovementEntity>[],
+        };
         final isLoading = movState is AccountMovementsLoading;
         final totalIncome =
             movState is AccountMovementsLoaded ? movState.totalIncome : 0.0;

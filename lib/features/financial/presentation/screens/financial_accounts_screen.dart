@@ -7,7 +7,9 @@ import 'package:inventory_store_app/core/utils/focus_utils.dart';
 import 'package:inventory_store_app/features/auth/presentation/bloc/auth_cubit.dart';
 import 'package:inventory_store_app/features/financial/domain/entities/financial_account_entity.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/account_movements/account_movements_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_cubit.dart';
+import 'package:inventory_store_app/features/financial/presentation/bloc/financial_accounts/financial_accounts_state.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/account_form_sheet.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/accounts_tab.dart';
 import 'package:inventory_store_app/features/financial/presentation/widgets/movement_form_sheet.dart';
@@ -51,12 +53,24 @@ class _FinancialAccountsScreenState extends State<FinancialAccountsScreen>
       if (mounted) setState(() {});
     });
 
-    // Carga inicial coordinada
+    // Carga inicial coordinada (Zero-Shimmer: respeta estados en memoria)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _refreshAll();
+        final accountsCubit = context.read<FinancialAccountsCubit>();
+        final movementsCubit = context.read<AccountMovementsCubit>();
+        final shiftsCubit = context.read<CashShiftsCubit>();
+
+        if (accountsCubit.state is FinancialAccountsInitial) {
+          accountsCubit.fetchAccounts();
+        }
+        if (movementsCubit.state is AccountMovementsInitial) {
+          movementsCubit.fetchMovements(page: 0);
+        }
+        if (shiftsCubit.state.shifts.isEmpty) {
+          shiftsCubit.fetchShifts();
+        }
         final profileId = context.read<AuthCubit>().state.currentUser?.id;
-        context.read<CashShiftsCubit>().setProfileFilter(profileId);
+        shiftsCubit.setProfileFilter(profileId);
       }
     });
   }

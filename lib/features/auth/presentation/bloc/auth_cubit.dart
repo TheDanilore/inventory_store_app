@@ -318,7 +318,10 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
-  Future<bool> updateProfile(UserEntity user, {Uint8List? imageBytes}) async {
+  Future<bool> updateProfile(
+    AuthUserEntity user, {
+    Uint8List? imageBytes,
+  }) async {
     emit(state.copyWith(viewState: ViewState.loading, clearErrorMessage: true));
     final result = await updateProfileUseCase(
       UpdateProfileParams(user: user, imageBytes: imageBytes),

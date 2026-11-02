@@ -11,7 +11,12 @@ class GetFinancialAccountsUseCase {
   Future<List<FinancialAccountEntity>> call({
     required int page,
     required int pageSize,
+    bool force = false,
   }) {
-    return _repository.getAccounts(page: page, pageSize: pageSize);
+    return _repository.getAccounts(
+      page: page,
+      pageSize: pageSize,
+      force: force,
+    );
   }
 }

@@ -3852,6 +3852,94 @@ $$;
 ALTER FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text" DEFAULT 'Ajuste manual de saldo desde formulario'::"text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_old_balance NUMERIC;
+  v_difference NUMERIC;
+  v_movement_type TEXT;
+  v_profile_id UUID;
+BEGIN
+  -- 1. Bloqueo pesimista para prevenir mutaciones concurrentes
+  SELECT balance INTO v_old_balance 
+  FROM financial_accounts 
+  WHERE id = p_account_id 
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Cuenta financiera no encontrada: %', p_account_id;
+  END IF;
+
+  v_difference := p_new_balance - v_old_balance;
+
+  -- Si no hay variación numérica, no genera movimiento innecesario
+  IF v_difference = 0 THEN
+    RETURN jsonb_build_object(
+      'success', true, 
+      'message', 'El saldo actual coincide con el valor indicado; sin cambios.'
+    );
+  END IF;
+
+  -- 2. Clasificar tipo de movimiento según el signo de la diferencia
+  IF v_difference > 0 THEN
+    v_movement_type := 'INCOME';
+  ELSE
+    v_movement_type := 'EXPENSE';
+    v_difference := ABS(v_difference);
+  END IF;
+
+  -- 3. Resolver perfil del usuario operador autenticado
+  SELECT id INTO v_profile_id 
+  FROM profiles 
+  WHERE auth_user_id = auth.uid() 
+  LIMIT 1;
+
+  -- 4. Registrar movimiento contable de auditoría (Ledger)
+  INSERT INTO account_movements (
+    account_id,
+    movement_type,
+    amount,
+    description,
+    reference_type,
+    reference_id,
+    created_by,
+    created_at
+  ) VALUES (
+    p_account_id,
+    v_movement_type,
+    v_difference,
+    p_reason,
+    'ADJUSTMENT',
+    p_account_id,
+    v_profile_id,
+    NOW()
+  );
+
+  -- 5. Actualizar saldo en la cuenta financiera
+  UPDATE financial_accounts
+  SET 
+    balance = p_new_balance,
+    updated_at = NOW()
+  WHERE id = p_account_id;
+
+  RETURN jsonb_build_object(
+    'success', true, 
+    'account_id', p_account_id,
+    'old_balance', v_old_balance, 
+    'new_balance', p_new_balance,
+    'difference', v_difference,
+    'movement_type', v_movement_type
+  );
+EXCEPTION WHEN OTHERS THEN
+  RAISE EXCEPTION 'Fallo al ajustar saldo atómicamente: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_adjust_wallet"("p_user_id" "uuid", "p_amount" integer) RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -8527,6 +8615,12 @@ GRANT ALL ON FUNCTION "public"."register_financial_movement"("p_account_id" "uui
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."register_supplier_credit_payment_rpc"("p_supplier_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid", "p_notes" "text", "p_shift_id" "uuid", "p_profile_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_adjust_financial_account_balance"("p_account_id" "uuid", "p_new_balance" numeric, "p_reason" "text") TO "service_role";
 
 
 

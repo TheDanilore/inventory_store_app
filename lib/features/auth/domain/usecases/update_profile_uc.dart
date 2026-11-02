@@ -7,18 +7,21 @@ import 'package:inventory_store_app/features/auth/domain/entities/auth_user_enti
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 
 class UpdateProfileParams {
-  final UserEntity user;
+  final AuthUserEntity user;
   final Uint8List? imageBytes;
   const UpdateProfileParams({required this.user, this.imageBytes});
 }
 
 @injectable
-class UpdateProfileUseCase implements UseCase<UserEntity, UpdateProfileParams> {
+class UpdateProfileUseCase
+    implements UseCase<AuthUserEntity, UpdateProfileParams> {
   final AuthRepository repository;
   UpdateProfileUseCase(this.repository);
 
   @override
-  Future<Either<Failure, UserEntity>> call(UpdateProfileParams params) async {
+  Future<Either<Failure, AuthUserEntity>> call(
+    UpdateProfileParams params,
+  ) async {
     return repository.updateProfile(
       user: params.user,
       imageBytes: params.imageBytes,

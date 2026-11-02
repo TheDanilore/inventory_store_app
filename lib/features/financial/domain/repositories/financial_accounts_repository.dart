@@ -4,10 +4,14 @@ import 'package:inventory_store_app/features/financial/domain/entities/financial
 /// La capa de dominio depende de esta interfaz; la implementación concreta
 /// vive en data/repositories_impl/.
 abstract class FinancialAccountsRepository {
+  /// Invalida la memoria caché local de cuentas financieras.
+  void invalidateCache();
+
   /// Retorna una página de cuentas ordenadas por estado activo y nombre.
   Future<List<FinancialAccountEntity>> getAccounts({
     required int page,
     required int pageSize,
+    bool force = false,
   });
 
   /// Retorna el total de cuentas para calcular la paginación.

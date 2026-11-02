@@ -6,12 +6,12 @@ import 'package:inventory_store_app/features/auth/domain/entities/auth_user_enti
 import 'package:inventory_store_app/features/auth/domain/repositories/auth_repository.dart';
 
 @injectable
-class GetCurrentUserUseCase implements UseCase<UserEntity, NoParams> {
+class GetCurrentUserUseCase implements UseCase<AuthUserEntity, NoParams> {
   final AuthRepository repository;
   GetCurrentUserUseCase(this.repository);
 
   @override
-  Future<Either<Failure, UserEntity>> call(NoParams params) async {
+  Future<Either<Failure, AuthUserEntity>> call(NoParams params) async {
     final result = await repository.getCurrentUser();
 
     return result.fold(

@@ -22,6 +22,9 @@ class PosInitData {
 
 /// Contrato del repositorio para el módulo POS.
 abstract class PosRepository {
+  /// Retorna los datos iniciales si ya residen en la memoria RAM (L1) para Zero-Shimmer en Frame 0.
+  PosInitData? getCachedInitialData();
+
   /// Carga los datos iniciales necesarios para el POS (almacenes, cuentas, series).
   Future<Either<Failure, PosInitData>> loadInitialData({
     bool forceRefresh = false,

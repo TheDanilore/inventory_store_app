@@ -14,7 +14,12 @@ class AccountMovementsInitial extends AccountMovementsState {
 }
 
 class AccountMovementsLoading extends AccountMovementsState {
-  const AccountMovementsLoading();
+  final List<AccountMovementEntity> previousMovements;
+
+  const AccountMovementsLoading({this.previousMovements = const []});
+
+  @override
+  List<Object?> get props => [previousMovements];
 }
 
 class AccountMovementsLoaded extends AccountMovementsState {

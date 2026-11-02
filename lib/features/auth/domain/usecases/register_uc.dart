@@ -18,12 +18,12 @@ class RegisterParams {
 }
 
 @injectable
-class RegisterUseCase implements UseCase<UserEntity, RegisterParams> {
+class RegisterUseCase implements UseCase<AuthUserEntity, RegisterParams> {
   final AuthRepository repository;
   RegisterUseCase(this.repository);
 
   @override
-  Future<Either<Failure, UserEntity>> call(RegisterParams params) async {
+  Future<Either<Failure, AuthUserEntity>> call(RegisterParams params) async {
     final registerResult = await repository.register(
       email: params.email,
       password: params.password,

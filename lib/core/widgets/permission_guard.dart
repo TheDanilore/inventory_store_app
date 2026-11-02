@@ -54,7 +54,7 @@ class PermissionGuard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<AuthCubit, AuthState, UserEntity?>(
+    return BlocSelector<AuthCubit, AuthState, AuthUserEntity?>(
       selector: (state) => state.currentUser,
       builder: (context, user) {
         if (user == null) return fallback;
@@ -101,7 +101,7 @@ class PermissionGuard extends StatelessWidget {
 /// Extensiones de conveniencia en `BuildContext` para comprobaciones limpias en vistas
 extension PermissionsContextExtension on BuildContext {
   /// Usuario actualmente autenticado
-  UserEntity? get currentUser => read<AuthCubit>().state.currentUser;
+  AuthUserEntity? get currentUser => read<AuthCubit>().state.currentUser;
 
   /// Indica si el usuario actual es Administrador
   bool get isAdmin => read<AuthCubit>().isAdmin;

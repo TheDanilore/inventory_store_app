@@ -151,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final currentUser = cubit.state.currentUser;
     if (currentUser == null) return;
 
-    final updatedUser = UserEntity(
+    final updatedUser = AuthUserEntity(
       id: currentUser.id,
       authUserId: currentUser.authUserId,
       email: currentUser.email,
@@ -367,7 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── Layout Desktop: Split Profile Dashboard (2 Columnas width >= 900) ──────
   Widget _buildDesktopSplitLayout(
     BuildContext context,
-    UserEntity user,
+    AuthUserEntity user,
     String? avatarUrl,
     bool isLoading,
     bool isLoyaltyEnabled,
@@ -519,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── Layout Móvil / Tablet: 1 Columna Continua ──────────────────────────────
   Widget _buildMobileSingleColumnLayout(
     BuildContext context,
-    UserEntity user,
+    AuthUserEntity user,
     String? avatarUrl,
     bool isLoading,
     bool isLoyaltyEnabled,

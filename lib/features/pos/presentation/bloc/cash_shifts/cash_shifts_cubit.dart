@@ -10,7 +10,7 @@ import 'package:inventory_store_app/features/pos/domain/usecases/calc_expected_c
 import 'package:inventory_store_app/features/pos/presentation/bloc/cash_shifts/cash_shifts_state.dart';
 import 'package:inventory_store_app/features/pos/domain/repositories/cash_shift_repository.dart';
 
-@injectable
+@lazySingleton
 class CashShiftsCubit extends Cubit<CashShiftsState> {
   final GetCashShiftsUseCase _getCashShifts;
   final GetCashShiftsStatusCountUseCase _getCounts;

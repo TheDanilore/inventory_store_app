@@ -43,6 +43,21 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
+  PosInitData? getCachedInitialData() {
+    if (_cachedWarehouses != null &&
+        _cachedWarehouses!.isNotEmpty &&
+        _cachedAccounts != null &&
+        _cachedAccounts!.isNotEmpty) {
+      return PosInitData(
+        warehouses: _cachedWarehouses!,
+        accounts: _cachedAccounts!,
+        documentSeries: _cachedDocumentSeries ?? _defaultDocumentSeries,
+      );
+    }
+    return null;
+  }
+
+  @override
   Future<Either<Failure, PosInitData>> loadInitialData({
     bool forceRefresh = false,
   }) async {
