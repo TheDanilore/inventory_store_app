@@ -5397,6 +5397,7 @@ CREATE TABLE IF NOT EXISTS "public"."active_ingredients" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
     "description" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "search_vector" "tsvector" GENERATED ALWAYS AS ("to_tsvector"('"spanish"'::"regconfig", "name")) STORED
 );
 
@@ -5927,7 +5928,8 @@ CREATE TABLE IF NOT EXISTS "public"."product_active_ingredients" (
     "product_id" "uuid" NOT NULL,
     "ingredient_id" "uuid" NOT NULL,
     "concentration" numeric,
-    "unit" "text"
+    "unit" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 

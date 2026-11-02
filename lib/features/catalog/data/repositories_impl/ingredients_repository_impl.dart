@@ -93,12 +93,27 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
     String name,
   ) async {
     try {
-      final response =
-          await _supabase
-              .from('active_ingredients')
-              .insert({'name': name.trim()})
-              .select('id, name, created_at')
-              .single();
+      Map<String, dynamic> response;
+      try {
+        response =
+            await _supabase
+                .from('active_ingredients')
+                .insert({'name': name.trim()})
+                .select('id, name, description, created_at')
+                .single();
+      } on PostgrestException catch (e) {
+        if (e.message.contains('created_at') &&
+            e.message.contains('does not exist')) {
+          response =
+              await _supabase
+                  .from('active_ingredients')
+                  .insert({'name': name.trim()})
+                  .select('id, name, description')
+                  .single();
+        } else {
+          rethrow;
+        }
+      }
       _invalidateCache();
       return right(ActiveIngredientModel.fromJson(response).toEntity());
     } catch (e, st) {
@@ -209,15 +224,33 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
       }
 
       // 2. Fetch desde Supabase con proyección explícita (Egress Optimization)
-      var query = _supabase
-          .from('active_ingredients')
-          .select('id, name, created_at');
-      if (hasQuery) {
-        query = query.ilike('name', '%$cleanQuery%');
+      // Soporte retrocompatible y resiliente: Si 'created_at' aún no existe en Supabase,
+      // fallback automático a 'id, name, description' sin fallar la UI ni emitir errores.
+      List<dynamic> response;
+      try {
+        var query = _supabase
+            .from('active_ingredients')
+            .select('id, name, description, created_at');
+        if (hasQuery) {
+          query = query.ilike('name', '%$cleanQuery%');
+        }
+        response =
+            await query.order('name').range(offset, offset + limit - 1);
+      } on PostgrestException catch (e) {
+        if (e.message.contains('created_at') &&
+            e.message.contains('does not exist')) {
+          var fallbackQuery = _supabase
+              .from('active_ingredients')
+              .select('id, name, description');
+          if (hasQuery) {
+            fallbackQuery = fallbackQuery.ilike('name', '%$cleanQuery%');
+          }
+          response =
+              await fallbackQuery.order('name').range(offset, offset + limit - 1);
+        } else {
+          rethrow;
+        }
       }
-      final response = await query
-          .order('name')
-          .range(offset, offset + limit - 1);
       final models =
           List<Map<String, dynamic>>.from(
             response,
