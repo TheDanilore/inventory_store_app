@@ -12,7 +12,7 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 
-@injectable
+@lazySingleton
 class InventoryCubit extends Cubit<InventoryState> {
   final GetGeneralStockMetricsUseCase _getGeneralStockMetrics;
   final GetCategoriesUC _getCategories;
@@ -34,12 +34,16 @@ class InventoryCubit extends Cubit<InventoryState> {
     final cachedWarehouses = cache.getWarehouses();
     final cachedCategories = cache.getCategories();
 
-    if (cachedPage != null) {
+    final defaultBatchKey = InventoryLruCache.buildBatchKey();
+    final cachedBatchPage = cache.getBatchPage(defaultBatchKey);
+    final cachedBatchMetrics = cache.getBatchMetrics(null);
+
+    if (cachedPage != null || cachedBatchPage != null) {
       return InventoryLoaded(
-        stockItems: cachedPage.stockItems,
-        batchItems: const [],
+        stockItems: cachedPage?.stockItems ?? const [],
+        batchItems: cachedBatchPage?.batchItems ?? const [],
         currentStockPage: 0,
-        totalStockPages: cachedPage.totalPages,
+        totalStockPages: cachedPage?.totalPages ?? 1,
         stockSearchText: '',
         stockCategoryFilter: 'Todos',
         stockStatusFilter: 'all',
@@ -48,19 +52,19 @@ class InventoryCubit extends Cubit<InventoryState> {
         selectedWarehouseId: null,
         selectedWarehouseName: 'Todos los almacenes',
         globalTotalVariants:
-            cachedMetrics?['totalVariants'] ?? cachedPage.totalCount,
+            cachedMetrics?['totalVariants'] ?? cachedPage?.totalCount ?? 0,
         globalTotalStock: cachedMetrics?['totalStock'] ?? 0,
         globalLowStockCount: cachedMetrics?['lowStockCount'] ?? 0,
         globalTotalCost:
             (cachedMetrics?['totalCost'] as num?)?.toDouble() ?? 0.0,
         currentBatchPage: 0,
-        totalBatchPages: 1,
+        totalBatchPages: cachedBatchPage?.totalPages ?? 1,
         batchSearchText: '',
         batchStatusFilter: 'Todos',
-        countVencido: 0,
-        countCritico: 0,
-        countProximo: 0,
-        countNormal: 0,
+        countVencido: cachedBatchMetrics?['vencido'] ?? 0,
+        countCritico: cachedBatchMetrics?['critico'] ?? 0,
+        countProximo: cachedBatchMetrics?['proximo'] ?? 0,
+        countNormal: cachedBatchMetrics?['normal'] ?? 0,
         isSearchingStock: false,
         isSearchingBatches: false,
       );
@@ -469,7 +473,34 @@ class InventoryCubit extends Cubit<InventoryState> {
   Future<void> initBatchesTab() async {
     final requestId = ++_batchRequestId;
     final currentState = _getLoadedState();
-    emit(currentState.copyWith(isSearchingBatches: true));
+
+    final cacheKey = InventoryLruCache.buildBatchKey(
+      search: currentState.batchSearchText,
+      statusFilter: currentState.batchStatusFilter,
+      warehouseId: currentState.selectedWarehouseId,
+      page: 0,
+      pageSize: _batchPageSize,
+    );
+    final cachedPage = InventoryLruCache.instance.getBatchPage(cacheKey);
+    final cachedMetrics = InventoryLruCache.instance.getBatchMetrics(
+      currentState.selectedWarehouseId,
+    );
+
+    if (currentState.batchItems.isEmpty && cachedPage != null) {
+      emit(
+        currentState.copyWith(
+          batchItems: cachedPage.batchItems,
+          totalBatchPages: cachedPage.totalPages,
+          countVencido: cachedMetrics?['vencido'] ?? currentState.countVencido,
+          countCritico: cachedMetrics?['critico'] ?? currentState.countCritico,
+          countProximo: cachedMetrics?['proximo'] ?? currentState.countProximo,
+          countNormal: cachedMetrics?['normal'] ?? currentState.countNormal,
+          isSearchingBatches: true,
+        ),
+      );
+    } else {
+      emit(currentState.copyWith(isSearchingBatches: true));
+    }
 
     try {
       final warehousesFuture =
@@ -516,6 +547,17 @@ class InventoryCubit extends Cubit<InventoryState> {
       final totalPages =
           totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
 
+      InventoryLruCache.instance.putBatchPage(
+        cacheKey,
+        batchItems: batchItems,
+        totalCount: totalBatchCount,
+        totalPages: totalPages,
+      );
+      InventoryLruCache.instance.putBatchMetrics(
+        currentState.selectedWarehouseId,
+        metrics,
+      );
+
       final updatedState = _getLoadedState();
       emit(
         updatedState.copyWith(
@@ -548,6 +590,27 @@ class InventoryCubit extends Cubit<InventoryState> {
     final currentState = _getLoadedState();
     final targetPage = page ?? currentState.currentBatchPage;
 
+    final cacheKey = InventoryLruCache.buildBatchKey(
+      search: currentState.batchSearchText,
+      statusFilter: currentState.batchStatusFilter,
+      warehouseId: currentState.selectedWarehouseId,
+      page: targetPage,
+      pageSize: _batchPageSize,
+    );
+    final cachedPage = InventoryLruCache.instance.getBatchPage(cacheKey);
+
+    if (cachedPage != null) {
+      emit(
+        currentState.copyWith(
+          currentBatchPage: targetPage,
+          totalBatchPages: cachedPage.totalPages,
+          batchItems: cachedPage.batchItems,
+          isSearchingBatches: false,
+        ),
+      );
+      return;
+    }
+
     emit(currentState.copyWith(isSearchingBatches: true));
     try {
       final results = await Future.wait([
@@ -573,6 +636,13 @@ class InventoryCubit extends Cubit<InventoryState> {
       int totalPages =
           totalBatchCount == 0 ? 1 : (totalBatchCount / _batchPageSize).ceil();
       int validPage = targetPage >= totalPages ? 0 : targetPage;
+
+      InventoryLruCache.instance.putBatchPage(
+        cacheKey,
+        batchItems: batchItems,
+        totalCount: totalBatchCount,
+        totalPages: totalPages,
+      );
 
       emit(
         currentState.copyWith(

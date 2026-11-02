@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_cubit.dart';
+import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory/inventory_state.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exit_form/inventory_exit_form_cubit.dart';
@@ -104,19 +105,19 @@ class InventoryRoutes {
         final tabStr = state.uri.queryParameters['tab'];
         final warehouseId = state.uri.queryParameters['warehouseId'];
         final tabIndex = tabStr == 'batches' || tabStr == '1' ? 1 : 0;
-        return BlocProvider(
-          create: (_) {
-            final cubit = sl<InventoryCubit>();
-            cubit.initStockTab(
-              initialSearch: search,
-              initialStatusFilter: filter,
-              initialWarehouseId: warehouseId,
-            );
-            if (tabIndex == 1) {
-              cubit.initBatchesTab();
-            }
-            return cubit;
-          },
+        final cubit = sl<InventoryCubit>();
+        if (cubit.state is! InventoryLoaded) {
+          cubit.initStockTab(
+            initialSearch: search,
+            initialStatusFilter: filter,
+            initialWarehouseId: warehouseId,
+          );
+          if (tabIndex == 1) {
+            cubit.initBatchesTab();
+          }
+        }
+        return BlocProvider.value(
+          value: cubit,
           child: InventoryScreen(
             initialSearch: search,
             initialStatusFilter: filter,

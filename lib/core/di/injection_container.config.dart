@@ -1291,7 +1291,7 @@ extension GetItInjectableX on _i174.GetIt {
         appConfigRepository: gh<_i257.AppConfigRepository>(),
       ),
     );
-    gh.factory<_i148.InventoryCubit>(
+    gh.lazySingleton<_i148.InventoryCubit>(
       () => _i148.InventoryCubit(
         getGeneralStockMetrics: gh<_i226.GetGeneralStockMetricsUseCase>(),
         getCategories: gh<_i700.GetCategoriesUC>(),

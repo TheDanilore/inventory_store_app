@@ -16,6 +16,20 @@ class InventoryStockPageCache {
   });
 }
 
+class InventoryBatchPageCache {
+  final List<InventoryBatchItem> batchItems;
+  final int totalCount;
+  final int totalPages;
+  final DateTime cachedAt;
+
+  const InventoryBatchPageCache({
+    required this.batchItems,
+    required this.totalCount,
+    required this.totalPages,
+    required this.cachedAt,
+  });
+}
+
 class InventoryMetricsCache {
   final Map<String, dynamic> metrics;
   final DateTime cachedAt;
@@ -33,7 +47,11 @@ class InventoryLruCache {
 
   final LinkedHashMap<String, InventoryStockPageCache> _stockPages =
       LinkedHashMap();
+  final LinkedHashMap<String, InventoryBatchPageCache> _batchPages =
+      LinkedHashMap();
   final LinkedHashMap<String, InventoryMetricsCache> _metrics = LinkedHashMap();
+  final LinkedHashMap<String, InventoryMetricsCache> _batchMetrics =
+      LinkedHashMap();
 
   List<WarehouseEntity>? _warehouses;
   DateTime? _warehousesCachedAt;
@@ -141,16 +159,91 @@ class InventoryLruCache {
     _categoriesCachedAt = DateTime.now();
   }
 
+  static String buildBatchKey({
+    String search = '',
+    String statusFilter = 'Todos',
+    String? warehouseId,
+    int page = 0,
+    int pageSize = 24,
+  }) {
+    return [
+      search.trim().toLowerCase(),
+      statusFilter.trim(),
+      warehouseId ?? 'all',
+      page.toString(),
+      pageSize.toString(),
+    ].join('|');
+  }
+
+  InventoryBatchPageCache? getBatchPage(String key) {
+    final entry = _batchPages[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > pageTtl) {
+      _batchPages.remove(key);
+      return null;
+    }
+    _batchPages
+      ..remove(key)
+      ..[key] = entry;
+    return entry;
+  }
+
+  void putBatchPage(
+    String key, {
+    required List<InventoryBatchItem> batchItems,
+    required int totalCount,
+    required int totalPages,
+  }) {
+    _batchPages.remove(key);
+    if (_batchPages.length >= maxPages) {
+      _batchPages.remove(_batchPages.keys.first);
+    }
+    _batchPages[key] = InventoryBatchPageCache(
+      batchItems: List.unmodifiable(batchItems),
+      totalCount: totalCount,
+      totalPages: totalPages,
+      cachedAt: DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic>? getBatchMetrics(String? warehouseId) {
+    final key = warehouseId ?? 'all';
+    final entry = _batchMetrics[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.cachedAt) > metricsTtl) {
+      _batchMetrics.remove(key);
+      return null;
+    }
+    _batchMetrics
+      ..remove(key)
+      ..[key] = entry;
+    return entry.metrics;
+  }
+
+  void putBatchMetrics(String? warehouseId, Map<String, dynamic> metrics) {
+    final key = warehouseId ?? 'all';
+    _batchMetrics.remove(key);
+    _batchMetrics[key] = InventoryMetricsCache(
+      metrics: Map.unmodifiable(metrics),
+      cachedAt: DateTime.now(),
+    );
+  }
+
   bool get hasAnyStock => _stockPages.isNotEmpty;
+  bool get hasAnyBatches => _batchPages.isNotEmpty;
 
   void invalidateStock() {
     _stockPages.clear();
+    _batchPages.clear();
     _metrics.clear();
+    _batchMetrics.clear();
   }
 
   void invalidateAll() {
     _stockPages.clear();
+    _batchPages.clear();
     _metrics.clear();
+    _batchMetrics.clear();
     _warehouses = null;
     _categories = null;
   }
