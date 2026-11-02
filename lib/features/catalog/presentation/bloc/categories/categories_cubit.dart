@@ -7,7 +7,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_cat
 import 'package:inventory_store_app/features/catalog/domain/usecases/get_categories_uc.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_state.dart';
 
-@injectable
+@lazySingleton
 class CategoriesCubit extends Cubit<CategoriesState> {
   final GetCategoriesUC getCategoriesUC;
   final CreateCategoryUseCase createCategoryUseCase;
@@ -15,13 +15,27 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   final DeleteCategoryUC deleteCategoryUC;
 
   Timer? _debounceTimer;
+  List<CategoryEntity> _allCategories = const [];
 
   CategoriesCubit({
     required this.getCategoriesUC,
     required this.createCategoryUseCase,
     required this.updateCategoryUC,
     required this.deleteCategoryUC,
-  }) : super(const CategoriesState());
+  }) : super(_initialState(getCategoriesUC)) {
+    final cached = getCategoriesUC.getCached();
+    if (cached != null) {
+      _allCategories = cached;
+    }
+  }
+
+  static CategoriesState _initialState(GetCategoriesUC uc) {
+    final cached = uc.getCached();
+    if (cached != null && cached.isNotEmpty) {
+      return CategoriesState(categories: cached, viewState: ViewState.success);
+    }
+    return const CategoriesState();
+  }
 
   @override
   Future<void> close() {
@@ -34,32 +48,32 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     String? query,
   }) async {
     if (query != null) {
-      emit(state.copyWith(searchQuery: query, viewState: ViewState.loading));
-    } else {
+      emit(state.copyWith(searchQuery: query));
+    }
+
+    // Zero-Shimmer / SWR: Solo emitir loading si no tenemos nada en caché L1
+    if (_allCategories.isEmpty && state.categories.isEmpty) {
       emit(state.copyWith(viewState: ViewState.loading));
     }
 
-    final result = await getCategoriesUC();
+    final result = await getCategoriesUC(forceRefresh: forceRefresh);
 
     result.fold(
-      (failure) => emit(
-        state.copyWith(
-          viewState: ViewState.error,
-          errorMessage: failure.message,
-        ),
-      ),
-      (categories) {
-        var filtered = categories;
-        if (state.searchQuery.isNotEmpty) {
-          filtered =
-              categories
-                  .where(
-                    (c) => c.name.toLowerCase().contains(
-                      state.searchQuery.toLowerCase(),
-                    ),
-                  )
-                  .toList();
+      (failure) {
+        if (state.categories.isEmpty) {
+          emit(
+            state.copyWith(
+              viewState: ViewState.error,
+              errorMessage: failure.message,
+            ),
+          );
+        } else {
+          emit(state.copyWith(errorMessage: failure.message));
         }
+      },
+      (categories) {
+        _allCategories = categories;
+        final filtered = _filterCategories(categories, state.searchQuery);
         emit(
           state.copyWith(
             viewState: filtered.isEmpty ? ViewState.empty : ViewState.success,
@@ -71,17 +85,45 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     );
   }
 
+  List<CategoryEntity> _filterCategories(
+    List<CategoryEntity> list,
+    String query,
+  ) {
+    if (query.trim().isEmpty) return list;
+    final q = query.trim().toLowerCase();
+    return list
+        .where(
+          (c) =>
+              c.name.toLowerCase().contains(q) ||
+              (c.description?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
+  }
+
   void onSearchChanged(String query) {
-    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      loadCategories(query: query);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () {
+      final filtered = _filterCategories(_allCategories, query);
+      emit(
+        state.copyWith(
+          searchQuery: query,
+          categories: filtered,
+          viewState: filtered.isEmpty ? ViewState.empty : ViewState.success,
+        ),
+      );
     });
   }
 
   void clearSearch() {
-    if (state.searchQuery.isEmpty) return;
-    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    loadCategories(query: '');
+    _debounceTimer?.cancel();
+    final filtered = _allCategories;
+    emit(
+      state.copyWith(
+        searchQuery: '',
+        categories: filtered,
+        viewState: filtered.isEmpty ? ViewState.empty : ViewState.success,
+      ),
+    );
   }
 
   Future<void> toggleStatus(CategoryEntity cat, bool isActive) async {
@@ -97,13 +139,18 @@ class CategoriesCubit extends Cubit<CategoriesState> {
         emit(state.copyWith(isSaving: false, errorMessage: failure.message));
       },
       (_) {
-        final updatedList =
-            state.categories.map((c) {
+        _allCategories =
+            _allCategories.map((c) {
               if (c.id == cat.id) {
                 return c.copyWith(isActive: isActive);
               }
               return c;
             }).toList();
+
+        final updatedList = _filterCategories(
+          _allCategories,
+          state.searchQuery,
+        );
         emit(
           state.copyWith(
             isSaving: false,
@@ -159,7 +206,11 @@ class CategoriesCubit extends Cubit<CategoriesState> {
         return false;
       },
       (_) {
-        final updatedList = state.categories.where((c) => c.id != id).toList();
+        _allCategories = _allCategories.where((c) => c.id != id).toList();
+        final updatedList = _filterCategories(
+          _allCategories,
+          state.searchQuery,
+        );
         emit(
           state.copyWith(
             isSaving: false,

@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:inventory_store_app/core/services/app_feedback_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:inventory_store_app/core/enums/view_state.dart';
+import 'package:inventory_store_app/core/services/app_feedback_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
+import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_cubit.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/categories/categories_state.dart';
-import 'package:inventory_store_app/core/enums/view_state.dart';
-import 'package:inventory_store_app/features/catalog/domain/entities/category_entity.dart';
-
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_empty_state.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_skeleton.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/categories_stats_bar.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_desktop_row.dart';
 import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_form_sheet.dart';
-
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/app_confirm_dialog.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_mobile_card.dart';
+import 'package:inventory_store_app/features/catalog/presentation/widgets/admin/categories/category_search_bar.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/utils/shortcut_utils.dart';
 
 class CategoriesManagementScreen extends StatefulWidget {
   const CategoriesManagementScreen({super.key});
@@ -27,11 +29,11 @@ class CategoriesManagementScreen extends StatefulWidget {
 
 class _CategoriesManagementScreenState
     extends State<CategoriesManagementScreen> {
-  // ── Search ───────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
+  final _scrollController = ScrollController();
+  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
-  // ── Paleta de colores por categoría ─────────────────────────────────────
   static const _categoryColors = [
     Color(0xFF6366F1), // indigo
     Color(0xFF0EA5E9), // sky
@@ -41,14 +43,10 @@ class _CategoriesManagementScreenState
     Color(0xFF8B5CF6), // violet
   ];
 
-  Color _getCategoryColor(String name) {
+  static Color _getCategoryColor(String name) {
     if (name.isEmpty) return _categoryColors[0];
     return _categoryColors[name.hashCode.abs() % _categoryColors.length];
   }
-
-  // ── Scroll / FAB ─────────────────────────────────────────────────────────
-  final _scrollController = ScrollController();
-  final ValueNotifier<bool> _isFabExtended = ValueNotifier<bool>(true);
 
   @override
   void initState() {
@@ -77,8 +75,6 @@ class _CategoriesManagementScreenState
     super.dispose();
   }
 
-  // ── Acciones ─────────────────────────────────────────────────────────────
-
   void _showCategoryForm([CategoryEntity? category]) {
     CategoryFormSheet.showAdaptive(context, category: category);
   }
@@ -105,7 +101,7 @@ class _CategoriesManagementScreenState
     cubit.toggleStatus(cat, val);
   }
 
-  Future<void> _confirmDeleteCategory(
+  Future<bool> _confirmDeleteCategory(
     CategoryEntity cat,
     CategoriesCubit cubit,
   ) async {
@@ -118,8 +114,9 @@ class _CategoriesManagementScreenState
       confirmText: 'Eliminar',
       confirmColor: AppColors.error,
     );
-    if (confirm != true) return;
-    if (!mounted) return;
+    if (confirm != true) return false;
+    if (!mounted) return false;
+
     final success = await cubit.deleteCategory(cat.id!);
     if (success && mounted) {
       AppSnackbar.show(
@@ -127,20 +124,10 @@ class _CategoriesManagementScreenState
         message: 'Categoría eliminada exitosamente.',
         type: SnackbarType.success,
       );
+      return true;
     }
+    return false;
   }
-
-  void _focusSearch() {
-    _searchFocusNode.requestFocus();
-  }
-
-  void _unfocusSearch() {
-    if (_searchFocusNode.hasFocus) {
-      _searchFocusNode.unfocus();
-    }
-  }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -156,11 +143,13 @@ class _CategoriesManagementScreenState
         const SingleActivator(LogicalKeyboardKey.keyN, alt: true):
             _showCategoryForm,
         const SingleActivator(LogicalKeyboardKey.keyK, control: true):
-            _focusSearch,
+            () => _searchFocusNode.requestFocus(),
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
-            _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.keyK, alt: true): _focusSearch,
-        const SingleActivator(LogicalKeyboardKey.escape): _unfocusSearch,
+            () => _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.keyK, alt: true):
+            () => _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.escape):
+            () => _searchFocusNode.unfocus(),
       },
       child: Focus(
         autofocus: true,
@@ -263,14 +252,23 @@ class _CategoriesManagementScreenState
                 );
               }
             },
+            buildWhen:
+                (prev, curr) =>
+                    prev.viewState != curr.viewState ||
+                    prev.categories != curr.categories ||
+                    prev.searchQuery != curr.searchQuery,
             builder: (context, state) {
               final cubit = context.read<CategoriesCubit>();
+              final isLoading =
+                  state.viewState == ViewState.loading &&
+                  state.categories.isEmpty;
+
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  final isDesktopLayout = constraints.maxWidth >= 960;
-                  return isDesktopLayout
-                      ? _buildDesktopLayout(context, state, cubit)
-                      : _buildMobileLayout(context, state, cubit);
+                  final isDesktop = constraints.maxWidth >= 960;
+                  return isDesktop
+                      ? _buildDesktopView(context, state, cubit, isLoading)
+                      : _buildMobileView(context, state, cubit, isLoading);
                 },
               );
             },
@@ -280,12 +278,11 @@ class _CategoriesManagementScreenState
     );
   }
 
-  // ── Desktop Layout ────────────────────────────────────────────────────────
-
-  Widget _buildDesktopLayout(
+  Widget _buildDesktopView(
     BuildContext context,
     CategoriesState state,
     CategoriesCubit cubit,
+    bool isLoading,
   ) {
     return Align(
       alignment: Alignment.topCenter,
@@ -296,7 +293,7 @@ class _CategoriesManagementScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _AnimatedSearchBar(
+              CategorySearchBar(
                 controller: _searchCtrl,
                 focusNode: _searchFocusNode,
                 onChanged: cubit.onSearchChanged,
@@ -307,18 +304,43 @@ class _CategoriesManagementScreenState
                 hasQuery: state.searchQuery.isNotEmpty,
               ),
               const SizedBox(height: 12),
-              _buildStatsBar(cubit),
+              CategoriesStatsBar(categories: state.categories),
               const SizedBox(height: 12),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () => cubit.loadCategories(forceRefresh: true),
                   color: AppColors.primary,
                   child:
-                      state.viewState == ViewState.loading
+                      isLoading
                           ? const CategoriesSkeleton(itemCount: 6)
-                          : cubit.state.categories.isEmpty
-                          ? _buildEmptyState(cubit, state)
-                          : _buildDesktopList(cubit),
+                          : state.categories.isEmpty
+                          ? CategoriesEmptyState(
+                            isSearch: state.searchQuery.isNotEmpty,
+                            searchQuery: state.searchQuery,
+                            onCreateCategory: () => _showCategoryForm(),
+                          )
+                          : ListView.separated(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: state.categories.length,
+                            separatorBuilder:
+                                (_, _) => const SizedBox(height: 6),
+                            itemBuilder: (context, index) {
+                              final cat = state.categories[index];
+                              return CategoryDesktopRow(
+                                key: ValueKey(cat.id ?? cat.name),
+                                category: cat,
+                                catColor: _getCategoryColor(cat.name),
+                                onEdit: () => _showCategoryForm(cat),
+                                onDelete:
+                                    () => _confirmDeleteCategory(cat, cubit),
+                                onToggle:
+                                    (val) =>
+                                        _handleToggleStatus(cat, val, cubit),
+                              );
+                            },
+                          ),
                 ),
               ),
             ],
@@ -328,40 +350,11 @@ class _CategoriesManagementScreenState
     );
   }
 
-  Widget _buildStatsBar(CategoriesCubit cubit) {
-    final categories = cubit.state.categories;
-    final total = categories.length;
-    final active = categories.where((c) => c.isActive).length;
-    final inactive = total - active;
-
-    return Row(
-      children: [
-        Text(
-          '$total ${total == 1 ? 'categoría' : 'categorías'}',
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        if (total > 0) ...[
-          const SizedBox(width: 10),
-          _StatPill(label: '$active activas', color: AppColors.teal),
-          if (inactive > 0) ...[
-            const SizedBox(width: 6),
-            _StatPill(label: '$inactive inactivas', color: AppColors.textMuted),
-          ],
-        ],
-      ],
-    );
-  }
-
-  // ── Mobile Layout ─────────────────────────────────────────────────────────
-
-  Widget _buildMobileLayout(
+  Widget _buildMobileView(
     BuildContext context,
     CategoriesState state,
     CategoriesCubit cubit,
+    bool isLoading,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +365,7 @@ class _CategoriesManagementScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _AnimatedSearchBar(
+              CategorySearchBar(
                 controller: _searchCtrl,
                 focusNode: _searchFocusNode,
                 onChanged: cubit.onSearchChanged,
@@ -383,7 +376,7 @@ class _CategoriesManagementScreenState
                 hasQuery: state.searchQuery.isNotEmpty,
               ),
               const SizedBox(height: 8),
-              _buildStatsBar(cubit),
+              CategoriesStatsBar(categories: state.categories),
             ],
           ),
         ),
@@ -393,753 +386,71 @@ class _CategoriesManagementScreenState
             onRefresh: () => cubit.loadCategories(forceRefresh: true),
             color: AppColors.primary,
             child:
-                state.viewState == ViewState.loading
+                isLoading
                     ? const CategoriesSkeleton(itemCount: 6)
-                    : cubit.state.categories.isEmpty
-                    ? _buildEmptyState(cubit, state)
-                    : _buildMobileList(cubit, state),
+                    : state.categories.isEmpty
+                    ? CategoriesEmptyState(
+                      isSearch: state.searchQuery.isNotEmpty,
+                      searchQuery: state.searchQuery,
+                      onCreateCategory: () => _showCategoryForm(),
+                    )
+                    : ListView.separated(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                      itemCount: state.categories.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final cat = state.categories[index];
+                        return Dismissible(
+                          key: ValueKey(cat.id ?? cat.name),
+                          direction: DismissDirection.endToStart,
+                          confirmDismiss:
+                              (_) => _confirmDeleteCategory(cat, cubit),
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 24),
+                            decoration: BoxDecoration(
+                              color: AppColors.error.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.error.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: AppColors.error,
+                                  size: 22,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Eliminar',
+                                  style: TextStyle(
+                                    color: AppColors.error,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          child: CategoryMobileCard(
+                            category: cat,
+                            catColor: _getCategoryColor(cat.name),
+                            onEdit: () => _showCategoryForm(cat),
+                            onDelete: () => _confirmDeleteCategory(cat, cubit),
+                            onToggle:
+                                (val) => _handleToggleStatus(cat, val, cubit),
+                          ),
+                        );
+                      },
+                    ),
           ),
         ),
       ],
-    );
-  }
-
-  // ── Desktop List ──────────────────────────────────────────────────────────
-
-  Widget _buildDesktopList(CategoriesCubit cubit) {
-    final categories = cubit.state.categories;
-    return ListView.separated(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 24),
-      itemCount: categories.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        final cat = categories[index];
-        const isSelected = false;
-        final catColor = _getCategoryColor(cat.name);
-
-        return TweenAnimationBuilder<double>(
-          key: ValueKey(cat.id),
-          duration: Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
-          curve: Curves.easeOutCubic,
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder:
-              (_, value, child) => Transform.translate(
-                offset: Offset(0, 14 * (1 - value)),
-                child: Opacity(opacity: value, child: child),
-              ),
-          child: _CategoryDesktopRow(
-            category: cat,
-            catColor: catColor,
-            isSelected: isSelected,
-            onEdit: () => _showCategoryForm(cat),
-            onDelete: () => _confirmDeleteCategory(cat, cubit),
-            onToggle: (val) => _handleToggleStatus(cat, val, cubit),
-          ),
-        );
-      },
-    );
-  }
-
-  // ── Mobile List ───────────────────────────────────────────────────────────
-
-  Widget _buildMobileList(CategoriesCubit cubit, CategoriesState state) {
-    final categories = cubit.state.categories;
-    return ListView.separated(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-      itemCount: categories.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final cat = categories[index];
-        final catColor = _getCategoryColor(cat.name);
-
-        return TweenAnimationBuilder<double>(
-          key: ValueKey(cat.id),
-          duration: Duration(milliseconds: 220 + (index * 35).clamp(0, 380)),
-          curve: Curves.easeOutCubic,
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder:
-              (_, value, child) => Transform.translate(
-                offset: Offset(0, 14 * (1 - value)),
-                child: Opacity(opacity: value, child: child),
-              ),
-          child: Dismissible(
-            key: Key(cat.id ?? cat.name),
-            direction: DismissDirection.endToStart,
-            confirmDismiss: (_) async {
-              return await AppConfirmDialog.show(
-                context,
-                title: 'Eliminar Categoría',
-                message:
-                    '¿Eliminar "${cat.name}"?\n'
-                    'Se validará que no tenga productos vinculados.',
-                confirmText: 'Eliminar',
-                confirmColor: AppColors.error,
-              );
-            },
-            onDismissed: (_) => _confirmDeleteCategory(cat, cubit),
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 24),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.error.withValues(alpha: 0.2),
-                ),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.delete_outline_rounded,
-                    color: AppColors.error,
-                    size: 22,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Eliminar',
-                    style: TextStyle(
-                      color: AppColors.error,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            child: _CategoryMobileCard(
-              category: cat,
-              catColor: catColor,
-              onEdit: () => _showCategoryForm(cat),
-              onDelete: () => _confirmDeleteCategory(cat, cubit),
-              onToggle: (val) => _handleToggleStatus(cat, val, cubit),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ── Empty State ───────────────────────────────────────────────────────────
-
-  Widget _buildEmptyState(CategoriesCubit cubit, CategoriesState state) {
-    final isSearch = cubit.state.searchQuery.isNotEmpty;
-
-    return ListView(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.12),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.05),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isSearch ? Icons.search_off_rounded : Icons.category_outlined,
-                  size: 56,
-                  color: AppColors.primary.withValues(alpha: 0.4),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                isSearch
-                    ? 'Sin resultados para\n"${cubit.state.searchQuery}"'
-                    : 'Aún no hay categorías',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isSearch
-                    ? 'Intenta con otro término de búsqueda.'
-                    : 'Organiza tus productos creando la primera categoría.',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (!isSearch) ...[
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => _showCategoryForm(),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Crear categoría'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Desktop Row: hover + selected state + acciones Pro Tool
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CategoryDesktopRow extends StatefulWidget {
-  final CategoryEntity category;
-  final Color catColor;
-  final bool isSelected;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final ValueChanged<bool> onToggle;
-
-  const _CategoryDesktopRow({
-    required this.category,
-    required this.catColor,
-    required this.isSelected,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onToggle,
-  });
-
-  @override
-  State<_CategoryDesktopRow> createState() => _CategoryDesktopRowState();
-}
-
-class _CategoryDesktopRowState extends State<_CategoryDesktopRow> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final cat = widget.category;
-    final color = widget.catColor;
-    final selected = widget.isSelected;
-    final hovered = _isHovered;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onEdit,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          height: 64,
-          decoration: BoxDecoration(
-            color:
-                selected
-                    ? color.withValues(alpha: 0.06)
-                    : hovered
-                    ? AppColors.background
-                    : AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color:
-                  selected ? color.withValues(alpha: 0.35) : AppColors.border,
-              width: selected ? 1.5 : 1.0,
-            ),
-            boxShadow:
-                hovered || selected
-                    ? AppColors.cardShadow(opacity: 0.04)
-                    : null,
-          ),
-          child: Row(
-            children: [
-              // ── Selected accent bar ─────────────────────────────────────
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: selected ? 4 : 0,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    bottomLeft: Radius.circular(12),
-                  ),
-                ),
-              ),
-
-              // ── Color icon ──────────────────────────────────────────────
-              Padding(
-                padding: EdgeInsets.only(left: selected ? 12 : 14, right: 12),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.13),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.style_rounded, color: color, size: 18),
-                ),
-              ),
-
-              // ── Nombre + descripción ────────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      cat.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13.5,
-                        color: selected ? color : AppColors.textPrimary,
-                        letterSpacing: -0.1,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      cat.description?.isNotEmpty == true
-                          ? cat.description!
-                          : 'Sin descripción',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            cat.description?.isNotEmpty == true
-                                ? AppColors.textSecondary
-                                : AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Productos count badge ───────────────────────────────────
-              if (cat.productsCount != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${cat.productsCount} prod.',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // ── Status Badge ────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        cat.isActive
-                            ? AppColors.teal.withValues(alpha: 0.1)
-                            : AppColors.textMuted.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    cat.isActive ? 'Activo' : 'Inactivo',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          cat.isActive ? AppColors.teal : AppColors.textMuted,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Acciones ─────────────────────────────────────────────────
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 150),
-                opacity: hovered || selected ? 1.0 : 0.3,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Tooltip(
-                        message: 'Editar categoría',
-                        child: _RowIconBtn(
-                          icon: Icons.edit_outlined,
-                          color: AppColors.textSecondary,
-                          onTap: widget.onEdit,
-                        ),
-                      ),
-                      Tooltip(
-                        message: 'Eliminar categoría',
-                        child: _RowIconBtn(
-                          icon: Icons.delete_outline_rounded,
-                          color: AppColors.error,
-                          onTap: widget.onDelete,
-                        ),
-                      ),
-                      Semantics(
-                        label: 'Estado de ${cat.name}',
-                        child: Switch(
-                          value: cat.isActive,
-                          onChanged: widget.onToggle,
-                          activeThumbColor: AppColors.teal,
-                          activeTrackColor: AppColors.teal.withValues(
-                            alpha: 0.35,
-                          ),
-                          inactiveThumbColor: AppColors.textMuted,
-                          inactiveTrackColor: AppColors.border,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mobile Card: Apple HIG, color left bar, táctil
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CategoryMobileCard extends StatelessWidget {
-  final CategoryEntity category;
-  final Color catColor;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final ValueChanged<bool> onToggle;
-
-  const _CategoryMobileCard({
-    required this.category,
-    required this.catColor,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cat = category;
-    final color = catColor;
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onEdit,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.03),
-          ),
-          child: Row(
-            children: [
-              // Color accent left bar
-              Container(
-                width: 4,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: cat.isActive ? 1 : 0.3),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                ),
-              ),
-
-              // Icon
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.13),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.style_rounded, color: color, size: 22),
-                ),
-              ),
-
-              // Info
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        cat.name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                          color:
-                              cat.isActive
-                                  ? AppColors.textPrimary
-                                  : AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        cat.description?.isNotEmpty == true
-                            ? cat.description!
-                            : 'Sin descripción',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (cat.productsCount != null) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          '${cat.productsCount} productos',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: color.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-              // Actions
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _RowIconBtn(
-                      icon: Icons.edit_outlined,
-                      color: AppColors.textSecondary,
-                      onTap: onEdit,
-                    ),
-                    _RowIconBtn(
-                      icon: Icons.delete_outline_rounded,
-                      color: AppColors.error,
-                      onTap: onDelete,
-                    ),
-                    Semantics(
-                      label: 'Estado de ${cat.name}',
-                      child: Switch(
-                        value: cat.isActive,
-                        onChanged: onToggle,
-                        activeThumbColor: color,
-                        activeTrackColor: color.withValues(alpha: 0.35),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared compact icon button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _RowIconBtn extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _RowIconBtn({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 19),
-        onPressed: () {
-          AppFeedbackService.selectionClick();
-          onTap();
-        },
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        splashRadius: 20,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Animated Search Bar con focusNode externo
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AnimatedSearchBar extends StatefulWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onClear;
-  final bool hasQuery;
-
-  const _AnimatedSearchBar({
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-    required this.onClear,
-    required this.hasQuery,
-  });
-
-  @override
-  State<_AnimatedSearchBar> createState() => _AnimatedSearchBarState();
-}
-
-class _AnimatedSearchBarState extends State<_AnimatedSearchBar> {
-  bool _isFocused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.focusNode.addListener(_onFocusChange);
-  }
-
-  void _onFocusChange() {
-    if (mounted) setState(() => _isFocused = widget.focusNode.hasFocus);
-  }
-
-  @override
-  void dispose() {
-    widget.focusNode.removeListener(_onFocusChange);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: _isFocused ? AppColors.surface : AppColors.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _isFocused ? AppColors.primary : AppColors.border,
-          width: _isFocused ? 1.5 : 1,
-        ),
-        boxShadow: _isFocused ? AppColors.cardShadow(opacity: 0.08) : null,
-      ),
-      child: TextField(
-        controller: widget.controller,
-        focusNode: widget.focusNode,
-        onChanged: widget.onChanged,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Buscar categoría…',
-          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: _isFocused ? AppColors.primary : AppColors.textMuted,
-            size: 20,
-          ),
-          suffixIcon:
-              widget.hasQuery
-                  ? IconButton(
-                    icon: const Icon(
-                      Icons.clear_rounded,
-                      color: AppColors.textMuted,
-                      size: 18,
-                    ),
-                    onPressed: widget.onClear,
-                  )
-                  : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats Pill
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StatPill extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _StatPill({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
     );
   }
 }

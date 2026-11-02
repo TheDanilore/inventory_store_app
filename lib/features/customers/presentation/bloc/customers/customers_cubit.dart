@@ -15,6 +15,11 @@ class CustomersCubit extends Cubit<CustomersState> {
   static const int _limit = 20;
   Timer? _searchTimer;
 
+  /// Caché en memoria por modo de filtro (false = Todos, true = Con Deuda)
+  /// para conmutación instantánea en Frame 0 con Zero-Shimmer.
+  final Map<bool, List<CustomerEntity>> _filterCache = {};
+  final Map<bool, bool> _filterReachedMax = {};
+
   CustomersCubit(this._getCustomersUseCase, this._exportPdfUseCase)
     : super(CustomersInitial());
 
@@ -23,6 +28,7 @@ class CustomersCubit extends Cubit<CustomersState> {
     String? query,
     bool? showOnlyWithDebt,
     bool silent = false,
+    bool forceRefresh = false,
   }) async {
     final currentState = state;
 
@@ -40,9 +46,27 @@ class CustomersCubit extends Cubit<CustomersState> {
     }
 
     if (reset) {
-      // Stale-While-Revalidate: si ya tenemos clientes en memoria y no cambió la búsqueda radicalmente,
-      // no mostramos skeleton/shimmer destructivo, sino refresco silencioso en background.
-      if (currentCustomers.isEmpty && !silent) {
+      if (forceRefresh) {
+        _filterCache.clear();
+        _filterReachedMax.clear();
+      }
+
+      // Si tenemos datos cacheados para este filtro exacto en búsqueda vacía,
+      // emitimos de inmediato en Frame 0 garantizando Cero Shimmer.
+      if (currentQuery.isEmpty && _filterCache.containsKey(currentDebtFilter)) {
+        final cached = _filterCache[currentDebtFilter]!;
+        final reachedMax = _filterReachedMax[currentDebtFilter] ?? false;
+        currentCustomers = cached;
+        emit(
+          CustomersLoaded(
+            customers: cached,
+            hasReachedMax: reachedMax,
+            query: currentQuery,
+            showOnlyWithDebt: currentDebtFilter,
+            isRefreshing: !silent,
+          ),
+        );
+      } else if (currentCustomers.isEmpty && !silent) {
         emit(CustomersLoading());
       } else if (currentState is CustomersLoaded) {
         emit(currentState.copyWith(isRefreshing: true));
@@ -58,13 +82,23 @@ class CustomersCubit extends Cubit<CustomersState> {
         offset: offset,
         query: currentQuery,
         showOnlyWithDebt: currentDebtFilter,
+        forceRefresh: forceRefresh,
       );
+
+      final updatedList =
+          reset ? newCustomers : [...currentCustomers, ...newCustomers];
+      final hasReachedMax = newCustomers.length < _limit;
+
+      // Actualizar caché en memoria cuando no hay búsqueda activa
+      if (currentQuery.isEmpty) {
+        _filterCache[currentDebtFilter] = updatedList;
+        _filterReachedMax[currentDebtFilter] = hasReachedMax;
+      }
 
       emit(
         CustomersLoaded(
-          customers:
-              reset ? newCustomers : [...currentCustomers, ...newCustomers],
-          hasReachedMax: newCustomers.length < _limit,
+          customers: updatedList,
+          hasReachedMax: hasReachedMax,
           query: currentQuery,
           showOnlyWithDebt: currentDebtFilter,
           isRefreshing: false,
@@ -98,6 +132,11 @@ class CustomersCubit extends Cubit<CustomersState> {
   void toggleDebtFilter(bool showDebt) {
     _searchTimer?.cancel();
     fetchCustomers(reset: true, showOnlyWithDebt: showDebt);
+  }
+
+  void invalidateCache() {
+    _filterCache.clear();
+    _filterReachedMax.clear();
   }
 
   @override

@@ -41,4 +41,3 @@ class PosPresetChip extends StatelessWidget {
     );
   }
 }
-

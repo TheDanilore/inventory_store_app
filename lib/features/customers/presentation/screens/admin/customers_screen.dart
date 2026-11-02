@@ -1,13 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_cubit.dart';
 import 'package:inventory_store_app/features/customers/presentation/bloc/customers/customers_state.dart';
@@ -20,15 +19,21 @@ import 'package:inventory_store_app/features/customers/presentation/widgets/cust
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_form_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customer_list_card.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/customers_table_view.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customers/inspector/customer_side_sheet_inspector.dart';
-import 'package:inventory_store_app/features/customers/presentation/widgets/customers/inspector/mobile_customer_action_sheet.dart';
 import 'package:inventory_store_app/features/customers/presentation/widgets/customers/skeletons/customers_skeletons.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/components/customers_action_sheet_helper.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/components/customers_context_menu.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/components/customers_empty_state.dart';
+import 'package:inventory_store_app/features/customers/presentation/widgets/customers/components/customers_segmented_filter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Ruta de la pantalla "Top Clientes" (ranking + ruleta de sorteo).
 const String kTopCustomersRoute = '/customers/top-customers';
 
+/// Pantalla principal de administración del directorio de clientes.
+///
+/// Refactorizada bajo principios de Clean Architecture y rendimiento:
+/// - Garantía Zero-Shimmer (Frame 0 load) con Stale-While-Revalidate
+/// - Ordenamiento memoizado fuera del ciclo de dibujo para dispositivos de baja gama
+/// - Modularización de subcomponentes para máxima legibilidad y mantenibilidad
 class CustomersScreen extends StatelessWidget {
   const CustomersScreen({super.key});
 
@@ -59,6 +64,14 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   final String _sortColumn = 'name'; // 'name', 'orders', 'debt', 'revenue'
   final bool _sortAscending = true;
 
+  // Cache/Memoización de ordenamiento para evitar recalcular en cada build()
+  List<CustomerEntity>? _lastRawList;
+  List<CustomerEntity>? _lastTopVipList;
+  int _lastTabIndex = -1;
+  String _lastSortCol = '';
+  bool _lastSortAsc = true;
+  List<CustomerEntity> _cachedSortedList = const [];
+
   // Estado de inspector lateral (Desktop / Tablet)
   CustomerEntity? _selectedCustomer;
   bool _isSideSheetOpen = false;
@@ -66,12 +79,12 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
   @override
   void initState() {
     super.initState();
-    // 3 Pestañas: 0 = Todos, 1 = Con deuda, 2 = Top VIP
     _tabCtrl = TabController(length: 3, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _screenFocusNode.requestFocus();
+        // Carga inicial o revalidación con Zero-Shimmer
         _reloadAll(silent: true);
       }
     });
@@ -86,7 +99,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         } else if (_tabCtrl.index == 1) {
           context.read<CustomersCubit>().toggleDebtFilter(true);
         } else if (_tabCtrl.index == 2) {
-          context.read<TopCustomersCubit>().loadTopCustomers();
+          context.read<TopCustomersCubit>().loadTopCustomers(5, true);
         }
         setState(() {});
       }
@@ -105,14 +118,18 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
   void _openTopCustomers() => context.push(kTopCustomersRoute);
 
-  /// Carga o revalida datos. Si ya hay datos en memoria (caché), no parpadea ni emite Shimmer.
-  void _reloadAll({bool silent = false}) {
+  /// Carga o revalida datos con garantía Zero-Shimmer
+  void _reloadAll({bool silent = false, bool forceRefresh = false}) {
     final custCubit = context.read<CustomersCubit>();
     final isAlreadyLoaded =
         custCubit.state is CustomersLoaded &&
         (custCubit.state as CustomersLoaded).hasCustomers;
 
-    custCubit.fetchCustomers(reset: true, silent: silent || isAlreadyLoaded);
+    custCubit.fetchCustomers(
+      reset: true,
+      silent: silent || isAlreadyLoaded,
+      forceRefresh: forceRefresh,
+    );
     context.read<CustomersStatsCubit>().loadStats(
       silent: silent || isAlreadyLoaded,
     );
@@ -137,17 +154,16 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     if (_searchFocusNode.hasFocus) return true;
     final primaryFocus = FocusManager.instance.primaryFocus;
     if (primaryFocus == null) return false;
-    final context = primaryFocus.context;
-    if (context == null) return false;
-    return context.widget is EditableText ||
-        context.findAncestorWidgetOfExactType<EditableText>() != null ||
-        context.findAncestorStateOfType<EditableTextState>() != null;
+    final ctx = primaryFocus.context;
+    if (ctx == null) return false;
+    return ctx.widget is EditableText ||
+        ctx.findAncestorWidgetOfExactType<EditableText>() != null ||
+        ctx.findAncestorStateOfType<EditableTextState>() != null;
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Si el usuario escribe en un campo de texto, aislamos los atajos de tecla única
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
@@ -158,7 +174,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
     final key = event.logicalKey;
 
-    // Atajo [/] -> Enfocar buscador con selección total
     if (key == LogicalKeyboardKey.slash) {
       _searchFocusNode.requestFocus();
       _searchCtrl.selection = TextSelection(
@@ -168,15 +183,13 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       return KeyEventResult.handled;
     }
 
-    // Atajo [N] -> Nuevo Cliente
     if (key == LogicalKeyboardKey.keyN) {
       _openCreateCustomer();
       return KeyEventResult.handled;
     }
 
-    // Atajo [R] -> Recargar directorio y métricas
     if (key == LogicalKeyboardKey.keyR) {
-      _reloadAll();
+      _reloadAll(forceRefresh: true);
       AppSnackbar.show(
         context,
         message: 'Directorio de clientes actualizado',
@@ -186,20 +199,17 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
       return KeyEventResult.handled;
     }
 
-    // Atajo [D] -> Alternar filtro de deudores
     if (key == LogicalKeyboardKey.keyD) {
       final nextIdx = _tabCtrl.index == 1 ? 0 : 1;
       _tabCtrl.animateTo(nextIdx);
       return KeyEventResult.handled;
     }
 
-    // Atajo [V] -> Alternar Vista (Tabla vs Tarjetas)
     if (key == LogicalKeyboardKey.keyV) {
       setState(() => _isTableView = !_isTableView);
       return KeyEventResult.handled;
     }
 
-    // Atajo [Escape] -> Limpiar búsqueda o cerrar inspector
     if (key == LogicalKeyboardKey.escape) {
       if (_isSideSheetOpen && _selectedCustomer != null) {
         Navigator.of(context, rootNavigator: true).maybePop();
@@ -230,7 +240,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
     final saved = await CustomerFormSheet.show(context);
     if (saved == true && mounted) {
-      customersCubit.fetchCustomers(reset: true);
+      customersCubit.fetchCustomers(reset: true, forceRefresh: true);
       statsCubit.loadStats();
       topCubit.loadTopCustomers();
       AppSnackbar.show(
@@ -248,7 +258,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
 
     final saved = await CustomerFormSheet.show(context, customer: customer);
     if (saved == true && mounted) {
-      customersCubit.fetchCustomers(reset: true);
+      customersCubit.fetchCustomers(reset: true, forceRefresh: true);
       statsCubit.loadStats();
       topCubit.loadTopCustomers();
       AppSnackbar.show(
@@ -277,14 +287,12 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     final url = Uri.parse('https://wa.me/$fullPhone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'No se pudo iniciar WhatsApp',
-          type: SnackbarType.error,
-        );
-      }
+    } else if (mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo iniciar WhatsApp',
+        type: SnackbarType.error,
+      );
     }
   }
 
@@ -294,88 +302,43 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     final url = Uri.parse('tel:$cleanPhone');
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
-    } else {
-      if (mounted) {
-        AppSnackbar.show(
-          context,
-          message: 'No se pudo iniciar llamada',
-          type: SnackbarType.error,
-        );
-      }
+    } else if (mounted) {
+      AppSnackbar.show(
+        context,
+        message: 'No se pudo iniciar llamada',
+        type: SnackbarType.error,
+      );
     }
   }
 
-  // Inspector Lateral Pro (Stripe / Linear Style)
   Future<void> _openDesktopCustomerInspector(CustomerEntity customer) async {
     if (!mounted || _isSideSheetOpen) return;
     _isSideSheetOpen = true;
     setState(() => _selectedCustomer = customer);
 
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final drawerWidth = screenWidth >= 1440 ? 560.0 : 500.0;
-
-    await AdaptiveDetailSheet.show(
-      context,
-      desktopWidth: drawerWidth,
-      barrierLabel: 'Cerrar inspector',
-      builder: (dialogContext) {
-        return CustomerSideSheetInspector(
-          customer: customer,
-          onClose: () => Navigator.of(dialogContext).maybePop(),
-          onEdit: () {
-            Navigator.of(dialogContext).pop();
-            _openEditCustomer(customer);
-          },
-          onOpenFullDetail: () {
-            Navigator.of(dialogContext).pop();
-            _openDetail(customer);
-          },
-          onWhatsApp: (p) => _launchWhatsApp(p),
-          onCall: (p) => _launchPhoneCall(p),
-          onCopy: _copyToClipboard,
-        );
-      },
+    await CustomerActionSheetHelper.openDesktopInspector(
+      context: context,
+      customer: customer,
+      onEdit: () => _openEditCustomer(customer),
+      onOpenFullDetail: () => _openDetail(customer),
+      onWhatsApp: _launchWhatsApp,
+      onCall: _launchPhoneCall,
+      onCopy: _copyToClipboard,
     );
+
     _isSideSheetOpen = false;
     if (mounted) setState(() => _selectedCustomer = null);
   }
 
-  // Modal Inferior Táctil (Apple HIG Style)
   void _showMobileCustomerActionSheet(CustomerEntity customer) {
-    showModalBottomSheet(
+    CustomerActionSheetHelper.showMobileActionSheet(
       context: context,
-      useRootNavigator: true,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder:
-          (sheetCtx) => MobileCustomerActionSheet(
-            customer: customer,
-            onOpenDetail: () {
-              Navigator.of(sheetCtx).pop();
-              _openDetail(customer);
-            },
-            onEdit: () {
-              Navigator.of(sheetCtx).pop();
-              _openEditCustomer(customer);
-            },
-            onWhatsApp: () {
-              Navigator.of(sheetCtx).pop();
-              if (customer.phone != null) _launchWhatsApp(customer.phone!);
-            },
-            onCall: () {
-              Navigator.of(sheetCtx).pop();
-              if (customer.phone != null) _launchPhoneCall(customer.phone!);
-            },
-            onCopyDoc: () {
-              Navigator.of(sheetCtx).pop();
-              if (customer.documentNumber != null) {
-                _copyToClipboard(
-                  customer.documentNumber!,
-                  customer.documentType ?? 'Documento',
-                );
-              }
-            },
-          ),
+      customer: customer,
+      onOpenDetail: () => _openDetail(customer),
+      onEdit: () => _openEditCustomer(customer),
+      onWhatsApp: _launchWhatsApp,
+      onCall: _launchPhoneCall,
+      onCopyDoc: (doc, type) => _copyToClipboard(doc, type),
     );
   }
 
@@ -384,140 +347,47 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     Offset position,
     CustomerEntity customer,
   ) {
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (overlay == null) return;
-
-    showMenu<String>(
+    CustomersContextMenu.show(
       context: context,
-      position: RelativeRect.fromRect(
-        position & const Size(40, 40),
-        Offset.zero & overlay.size,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 8,
-      items: [
-        const PopupMenuItem(
-          value: 'inspector',
-          child: Row(
-            children: [
-              Icon(
-                Icons.view_sidebar_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 10),
-              Text('Vista rápida (Inspector)', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'detail',
-          child: Row(
-            children: [
-              Icon(
-                Icons.visibility_outlined,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              SizedBox(width: 10),
-              Text('Ver ficha completa', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'edit',
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18, color: AppColors.slate),
-              SizedBox(width: 10),
-              Text('Editar datos', style: TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        if (customer.phone != null && customer.phone!.isNotEmpty) ...[
-          const PopupMenuItem(
-            value: 'whatsapp',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  size: 18,
-                  color: Color(0xFF25D366),
-                ),
-                SizedBox(width: 10),
-                Text('Enviar WhatsApp', style: TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-          const PopupMenuItem(
-            value: 'copy_phone',
-            child: Row(
-              children: [
-                Icon(Icons.copy_rounded, size: 18, color: AppColors.slate),
-                SizedBox(width: 10),
-                Text('Copiar teléfono', style: TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-        ],
-        if (customer.documentNumber != null &&
-            customer.documentNumber!.isNotEmpty)
-          const PopupMenuItem(
-            value: 'copy_doc',
-            child: Row(
-              children: [
-                Icon(Icons.badge_outlined, size: 18, color: AppColors.slate),
-                SizedBox(width: 10),
-                Text('Copiar documento', style: TextStyle(fontSize: 13)),
-              ],
-            ),
-          ),
-      ],
-    ).then((value) {
-      if (value == null) return;
-      switch (value) {
-        case 'inspector':
-          _openDesktopCustomerInspector(customer);
-          break;
-        case 'detail':
-          _openDetail(customer);
-          break;
-        case 'edit':
-          _openEditCustomer(customer);
-          break;
-        case 'whatsapp':
-          if (customer.phone != null) _launchWhatsApp(customer.phone!);
-          break;
-        case 'copy_phone':
-          if (customer.phone != null) {
-            _copyToClipboard(customer.phone!, 'Teléfono');
-          }
-          break;
-        case 'copy_doc':
-          if (customer.documentNumber != null) {
-            _copyToClipboard(
-              customer.documentNumber!,
-              customer.documentType ?? 'Documento',
-            );
-          }
-          break;
-      }
-    });
+      position: position,
+      customer: customer,
+      onInspector: () => _openDesktopCustomerInspector(customer),
+      onDetail: () => _openDetail(customer),
+      onEdit: () => _openEditCustomer(customer),
+      onWhatsApp: _launchWhatsApp,
+      onCopyPhone: (p) => _copyToClipboard(p, 'Teléfono'),
+      onCopyDoc: (doc, type) => _copyToClipboard(doc, type),
+    );
   }
 
-  List<CustomerEntity> _sortCustomers(
+  /// Memoización de ordenamiento para evitar recalcular en cada build frame
+  List<CustomerEntity> _getMemoizedSortedCustomers(
     List<CustomerEntity> list,
     List<CustomerEntity> topVipList,
   ) {
-    // Si estamos en la pestaña 2 (Top VIP), mostramos la lista VIP directamente
+    if (identical(_lastRawList, list) &&
+        identical(_lastTopVipList, topVipList) &&
+        _lastTabIndex == _tabCtrl.index &&
+        _lastSortCol == _sortColumn &&
+        _lastSortAsc == _sortAscending) {
+      return _cachedSortedList;
+    }
+
+    _lastRawList = list;
+    _lastTopVipList = topVipList;
+    _lastTabIndex = _tabCtrl.index;
+    _lastSortCol = _sortColumn;
+    _lastSortAsc = _sortAscending;
+
     if (_tabCtrl.index == 2) {
       if (topVipList.isNotEmpty) {
-        return topVipList;
+        _cachedSortedList = topVipList;
+        return _cachedSortedList;
       }
       final sortedVip = List<CustomerEntity>.from(list);
       sortedVip.sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue));
-      return sortedVip;
+      _cachedSortedList = sortedVip;
+      return _cachedSortedList;
     }
 
     final sorted = List<CustomerEntity>.from(list);
@@ -557,7 +427,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
         );
         break;
     }
-    return sorted;
+    _cachedSortedList = sorted;
+    return _cachedSortedList;
   }
 
   @override
@@ -586,7 +457,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               if (value == 'export') {
                 context.read<CustomersCubit>().exportPdf();
               } else if (value == 'reload') {
-                _reloadAll();
+                _reloadAll(forceRefresh: true);
               }
             },
             floatingActionButton:
@@ -598,22 +469,22 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                       icon: const Icon(
                         Icons.person_add_rounded,
                         color: Colors.white,
+                        size: 20,
                       ),
                       label: const Text(
-                        'Nuevo cliente',
+                        'Nuevo Cliente',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
                           color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       onPressed: _openCreateCustomer,
                     )
                     : null,
             body: RefreshIndicator(
-              onRefresh: () async => _reloadAll(),
+              onRefresh: () async => _reloadAll(forceRefresh: true),
               child: CustomScrollView(
                 controller: _scrollCtrl,
-                physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   // 0. CABECERA EJECUTIVA STRIPE / LINEAR
                   SliverToBoxAdapter(
@@ -628,7 +499,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                           label: 'Nuevo Cliente',
                           icon: Icons.person_add_rounded,
                           tooltip: 'Nuevo cliente (Atajo: N)',
-                          onPressed: () => _openCreateCustomer(),
+                          onPressed: _openCreateCustomer,
                         ),
                       ],
                     ),
@@ -677,10 +548,14 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                 context.read<CustomersCubit>().search('');
                               },
                               filterWidgets: [
-                                _buildSegmentedFilter(
+                                CustomersSegmentedFilter(
+                                  selectedIndex: _tabCtrl.index,
                                   totalCount: totalCount,
                                   debtCount: debtCount,
                                   topCount: topCount,
+                                  onTabSelected: (i) {
+                                    setState(() => _tabCtrl.animateTo(i));
+                                  },
                                 ),
                               ],
                               filterGroups: [
@@ -718,7 +593,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                                 onToggleTableView:
                                     (val) => setState(() => _isTableView = val),
                               ),
-                              onRefresh: _reloadAll,
+                              onRefresh: () => _reloadAll(forceRefresh: true),
                               refreshTooltip: 'Recargar directorio [R]',
                               trailingActions: [
                                 Tooltip(
@@ -780,136 +655,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
     );
   }
 
-  Widget _buildSegmentedFilter({
-    required int totalCount,
-    required int debtCount,
-    required int topCount,
-  }) {
-    return Container(
-      height: 38,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.all(2.5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildSegmentButton(
-            title: 'Todos',
-            count: totalCount,
-            isSelected: _tabCtrl.index == 0,
-            onTap: () => setState(() => _tabCtrl.animateTo(0)),
-          ),
-          const SizedBox(width: 4),
-          _buildSegmentButton(
-            title: 'Con deuda activa',
-            count: debtCount,
-            isSelected: _tabCtrl.index == 1,
-            isAlert: debtCount > 0,
-            onTap: () => setState(() => _tabCtrl.animateTo(1)),
-          ),
-          const SizedBox(width: 4),
-          _buildSegmentButton(
-            title: '👑 Top VIP',
-            count: topCount,
-            isSelected: _tabCtrl.index == 2,
-            isGold: true,
-            onTap: () => setState(() => _tabCtrl.animateTo(2)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentButton({
-    required String title,
-    required int count,
-    required bool isSelected,
-    required VoidCallback onTap,
-    bool isAlert = false,
-    bool isGold = false,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? Theme.of(context).colorScheme.surface
-                  : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow:
-              isSelected
-                  ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                    isSelected
-                        ? (isGold ? AppColors.warningDark : AppColors.primary)
-                        : AppColors.textSecondary,
-              ),
-            ),
-            if (count > 0) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 1.5,
-                ),
-                decoration: BoxDecoration(
-                  color:
-                      isAlert
-                          ? AppColors.error
-                          : (isGold
-                              ? AppColors.warning.withValues(alpha: 0.15)
-                              : (isSelected
-                                  ? AppColors.primary.withValues(alpha: 0.12)
-                                  : AppColors.border)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    color:
-                        isAlert
-                            ? Colors.white
-                            : (isGold
-                                ? AppColors.warningDark
-                                : (isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary)),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildContentSliver({
     required CustomersState state,
     required List<CustomerEntity> topList,
@@ -922,12 +667,16 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           ? const CustomersCardSkeleton()
           : const DesktopTableSkeleton();
     } else if (state is CustomersLoaded) {
-      final sortedList = _sortCustomers(state.customers, topList);
+      final sortedList = _getMemoizedSortedCustomers(state.customers, topList);
 
       if (sortedList.isEmpty) {
         return SliverFillRemaining(
           hasScrollBody: false,
-          child: _buildEmptyState(state),
+          child: CustomersEmptyState(
+            tabIndex: _tabCtrl.index,
+            searchQuery: _searchCtrl.text,
+            onCreateCustomer: _openCreateCustomer,
+          ),
         );
       }
 
@@ -949,6 +698,8 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                   );
                 },
                 childCount: sortedList.length + (!state.hasReachedMax ? 1 : 0),
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: true,
               ),
             ),
           );
@@ -962,13 +713,18 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
                 crossAxisSpacing: 14,
                 mainAxisSpacing: 14,
               ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final c = sortedList[index];
-                return CustomerListCard(
-                  customer: c,
-                  onTap: () => _openDesktopCustomerInspector(c),
-                );
-              }, childCount: sortedList.length),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final c = sortedList[index];
+                  return CustomerListCard(
+                    customer: c,
+                    onTap: () => _openDesktopCustomerInspector(c),
+                  );
+                },
+                childCount: sortedList.length,
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: true,
+              ),
             ),
           );
         }
@@ -985,7 +741,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
             initialSortColumn: _sortColumn,
             initialSortAscending: _sortAscending,
             hasReachedMax: state.hasReachedMax,
-            onRowTap: (c) => _openDesktopCustomerInspector(c),
+            onRowTap: _openDesktopCustomerInspector,
             onOpenDetail: _openDetail,
             onEditCustomer: _openEditCustomer,
             onWhatsApp: _launchWhatsApp,
@@ -1016,7 +772,7 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: _reloadAll,
+                onPressed: () => _reloadAll(forceRefresh: true),
                 child: const Text('Reintentar'),
               ),
             ],
@@ -1048,68 +804,6 @@ class _CustomersScreenContentState extends State<_CustomersScreenContent>
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(CustomersLoaded state) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: AppColors.border.withValues(alpha: 0.35),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.people_outline_rounded,
-              size: 52,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _tabCtrl.index == 1
-                ? 'No hay clientes con deuda activa'
-                : (_tabCtrl.index == 2
-                    ? 'Aún no hay compras registradas para el ranking VIP'
-                    : 'No se encontraron clientes registrados'),
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _tabCtrl.index == 1
-                ? 'Todos los clientes se encuentran al día con sus saldos.'
-                : 'Crea un nuevo registro para comenzar a procesar ventas.',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (_tabCtrl.index == 0 && _searchCtrl.text.isEmpty)
-            FilledButton.icon(
-              onPressed: _openCreateCustomer,
-              icon: const Icon(Icons.person_add_rounded, size: 18),
-              label: const Text('Registrar nuevo cliente'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

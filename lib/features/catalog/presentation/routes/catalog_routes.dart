@@ -62,11 +62,16 @@ class CatalogRoutes {
     ),
     GoRoute(
       path: '/categories',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<CategoriesCubit>()..loadCategories(),
-            child: const CategoriesManagementScreen(),
-          ),
+      builder: (context, state) {
+        final cubit = sl<CategoriesCubit>();
+        if (cubit.state.categories.isEmpty) {
+          cubit.loadCategories();
+        }
+        return BlocProvider.value(
+          value: cubit,
+          child: const CategoriesManagementScreen(),
+        );
+      },
     ),
     GoRoute(
       path: '/brands',

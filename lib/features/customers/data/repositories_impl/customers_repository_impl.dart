@@ -7,14 +7,31 @@ import 'package:inventory_store_app/features/customers/domain/entities/recent_or
 import 'package:inventory_store_app/features/customers/domain/entities/top_product_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/repositories/customers_repository.dart';
 
+class _CustomersCacheEntry {
+  final List<CustomerEntity> data;
+  final DateTime timestamp;
+
+  _CustomersCacheEntry({required this.data, required this.timestamp});
+}
+
 @LazySingleton(as: CustomersRepository)
 class CustomersRepositoryImpl implements CustomersRepository {
   final SupabaseClient _supabase;
+
+  /// L1 In-Memory Cache para Directorio de Clientes (Zero-Shimmer garantizado)
+  static final Map<String, _CustomersCacheEntry> _customersCache = {};
+  static const Duration _customersCacheTtl = Duration(minutes: 5);
 
   /// L1 In-Memory Cache para Top Clientes (Zero-Shimmer garantizado)
   static List<CustomerEntity>? _topCustomersCache;
   static DateTime? _topCustomersCacheTime;
   static const Duration _topCustomersCacheTtl = Duration(minutes: 5);
+
+  /// Invalida toda la memoria caché L1 tras mutaciones
+  static void invalidateCustomersCache() {
+    _customersCache.clear();
+    _topCustomersCache = null;
+  }
 
   CustomersRepositoryImpl() : _supabase = Supabase.instance.client;
 
@@ -24,7 +41,19 @@ class CustomersRepositoryImpl implements CustomersRepository {
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey =
+        '${query?.trim().toLowerCase() ?? ''}|$showOnlyWithDebt|$offset|$limit';
+
+    if (!forceRefresh) {
+      final cached = _customersCache[cacheKey];
+      if (cached != null &&
+          DateTime.now().difference(cached.timestamp) < _customersCacheTtl) {
+        return cached.data;
+      }
+    }
+
     try {
       dynamic queryBuilder = _supabase
           .from('profiles_with_email')
@@ -55,77 +84,98 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
       final cIds = res.map((e) => e['id'] as String).toList();
 
-      // Traer agregados de órdenes completadas
-      final ordersRes = await _supabase
+      // Traer agregados de órdenes completadas y conteo de ubicaciones concurrentemente
+      final ordersFuture = _supabase
           .from('orders')
           .select('customer_id, total_amount')
           .eq('status', 'COMPLETED')
           .inFilter('customer_id', cIds);
 
-      // Traer conteo de ubicaciones registradas
+      final locFuture = _supabase
+          .from('customer_locations')
+          .select('profile_id')
+          .inFilter('profile_id', cIds);
+
+      final queryResults = await Future.wait([
+        ordersFuture,
+        locFuture.catchError((err, st) {
+          LoggerService.w(
+            'Aviso: no se pudieron cargar conteos de ubicación de clientes: $err',
+          );
+          return <Map<String, dynamic>>[];
+        }),
+      ]);
+
+      final ordersRes = queryResults[0] as List<dynamic>;
+      final locRes = queryResults[1] as List<dynamic>;
+
       final locCounts = <String, int>{};
-      try {
-        final locRes = await _supabase
-            .from('customer_locations')
-            .select('profile_id')
-            .inFilter('profile_id', cIds);
-        for (var row in locRes) {
-          final pid = row['profile_id'] as String?;
-          if (pid != null) {
-            locCounts[pid] = (locCounts[pid] ?? 0) + 1;
-          }
+      for (var row in locRes) {
+        final pid = row['profile_id'] as String?;
+        if (pid != null) {
+          locCounts[pid] = (locCounts[pid] ?? 0) + 1;
         }
-      } catch (_) {}
+      }
 
-      return res.map<CustomerEntity>((json) {
-        final id = json['id'] as String;
+      final results =
+          res.map<CustomerEntity>((json) {
+            final id = json['id'] as String;
 
-        double currentDebt = 0.0;
-        double creditLimit = 0.0;
+            double currentDebt = 0.0;
+            double creditLimit = 0.0;
 
-        if (json['customer_credits'] != null) {
-          final creditData = json['customer_credits'];
-          Map<String, dynamic>? creditObj;
-          if (creditData is Map<String, dynamic>) {
-            creditObj = creditData;
-          } else if (creditData is List && creditData.isNotEmpty) {
-            creditObj = creditData.first as Map<String, dynamic>?;
-          }
-          if (creditObj != null) {
-            currentDebt =
-                (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
-            creditLimit =
-                (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
-          }
-        }
+            if (json['customer_credits'] != null) {
+              final creditData = json['customer_credits'];
+              Map<String, dynamic>? creditObj;
+              if (creditData is Map<String, dynamic>) {
+                creditObj = creditData;
+              } else if (creditData is List && creditData.isNotEmpty) {
+                creditObj = creditData.first as Map<String, dynamic>?;
+              }
+              if (creditObj != null) {
+                currentDebt =
+                    (creditObj['current_debt'] as num?)?.toDouble() ?? 0.0;
+                creditLimit =
+                    (creditObj['credit_limit'] as num?)?.toDouble() ?? 0.0;
+              }
+            }
 
-        final customerOrders =
-            ordersRes.where((o) => o['customer_id'] == id).toList();
-        double totalSpent = 0.0;
-        for (var o in customerOrders) {
-          totalSpent += (o['total_amount'] as num?)?.toDouble() ?? 0.0;
-        }
+            final customerOrders =
+                ordersRes.where((o) => o['customer_id'] == id).toList();
+            double totalSpent = 0.0;
+            for (var o in customerOrders) {
+              totalSpent += (o['total_amount'] as num?)?.toDouble() ?? 0.0;
+            }
 
-        return CustomerEntity(
-          id: id,
-          fullName: json['full_name'] as String? ?? 'Cliente',
-          phone: json['phone'] as String?,
-          documentNumber: json['document_number'] as String?,
-          documentType: json['document_type'] as String?,
-          avatarUrl: json['avatar_url'] as String?,
-          walletBalance: (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-          isActive: json['is_active'] as bool? ?? true,
-          createdAt:
-              json['created_at'] != null
-                  ? DateTime.parse(json['created_at'])
-                  : null,
-          currentDebt: currentDebt,
-          creditLimit: creditLimit,
-          totalRevenue: totalSpent,
-          orderCount: customerOrders.length,
-          locationsCount: locCounts[id] ?? 0,
-        );
-      }).toList();
+            return CustomerEntity(
+              id: id,
+              fullName: json['full_name'] as String? ?? 'Cliente',
+              phone: json['phone'] as String?,
+              documentNumber: json['document_number'] as String?,
+              documentType: json['document_type'] as String?,
+              avatarUrl: json['avatar_url'] as String?,
+              walletBalance:
+                  (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+              isActive: json['is_active'] as bool? ?? true,
+              createdAt:
+                  json['created_at'] != null
+                      ? DateTime.parse(json['created_at'])
+                      : null,
+              currentDebt: currentDebt,
+              creditLimit: creditLimit,
+              totalRevenue: totalSpent,
+              orderCount: customerOrders.length,
+              locationsCount: locCounts[id] ?? 0,
+            );
+          }).toList();
+
+      // Guardar en caché L1
+      _customersCache[cacheKey] = _CustomersCacheEntry(
+        data: results,
+        timestamp: DateTime.now(),
+      );
+
+      return results;
     } catch (e, stack) {
       LoggerService.e('Error en getCustomers', error: e, stackTrace: stack);
       throw AppException(
@@ -244,6 +294,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         );
         if (rpcResp != null && rpcResp['profile_id'] != null) {
           final String newId = rpcResp['profile_id'] as String;
+          invalidateCustomersCache();
           return await getCustomerDetail(newId);
         }
       } catch (rpcErr) {
@@ -287,6 +338,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         );
       }
 
+      invalidateCustomersCache();
       return CustomerEntity(
         id: profileId,
         fullName: res['full_name'] as String? ?? 'Cliente',
@@ -363,6 +415,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
             .eq('id', customerId)
             .select()
             .single();
+    invalidateCustomersCache();
     return CustomerEntity(
       id: res['id'] as String,
       fullName: res['full_name'] as String? ?? 'Cliente',
@@ -543,6 +596,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
             })
             .eq('id', creditId);
       }
+      invalidateCustomersCache();
     } on PostgrestException catch (e, stack) {
       LoggerService.e(
         'PostgrestException en saveCustomerFullProfile: ${e.message} (code: ${e.code})',
@@ -587,6 +641,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
           .from('profiles')
           .update({'is_active': isActive})
           .eq('id', customerId);
+      invalidateCustomersCache();
     } catch (e, stack) {
       LoggerService.e(
         'Error en toggleCustomerStatus para $customerId',

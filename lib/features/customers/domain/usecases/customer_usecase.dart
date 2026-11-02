@@ -13,12 +13,14 @@ class GetCustomersUseCase {
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
+    bool forceRefresh = false,
   }) {
     return repository.getCustomers(
       limit: limit,
       offset: offset,
       query: query,
       showOnlyWithDebt: showOnlyWithDebt,
+      forceRefresh: forceRefresh,
     );
   }
 }

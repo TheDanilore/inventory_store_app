@@ -8,6 +8,7 @@ abstract class CustomersRepository {
     required int offset,
     String? query,
     bool showOnlyWithDebt = false,
+    bool forceRefresh = false,
   });
 
   Future<CustomerEntity> getCustomerDetail(String customerId);

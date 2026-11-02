@@ -627,4 +627,3 @@ class _PosSuccessDialogState extends State<PosSuccessDialog> {
     );
   }
 }
-

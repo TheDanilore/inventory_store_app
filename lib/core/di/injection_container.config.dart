@@ -1804,7 +1804,7 @@ extension GetItInjectableX on _i174.GetIt {
         getCurrentProfileIdUc: gh<_i927.GetCurrentProfileIdUseCase>(),
       ),
     );
-    gh.factory<_i1009.CategoriesCubit>(
+    gh.lazySingleton<_i1009.CategoriesCubit>(
       () => _i1009.CategoriesCubit(
         getCategoriesUC: gh<_i700.GetCategoriesUC>(),
         createCategoryUseCase: gh<_i110.CreateCategoryUseCase>(),
