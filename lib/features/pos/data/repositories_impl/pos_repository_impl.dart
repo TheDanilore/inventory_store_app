@@ -356,6 +356,39 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
+  Future<Either<Failure, Map<String, int>>> fetchVariantStocks(
+    List<String> variantIds, {
+    required String warehouseId,
+  }) async {
+    try {
+      if (variantIds.isEmpty) return right({});
+      final response = await _supabase
+          .from('warehouse_stock_batches')
+          .select('variant_id, available_quantity')
+          .inFilter('variant_id', variantIds)
+          .eq('warehouse_id', warehouseId);
+
+      final map = <String, int>{};
+      for (final row in List<Map<String, dynamic>>.from(response)) {
+        final vid = row['variant_id'] as String?;
+        final stock = (row['available_quantity'] as num?)?.toInt() ?? 0;
+        if (vid != null) {
+          map[vid] = (map[vid] ?? 0) + stock;
+        }
+      }
+      return right(map);
+    } catch (e, stack) {
+      LoggerService.e(
+        'Error en fetchVariantStocks',
+        tag: 'PosRepositoryImpl',
+        error: e,
+        stackTrace: stack,
+      );
+      return left(Failure.from(e));
+    }
+  }
+
+  @override
   Future<Either<Failure, String>> processSale(SaleEntity sale) async {
     try {
       final saleJson = {

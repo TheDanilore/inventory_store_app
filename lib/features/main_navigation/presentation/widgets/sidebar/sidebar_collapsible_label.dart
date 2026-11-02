@@ -38,4 +38,3 @@ class CollapsibleLabel extends StatelessWidget {
     );
   }
 }
-

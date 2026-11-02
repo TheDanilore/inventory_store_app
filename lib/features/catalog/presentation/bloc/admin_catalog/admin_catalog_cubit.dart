@@ -59,7 +59,9 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       sortOption: CatalogSortOption.recent,
       stockFilter: CatalogStockFilter.all,
     );
-    final lruCached = CatalogLruCache.instance.getPage(lruKey);
+    final lruCached =
+        CatalogLruCache.instance.getPage(lruKey) ??
+        CatalogLruCache.instance.getAnyPage();
 
     if (lruCached != null && lruCached.products.isNotEmpty) {
       final matchedMap = <String, String>{};
@@ -366,9 +368,21 @@ class AdminCatalogCubit extends Cubit<AdminCatalogState> {
       return;
     }
 
-    // Solo emitir estado loading invasivo si la lista actual está vacía (Stale-While-Revalidate)
+    // Solo emitir estado loading invasivo si la lista actual está vacía y no hay caché L1 disponible
     if (state.products.isEmpty) {
-      emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
+      final fallbackCached = CatalogLruCache.instance.getAnyPage();
+      if (fallbackCached != null && fallbackCached.products.isNotEmpty) {
+        emit(
+          state.copyWith(
+            catalogState: ViewState.success,
+            products: fallbackCached.products,
+            totalCount: fallbackCached.totalCount,
+            clearError: true,
+          ),
+        );
+      } else {
+        emit(state.copyWith(catalogState: ViewState.loading, clearError: true));
+      }
     }
 
     final offset = state.currentPage * state.itemsPerPage;

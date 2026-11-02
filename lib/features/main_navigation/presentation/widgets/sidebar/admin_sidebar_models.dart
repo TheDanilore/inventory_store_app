@@ -23,4 +23,3 @@ class SidebarNavigationMemory {
   static double scrollOffset = 0.0;
   static final Set<String> expandedGroups = {};
 }
-

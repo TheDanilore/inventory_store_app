@@ -1,33 +1,35 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:inventory_store_app/core/di/injection_container.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
-
-import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
-import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
-import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
-import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:inventory_store_app/core/constants/app_permissions.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/admin_sale_points_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/payment_warehouse_account_card.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_document_and_currency_card.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
-import 'package:inventory_store_app/core/constants/app_permissions.dart';
-import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/core/widgets/batch_edit_sheet.dart';
+import 'package:inventory_store_app/core/widgets/permission_guard.dart';
+import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
+import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
+import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/models/pos_sale_receipt_data.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_credit_warning_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_desktop_discount_card.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_and_config_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_sticky_action_bar.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 
+export 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/models/pos_sale_receipt_data.dart';
+
+/// Panel lateral de facturación POS para Escritorio.
+/// Optimizado para bajo consumo de RAM, 60fps constantes en CPUs de gama baja
+/// y desacoplamiento estricto de Clean Architecture (Zero-Shimmer).
 class DesktopPosPanel extends StatefulWidget {
   final ValueChanged<Map<String, int>>? onSaleCompleted;
 
@@ -38,7 +40,6 @@ class DesktopPosPanel extends StatefulWidget {
 }
 
 class DesktopPosPanelState extends State<DesktopPosPanel> {
-  // Controladores
   final _formKey = GlobalKey<FormState>();
   final _clientHeaderBarKey = GlobalKey<PosClientHeaderBarState>();
   final _clienteCtrl = TextEditingController();
@@ -46,16 +47,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
   final _descuentoCtrl = TextEditingController();
 
   Timer? _debounce;
-  bool _lastSaleWasDraft = false;
-  double _lastSaleTotalAmount = 0.0;
-  double? _lastSaleAmountReceived;
-  String _lastSalePaymentMethod = 'EFECTIVO';
-  String _lastSaleCustomerName = 'Cliente Varios';
-  String _lastSaleDocumentType = 'NOTA_VENTA';
-  String? _lastSaleDocumentSeries;
-  String? _lastSalePaymentReference;
-  String _lastSaleCurrency = 'PEN';
-  Map<String, int> _lastSoldQuantities = {};
+  PosSaleReceiptData? _lastReceiptData;
 
   /// Mutex local anti-doble-tap que previene la ejecución simultánea de ventas.
   bool _isProcessing = false;
@@ -75,7 +67,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     _puntosCtrl.text = posCubit.state.puntosAUsar.toString();
     _descuentoCtrl.text = posCubit.state.discountText;
 
-    // Iniciar carga de datos si aún no se ha hecho
     if (posCubit.state.warehouses.isEmpty) {
       posCubit.initPosData();
     }
@@ -83,10 +74,10 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _clienteCtrl.dispose();
     _puntosCtrl.dispose();
     _descuentoCtrl.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
@@ -96,9 +87,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       posCubit.removeClient();
       _puntosCtrl.text = '0';
     }
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce?.cancel();
     _debounce = Timer(
-      const Duration(milliseconds: 500),
+      const Duration(milliseconds: 350),
       () => posCubit.searchClients(query),
     );
   }
@@ -140,8 +131,9 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
 
     if (variantIds.isEmpty) return;
 
-    final repo = sl<ProductsRepository>();
-    final res = await repo.fetchVariantStockByVariantIds(
+    // Inversión de dependencias respetada: PosCubit orquesta la consulta de stock
+    final posCubit = context.read<PosCubit>();
+    final res = await posCubit.fetchVariantStocks(
       variantIds,
       warehouseId: warehouseId,
     );
@@ -160,7 +152,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
-  /// Invocado externamente (ej: atajo de teclado F2) para iniciar el cobro sin usar el mouse.
+  /// Invocado externamente (ej: atajo de teclado F2) para iniciar el cobro.
   void triggerCheckout() {
     final posCubit = context.read<PosCubit>();
     final cartCubit = context.read<CartCubit>();
@@ -210,9 +202,7 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     CartCubit cartCubit, {
     bool isDraft = false,
   }) async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final config = context.read<AppConfigCubit>();
     final pointsToSolesRatio = config.getDouble('points_to_soles_ratio', 0.01);
@@ -225,7 +215,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
       cart: cartCubit.state,
       ratio: pointsToSolesRatio,
     );
-    _lastSaleTotalAmount = totalFinal;
 
     final validationError = PosCalculatorUtils.validateSalePreFlight(
       posState: posCubit.state,
@@ -260,24 +249,25 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
         currencySymbol: currency,
       );
 
-      // Si el usuario cancela la confirmación, se aborta sin tocar el carrito ni procesar nada
-      if (confirmedAmountReceived == null) {
-        return;
-      }
+      if (confirmedAmountReceived == null) return;
     }
 
-    _lastSaleWasDraft = isDraft;
-    _lastSaleAmountReceived = confirmedAmountReceived;
-    _lastSalePaymentMethod = posCubit.state.paymentMethod;
-    _lastSaleCustomerName = clientName;
-    _lastSaleDocumentType = posCubit.state.documentType;
-    _lastSaleDocumentSeries = posCubit.state.effectiveSeries;
-    _lastSalePaymentReference = posCubit.state.paymentReference;
-    _lastSaleCurrency = posCubit.state.currencyCode;
-    _lastSoldQuantities = {
-      for (final item in cartCubit.state.items.values)
-        item.productId: item.quantity,
-    };
+    _lastReceiptData = PosSaleReceiptData(
+      isDraft: isDraft,
+      totalAmount: totalFinal,
+      amountReceived: confirmedAmountReceived,
+      paymentMethod: posCubit.state.paymentMethod,
+      customerName: clientName,
+      documentType: posCubit.state.documentType,
+      documentSeries: posCubit.state.effectiveSeries,
+      paymentReference: posCubit.state.paymentReference,
+      currencyCode: posCubit.state.currencyCode,
+      soldQuantities: {
+        for (final item in cartCubit.state.items.values)
+          item.productId: item.quantity,
+      },
+      accountId: posCubit.state.selectedAccountId,
+    );
 
     await posCubit.processSale(
       cartState: cartCubit.state,
@@ -390,178 +380,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final posCubit = context.read<PosCubit>();
-    final cartCubit = context.read<CartCubit>();
-    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
-      (c) => c.getDouble('points_to_soles_ratio', 0.01),
-    );
-    final earningRate = context.select<AppConfigCubit, double>(
-      (c) => c.getDouble('points_earning_rate', 0.03),
-    );
-    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
-      (c) => c.loyaltyGlobalEnabled,
-    );
-
-    // Si el sistema de fidelidad está desactivado globalmente y hay puntos asignados, purgarlos
-    if (!isLoyaltyEnabled && posCubit.state.puntosAUsar > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted && posCubit.state.puntosAUsar > 0) {
-          posCubit.setPuntosAUsar(0);
-          _puntosCtrl.text = '0';
-        }
-      });
-    }
-
-    return BlocListener<PosCubit, PosState>(
-      listenWhen: (previous, current) => previous.status != current.status,
-      listener: (context, state) async {
-        if (state.status == PosStatus.error) {
-          AppSnackbar.show(
-            context,
-            message: state.errorMessage,
-            type: SnackbarType.error,
-          );
-        } else if (state.status == PosStatus.success &&
-            state.lastOrderId != null) {
-          final orderId = state.lastOrderId!;
-
-          posCubit.removeClient();
-          posCubit.setPuntosAUsar(0);
-          posCubit.setDiscountText('');
-          posCubit.setPaymentReference(null);
-          cartCubit.clearCart();
-          posCubit.clearAllBatchOverrides();
-
-          // Limpiar controladores de texto independientes del estado Cubit
-          _clienteCtrl.clear();
-          _puntosCtrl.text = '0';
-          _descuentoCtrl.clear();
-
-          // Refrescar saldos de cuenta de manera local y optimista sin data egress
-          if (posCubit.state.selectedAccountId != null && !_lastSaleWasDraft) {
-            posCubit.updateAccountBalanceLocal(
-              accountId: posCubit.state.selectedAccountId!,
-              deltaAmount: _lastSaleTotalAmount,
-            );
-          }
-
-          widget.onSaleCompleted?.call(_lastSoldQuantities);
-
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (dialogContext) => PosSuccessDialog(
-                  isDraft: _lastSaleWasDraft,
-                  totalAmount: _lastSaleTotalAmount,
-                  amountReceived: _lastSaleAmountReceived,
-                  paymentMethod: _lastSalePaymentMethod,
-                  customerName: _lastSaleCustomerName,
-                  documentType: _lastSaleDocumentType,
-                  documentSeries: _lastSaleDocumentSeries,
-                  paymentReference: _lastSalePaymentReference,
-                  currencySymbol: _lastSaleCurrency == 'USD' ? '\$' : 'S/',
-                  onPrint: () async {
-                    try {
-                      final fetchResult = await posCubit
-                          .fetchOrderDetailsForTicket(orderId);
-                      fetchResult.fold(
-                        (failure) {
-                          if (dialogContext.mounted) {
-                            AppSnackbar.show(
-                              dialogContext,
-                              message:
-                                  'Error al obtener orden: ${failure.message}',
-                              type: SnackbarType.error,
-                            );
-                          }
-                        },
-                        (result) async {
-                          if (dialogContext.mounted) {
-                            await OrderReceiptExportSheet.show(
-                              dialogContext,
-                              order: result.order,
-                              initialItems: result.items,
-                              isSaleSuccess: true,
-                            );
-                          }
-                        },
-                      );
-                    } catch (e, stackTrace) {
-                      LoggerService.e(
-                        'Error imprimiendo comprobante',
-                        tag: 'DesktopPosPanel',
-                        error: e,
-                        stackTrace: stackTrace,
-                      );
-                      if (dialogContext.mounted) {
-                        AppSnackbar.show(
-                          dialogContext,
-                          message: 'Error generando comprobante: $e',
-                          type: SnackbarType.error,
-                        );
-                      }
-                    }
-                  },
-                ),
-          );
-        }
-      },
-      child: Form(
-        key: _formKey,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // ── BARRA UNIFICADA ERGONÓMICA (Caja + Cliente + Quick Actions en 52px)
-                _buildClientHeader(isLoyaltyEnabled),
-
-                // Contenido Escroleable
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Productos
-                        PosCartItemsSection(
-                          onShowBatchEditSheet: _showBatchEditSheet,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Configuración de venta y Puntos de lealtad
-                        _buildPaymentAndConfigSection(
-                          pointsToSolesRatio,
-                          isLoyaltyEnabled,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Resumen Total
-                        _buildSummarySection(
-                          pointsToSolesRatio,
-                          earningRate,
-                          isLoyaltyEnabled,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Action Bar inferior
-                _buildStickyActionBar(pointsToSolesRatio),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _onClearCartRequested() {
     final posCubit = context.read<PosCubit>();
     final cartCubit = context.read<CartCubit>();
@@ -617,6 +435,205 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final posCubit = context.read<PosCubit>();
+    final cartCubit = context.read<CartCubit>();
+
+    final pointsToSolesRatio = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_to_soles_ratio', 0.01),
+    );
+    final earningRate = context.select<AppConfigCubit, double>(
+      (c) => c.getDouble('points_earning_rate', 0.03),
+    );
+    final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
+      (c) => c.loyaltyGlobalEnabled,
+    );
+
+    // Si el sistema de fidelidad está desactivado y hay puntos residuales, purgarlos
+    if (!isLoyaltyEnabled && posCubit.state.puntosAUsar > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && posCubit.state.puntosAUsar > 0) {
+          posCubit.setPuntosAUsar(0);
+          _puntosCtrl.text = '0';
+        }
+      });
+    }
+
+    return BlocListener<PosCubit, PosState>(
+      listenWhen: (previous, current) => previous.status != current.status,
+      listener: (context, state) async {
+        if (state.status == PosStatus.error) {
+          AppSnackbar.show(
+            context,
+            message: state.errorMessage,
+            type: SnackbarType.error,
+          );
+        } else if (state.status == PosStatus.success &&
+            state.lastOrderId != null) {
+          final orderId = state.lastOrderId!;
+          final receipt = _lastReceiptData;
+
+          posCubit.removeClient();
+          posCubit.setPuntosAUsar(0);
+          posCubit.setDiscountText('');
+          posCubit.setPaymentReference(null);
+          cartCubit.clearCart();
+          posCubit.clearAllBatchOverrides();
+
+          _clienteCtrl.clear();
+          _puntosCtrl.text = '0';
+          _descuentoCtrl.clear();
+
+          if (receipt != null &&
+              receipt.accountId != null &&
+              !receipt.isDraft) {
+            posCubit.updateAccountBalanceLocal(
+              accountId: receipt.accountId!,
+              deltaAmount: receipt.totalAmount,
+            );
+          }
+
+          if (receipt != null) {
+            widget.onSaleCompleted?.call(receipt.soldQuantities);
+          }
+
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (dialogContext) => PosSuccessDialog(
+                  isDraft: receipt?.isDraft ?? false,
+                  totalAmount: receipt?.totalAmount ?? 0.0,
+                  amountReceived: receipt?.amountReceived,
+                  paymentMethod: receipt?.paymentMethod ?? 'EFECTIVO',
+                  customerName: receipt?.customerName ?? 'Cliente Varios',
+                  documentType: receipt?.documentType ?? 'NOTA_VENTA',
+                  documentSeries: receipt?.documentSeries,
+                  paymentReference: receipt?.paymentReference,
+                  currencySymbol: receipt?.currencySymbol ?? 'S/',
+                  onPrint: () async {
+                    try {
+                      final fetchResult = await posCubit
+                          .fetchOrderDetailsForTicket(orderId);
+                      fetchResult.fold(
+                        (failure) {
+                          if (dialogContext.mounted) {
+                            AppSnackbar.show(
+                              dialogContext,
+                              message:
+                                  'Error al obtener orden: ${failure.message}',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        },
+                        (result) async {
+                          if (dialogContext.mounted) {
+                            await OrderReceiptExportSheet.show(
+                              dialogContext,
+                              order: result.order,
+                              initialItems: result.items,
+                              isSaleSuccess: true,
+                            );
+                          }
+                        },
+                      );
+                    } catch (e, stackTrace) {
+                      LoggerService.e(
+                        'Error imprimiendo comprobante',
+                        tag: 'DesktopPosPanel',
+                        error: e,
+                        stackTrace: stackTrace,
+                      );
+                      if (dialogContext.mounted) {
+                        AppSnackbar.show(
+                          dialogContext,
+                          message: 'Error generando comprobante: $e',
+                          type: SnackbarType.error,
+                        );
+                      }
+                    }
+                  },
+                ),
+          );
+        }
+      },
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // ── Barra Unificada de Cabecera (Caja + Cliente + Vaciar) ──
+            RepaintBoundary(child: _buildClientHeader(isLoyaltyEnabled)),
+
+            // ── Contenido Escroleable con RepaintBoundary Aislado ──
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Lista de productos del carrito
+                    RepaintBoundary(
+                      child: PosCartItemsSection(
+                        onShowBatchEditSheet: _showBatchEditSheet,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Configuración de venta, almacén y puntos
+                    RepaintBoundary(
+                      child: PosPaymentAndConfigSection(
+                        ratio: pointsToSolesRatio,
+                        isLoyaltyEnabled: isLoyaltyEnabled,
+                        pointsController: _puntosCtrl,
+                        onWarehouseChanged: (whId) {
+                          posCubit.setWarehouse(whId);
+                          if (whId != null) {
+                            _updateCartItemsStockForWarehouse(whId);
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Resumen Total y Descuento Manual
+                    _buildSummarySection(
+                      pointsToSolesRatio,
+                      earningRate,
+                      isLoyaltyEnabled,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Action Bar Inferior Fijo ──
+            RepaintBoundary(
+              child: BlocSelector<PosCubit, PosState, (String, bool)>(
+                selector: (s) => (s.discountText, s.isDiscountPercentage),
+                builder: (context, discountData) {
+                  return PosStickyActionBar(
+                    ratio: pointsToSolesRatio,
+                    discountText: discountData.$1,
+                    isDiscountPercentage: discountData.$2,
+                    isProcessingLocal: _isProcessing,
+                    showShortcutBadge: true,
+                    onProcessSale: ({required bool isDraft}) {
+                      _processSale(posCubit, cartCubit, isDraft: isDraft);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildClientHeader(bool isLoyaltyEnabled) {
     return BlocBuilder<PosCubit, PosState>(
       buildWhen:
@@ -661,137 +678,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildPaymentAndConfigSection(double ratio, bool isLoyaltyEnabled) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.selectedClientId != curr.selectedClientId ||
-                  prev.saldoActualCliente != curr.saldoActualCliente ||
-                  prev.puntosAUsar != curr.puntosAUsar,
-          builder: (context, posState) {
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return BlocSelector<CartCubit, CartState, double>(
-              selector: (state) => state.totalAmount,
-              builder: (context, totalAmount) {
-                final posCubit = context.read<PosCubit>();
-                final cartState = context.read<CartCubit>().state;
-                return AdminSalePointsSection(
-                  show:
-                      isLoyaltyEnabled &&
-                      posState.selectedClientId != null &&
-                      posState.saldoActualCliente > 0 &&
-                      !isCredito,
-                  saldoActualCliente: posState.saldoActualCliente,
-                  maxPuntosAplicables: PosCalculatorUtils.maxPuntosAplicables(
-                    posState,
-                    cartState,
-                    ratio,
-                  ),
-                  pointsToSolesRatio: ratio,
-                  pointsController: _puntosCtrl,
-                  onPointsChanged: (p) {
-                    final next = PosCalculatorUtils.clampPointsValue(
-                      p,
-                      posState,
-                      cartState,
-                      ratio,
-                    );
-                    posCubit.setPuntosAUsar(next);
-                    _puntosCtrl.value = TextEditingValue(
-                      text: next.toString(),
-                      selection: TextSelection.collapsed(
-                        offset: next.toString().length,
-                      ),
-                    );
-                  },
-                );
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.discountText != curr.discountText ||
-                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
-                  prev.puntosAUsar != curr.puntosAUsar,
-          builder: (context, posState) {
-            return BlocBuilder<CartCubit, CartState>(
-              buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
-              builder: (context, cartState) {
-                final currentTotal = PosCalculatorUtils.calcularTotalFinal(
-                  discountText: posState.discountText,
-                  isDiscountPercentage: posState.isDiscountPercentage,
-                  pos: posState,
-                  cart: cartState,
-                  ratio: ratio,
-                );
-                return PosDocumentAndCurrencyCard(totalFinal: currentTotal);
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 20),
-        const _SectionTitle('Método de pago y almacén'),
-        BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.warehouses != curr.warehouses ||
-                  prev.selectedWarehouseId != curr.selectedWarehouseId ||
-                  prev.accounts != curr.accounts ||
-                  prev.selectedAccountId != curr.selectedAccountId ||
-                  prev.activeShift != curr.activeShift,
-          builder: (context, posState) {
-            final posCubit = context.read<PosCubit>();
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            return PaymentWarehouseAccountCard(
-              paymentMethod: posState.paymentMethod,
-              warehouseList: posState.warehouses,
-              selectedWarehouseId: posState.selectedWarehouseId,
-              accountsList: posState.accounts,
-              selectedAccountId: posState.selectedAccountId,
-              activeShift: posState.activeShift,
-              isCredito: isCredito,
-              onCreditoToggle: (isCredito) {
-                if (isCredito) {
-                  posCubit.setPaymentMethod('CRÉDITO');
-                  posCubit.setPuntosAUsar(0);
-                  _puntosCtrl.text = '0';
-                } else {
-                  if (posState.selectedAccountId != null) {
-                    final acc = posState.accounts.firstWhere(
-                      (a) => a['id'] == posState.selectedAccountId,
-                      orElse: () => <String, dynamic>{},
-                    );
-                    final accName = acc['name'] as String? ?? 'EFECTIVO';
-                    posCubit.setPaymentMethod(accName);
-                  } else {
-                    posCubit.setPaymentMethod('EFECTIVO');
-                  }
-                }
-              },
-              onWarehouseChanged: (v) {
-                posCubit.setWarehouse(v);
-                if (v != null) {
-                  _updateCartItemsStockForWarehouse(v);
-                }
-              },
-              onAccountChanged: (v) {
-                posCubit.setSelectedAccountId(v);
-              },
-            );
-          },
-        ),
-      ],
     );
   }
 
@@ -851,11 +737,12 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
                     permission: AppPermissions.posDiscount,
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 24),
-                      child: _buildCustomDiscountCard(
-                        posState,
-                        cartState,
-                        ratio,
-                        puntosSeguros,
+                      child: PosDesktopDiscountCard(
+                        discountController: _descuentoCtrl,
+                        posState: posState,
+                        cartState: cartState,
+                        ratio: ratio,
+                        puntosSeguros: puntosSeguros,
                       ),
                     ),
                   ),
@@ -896,558 +783,6 @@ class DesktopPosPanelState extends State<DesktopPosPanel> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildCustomDiscountCard(
-    PosState posState,
-    CartState cartState,
-    double ratio,
-    int puntosSeguros,
-  ) {
-    final isPercentage = posState.isDiscountPercentage;
-    final discountAmount = PosCalculatorUtils.getCustomDiscountAmount(
-      discountText: posState.discountText,
-      isDiscountPercentage: isPercentage,
-      pos: posState,
-      cart: cartState,
-      ratio: ratio,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppColors.radius),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppColors.cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.sell_outlined,
-                size: 16,
-                color: AppColors.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'DESCUENTO MANUAL',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              if (discountAmount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: AppColors.success.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    '- S/ ${discountAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF065F46),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              // ── Campo de Entrada 44px ──
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: TextFormField(
-                    controller: _descuentoCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}'),
-                      ),
-                    ],
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                    validator:
-                        (v) => PosCalculatorUtils.validateDiscountInput(
-                          text: v,
-                          isPercentage: isPercentage,
-                          maxDiscountAmount:
-                              PosCalculatorUtils.getMaxCustomDiscount(
-                                cartState,
-                                ratio,
-                                puntosSeguros,
-                              ),
-                          cartTotal: cartState.totalAmount,
-                        ),
-                    decoration: InputDecoration(
-                      hintText: '0.00',
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.only(left: 12, right: 6),
-                        child: Text(
-                          isPercentage ? '%' : 'S/',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      prefixIconConstraints: const BoxConstraints(
-                        minWidth: 0,
-                        minHeight: 0,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                          color: AppColors.teal,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    onChanged: (v) {
-                      if (v.trim().isEmpty) {
-                        context.read<PosCubit>().setDiscountText('');
-                        return;
-                      }
-                      final val = double.tryParse(v) ?? 0.0;
-                      final maxDiscount =
-                          PosCalculatorUtils.getMaxCustomDiscount(
-                            cartState,
-                            ratio,
-                            puntosSeguros,
-                          );
-                      final amt =
-                          isPercentage
-                              ? (cartState.totalAmount * (val / 100))
-                              : val;
-                      if (amt > maxDiscount) {
-                        if (isPercentage) {
-                          final maxPerc =
-                              (maxDiscount / cartState.totalAmount) * 100;
-                          final text = maxPerc.toStringAsFixed(2);
-                          _descuentoCtrl.value = TextEditingValue(
-                            text: text,
-                            selection: TextSelection.collapsed(
-                              offset: text.length,
-                            ),
-                          );
-                          context.read<PosCubit>().setDiscountText(text);
-                        } else {
-                          final text = maxDiscount.toStringAsFixed(2);
-                          _descuentoCtrl.value = TextEditingValue(
-                            text: text,
-                            selection: TextSelection.collapsed(
-                              offset: text.length,
-                            ),
-                          );
-                          context.read<PosCubit>().setDiscountText(text);
-                        }
-                      } else {
-                        context.read<PosCubit>().setDiscountText(v);
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // ── Selector Segmentado Moderno [ S/ ] [ % ] 44px ──
-              Container(
-                height: 44,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border, width: 1),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildSegmentButton(
-                      label: 'S/ Monto',
-                      isSelected: !isPercentage,
-                      onTap: () {
-                        if (isPercentage) {
-                          context.read<PosCubit>().setIsDiscountPercentage(
-                            false,
-                          );
-                          _descuentoCtrl.text = '';
-                          context.read<PosCubit>().setDiscountText('');
-                        }
-                      },
-                    ),
-                    _buildSegmentButton(
-                      label: '% Porc.',
-                      isSelected: isPercentage,
-                      onTap: () {
-                        if (!isPercentage) {
-                          context.read<PosCubit>().setIsDiscountPercentage(
-                            true,
-                          );
-                          _descuentoCtrl.text = '';
-                          context.read<PosCubit>().setDiscountText('');
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentButton({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        mouseCursor: SystemMouseCursors.click,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow:
-                isSelected
-                    ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      ),
-                    ]
-                    : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? AppColors.teal : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStickyActionBar(double ratio) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1.0)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: BlocBuilder<PosCubit, PosState>(
-          buildWhen:
-              (prev, curr) =>
-                  prev.paymentMethod != curr.paymentMethod ||
-                  prev.discountText != curr.discountText ||
-                  prev.isDiscountPercentage != curr.isDiscountPercentage ||
-                  prev.puntosAUsar != curr.puntosAUsar ||
-                  prev.selectedClientId != curr.selectedClientId ||
-                  prev.selectedAccountId != curr.selectedAccountId ||
-                  prev.activeShift != curr.activeShift ||
-                  prev.creditInfo != curr.creditInfo ||
-                  prev.status != curr.status,
-          builder: (context, posState) {
-            return BlocBuilder<CartCubit, CartState>(
-              buildWhen:
-                  (prev, curr) =>
-                      prev.totalAmount != curr.totalAmount ||
-                      prev.items.isEmpty != curr.items.isEmpty,
-              builder: (context, cartState) {
-                final posCubit = context.read<PosCubit>();
-                final cartCubit = context.read<CartCubit>();
-                final total = PosCalculatorUtils.calcularTotalFinal(
-                  discountText: posState.discountText,
-                  isDiscountPercentage: posState.isDiscountPercentage,
-                  pos: posState,
-                  cart: cartState,
-                  ratio: ratio,
-                );
-                final isCredito = posState.paymentMethod == 'CRÉDITO';
-                final isBusy =
-                    _isProcessing || posState.status == PosStatus.loading;
-
-                final accountData = posState.accounts.firstWhere(
-                  (a) => a['id'] == posState.selectedAccountId,
-                  orElse: () => <String, dynamic>{},
-                );
-                final requiresShift = PosCalculatorUtils.accountRequiresShift(
-                  accountData,
-                );
-                final noCajaAbierta =
-                    !isCredito &&
-                    posState.selectedAccountId != null &&
-                    requiresShift &&
-                    posState.activeShift == null;
-
-                final disp = PosCalculatorUtils.getCreditDisponible(
-                  posState.creditInfo,
-                );
-                final creditoInsuficiente =
-                    isCredito &&
-                    posState.selectedClientId != null &&
-                    PosCalculatorUtils.isCreditActivo(posState.creditInfo) &&
-                    disp < total;
-                final creditoSinCliente =
-                    isCredito && posState.selectedClientId == null;
-
-                final safePts = PosCalculatorUtils.clampPointsValue(
-                  posState.puntosAUsar,
-                  posState,
-                  cartState,
-                  ratio,
-                );
-                final maxAllowedDisc =
-                    cartState.totalAmount - (safePts * ratio);
-                final descuentoExtra =
-                    PosCalculatorUtils.getCustomDiscountAmount(
-                      discountText: posState.discountText,
-                      isDiscountPercentage: posState.isDiscountPercentage,
-                      pos: posState,
-                      cart: cartState,
-                      ratio: ratio,
-                    );
-                final descuentoExcedido = descuentoExtra > maxAllowedDisc;
-
-                final canProceed =
-                    cartState.items.isNotEmpty &&
-                    !isBusy &&
-                    !noCajaAbierta &&
-                    !creditoInsuficiente &&
-                    !creditoSinCliente &&
-                    !descuentoExcedido;
-
-                final canDraft =
-                    cartState.items.isNotEmpty && !isBusy && !descuentoExcedido;
-
-                return Row(
-                  children: [
-                    // Botón Secundario: Guardar Borrador
-                    SizedBox(
-                      height: 50,
-                      child: Tooltip(
-                        message: 'Guardar orden como borrador',
-                        child: OutlinedButton(
-                          onPressed:
-                              !canDraft
-                                  ? null
-                                  : () => _processSale(
-                                    posCubit,
-                                    cartCubit,
-                                    isDraft: true,
-                                  ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.textPrimary,
-                            backgroundColor: Colors.white,
-                            disabledForegroundColor: AppColors.textMuted,
-                            side: BorderSide(
-                              color:
-                                  canDraft
-                                      ? AppColors.border
-                                      : Colors.grey.shade200,
-                              width: 1.2,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.bookmark_add_outlined, size: 18),
-                              SizedBox(width: 6),
-                              Text(
-                                'Borrador',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    // Botón Principal: Cobrar
-                    Expanded(
-                      child: SizedBox(
-                        height: 50,
-                        child: Tooltip(
-                          message:
-                              noCajaAbierta
-                                  ? 'Abre turno en caja física o cambia de método de pago'
-                                  : 'Completar venta',
-                          child: ElevatedButton(
-                            onPressed:
-                                !canProceed
-                                    ? null
-                                    : () => _processSale(
-                                      posCubit,
-                                      cartCubit,
-                                      isDraft: false,
-                                    ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.teal,
-                              disabledBackgroundColor: Colors.grey.shade300,
-                              foregroundColor: Colors.white,
-                              disabledForegroundColor: Colors.grey.shade500,
-                              elevation: canProceed ? 2 : 0,
-                              shadowColor: AppColors.teal.withValues(
-                                alpha: 0.35,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                            ),
-                            child:
-                                isBusy
-                                    ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        valueColor: AlwaysStoppedAnimation(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    )
-                                    : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(
-                                          Icons.shopping_cart_checkout_rounded,
-                                          size: 19,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Flexible(
-                                          child: Text(
-                                            isCredito
-                                                ? 'Vender a crédito'
-                                                : 'Cobrar S/ ${total.toStringAsFixed(2)}',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 14.5,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: -0.2,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 5,
-                                            vertical: 1.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.2,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'F2',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  const _SectionTitle(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, left: 4),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-          color: AppColors.textSecondary,
-        ),
-      ),
     );
   }
 }

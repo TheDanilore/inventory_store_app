@@ -12,6 +12,7 @@ class PosStickyActionBar extends StatelessWidget {
   final String discountText;
   final bool isDiscountPercentage;
   final bool isProcessingLocal;
+  final bool showShortcutBadge;
   final void Function({required bool isDraft}) onProcessSale;
 
   const PosStickyActionBar({
@@ -20,6 +21,7 @@ class PosStickyActionBar extends StatelessWidget {
     required this.discountText,
     required this.isDiscountPercentage,
     required this.isProcessingLocal,
+    this.showShortcutBadge = false,
     required this.onProcessSale,
   });
 
@@ -232,6 +234,31 @@ class PosStickyActionBar extends StatelessWidget {
                                               ),
                                             ),
                                           ),
+                                          if (showShortcutBadge) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 1.5,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.2,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'F2',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                             ),

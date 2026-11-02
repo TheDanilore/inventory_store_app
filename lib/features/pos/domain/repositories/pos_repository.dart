@@ -54,6 +54,12 @@ abstract class PosRepository {
     String warehouseId,
   );
 
+  /// Consulta el stock disponible de una lista de variantes en un almacén específico.
+  Future<Either<Failure, Map<String, int>>> fetchVariantStocks(
+    List<String> variantIds, {
+    required String warehouseId,
+  });
+
   /// Procesa y guarda una venta en el sistema.
   /// Retorna el ID de la orden generada.
   Future<Either<Failure, String>> processSale(SaleEntity sale);

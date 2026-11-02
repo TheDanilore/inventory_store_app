@@ -261,4 +261,3 @@ class SidebarBrandHeader extends StatelessWidget {
     );
   }
 }
-

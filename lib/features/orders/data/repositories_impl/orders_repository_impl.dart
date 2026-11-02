@@ -1327,10 +1327,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
             schema: 'public',
             table: 'orders',
             callback: (payload) {
-              debounceTimer?.cancel();
-              debounceTimer = Timer(const Duration(milliseconds: 1500), () {
-                fetchCount();
-              });
+              final newStatus = payload.newRecord['status'];
+              final oldStatus = payload.oldRecord['status'];
+              // Optimización de Egress y CPU: solo reconsultar si la mutación afecta a PENDING
+              final isRelevant =
+                  newStatus == 'PENDING' ||
+                  oldStatus == 'PENDING' ||
+                  payload.eventType == PostgresChangeEvent.insert ||
+                  payload.eventType == PostgresChangeEvent.delete;
+
+              if (isRelevant) {
+                debounceTimer?.cancel();
+                debounceTimer = Timer(const Duration(milliseconds: 2000), () {
+                  fetchCount();
+                });
+              }
             },
           );
       channel!.subscribe();

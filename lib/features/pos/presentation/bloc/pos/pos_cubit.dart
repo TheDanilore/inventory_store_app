@@ -679,6 +679,27 @@ class PosCubit extends Cubit<PosState> {
     }
   }
 
+  /// Consulta el stock disponible de variantes en un almacén para sincronizar el carrito.
+  Future<Either<Failure, Map<String, int>>> fetchVariantStocks(
+    List<String> variantIds, {
+    required String warehouseId,
+  }) async {
+    try {
+      return await _posRepository.fetchVariantStocks(
+        variantIds,
+        warehouseId: warehouseId,
+      );
+    } catch (e, stack) {
+      LoggerService.e(
+        'Unexpected error fetching variant stocks',
+        tag: 'PosCubit',
+        error: e,
+        stackTrace: stack,
+      );
+      return Left(ServerFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
   void setDiscountText(String text) {
     emit(state.copyWith(discountText: text));
   }

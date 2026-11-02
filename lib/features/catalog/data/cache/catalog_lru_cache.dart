@@ -71,6 +71,19 @@ class CatalogLruCache {
     return (products: entry.products, totalCount: entry.totalCount);
   }
 
+  /// Retorna la página más reciente disponible en caché para soporte Zero-Shimmer (Frame 0).
+  ({List<ProductEntity> products, int totalCount})? getAnyPage() {
+    if (_pages.isEmpty) return null;
+    final entry = _pages.values.last;
+    if (DateTime.now().difference(entry.cachedAt) > pageTtl) {
+      return null;
+    }
+    return (products: entry.products, totalCount: entry.totalCount);
+  }
+
+  /// Indica si la memoria RAM L1 contiene productos disponibles para renderizar sin espera.
+  bool get hasAnyProducts => _pages.values.any((p) => p.products.isNotEmpty);
+
   /// Almacena una página de catálogo. Evicta la entrada más antigua si se
   /// supera [maxPages]. Si la clave ya existía, se promueve al final.
   void putPage(String key, List<ProductEntity> products, int totalCount) {
