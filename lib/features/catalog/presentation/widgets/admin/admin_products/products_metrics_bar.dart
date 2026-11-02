@@ -94,9 +94,9 @@ class ProductsMetricsBar extends StatelessWidget {
           padding: EdgeInsets.zero,
           items: [
             AdminKpiItem(
-              title: 'TOTAL CATÃLOGO',
+              title: 'TOTAL CATÁLOGO',
               value: '${data.totalCount}',
-              subtitle: '${data.categoriesCount} categorÃ­as registradas',
+              subtitle: '${data.categoriesCount} categorías registradas',
               icon: Icons.inventory_2_rounded,
               accentColor: AppColors.primary,
               gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
@@ -106,11 +106,11 @@ class ProductsMetricsBar extends StatelessWidget {
             ),
             AdminKpiItem(
               title:
-                  data.isMultiPage ? 'EN STOCK (PÃG)' : 'EN STOCK DISPONIBLE',
+                  data.isMultiPage ? 'EN STOCK (PÁG)' : 'EN STOCK DISPONIBLE',
               value: '${data.inStockCount}',
               subtitle:
                   data.isMultiPage
-                      ? '${data.inStockCount} en pÃ¡g. actual'
+                      ? '${data.inStockCount} en pág. actual'
                       : (data.totalCount > 0
                           ? '${((data.inStockCount / (data.totalCount > 0 ? data.totalCount : 1)) * 100).toStringAsFixed(0)}% disponible para venta'
                           : 'Listo para despacho'),
@@ -123,13 +123,13 @@ class ProductsMetricsBar extends StatelessWidget {
             ),
             AdminKpiItem(
               title:
-                  data.isMultiPage ? 'AGOTADOS (PÃG)' : 'AGOTADOS / CRÃTICOS',
+                  data.isMultiPage ? 'AGOTADOS (PÁG)' : 'AGOTADOS / CRÍTICOS',
               value: '${data.outOfStockCount}',
               subtitle:
                   data.isMultiPage
-                      ? '${data.outOfStockCount} en pÃ¡g. actual'
+                      ? '${data.outOfStockCount} en pág. actual'
                       : (data.outOfStockCount > 0
-                          ? 'Requieren reposiciÃ³n'
+                          ? 'Requieren reposición'
                           : 'Sin quiebres de inventario'),
               icon: Icons.warning_amber_rounded,
               accentColor:
@@ -157,11 +157,11 @@ class ProductsMetricsBar extends StatelessWidget {
               isAlert: data.outOfStockCount > 0,
             ),
             AdminKpiItem(
-              title: 'UNIDADES EN ALMACÃ‰N',
+              title: 'UNIDADES EN ALMACÉN',
               value: '${data.totalUnits} unid.',
               subtitle:
                   data.isMultiPage
-                      ? 'En pÃ¡g. actual'
+                      ? 'En pág. actual'
                       : 'Existencias consolidadas',
               icon: Icons.all_inbox_rounded,
               accentColor: AppColors.info,
