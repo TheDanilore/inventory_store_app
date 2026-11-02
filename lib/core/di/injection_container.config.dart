@@ -1713,7 +1713,7 @@ extension GetItInjectableX on _i174.GetIt {
         getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
       ),
     );
-    gh.factory<_i129.AttributesCubit>(
+    gh.lazySingleton<_i129.AttributesCubit>(
       () => _i129.AttributesCubit(
         getAttributesUC: gh<_i487.GetAttributesUC>(),
         createAttributeUseCase: gh<_i382.CreateAttributeUseCase>(),

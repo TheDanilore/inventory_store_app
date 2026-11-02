@@ -49,11 +49,16 @@ class CatalogRoutes {
     ),
     GoRoute(
       path: '/attributes',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<AttributesCubit>()..loadAttributes(),
-            child: const AttributesManagementScreen(),
-          ),
+      builder: (context, state) {
+        final cubit = sl<AttributesCubit>();
+        if (cubit.state.attributes.isEmpty) {
+          cubit.loadAttributes();
+        }
+        return BlocProvider.value(
+          value: cubit,
+          child: const AttributesManagementScreen(),
+        );
+      },
     ),
     GoRoute(
       path: '/categories',
@@ -74,9 +79,9 @@ class CatalogRoutes {
     GoRoute(
       path: '/products',
       builder: (context, state) {
-        // En el shell administrativo, AdminCatalogCubit ya reside en el Ã¡rbol superior
+        // En el shell administrativo, AdminCatalogCubit ya reside en el árbol superior
         // (inyectado en StatefulShellRoute de app_router.dart). Reutilizarlo evita
-        // la destrucciÃ³n del cubit y la pÃ©rdida del cachÃ© en memoria (Zero-Shimmer).
+        // la destrucción del cubit y la pérdida del caché en memoria (Zero-Shimmer).
         try {
           context.read<AdminCatalogCubit>();
           return const AdminProductsScreen();

@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/catalog/domain/usecases/catalog_att
 import 'package:inventory_store_app/features/catalog/domain/entities/attribute_entity.dart';
 import 'package:inventory_store_app/features/catalog/presentation/bloc/attributes/attributes_state.dart';
 
-@injectable
+@lazySingleton
 class AttributesCubit extends Cubit<AttributesState> {
   final GetAttributesUC getAttributesUC;
   final CreateAttributeUseCase createAttributeUseCase;
@@ -26,20 +26,30 @@ class AttributesCubit extends Cubit<AttributesState> {
     required this.deleteAttributeValueUC,
   }) : super(const AttributesState());
 
-  Future<void> loadAttributes() async {
-    emit(state.copyWith(viewState: ViewState.loading));
+  /// Carga de atributos con soporte Zero-Shimmer (Frame 0) y SWR.
+  /// Si ya hay datos en memoria, revalida en silencio sin emitir ViewState.loading.
+  Future<void> loadAttributes({bool forceRefresh = false}) async {
+    final hasData = state.attributes.isNotEmpty;
+    if (!hasData) {
+      emit(state.copyWith(viewState: ViewState.loading));
+    } else {
+      emit(state.copyWith(isRefreshing: true, clearErrorMessage: true));
+    }
+
     final result = await getAttributesUC();
     result.fold(
       (failure) => emit(
         state.copyWith(
-          viewState: ViewState.error,
+          viewState: hasData ? state.viewState : ViewState.error,
           errorMessage: failure.message,
+          isRefreshing: false,
         ),
       ),
       (attributes) => emit(
         state.copyWith(
           viewState: attributes.isEmpty ? ViewState.empty : ViewState.success,
           attributes: attributes,
+          isRefreshing: false,
           clearErrorMessage: true,
         ),
       ),
