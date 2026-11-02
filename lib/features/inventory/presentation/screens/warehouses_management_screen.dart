@@ -315,7 +315,8 @@ class _WarehousesManagementScreenState
                       Expanded(
                         child: Builder(
                           builder: (context) {
-                            if (state.isLoading) {
+                            // Zero-Shimmer Policy: Solo mostrar Shimmer en verdadero Cold Start sin datos
+                            if (state.isLoading && warehouses.isEmpty) {
                               return Padding(
                                 padding: const EdgeInsets.all(16),
                                 child:

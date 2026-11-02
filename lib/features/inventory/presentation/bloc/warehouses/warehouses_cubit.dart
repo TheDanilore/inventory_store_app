@@ -27,13 +27,16 @@ class WarehousesCubit extends Cubit<WarehousesState> {
   }
 
   Future<void> loadWarehouses({bool isRefresh = false}) async {
+    final hasData = state.warehouses.isNotEmpty;
+
     if (isRefresh) {
       emit(state.copyWith(currentPage: 0));
     }
 
+    // Zero-Shimmer Policy: No mostrar loading si ya contamos con datos en memoria
     emit(
       state.copyWith(
-        isLoading: true,
+        isLoading: !hasData,
         clearErrorMessage: true,
         clearSuccessMessage: true,
       ),

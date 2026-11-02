@@ -1305,10 +1305,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
         if (cached != null) {
           final newPaid = cached.amountPaid + amount;
           final newStatus = newPaid >= cached.totalAmount ? 'PAID' : 'PARTIAL';
-          _updateOrderInCache(cached.copyWith(
-            amountPaid: newPaid,
-            paymentStatus: newStatus,
-          ));
+          _updateOrderInCache(
+            cached.copyWith(amountPaid: newPaid, paymentStatus: newStatus),
+          );
         } else {
           _orderByIdCache.remove(orderId);
         }
@@ -1383,7 +1382,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
   @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
-    if (_pendingOrdersCountController != null && !_pendingOrdersCountController!.isClosed) {
+    if (_pendingOrdersCountController != null &&
+        !_pendingOrdersCountController!.isClosed) {
       return _pendingOrdersCountController!.stream;
     }
 
@@ -1442,9 +1442,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
               if (isRelevant) {
                 _pendingOrdersCountDebounce?.cancel();
-                _pendingOrdersCountDebounce = Timer(const Duration(milliseconds: 2000), () {
-                  fetchCount();
-                });
+                _pendingOrdersCountDebounce = Timer(
+                  const Duration(milliseconds: 2000),
+                  () {
+                    fetchCount();
+                  },
+                );
               }
             },
           );

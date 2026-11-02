@@ -12,12 +12,21 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
   DateTime? _activeWarehousesCacheTime;
   static const Duration _cacheTtl = Duration(minutes: 15);
 
+  /// L1 Cache para paginación de almacenes (Zero-Shimmer garantizado)
+  static final Map<String, ({List<WarehouseEntity> data, int count})>
+  _warehousesPageCache = {};
+  static DateTime? _warehousesPageCacheTime;
+  static const Duration _pageCacheTtl = Duration(minutes: 15);
+  static const int _maxPageCacheEntries = 20;
+
   WarehousesRepositoryImpl() : _supabase = Supabase.instance.client;
 
   @override
   void invalidateCache() {
     _activeWarehousesCache = null;
     _activeWarehousesCacheTime = null;
+    _warehousesPageCache.clear();
+    _warehousesPageCacheTime = null;
   }
 
   @override
@@ -69,6 +78,16 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
     required int end,
     String searchQuery = '',
   }) async {
+    final cacheKey = '${start}_${end}_${searchQuery.trim().toLowerCase()}';
+    if (_warehousesPageCache.containsKey(cacheKey) &&
+        _warehousesPageCacheTime != null) {
+      final isFresh =
+          DateTime.now().difference(_warehousesPageCacheTime!) < _pageCacheTtl;
+      if (isFresh) {
+        return _warehousesPageCache[cacheKey]!;
+      }
+    }
+
     var selectQuery = _supabase.from('warehouses').select();
     var countQuery = _supabase.from('warehouses').select('id');
 
@@ -96,7 +115,13 @@ class WarehousesRepositoryImpl implements WarehousesRepository {
             )
             .toList();
 
-    return (data: data, count: totalRecords);
+    final result = (data: data, count: totalRecords);
+    if (_warehousesPageCache.length >= _maxPageCacheEntries) {
+      _warehousesPageCache.remove(_warehousesPageCache.keys.first);
+    }
+    _warehousesPageCache[cacheKey] = result;
+    _warehousesPageCacheTime = DateTime.now();
+    return result;
   }
 
   @override
