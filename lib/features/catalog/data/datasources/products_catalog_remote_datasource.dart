@@ -19,7 +19,7 @@ class ProductsCatalogRemoteDataSource {
     bool? isActive,
     bool searchByIngredient = false,
     bool forCustomer = false,
-    int limit = 20,
+    int limit = 15,
     int offset = 0,
     bool sortByPriceAsc = true,
     CatalogStockFilter? stockFilter,
