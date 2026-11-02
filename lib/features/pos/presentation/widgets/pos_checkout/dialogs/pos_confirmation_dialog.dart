@@ -376,10 +376,9 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                           const SizedBox(height: 8),
                           TextField(
                             controller: _receivedCtrl,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
                                 RegExp(r'^\d*\.?\d{0,2}'),
@@ -437,7 +436,8 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                                 isSelected:
                                     (_montoRecibido - widget.totalFinal).abs() <
                                     0.01,
-                                onTap: () => _setPresetAmount(widget.totalFinal),
+                                onTap:
+                                    () => _setPresetAmount(widget.totalFinal),
                               ),
                               for (final preset in _presets)
                                 PosPresetChip(
@@ -457,9 +457,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                             decoration: BoxDecoration(
                               color:
                                   faltaDinero
-                                      ? AppColors.danger.withValues(
-                                        alpha: 0.10,
-                                      )
+                                      ? AppColors.danger.withValues(alpha: 0.10)
                                       : const Color(0xFFF0FDF4),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
@@ -472,16 +470,14 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                               ),
                             ),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Row(
                                   children: [
                                     Icon(
                                       faltaDinero
                                           ? Icons.warning_amber_rounded
-                                          : Icons
-                                              .check_circle_outline_rounded,
+                                          : Icons.check_circle_outline_rounded,
                                       size: 16,
                                       color:
                                           faltaDinero
@@ -558,8 +554,7 @@ class _PosConfirmationDialogState extends State<PosConfirmationDialog> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton(
-                    onPressed:
-                        (faltaDinero || _isConfirming) ? null : _confirm,
+                    onPressed: (faltaDinero || _isConfirming) ? null : _confirm,
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.teal,
                       disabledBackgroundColor: Colors.grey.shade300,
