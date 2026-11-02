@@ -4,31 +4,25 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
-import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/features/app_config/presentation/bloc/app_config_cubit.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_cubit.dart';
 import 'package:inventory_store_app/features/orders/presentation/bloc/orders/orders_state.dart';
-
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/admin_order_card.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_confirm_dialog.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
-import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_table_view.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_detail_sheet.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_bento_kpi_bar.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_pagination_bar.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/orders_sliver_list.dart';
+import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/payment_method_sheet.dart';
 
 class OrdersScreen extends StatefulWidget {
   final String? customTitle;
@@ -57,7 +51,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   OrderEntity? _selectedOrder;
   String? _pendingTargetOrderId;
   bool _isFetchingTargetOrder = false;
-  bool _isTableView = true; // Por defecto en Desktop: Tabla Pro 100%
+  bool _isTableView = true;
+  bool _isSideSheetOpen = false;
 
   @override
   void initState() {
@@ -66,10 +61,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final cubit = context.read<OrdersCubit>();
+      // Stale-While-Revalidate: si ya hay pedidos en caché L1, no mostrar shimmer
       if (cubit.state.orders.isEmpty) {
         cubit.init();
       } else {
-        // Revalidación silenciosa en background (Stale-While-Revalidate) sin shimmer
         cubit.loadOrders(background: true);
       }
     });
@@ -186,7 +181,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     super.dispose();
   }
 
-  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
   bool get _isInputFieldFocused {
     if (_searchFocusNode.hasFocus) return true;
     final primaryFocus = FocusManager.instance.primaryFocus;
@@ -201,7 +195,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Si el usuario escribe en un campo de texto, bloquear atajos globales
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
@@ -216,7 +209,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
         HardwareKeyboard.instance.isMetaPressed;
     final key = event.logicalKey;
 
-    // Atajo [/] o [Ctrl + K] -> Enfocar buscador
     if ((isControlOrMeta && key == LogicalKeyboardKey.keyK) ||
         key == LogicalKeyboardKey.slash) {
       _searchFocusNode.requestFocus();
@@ -227,7 +219,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Atajo [Escape] -> Cerrar panel lateral o limpiar búsqueda
     if (key == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
@@ -245,7 +236,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       }
     }
 
-    // Atajo [P] o [Ctrl + P] -> Imprimir ticket del pedido activo
     if (key == LogicalKeyboardKey.keyP ||
         (isControlOrMeta && key == LogicalKeyboardKey.keyP)) {
       if (_selectedOrder != null) {
@@ -254,7 +244,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       }
     }
 
-    // Atajo [R] -> Recargar pedidos
     if (key == LogicalKeyboardKey.keyR) {
       context.read<OrdersCubit>().refresh();
       AppSnackbar.show(
@@ -265,13 +254,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Atajo [V] -> Alternar Vista (Tabla vs Cards)
     if (key == LogicalKeyboardKey.keyV) {
       setState(() => _isTableView = !_isTableView);
       return KeyEventResult.handled;
     }
 
-    // Atajos [1..5] -> Filtros de estado
     if (key == LogicalKeyboardKey.digit1 || key == LogicalKeyboardKey.numpad1) {
       context.read<OrdersCubit>().setStatusFilter('ALL');
       return KeyEventResult.handled;
@@ -293,7 +280,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Navegación con flechas [↑ / ↓] y [Enter] entre pedidos
     final cubit = context.read<OrdersCubit>();
     final orders = cubit.state.orders;
     if (orders.isNotEmpty) {
@@ -341,7 +327,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _printOrderTicket(OrderEntity order) async {
     try {
-      final cachedItems = context.read<OrdersCubit>().getCachedOrderItems(order.id);
+      final cachedItems = context.read<OrdersCubit>().getCachedOrderItems(
+        order.id,
+      );
       await OrderReceiptExportSheet.show(
         context,
         order: order,
@@ -433,8 +421,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
   }
 
-  bool _isSideSheetOpen = false;
-
   Future<void> _showOrderDetails(OrderEntity order, bool isWide) async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (!mounted || _isSideSheetOpen) return;
@@ -446,8 +432,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
     final result = await AdaptiveDetailSheet.show<bool>(
       context,
-      desktopWidth: 620, // Define el ancho deseado para Pedidos
-      enableGlassmorphism: true, // Habilita el fondo desenfocado
+      desktopWidth: 620,
+      enableGlassmorphism: true,
       builder: (dialogCtx) {
         return MultiBlocProvider(
           providers: [
@@ -479,16 +465,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildContent(context);
-  }
-
-  Widget _buildContent(BuildContext context) {
     final isLoyaltyEnabled = context.select<AppConfigCubit, bool>(
       (c) => c.state.businessInfo?.loyaltyGlobalEnabled ?? false,
     );
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 640;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final ordersBody = LayoutBuilder(
@@ -499,24 +480,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
               _resolveTargetOrder(state.orders, isWide);
             }
           },
-          buildWhen:
-              (p, c) =>
-                  p.orders != c.orders ||
-                  p.isLoading != c.isLoading ||
-                  p.errorMessage != c.errorMessage ||
-                  p.isBackgroundLoading != c.isBackgroundLoading ||
-                  p.processingOrders != c.processingOrders ||
-                  p.generatingPdfOrderId != c.generatingPdfOrderId ||
-                  p.statusFilter != c.statusFilter ||
-                  p.paymentStatusFilter != c.paymentStatusFilter ||
-                  p.warehouseFilter != c.warehouseFilter ||
-                  p.availableWarehouses != c.availableWarehouses ||
-                  p.startDate != c.startDate ||
-                  p.endDate != c.endDate ||
-                  p.searchQuery != c.searchQuery ||
-                  p.customerIdFilter != c.customerIdFilter ||
-                  p.currentPage != c.currentPage ||
-                  p.totalPages != c.totalPages,
           builder: (context, state) {
             final cubit = context.read<OrdersCubit>();
 
@@ -561,7 +524,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                     ),
 
-                  // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
                   SliverToBoxAdapter(
                     child: AdminPageHeader(
                       title:
@@ -601,11 +563,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
 
-                  // --- 1. BENTO KPI BAR ---
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: _OrdersBentoKpiBar(
+                      child: OrdersBentoKpiBar(
                         pageOrdersCount: state.orders.length,
                         totalRecords: state.totalRecords,
                         pageTotalAmount: state.totalAmountCurrentPage,
@@ -616,7 +577,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
 
-                  // --- 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ---
                   SliverToBoxAdapter(
                     child: AdminProToolbar(
                       isDesktop: width >= 1024,
@@ -717,7 +677,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ],
                         ),
                       ],
-                      // Fecha: vive en el sheet móvil y como filtro en desktop
                       mobileExtraFilters: [
                         DateFilterCalendar(
                           height: 40,
@@ -760,21 +719,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ),
                   ),
 
-                  // --- 3. LISTADO O TABLA PRO ---
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    sliver: _buildListOrTableSliver(
-                      state,
-                      cubit,
-                      isWide,
-                      isLoyaltyEnabled,
-                      currentSelectedOrder,
-                      displayOrders,
+                    sliver: OrdersSliverList(
+                      state: state,
+                      cubit: cubit,
+                      isWide: isWide,
+                      isTableView: _isTableView,
+                      isLoyaltyEnabled: isLoyaltyEnabled,
+                      selectedOrder: currentSelectedOrder,
+                      displayOrders: displayOrders,
+                      onSelectOrder: (o) => _showOrderDetails(o, isWide),
+                      onPrintTicket: _printOrderTicket,
+                      onUpdateStatus: _updateOrderStatus,
                     ),
                   ),
 
-                  // --- 4. PAGINACIÓN FLUIDA AL PIE DEL SCROLL ---
-                  _buildPaginationSliver(context, state, cubit),
+                  OrdersPaginationBar(
+                    state: state,
+                    cubit: cubit,
+                    scrollController: _scrollController,
+                  ),
                 ],
               ),
             );
@@ -798,260 +763,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 title: widget.customTitle ?? 'Gestión de Pedidos',
                 body: ordersBody,
               ),
-    );
-  }
-
-  // --- RENDERIZADO CONDICIONAL: TABLA PRO vs CARDS CLÁSICAS ---
-  Widget _buildListOrTableSliver(
-    OrdersState state,
-    OrdersCubit cubit,
-    bool isWide,
-    bool isLoyaltyEnabled,
-    OrderEntity? selectedOrder,
-    List<OrderEntity> displayOrders,
-  ) {
-    final pageItems = displayOrders;
-    final hasCachedData = pageItems.isNotEmpty;
-
-    // Zero-Shimmer Policy: Mostrar Shimmer SOLAMENTE en Cold Start si no hay datos en memoria/caché
-    if (state.isLoading && !hasCachedData) {
-      if (_isTableView && isWide) {
-        return const SliverToBoxAdapter(child: AppTableShimmer());
-      }
-      return SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: AppShimmer(height: 120),
-          ),
-          childCount: 5,
-        ),
-      );
-    }
-
-    if (state.errorMessage.isNotEmpty && pageItems.isEmpty) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: AppEmptyState(
-          icon: Icons.error_outline_rounded,
-          color: AppColors.error,
-          title: 'Ocurrió un error',
-          message: state.errorMessage,
-          action: FilledButton.icon(
-            onPressed: () => cubit.loadOrders(reset: true),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Reintentar'),
-          ),
-        ),
-      );
-    }
-
-    if (pageItems.isEmpty) {
-      return const SliverFillRemaining(
-        hasScrollBody: false,
-        child: AppEmptyState(
-          icon: Icons.receipt_long_rounded,
-          title: 'No se encontraron pedidos.',
-          message: 'Intenta cambiar los filtros o la búsqueda.',
-        ),
-      );
-    }
-
-    // SI ESTÁ EN MODO TABLA EN DESKTOP
-    if (isWide && _isTableView) {
-      return SliverToBoxAdapter(
-        child: OrdersTableView(
-          orders: pageItems,
-          selectedOrder: selectedOrder,
-          onSelectOrder: (order) => _showOrderDetails(order, isWide),
-          onPrintTicket: _printOrderTicket,
-          onUpdateStatus: _updateOrderStatus,
-          isProcessing: state.isBackgroundLoading,
-        ),
-      );
-    }
-
-    // MODO TARJETAS (RESPONSIVE GRID EN DESKTOP, LIST EN MÓVIL)
-    if (isWide) {
-      return SliverGrid(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 440,
-          mainAxisExtent: 220,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final order = pageItems[index];
-          final isSelected = selectedOrder?.id == order.id;
-
-          return AdminOrderCard(
-            order: order,
-            isProcessing:
-                cubit.state.isOrderProcessing(order.id) ||
-                state.isBackgroundLoading,
-            isGeneratingPDF: state.isGeneratingPDF(order.id),
-            isSelected: isSelected,
-            isLoyaltyEnabled: isLoyaltyEnabled,
-            onTap: () => _showOrderDetails(order, isWide),
-            onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
-            onPrint: () => _printOrderTicket(order),
-          );
-        }, childCount: pageItems.length),
-      );
-    }
-
-    final itemCount = pageItems.length;
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        if (index < pageItems.length) {
-          final order = pageItems[index];
-          final isSelected = isWide && selectedOrder?.id == order.id;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: AdminOrderCard(
-              order: order,
-              isProcessing:
-                  cubit.state.isOrderProcessing(order.id) ||
-                  state.isBackgroundLoading,
-              isGeneratingPDF: state.isGeneratingPDF(order.id),
-              isSelected: isSelected,
-              isLoyaltyEnabled: isLoyaltyEnabled,
-              onTap: () => _showOrderDetails(order, isWide),
-              onUpdateStatus: (o, s) => _updateOrderStatus(o, s),
-              onPrint: () => _printOrderTicket(order),
-            ),
-          );
-        }
-
-        return const SizedBox.shrink();
-      }, childCount: itemCount),
-    );
-  }
-
-  Widget _buildPaginationSliver(
-    BuildContext context,
-    OrdersState state,
-    OrdersCubit cubit,
-  ) {
-    if (state.isLoading ||
-        state.errorMessage.isNotEmpty ||
-        state.orders.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox(height: 24));
-    }
-
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        child: Builder(
-          builder: (ctx) {
-            final isDark = Theme.of(ctx).brightness == Brightness.dark;
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color:
-                    isDark
-                        ? AppColors.darkSurface
-                        : Theme.of(ctx).colorScheme.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
-                ),
-                boxShadow:
-                    isDark
-                        ? AppColors.darkCardShadow(opacity: 0.1)
-                        : AppColors.cardShadow(opacity: 0.03),
-              ),
-              child: AdminPageBlocks(
-                currentPage: state.currentPage,
-                totalPages: state.totalPages,
-                onPageChanged: (page) {
-                  cubit.goToPage(page);
-                  if (_scrollController.hasClients) {
-                    _scrollController.animateTo(
-                      0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                    );
-                  }
-                },
-                totalItems: state.totalRecords,
-                itemsPerPage: state.pageSize,
-                onItemsPerPageChanged: (size) => cubit.setPageSize(size),
-                itemName: 'pedidos',
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _OrdersBentoKpiBar extends StatelessWidget {
-  final int pageOrdersCount;
-  final int totalRecords;
-  final double pageTotalAmount;
-  final int pendingCount;
-  final double pendingDebt;
-  final bool isWide;
-
-  const _OrdersBentoKpiBar({
-    required this.pageOrdersCount,
-    required this.totalRecords,
-    required this.pageTotalAmount,
-    required this.pendingCount,
-    required this.pendingDebt,
-    required this.isWide,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminKpiMetricsBar(
-      isDesktop: isWide,
-      padding: EdgeInsets.zero,
-      items: [
-        AdminKpiItem(
-          title: 'Total Pedidos',
-          value: '$totalRecords',
-          subtitle: 'Registrados',
-          icon: Icons.receipt_long_rounded,
-          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
-          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor: const Color(0xFF99F6E4),
-          accentColor: const Color(0xFF0D9488),
-          glowColor: const Color(0x2E0D9488),
-        ),
-        AdminKpiItem(
-          title: 'Total Facturado',
-          value: 'S/ ${pageTotalAmount.toStringAsFixed(2)}',
-          subtitle: 'Facturado',
-          icon: Icons.payments_rounded,
-          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
-          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          borderColor: const Color(0xFFA7F3D0),
-          accentColor: const Color(0xFF059669),
-          glowColor: const Color(0x2E10B981),
-        ),
-        AdminKpiItem(
-          title: pendingDebt > 0 ? 'Por Cobrar' : 'Pendientes',
-          value:
-              pendingDebt > 0
-                  ? 'S/ ${pendingDebt.toStringAsFixed(2)}'
-                  : '$pendingCount',
-          subtitle: pendingDebt > 0 ? 'Créditos' : 'Borradores',
-          icon:
-              pendingDebt > 0
-                  ? Icons.credit_card_rounded
-                  : Icons.pending_actions_rounded,
-          gradientColors: const [Colors.white, Color(0xFFFFFBEB)],
-          iconGradient: const [Color(0xFFF59E0B), Color(0xFFD97706)],
-          borderColor: const Color(0xFFFDE68A),
-          accentColor: const Color(0xFFD97706),
-          glowColor: const Color(0x2EF59E0B),
-        ),
-      ],
     );
   }
 }

@@ -42,14 +42,24 @@ class WarehouseSpatialIndex {
         ..sort((a, b) => (b.x + b.y).compareTo(a.x + a.y));
 
       for (final zone in sorted) {
-        final b3 = WarehouseIsoMath.toIso(zone.x, zone.y + zone.length, 0, scale);
+        final b3 = WarehouseIsoMath.toIso(
+          zone.x,
+          zone.y + zone.length,
+          0,
+          scale,
+        );
         final b2 = WarehouseIsoMath.toIso(
           zone.x + zone.width,
           zone.y + zone.length,
           0,
           scale,
         );
-        final b1 = WarehouseIsoMath.toIso(zone.x + zone.width, zone.y, 0, scale);
+        final b1 = WarehouseIsoMath.toIso(
+          zone.x + zone.width,
+          zone.y,
+          0,
+          scale,
+        );
         final t0 = WarehouseIsoMath.toIso(zone.x, zone.y, zone.height, scale);
         final t1 = WarehouseIsoMath.toIso(
           zone.x + zone.width,

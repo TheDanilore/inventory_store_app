@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/warehouse_layout_config.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouse_layout/procedural/warehouse_spatial_index.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/warehouse_layout/warehouse_procedural_painter.dart';
 
 /// Visor Interactivo y Editor Drag & Drop del Gemelo Digital con soporte completo Desktop (Mouse) y Móvil (Touch).
@@ -127,13 +128,13 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
       event.localPosition,
     );
 
-    final painter = WarehouseProceduralPainter(
+    final hit = WarehouseSpatialIndex.findZoneAt(
+      localPosition: localPos,
+      size: canvasSize,
       layout: widget.layout,
       viewMode: _viewMode,
       meterScale: _meterScale,
     );
-
-    final hit = painter.findZoneAt(localPos, canvasSize);
     _pointerDownPosition = event.localPosition;
     _hasDragged = false;
 
@@ -527,12 +528,13 @@ class _WarehouseLayoutViewerState extends State<WarehouseLayoutViewer> {
                   Matrix4.inverted(_transformController.value),
                   event.localPosition,
                 );
-                final painter = WarehouseProceduralPainter(
+                final hit = WarehouseSpatialIndex.findZoneAt(
+                  localPosition: localPos,
+                  size: canvasSize,
                   layout: widget.layout,
                   viewMode: _viewMode,
                   meterScale: _meterScale,
                 );
-                final hit = painter.findZoneAt(localPos, canvasSize);
                 if (hit?.id != _hoveredZone?.id) {
                   setState(() => _hoveredZone = hit);
                 }

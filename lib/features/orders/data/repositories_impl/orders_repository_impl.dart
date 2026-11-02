@@ -1,120 +1,30 @@
-import 'dart:async' show StreamController, Timer;
 import 'dart:io' show SocketException;
 
 import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_model.dart';
-import 'package:inventory_store_app/features/orders/data/models/order_item_model.dart';
+import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
+import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
+import 'package:inventory_store_app/features/orders/data/datasources/orders_cache_manager.dart';
+import 'package:inventory_store_app/features/orders/data/datasources/orders_remote_datasource.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/entities/order_item_entity.dart';
-import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/orders/domain/repositories/orders_repository.dart';
-import 'package:inventory_store_app/features/inventory/data/models/batch_assignment_model.dart';
-import 'package:injectable/injectable.dart';
-
-class _OrdersCacheEntry {
-  final List<OrderEntity> orders;
-  final int total;
-  final DateTime timestamp;
-
-  _OrdersCacheEntry({
-    required this.orders,
-    required this.total,
-    required this.timestamp,
-  });
-
-  bool get isExpired =>
-      DateTime.now().difference(timestamp) > const Duration(minutes: 3);
-}
-
-class _FinancialAccountsCacheEntry {
-  final List<Map<String, dynamic>> accounts;
-  final DateTime timestamp;
-
-  _FinancialAccountsCacheEntry({
-    required this.accounts,
-    required this.timestamp,
-  });
-
-  bool get isExpired =>
-      DateTime.now().difference(timestamp) > const Duration(minutes: 15);
-}
-
-class _OrderDetailCacheEntry {
-  final OrderEntity order;
-  final DateTime timestamp;
-
-  _OrderDetailCacheEntry({required this.order, required this.timestamp});
-
-  bool get isExpired =>
-      DateTime.now().difference(timestamp) > const Duration(minutes: 5);
-}
-
-class _OrderItemsCacheEntry {
-  final List<OrderItemEntity> items;
-  final DateTime timestamp;
-
-  _OrderItemsCacheEntry({required this.items, required this.timestamp});
-
-  bool get isExpired =>
-      DateTime.now().difference(timestamp) > const Duration(minutes: 5);
-}
 
 @LazySingleton(as: OrdersRepository)
 class OrdersRepositoryImpl implements OrdersRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final OrdersRemoteDataSource _remoteDataSource;
+  final OrdersCacheManager _cacheManager;
 
-  // ─── CACHÉ L1 EN MEMORIA (STALE-WHILE-REVALIDATE) ──────────────────────────
-  static const int _maxOrdersCacheEntries = 30;
-  final Map<String, _OrdersCacheEntry> _ordersCache = {};
-  final Map<String, _OrderDetailCacheEntry> _orderByIdCache = {};
-  final Map<String, _OrderItemsCacheEntry> _orderItemsCache = {};
-  _FinancialAccountsCacheEntry? _accountsCache;
-
-  static String _buildFilteredOrdersCacheKey({
-    String? customerIdFilter,
-    required String statusFilter,
-    required String paymentStatusFilter,
-    String? warehouseFilter,
-    DateTime? startDate,
-    DateTime? endDate,
-    required String searchQuery,
-    required int limit,
-    required int offset,
-  }) {
-    return '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${warehouseFilter ?? ""}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
-  }
-
-  void _updateOrderInCache(OrderEntity updatedOrder) {
-    _orderByIdCache[updatedOrder.id] = _OrderDetailCacheEntry(
-      order: updatedOrder,
-      timestamp: DateTime.now(),
-    );
-    for (final entry in _ordersCache.values) {
-      final index = entry.orders.indexWhere((o) => o.id == updatedOrder.id);
-      if (index != -1) {
-        entry.orders[index] = updatedOrder;
-      }
-    }
-  }
-
-  void _updateOrderStatusInCache(String orderId, String newStatus) {
-    final cached = _orderByIdCache[orderId];
-    if (cached != null) {
-      _orderByIdCache[orderId] = _OrderDetailCacheEntry(
-        order: cached.order.copyWith(status: newStatus),
-        timestamp: DateTime.now(),
-      );
-    }
-    for (final entry in _ordersCache.values) {
-      final index = entry.orders.indexWhere((o) => o.id == orderId);
-      if (index != -1) {
-        entry.orders[index] = entry.orders[index].copyWith(status: newStatus);
-      }
-    }
-  }
+  OrdersRepositoryImpl({
+    OrdersRemoteDataSource? remoteDataSource,
+    OrdersCacheManager? cacheManager,
+  }) : _remoteDataSource = remoteDataSource ?? sl<OrdersRemoteDataSource>(),
+       _cacheManager = cacheManager ?? sl<OrdersCacheManager>();
 
   @override
   ({List<OrderEntity> orders, int total})? getCachedFilteredOrders({
@@ -128,7 +38,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required int limit,
     required int offset,
   }) {
-    final key = _buildFilteredOrdersCacheKey(
+    return _cacheManager.getCachedFilteredOrders(
       customerIdFilter: customerIdFilter,
       statusFilter: statusFilter,
       paymentStatusFilter: paymentStatusFilter,
@@ -139,30 +49,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
       limit: limit,
       offset: offset,
     );
-    final cached = _ordersCache[key];
-    if (cached != null && !cached.isExpired) {
-      return (orders: cached.orders, total: cached.total);
-    }
-    return null;
   }
 
   @override
-  OrderEntity? getCachedOrder(String orderId) {
-    final entry = _orderByIdCache[orderId];
-    if (entry != null && !entry.isExpired) {
-      return entry.order;
-    }
-    return null;
-  }
+  OrderEntity? getCachedOrder(String orderId) =>
+      _cacheManager.getCachedOrder(orderId);
 
   @override
-  List<OrderItemEntity>? getCachedOrderItems(String orderId) {
-    final entry = _orderItemsCache[orderId];
-    if (entry != null && !entry.isExpired) {
-      return entry.items;
-    }
-    return null;
-  }
+  List<OrderItemEntity>? getCachedOrderItems(String orderId) =>
+      _cacheManager.getCachedOrderItems(orderId);
 
   @override
   Future<Either<Failure, List<OrderEntity>>> getCustomerOrders(
@@ -171,38 +66,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
     DateTime? lastCreatedAt,
   }) async {
     try {
-      var query = _supabase
-          .from('orders')
-          .select('''
-            id, customer_id, customer_name, total_amount,
-            discount_amount, payment_method, payment_status, amount_paid,
-            status, due_date, points_used, points_earned, created_at,
-            warehouse_id,
-            document_type, document_series, document_number, document_date,
-            tax_amount, subtotal_amount, customer_document_type,
-            customer_document_number, customer_address, payment_reference,
-            currency_code, exchange_rate, total_amount_base,
-            subtotal_amount_base, tax_amount_base,
-            warehouses!orders_store_id_fkey ( id, name )
-          ''')
-          .eq('customer_id', profileId);
-
-      if (lastCreatedAt != null) {
-        // Keyset pagination para infinito scroll estable
-        query = query.lt('created_at', lastCreatedAt.toUtc().toIso8601String());
-      }
-
-      final data = await query
-          .order('created_at', ascending: false)
-          .limit(limit);
-
-      final orders = data.map((json) => OrderModel.fromJson(json)).toList();
+      final orders = await _remoteDataSource.getCustomerOrders(
+        profileId,
+        limit: limit,
+        lastCreatedAt: lastCreatedAt,
+      );
       return Right(orders);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
-        'Error de Supabase en getCustomerOrders',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'PostgrestException en getCustomerOrders',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
       return Left(
@@ -212,22 +86,24 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
     } on SocketException catch (e, st) {
       LoggerService.e(
-        'Error de red en getCustomerOrders',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'SocketException en getCustomerOrders',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(message: 'Sin conexión a internet. Verifique su red.'),
       );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en getCustomerOrders',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(ServerFailure(message: 'No se pudieron cargar los pedidos.'));
+      return const Left(
+        ServerFailure(message: 'No se pudieron cargar los pedidos.'),
+      );
     }
   }
 
@@ -236,21 +112,14 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String customerId,
   ) async {
     try {
-      final data = await _supabase
-          .from('orders')
-          .select('id, total_amount, amount_paid, payment_status, created_at')
-          .eq('customer_id', customerId)
-          .eq('status', 'COMPLETED')
-          .inFilter('payment_status', ['PENDING', 'PARTIAL'])
-          .order('created_at', ascending: true);
-
-      // We only need basic fields for pending orders in the UI
-      final orders = data.map((json) => OrderModel.fromJson(json)).toList();
+      final orders = await _remoteDataSource.getPendingOrdersByCustomer(
+        customerId,
+      );
       return Right(orders);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en getPendingOrdersByCustomer: ${e.message}',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -262,7 +131,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en getPendingOrdersByCustomer',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -284,7 +153,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required int offset,
     bool forceRefresh = false,
   }) async {
-    final cacheKey = _buildFilteredOrdersCacheKey(
+    final cacheKey = OrdersCacheManager.buildFilteredOrdersKey(
       customerIdFilter: customerIdFilter,
       statusFilter: statusFilter,
       paymentStatusFilter: paymentStatusFilter,
@@ -297,129 +166,37 @@ class OrdersRepositoryImpl implements OrdersRepository {
     );
 
     if (!forceRefresh) {
-      final cached = _ordersCache[cacheKey];
-      if (cached != null && !cached.isExpired) {
-        return Right((orders: cached.orders, total: cached.total));
+      final cached = _cacheManager.getCachedFilteredOrders(
+        customerIdFilter: customerIdFilter,
+        statusFilter: statusFilter,
+        paymentStatusFilter: paymentStatusFilter,
+        warehouseFilter: warehouseFilter,
+        startDate: startDate,
+        endDate: endDate,
+        searchQuery: searchQuery,
+        limit: limit,
+        offset: offset,
+      );
+      if (cached != null) {
+        return Right(cached);
       }
     }
 
     try {
-      var query = _supabase.from('orders').select('''
-        id,
-        customer_id,
-        customer_name,
-        total_amount,
-        total_profit,
-        discount_amount,
-        payment_method,
-        payment_status,
-        amount_paid,
-        status,
-        due_date,
-        points_used,
-        points_earned,
-        created_at,
-        warehouse_id,
-        created_by,
-        document_type,
-        document_series,
-        document_number,
-        document_date,
-        tax_amount,
-        subtotal_amount,
-        customer_document_type,
-        customer_document_number,
-        customer_address,
-        payment_reference,
-        currency_code,
-        exchange_rate,
-        total_amount_base,
-        subtotal_amount_base,
-        tax_amount_base,
-        profiles!orders_customer_id_fkey ( id, full_name, phone ),
-        warehouses!orders_store_id_fkey ( id, name )
-      ''');
-
-      if (statusFilter != 'ALL') query = query.eq('status', statusFilter);
-      if (paymentStatusFilter != 'ALL') {
-        if (paymentStatusFilter == 'CREDIT') {
-          query = query.or(
-            'payment_method.ilike.%crédito%,payment_method.ilike.%credito%',
-          );
-        } else {
-          query = query.eq('payment_status', paymentStatusFilter);
-        }
-      }
-
-      if (warehouseFilter != null &&
-          warehouseFilter != 'ALL' &&
-          warehouseFilter != 'Todos' &&
-          warehouseFilter != 'TODOS') {
-        query = query.eq('warehouses.name', warehouseFilter);
-      }
-
-      if (customerIdFilter != null) {
-        query = query.eq('customer_id', customerIdFilter);
-      }
-
-      if (startDate != null && endDate != null) {
-        final start = startDate.toIso8601String();
-        final end =
-            endDate
-                .add(const Duration(hours: 23, minutes: 59, seconds: 59))
-                .toIso8601String();
-        query = query.gte('created_at', start).lte('created_at', end);
-      }
-
-      // [OPTIMIZACIÓN N+1 → INNER JOIN] Una sola consulta con filtro por relación foránea.
-      // Antes se hacía un SELECT de profiles + IN(ids) separado, que podía retornar
-      // miles de IDs y romper el límite HTTP de la URL.
-      final clean = searchQuery.replaceAll('#', '').trim();
-      if (clean.isNotEmpty) {
-        final txt = '%$clean%';
-        final isFullUuid = RegExp(
-          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-        ).hasMatch(clean);
-        final isShortHex = RegExp(r'^[0-9a-fA-F]{4,8}$').hasMatch(clean);
-
-        if (isFullUuid) {
-          query = query.or('id.eq.$clean,customer_name.ilike.$txt');
-        } else if (isShortHex) {
-          final prefix = clean.toLowerCase();
-          final padZeros = '0' * (8 - prefix.length);
-          final padFs = 'f' * (8 - prefix.length);
-          final minUuid = '$prefix$padZeros-0000-0000-0000-000000000000';
-          final maxUuid = '$prefix$padFs-ffff-ffff-ffff-ffffffffffff';
-          query = query.or(
-            'and(id.gte.$minUuid,id.lte.$maxUuid),customer_name.ilike.$txt',
-          );
-        } else {
-          query = query.or('customer_name.ilike.$txt');
-        }
-      }
-
-      final startRow = offset;
-      final endRow = startRow + limit - 1;
-
-      final response = await query
-          .order('created_at', ascending: false)
-          .range(startRow, endRow)
-          .count(CountOption.exact);
-
-      final rawData = response.data as List<dynamic>;
-      final totalRecords = response.count;
-      final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
-
-      if (_ordersCache.length >= _maxOrdersCacheEntries) {
-        _ordersCache.remove(_ordersCache.keys.first);
-      }
-      _ordersCache[cacheKey] = _OrdersCacheEntry(
-        orders: orders,
-        total: totalRecords,
-        timestamp: DateTime.now(),
+      final res = await _remoteDataSource.getFilteredOrders(
+        customerIdFilter: customerIdFilter,
+        statusFilter: statusFilter,
+        paymentStatusFilter: paymentStatusFilter,
+        warehouseFilter: warehouseFilter,
+        startDate: startDate,
+        endDate: endDate,
+        searchQuery: searchQuery,
+        limit: limit,
+        offset: offset,
       );
 
-      return Right((orders: orders, total: totalRecords));
+      _cacheManager.cacheFilteredOrders(cacheKey, res.orders, res.total);
+      return Right((orders: res.orders, total: res.total));
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en getFilteredOrders',
@@ -452,65 +229,21 @@ class OrdersRepositoryImpl implements OrdersRepository {
 
   @override
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId) async {
-    final cached = getCachedOrder(orderId);
+    final cached = _cacheManager.getCachedOrder(orderId);
     if (cached != null) {
       return Right(cached);
     }
 
     try {
-      final data =
-          await _supabase
-              .from('orders')
-              .select('''
-        id,
-        customer_id,
-        customer_name,
-        total_amount,
-        total_profit,
-        discount_amount,
-        payment_method,
-        payment_status,
-        amount_paid,
-        status,
-        due_date,
-        points_used,
-        points_earned,
-        created_at,
-        warehouse_id,
-        created_by,
-        document_type,
-        document_series,
-        document_number,
-        document_date,
-        tax_amount,
-        subtotal_amount,
-        customer_document_type,
-        customer_document_number,
-        customer_address,
-        payment_reference,
-        currency_code,
-        exchange_rate,
-        total_amount_base,
-        subtotal_amount_base,
-        tax_amount_base,
-        profiles!orders_customer_id_fkey ( id, full_name, phone ),
-        warehouses!orders_store_id_fkey ( id, name )
-      ''')
-              .eq('id', orderId)
-              .maybeSingle();
-
-      if (data == null) {
+      final order = await _remoteDataSource.getOrderById(orderId);
+      if (order == null) {
         LoggerService.e(
           'getOrderById: Pedido no encontrado para id: $orderId',
           tag: 'OrdersRepo',
         );
         return const Left(ServerFailure(message: 'Pedido no encontrado.'));
       }
-      final order = OrderModel.fromJson(data);
-      _orderByIdCache[orderId] = _OrderDetailCacheEntry(
-        order: order,
-        timestamp: DateTime.now(),
-      );
+      _cacheManager.cacheOrder(order);
       return Right(order);
     } catch (e, st) {
       LoggerService.e(
@@ -519,7 +252,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
         stackTrace: st,
         tag: 'OrdersRepo',
       );
-      return Left(ServerFailure(message: 'No se pudo cargar el pedido.'));
+      return const Left(ServerFailure(message: 'No se pudo cargar el pedido.'));
     }
   }
 
@@ -527,32 +260,20 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(
     String orderId,
   ) async {
-    final cached = getCachedOrderItems(orderId);
+    final cached = _cacheManager.getCachedOrderItems(orderId);
     if (cached != null) {
       return Right(cached);
     }
 
     try {
-      final data = await _supabase
-          .from('order_items')
-          .select('''
-        id, order_id, product_id, variant_id, quantity, unit_cost, applied_price, net_profit, created_at,
-        products ( id, name, product_images (image_url, is_main) ),
-        product_variants ( id, sku, product_images (image_url, is_main), variant_attribute_values(attribute_values(value, attributes(name))) )
-      ''')
-          .eq('order_id', orderId);
-
-      final items = data.map((json) => OrderItemModel.fromJson(json)).toList();
-      _orderItemsCache[orderId] = _OrderItemsCacheEntry(
-        items: items,
-        timestamp: DateTime.now(),
-      );
+      final items = await _remoteDataSource.getOrderItems(orderId);
+      _cacheManager.cacheOrderItems(orderId, items);
       return Right(items);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
-        'Error de Supabase en getOrderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'PostgrestException en getOrderItems',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
       return Left(
@@ -562,12 +283,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
     } on SocketException catch (e, st) {
       LoggerService.e(
-        'Error de red en getOrderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'SocketException en getOrderItems',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(
           message: 'Sin conexión a internet al consultar el detalle.',
         ),
@@ -575,11 +296,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en getOrderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(message: 'No se pudo obtener el detalle de la orden.'),
       );
     }
@@ -598,144 +319,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
   >
   validateReorderItems(List<OrderItemEntity> items) async {
     try {
-      final productIds =
-          items.map((e) => e.productId).whereType<String>().toSet().toList();
-      if (productIds.isEmpty) {
-        return Right((
-          validItems: const [],
-          outOfStock: const [],
-          priceChanged: const [],
-        ));
-      }
-
-      final productsData = await _supabase
-          .from('products')
-          .select(
-            'id, name, is_active, uses_batches, product_variants(id, sale_price, unit_cost, is_active), warehouse_stock_batches(product_id, variant_id, available_quantity)',
-          )
-          .inFilter('id', productIds);
-
-      final productsMap = {for (final p in productsData) p['id'] as String: p};
-
-      final validItems = <CartItemEntity>[];
-      final outOfStock = <String>[];
-      final priceChanged = <String>[];
-
-      for (final item in items) {
-        if (item.productId == null ||
-            !productsMap.containsKey(item.productId)) {
-          outOfStock.add(item.productName ?? 'Producto no disponible');
-          continue;
-        }
-
-        final pData = productsMap[item.productId!];
-        if (pData == null || pData['is_active'] == false) {
-          outOfStock.add(item.productName ?? 'Producto descontinuado');
-          continue;
-        }
-
-        final usesBatches = pData['uses_batches'] == true;
-        double currentPrice = item.appliedPrice;
-        double currentCost = item.unitCost;
-        bool isVariantActive = true;
-
-        final variants = pData['product_variants'] as List<dynamic>? ?? [];
-        if (item.variantId != null && variants.isNotEmpty) {
-          final variant = variants.cast<Map<String, dynamic>>().firstWhere(
-            (v) => v['id'] == item.variantId,
-            orElse: () => <String, dynamic>{},
-          );
-          if (variant.isNotEmpty) {
-            if (variant['is_active'] == false) {
-              isVariantActive = false;
-            } else {
-              currentPrice =
-                  (variant['sale_price'] as num?)?.toDouble() ?? currentPrice;
-              currentCost =
-                  (variant['unit_cost'] as num?)?.toDouble() ?? currentCost;
-            }
-          } else {
-            isVariantActive = false;
-          }
-        }
-
-        if (!isVariantActive) {
-          outOfStock.add(
-            item.variantDisplayName ??
-                item.productName ??
-                'Variante no disponible',
-          );
-          continue;
-        }
-
-        final batches =
-            pData['warehouse_stock_batches'] as List<dynamic>? ?? [];
-        int totalAvailableStock = 0;
-        for (final b in batches) {
-          final bMap = b as Map<String, dynamic>;
-          if (item.variantId != null) {
-            if (bMap['variant_id'] == item.variantId) {
-              totalAvailableStock +=
-                  (bMap['available_quantity'] as num?)?.toInt() ?? 0;
-            }
-          } else {
-            if (bMap['variant_id'] == null || bMap['variant_id'] == '') {
-              totalAvailableStock +=
-                  (bMap['available_quantity'] as num?)?.toInt() ?? 0;
-            }
-          }
-        }
-
-        if (totalAvailableStock <= 0) {
-          outOfStock.add(
-            item.variantDisplayName ?? item.productName ?? 'Agotado',
-          );
-          continue;
-        }
-
-        if ((currentPrice - item.appliedPrice).abs() > 0.01) {
-          priceChanged.add(
-            item.variantDisplayName ??
-                item.productName ??
-                'Artículo actualizado',
-          );
-        }
-
-        final qtyToTake =
-            item.quantity > totalAvailableStock
-                ? totalAvailableStock
-                : item.quantity;
-
-        validItems.add(
-          CartItemEntity(
-            productId: item.productId!,
-            productName:
-                pData['name'] as String? ?? item.productName ?? 'Producto',
-            cartKey: item.variantId ?? item.productId ?? item.id,
-            quantity: qtyToTake,
-            unitPrice: currentPrice,
-            unitCost: currentCost,
-            availableStock: totalAvailableStock,
-            usesBatches: usesBatches,
-            variantId: item.variantId,
-            variantLabel: item.variantDisplayName,
-            imageUrl: item.displayImageUrl,
-            sku: item.sku,
-            isSelected: true,
-          ),
-        );
-      }
-
-      return Right((
-        validItems: validItems,
-        outOfStock: outOfStock,
-        priceChanged: priceChanged,
-      ));
+      final result = await _remoteDataSource.validateReorderItems(items);
+      return Right(result);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
-        'Error de Supabase en validateReorderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'PostgrestException en validateReorderItems',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
       return Left(
@@ -743,52 +333,26 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
     } on SocketException catch (e, st) {
       LoggerService.e(
-        'Error de red en validateReorderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        'SocketException en validateReorderItems',
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(message: 'Sin conexión para validar disponibilidad.'),
       );
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en validateReorderItems',
-        tag: 'ORDERS_REPO',
-        error: e.toString(),
+        tag: 'OrdersRepo',
+        error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(
           message: 'No se pudo verificar el inventario para reordenar.',
         ),
       );
-    }
-  }
-
-  // ─── RESOLUCIÓN DEFENSIVA DE PERFIL ─────────────────────────────────────────
-  Future<String?> _resolveCurrentProfileId(String? passedProfileId) async {
-    if (passedProfileId != null && passedProfileId.trim().isNotEmpty) {
-      return passedProfileId.trim();
-    }
-    final authUserId = _supabase.auth.currentUser?.id;
-    if (authUserId == null) return null;
-
-    try {
-      final res =
-          await _supabase
-              .from('profiles')
-              .select('id')
-              .eq('auth_user_id', authUserId)
-              .maybeSingle();
-
-      return res?['id'] as String?;
-    } catch (e) {
-      LoggerService.w(
-        'No se pudo resolver profile_id desde auth_user_id: $e',
-        tag: 'ORDERS_REPO',
-      );
-      return null;
     }
   }
 
@@ -799,15 +363,11 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? currentProfileId,
   }) async {
     try {
-      final effectiveProfileId = await _resolveCurrentProfileId(
-        currentProfileId,
-      );
+      final effectiveProfileId = await _remoteDataSource
+          .resolveCurrentProfileId(currentProfileId);
 
       if (newStatus == 'COMPLETED' &&
           (order.status == 'PENDING' || order.status == 'DRAFT')) {
-        // [OPTIMIZACIÓN DATA EGRESS] No se descarga la lista de items al cliente solo
-        // para reenviarlos. El RPC rpc_complete_order los lee directamente de la BD
-        // cuando items es null/vacío, evitando un round-trip innecesario Flutter→DB→Flutter→DB.
         return await saveOrderChanges(
           orderId: order.id,
           originalStatus: order.status,
@@ -815,7 +375,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
           paymentMethod: order.paymentMethod,
           selectedCustomerId: order.customerId,
           customerNameToSave: order.customerName,
-          items: const [], // El RPC los obtiene internamente desde la BD
+          items: const [],
           pointsUsed: order.pointsUsed,
           pointsEarned: order.pointsEarned,
           totalAmount: order.totalAmount,
@@ -830,27 +390,23 @@ class OrdersRepositoryImpl implements OrdersRepository {
           currentProfileId: effectiveProfileId,
         );
       } else {
-        // Actualización simple de estado en BD
-        await _supabase
-            .from('orders')
-            .update({
-              'status': newStatus,
-              if (effectiveProfileId != null) 'updated_by': effectiveProfileId,
-              'updated_at': DateTime.now().toUtc().toIso8601String(),
-            })
-            .eq('id', order.id);
-        _updateOrderStatusInCache(order.id, newStatus);
-        _orderItemsCache.remove(order.id);
+        await _remoteDataSource.updateOrderStatusDirect(
+          orderId: order.id,
+          newStatus: newStatus,
+          effectiveProfileId: effectiveProfileId,
+        );
+        _cacheManager.updateOrderStatusInCache(order.id, newStatus);
+        _cacheManager.evictOrderItems(order.id);
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en updateOrderStatus',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(
           message: 'Error de base de datos al actualizar el estado.',
         ),
@@ -858,24 +414,16 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en updateOrderStatus',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
-      return Left(
+      return const Left(
         ServerFailure(message: 'Error inesperado al actualizar el estado.'),
       );
     }
   }
 
-  // ─── GUARDAR CAMBIOS ────────────────────────────────────────────────────────
-
-  /// Guarda todos los cambios de un pedido en edición.
-  ///
-  /// Maneja los 3 escenarios posibles:
-  ///   - PENDING → COMPLETED (activar borrador, descontar stock, registrar pago)
-  ///   - COMPLETED → CANCELLED (revertir stock, pago, puntos de fidelidad)
-  ///   - Actualización simple de datos (cliente, método de pago, etc.)
   @override
   Future<Either<Failure, void>> saveOrderChanges({
     required String orderId,
@@ -894,14 +442,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-      final effectiveProfileId = await _resolveCurrentProfileId(
-        currentProfileId,
-      );
+      final effectiveProfileId = await _remoteDataSource
+          .resolveCurrentProfileId(currentProfileId);
       final wasCompleted = originalStatus.toUpperCase() == 'COMPLETED';
       final isNowCompleted = newStatus.toUpperCase() == 'COMPLETED';
       final isNowCancelled = newStatus.toUpperCase() == 'CANCELLED';
 
-      // ─── BLOQUEO: método de pago vacío al completar ───────────────────────
       if (isNowCompleted &&
           (paymentMethod == 'POR ACORDAR' || paymentMethod.trim().isEmpty)) {
         return const Left(
@@ -909,7 +455,6 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
       }
 
-      // ─── PREPARAR PAYLOAD PARA RPC ───────────────────────────────────────
       final payload = {
         'order_id': orderId,
         'payment_method': paymentMethod,
@@ -942,15 +487,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
         ),
       };
 
-      // ─── ESCENARIO 1: PENDING → COMPLETED (RPC) ────────────────────────
       if (!wasCompleted && isNowCompleted) {
-        await _supabase.rpc('rpc_complete_order', params: {'payload': payload});
-        _updateOrderStatusInCache(orderId, 'COMPLETED');
-        _orderItemsCache.remove(orderId);
+        await _remoteDataSource.completeOrderRpc(payload);
+        _cacheManager.updateOrderStatusInCache(orderId, 'COMPLETED');
+        _cacheManager.evictOrderItems(orderId);
         return const Right(null);
-      }
-      // ─── ESCENARIO 2: COMPLETED → CANCELLED (RPC) ───────────────────────
-      else if (wasCompleted && isNowCancelled) {
+      } else if (wasCompleted && isNowCancelled) {
         return await cancelOrder(
           orderId: orderId,
           customerId: selectedCustomerId,
@@ -959,34 +501,28 @@ class OrdersRepositoryImpl implements OrdersRepository {
         );
       }
 
-      // ─── ESCENARIO 3: SIMPLE SAVE (Borrador) ────────────────────────────
-      // Lógica de puntos (crédito no genera en borrador)
       const String creditPaymentType = 'CRÉDITO';
       final isCredit = paymentMethod.toUpperCase() == creditPaymentType;
-      int finalPointsUsed = isCredit ? 0 : pointsUsed;
-      int finalPointsEarned = isCredit ? 0 : pointsEarned;
-      String paymentStatus = isCredit ? 'PENDING' : 'PAID';
-      double amountPaid = isCredit ? 0 : totalAmount;
+      final int finalPointsUsed = isCredit ? 0 : pointsUsed;
+      final int finalPointsEarned = isCredit ? 0 : pointsEarned;
+      final String paymentStatus = isCredit ? 'PENDING' : 'PAID';
+      final double amountPaid = isCredit ? 0 : totalAmount;
 
-      await _supabase
-          .from('orders')
-          .update({
-            'customer_id': selectedCustomerId,
-            'customer_name': customerNameToSave ?? '',
-            'status': newStatus,
-            'payment_method': paymentMethod,
-            'payment_status': paymentStatus,
-            'amount_paid': amountPaid,
-            'total_amount': totalAmount,
-            'total_profit': totalProfit,
-            'points_used': finalPointsUsed,
-            'points_earned': finalPointsEarned,
-            'updated_by': effectiveProfileId,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', orderId);
+      final orderUpdate = {
+        'customer_id': selectedCustomerId,
+        'customer_name': customerNameToSave ?? '',
+        'status': newStatus,
+        'payment_method': paymentMethod,
+        'payment_status': paymentStatus,
+        'amount_paid': amountPaid,
+        'total_amount': totalAmount,
+        'total_profit': totalProfit,
+        'points_used': finalPointsUsed,
+        'points_earned': finalPointsEarned,
+        'updated_by': effectiveProfileId,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
 
-      // [OPTIMIZACIÓN DATA EGRESS] Elimina N peticiones simultáneas, las agrupa en 1.
       final upsertPayload =
           items
               .map(
@@ -1004,17 +540,19 @@ class OrdersRepositoryImpl implements OrdersRepository {
               )
               .toList();
 
-      if (upsertPayload.isNotEmpty) {
-        await _supabase.from('order_items').upsert(upsertPayload);
-      }
+      await _remoteDataSource.saveOrderDraftDirect(
+        orderId: orderId,
+        orderUpdate: orderUpdate,
+        upsertItems: upsertPayload,
+      );
 
-      _updateOrderStatusInCache(orderId, newStatus);
-      _orderItemsCache.remove(orderId);
+      _cacheManager.updateOrderStatusInCache(orderId, newStatus);
+      _cacheManager.evictOrderItems(orderId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en saveOrderChanges',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1026,15 +564,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error en saveOrderChanges',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
       return Left(ServerFailure(message: 'Error al guardar: $e'));
     }
   }
-
-  // ─── DEVOLUCIÓN (widget Registrar Devolución) ──────────────────────────────
 
   @override
   Future<Either<Failure, void>> processReturn({
@@ -1046,7 +582,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     try {
       await cancelOrder(
         orderId: orderId,
-        customerId: null, // Resolves internally via RPC
+        customerId: null,
         currentProfileId: currentProfileId,
         notesOverride:
             notesOverride ?? 'Reembolso por devolución · Pedido #$orderId',
@@ -1055,7 +591,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error en processReturn',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1063,15 +599,6 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  // ─── CÓDIGO ZOMBIE ELIMINADO ──────────────────────────────────────────────
-  // Los métodos _zombiePlaceholder(), cancelOrder() antiguo, revertFinancialMovement() y
-  // revertLoyaltyPoints() han sido eliminados. Toda la lógica de stock, crédito, finanzas
-  // y wallet está ahora atomizada en los RPCs de la base de datos:
-  //   • rpc_complete_order  → completa el pedido de forma atómica
-  //   • rpc_cancel_order    → cancela y revierte todos los efectos
-  // ────────────────────────────────────────────────────────────────────────────
-
-  /// Cancela un pedido: revierte movimientos de wallet, inventario, finanzas y crédito.
   @override
   Future<Either<Failure, void>> cancelOrder({
     required String orderId,
@@ -1080,9 +607,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String? notesOverride,
   }) async {
     try {
-      final effectiveProfileId = await _resolveCurrentProfileId(
-        currentProfileId,
-      );
+      final effectiveProfileId = await _remoteDataSource
+          .resolveCurrentProfileId(currentProfileId);
       final payload = {
         'order_id': orderId,
         'selected_customer_id': customerId,
@@ -1090,14 +616,14 @@ class OrdersRepositoryImpl implements OrdersRepository {
         'notes_override': notesOverride,
       };
 
-      await _supabase.rpc('rpc_cancel_order', params: {'payload': payload});
-      _updateOrderStatusInCache(orderId, 'CANCELLED');
-      _orderItemsCache.remove(orderId);
+      await _remoteDataSource.cancelOrderRpc(payload);
+      _cacheManager.updateOrderStatusInCache(orderId, 'CANCELLED');
+      _cacheManager.evictOrderItems(orderId);
       return const Right(null);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
         'PostgrestException en cancelOrder',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1107,7 +633,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error inesperado en cancelOrder',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1115,32 +641,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  /// Recupera los ítems de un pedido para la generación de tickets PDF
-  /// trayendo estrictamente los datos necesarios (Directiva 3: Columnas específicas y !inner).
-  /// Se remueven imágenes u otros datos pesados.
   @override
   Future<Either<Failure, List<Map<String, dynamic>>>> fetchOrderItemsForPdf(
     String orderId,
   ) async {
     try {
-      final resp = await _supabase
-          .from('order_items')
-          .select('''
-            id, order_id, product_id, variant_id, quantity, unit_cost,
-            applied_price, net_profit, created_at,
-            products!inner ( name ),
-            product_variants (
-              sku,
-              variant_attribute_values(attribute_values(value, attributes(name)))
-            )
-          ''')
-          .eq('order_id', orderId);
-
-      return Right(List<Map<String, dynamic>>.from(resp));
+      final resp = await _remoteDataSource.fetchOrderItemsForPdf(orderId);
+      return Right(resp);
     } catch (e, st) {
       LoggerService.e(
         'Error en fetchOrderItemsForPdf',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1154,25 +665,20 @@ class OrdersRepositoryImpl implements OrdersRepository {
   Future<Either<Failure, List<Map<String, dynamic>>>> getFinancialAccounts({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _accountsCache != null && !_accountsCache!.isExpired) {
-      return Right(_accountsCache!.accounts);
+    final cached = _cacheManager.getCachedFinancialAccounts(
+      forceRefresh: forceRefresh,
+    );
+    if (cached != null) {
+      return Right(cached);
     }
     try {
-      final response = await _supabase
-          .from('financial_accounts')
-          .select('id, name, type, balance')
-          .eq('is_active', true)
-          .order('name');
-      final accounts = List<Map<String, dynamic>>.from(response);
-      _accountsCache = _FinancialAccountsCacheEntry(
-        accounts: accounts,
-        timestamp: DateTime.now(),
-      );
+      final accounts = await _remoteDataSource.getFinancialAccounts();
+      _cacheManager.cacheFinancialAccounts(accounts);
       return Right(accounts);
     } catch (e, st) {
       LoggerService.e(
         'Error en getFinancialAccounts',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1187,17 +693,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String profileId,
   ) async {
     try {
-      final response =
-          await _supabase
-              .from('profiles')
-              .select('id, full_name, phone, wallet_balance')
-              .eq('id', profileId)
-              .maybeSingle();
+      final response = await _remoteDataSource.getProfileById(profileId);
       return Right(response);
     } catch (e, st) {
       LoggerService.e(
         'Error en getProfileById',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1210,18 +711,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String query,
   ) async {
     try {
-      final response = await _supabase
-          .from('profiles')
-          .select('id, full_name, phone, document_number')
-          .or(
-            'full_name.ilike.%$query%,phone.ilike.%$query%,document_number.ilike.%$query%',
-          )
-          .limit(20);
-      return Right(List<Map<String, dynamic>>.from(response));
+      final response = await _remoteDataSource.searchCustomers(query);
+      return Right(response);
     } catch (e, st) {
       LoggerService.e(
         'Error en searchCustomers',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1232,41 +727,12 @@ class OrdersRepositoryImpl implements OrdersRepository {
   @override
   Future<Either<Failure, String?>> checkActiveCashShift() async {
     try {
-      final user = _supabase.auth.currentUser;
-      if (user != null) {
-        final userShift =
-            await _supabase
-                .from('cash_shifts')
-                .select('id')
-                .eq('status', 'OPEN')
-                .eq('opened_by', user.id)
-                .order('opened_at', ascending: false)
-                .limit(1)
-                .maybeSingle();
-
-        if (userShift != null && userShift['id'] != null) {
-          return Right(userShift['id'] as String);
-        }
-      }
-
-      final anyShift =
-          await _supabase
-              .from('cash_shifts')
-              .select('id')
-              .eq('status', 'OPEN')
-              .order('opened_at', ascending: false)
-              .limit(1)
-              .maybeSingle();
-
-      if (anyShift != null && anyShift['id'] != null) {
-        return Right(anyShift['id'] as String);
-      }
-
-      return const Right(null);
+      final shiftId = await _remoteDataSource.checkActiveCashShift();
+      return Right(shiftId);
     } catch (e, st) {
       LoggerService.e(
         'Error en checkActiveCashShift',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1287,29 +753,26 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required String? shiftId,
   }) async {
     try {
-      final rpcResp = await _supabase.rpc(
-        'register_credit_payment_rpc',
-        params: {
-          'p_customer_id': customerId,
-          'p_credit_id': creditId,
-          'p_amount': amount,
-          'p_account_id': accountId,
-          'p_order_id': orderId,
-          'p_notes': notes,
-          'p_shift_id': shiftId,
-        },
-      );
+      final rpcResp = await _remoteDataSource.registerCreditPaymentRpc({
+        'p_customer_id': customerId,
+        'p_credit_id': creditId,
+        'p_amount': amount,
+        'p_account_id': accountId,
+        'p_order_id': orderId,
+        'p_notes': notes,
+        'p_shift_id': shiftId,
+      });
 
       if (rpcResp != null && rpcResp['success'] == true) {
-        final cached = _orderByIdCache[orderId]?.order;
+        final cached = _cacheManager.getCachedOrder(orderId);
         if (cached != null) {
           final newPaid = cached.amountPaid + amount;
           final newStatus = newPaid >= cached.totalAmount ? 'PAID' : 'PARTIAL';
-          _updateOrderInCache(
+          _cacheManager.updateOrderInCache(
             cached.copyWith(amountPaid: newPaid, paymentStatus: newStatus),
           );
         } else {
-          _orderByIdCache.remove(orderId);
+          _cacheManager.evictOrder(orderId);
         }
         return const Right(null);
       } else {
@@ -1324,7 +787,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
     } catch (e, st) {
       LoggerService.e(
         'Error en registerCreditPayment',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1340,33 +803,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
     String warehouseId,
   ) async {
     try {
-      final resp = await _supabase
-          .from('warehouse_stock_batches')
-          .select('id, batch_number, expiry_date, available_quantity')
-          .eq('variant_id', variantId)
-          .eq('warehouse_id', warehouseId)
-          .gt('available_quantity', 0)
-          .order('expiry_date', ascending: true, nullsFirst: false);
-
-      final batches =
-          (resp as List).map((b) {
-            return BatchAssignmentModel(
-              batchId: b['id'] as String,
-              batchNumber: b['batch_number'] as String,
-              expiryDate:
-                  b['expiry_date'] != null
-                      ? DateTime.tryParse(b['expiry_date'] as String)
-                      : null,
-              available: (b['available_quantity'] as num).toInt(),
-              assigned: 0,
-            );
-          }).toList();
-
+      final batches = await _remoteDataSource.fetchBatchesForVariant(
+        variantId,
+        warehouseId,
+      );
       return Right(batches);
     } catch (e, st) {
       LoggerService.e(
         'Error fetching batches for variant $variantId in warehouse $warehouseId',
-        tag: 'ORDERS_REPO',
+        tag: 'OrdersRepo',
         error: e,
         stackTrace: st,
       );
@@ -1374,100 +819,15 @@ class OrdersRepositoryImpl implements OrdersRepository {
     }
   }
 
-  // Variables de multiplexación para canal Realtime compartido
-  StreamController<Either<Failure, int>>? _pendingOrdersCountController;
-  RealtimeChannel? _pendingOrdersCountChannel;
-  Timer? _pendingOrdersCountDebounce;
-  int _pendingOrdersCountListeners = 0;
-
   @override
   Stream<Either<Failure, int>> watchPendingOrdersCount() {
-    if (_pendingOrdersCountController != null &&
-        !_pendingOrdersCountController!.isClosed) {
-      return _pendingOrdersCountController!.stream;
-    }
-
-    final controller = StreamController<Either<Failure, int>>.broadcast();
-    _pendingOrdersCountController = controller;
-
-    Future<void> fetchCount() async {
-      try {
-        final response = await _supabase
-            .from('orders')
-            .select('id')
-            .eq('status', 'PENDING')
-            .count(CountOption.exact);
-
-        if (!controller.isClosed) {
-          controller.add(Right(response.count));
-        }
-      } catch (e, st) {
-        LoggerService.e(
-          'Error fetching count',
-          tag: 'ORDERS_REPO',
-          error: e,
-          stackTrace: st,
-        );
-        if (!controller.isClosed) {
-          controller.add(
-            Left(ServerFailure(message: 'Error fetching count: $e')),
+    return _remoteDataSource
+        .watchPendingOrdersCount()
+        .map<Either<Failure, int>>((count) => Right(count))
+        .handleError((error) {
+          return Left<Failure, int>(
+            ServerFailure(message: 'Error en stream de órdenes: $error'),
           );
-        }
-      }
-    }
-
-    // Suscripción al crearse el stream con soporte multiplexado
-    controller.onListen = () async {
-      _pendingOrdersCountListeners++;
-      if (_pendingOrdersCountChannel != null) {
-        await fetchCount();
-        return;
-      }
-      await fetchCount();
-      _pendingOrdersCountChannel = _supabase
-          .channel('public:orders:pending_count')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'orders',
-            callback: (payload) {
-              final newStatus = payload.newRecord['status'];
-              final oldStatus = payload.oldRecord['status'];
-              // Optimización de Egress y CPU: solo reconsultar si la mutación afecta a PENDING
-              final isRelevant =
-                  newStatus == 'PENDING' ||
-                  oldStatus == 'PENDING' ||
-                  payload.eventType == PostgresChangeEvent.insert ||
-                  payload.eventType == PostgresChangeEvent.delete;
-
-              if (isRelevant) {
-                _pendingOrdersCountDebounce?.cancel();
-                _pendingOrdersCountDebounce = Timer(
-                  const Duration(milliseconds: 2000),
-                  () {
-                    fetchCount();
-                  },
-                );
-              }
-            },
-          );
-      _pendingOrdersCountChannel!.subscribe();
-    };
-
-    // Limpieza al cerrarse el stream
-    controller.onCancel = () async {
-      _pendingOrdersCountListeners--;
-      if (_pendingOrdersCountListeners <= 0) {
-        _pendingOrdersCountListeners = 0;
-        _pendingOrdersCountDebounce?.cancel();
-        _pendingOrdersCountDebounce = null;
-        await _pendingOrdersCountChannel?.unsubscribe();
-        _pendingOrdersCountChannel = null;
-        await controller.close();
-        _pendingOrdersCountController = null;
-      }
-    };
-
-    return controller.stream;
+        });
   }
 }

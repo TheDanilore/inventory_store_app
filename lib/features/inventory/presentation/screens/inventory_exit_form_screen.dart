@@ -511,7 +511,8 @@ class _InventoryExitFormScreenState extends State<InventoryExitFormScreen> {
                                             padding: const EdgeInsets.all(24.0),
                                             child: ExitFormProductsSection(
                                               isDesktop: true,
-                                              onAddProduct: _showAddProductSheet,
+                                              onAddProduct:
+                                                  _showAddProductSheet,
                                               onScanBarcode: _scanAndAddProduct,
                                               onClearDraft: _handleClearDraft,
                                               onRemoveItem: _removeItemWithUndo,

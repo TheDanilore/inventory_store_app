@@ -37,7 +37,8 @@ class ExitFormProductsSection extends StatelessWidget {
             return InventoryExitItemsTable(
               items: items,
               onRemoveItem: onRemoveItem,
-              onUpdateQuantity: (index, qty) => cubit.updateQuantity(index, qty),
+              onUpdateQuantity:
+                  (index, qty) => cubit.updateQuantity(index, qty),
               onAddNewRow: onAddProduct,
               onScanBarcode: onScanBarcode,
             );
@@ -172,8 +173,7 @@ class ExitFormProductsSection extends StatelessWidget {
                                 ),
                                 item: item,
                                 onUpdateQuantity:
-                                    (qty) =>
-                                        cubit.updateQuantity(index, qty),
+                                    (qty) => cubit.updateQuantity(index, qty),
                                 onRemove: () => onRemoveItem(index),
                               );
                             }),
