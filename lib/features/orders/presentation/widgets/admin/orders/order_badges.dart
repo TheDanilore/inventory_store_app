@@ -3,7 +3,7 @@ import 'package:inventory_store_app/features/orders/domain/entities/order_entity
 
 /// Fuente única de verdad para los badges de estado / pago de un pedido.
 ///
-/// La usan: AdminOrderCard, OrdersTableView y PosSalesView. Antes cada una
+/// La usan: AdminOrderCard, OrdersTableView. Antes cada una
 /// tenía su propio mapeo y se contradecían (p. ej. la tabla mostraba
 /// "PENDING" crudo, el POS "Pendiente" y las cards "Borrador").
 ///

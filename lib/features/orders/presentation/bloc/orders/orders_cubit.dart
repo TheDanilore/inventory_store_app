@@ -58,8 +58,39 @@ class OrdersCubit extends Cubit<OrdersState> {
     bool forceRefresh = false,
   }) async {
     final loadId = ++_currentLoadId;
+    final startRow = (reset ? 0 : state.currentPage) * state.pageSize;
 
-    if (reset) {
+    final warehouseFilter =
+        (state.warehouseFilter == 'Todos' || state.warehouseFilter == 'TODOS')
+            ? null
+            : state.warehouseFilter;
+
+    // ─── ZERO-SHIMMER POLICY: CONSULTA SÍNCRONA EN FRAME 0 (0 ms) ────────────
+    final cached = _repository.getCachedFilteredOrders(
+      customerIdFilter: state.customerIdFilter,
+      statusFilter: state.statusFilter,
+      paymentStatusFilter: state.paymentStatusFilter,
+      warehouseFilter: warehouseFilter,
+      startDate: state.startDate,
+      endDate: state.endDate,
+      searchQuery: state.searchQuery,
+      limit: state.pageSize,
+      offset: startRow,
+    );
+
+    if (cached != null && !forceRefresh) {
+      // Entregar datos inmediatamente en Frame 0 desde L1 Cache sin mostrar Shimmer
+      emit(
+        state.copyWith(
+          currentPage: reset ? 0 : state.currentPage,
+          orders: cached.orders,
+          totalRecords: cached.total,
+          isLoading: false,
+          isBackgroundLoading: true,
+          errorMessage: '',
+        ),
+      );
+    } else if (reset) {
       if (state.orders.isEmpty) {
         emit(
           state.copyWith(
@@ -85,13 +116,6 @@ class OrdersCubit extends Cubit<OrdersState> {
     } else {
       emit(state.copyWith(isLoading: true, errorMessage: ''));
     }
-
-    final startRow = state.currentPage * state.pageSize;
-
-    final warehouseFilter =
-        (state.warehouseFilter == 'Todos' || state.warehouseFilter == 'TODOS')
-            ? null
-            : state.warehouseFilter;
 
     final result = await _getFilteredOrdersUc(
       GetFilteredOrdersParams(

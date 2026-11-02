@@ -67,10 +67,25 @@ class OrdersRepositoryImpl implements OrdersRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // ─── CACHÉ L1 EN MEMORIA (STALE-WHILE-REVALIDATE) ──────────────────────────
+  static const int _maxOrdersCacheEntries = 30;
   final Map<String, _OrdersCacheEntry> _ordersCache = {};
   final Map<String, _OrderDetailCacheEntry> _orderByIdCache = {};
   final Map<String, _OrderItemsCacheEntry> _orderItemsCache = {};
   _FinancialAccountsCacheEntry? _accountsCache;
+
+  static String _buildFilteredOrdersCacheKey({
+    String? customerIdFilter,
+    required String statusFilter,
+    required String paymentStatusFilter,
+    String? warehouseFilter,
+    DateTime? startDate,
+    DateTime? endDate,
+    required String searchQuery,
+    required int limit,
+    required int offset,
+  }) {
+    return '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${warehouseFilter ?? ""}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
+  }
 
   void _invalidateOrdersCache([String? orderId]) {
     _ordersCache.clear();
@@ -81,6 +96,49 @@ class OrdersRepositoryImpl implements OrdersRepository {
       _orderByIdCache.clear();
       _orderItemsCache.clear();
     }
+  }
+
+  void _updateOrderInCache(OrderEntity updatedOrder) {
+    _orderByIdCache[updatedOrder.id] = _OrderDetailCacheEntry(
+      order: updatedOrder,
+      timestamp: DateTime.now(),
+    );
+    for (final entry in _ordersCache.values) {
+      final index = entry.orders.indexWhere((o) => o.id == updatedOrder.id);
+      if (index != -1) {
+        entry.orders[index] = updatedOrder;
+      }
+    }
+  }
+
+  @override
+  ({List<OrderEntity> orders, int total})? getCachedFilteredOrders({
+    String? customerIdFilter,
+    required String statusFilter,
+    required String paymentStatusFilter,
+    String? warehouseFilter,
+    DateTime? startDate,
+    DateTime? endDate,
+    required String searchQuery,
+    required int limit,
+    required int offset,
+  }) {
+    final key = _buildFilteredOrdersCacheKey(
+      customerIdFilter: customerIdFilter,
+      statusFilter: statusFilter,
+      paymentStatusFilter: paymentStatusFilter,
+      warehouseFilter: warehouseFilter,
+      startDate: startDate,
+      endDate: endDate,
+      searchQuery: searchQuery,
+      limit: limit,
+      offset: offset,
+    );
+    final cached = _ordersCache[key];
+    if (cached != null && !cached.isExpired) {
+      return (orders: cached.orders, total: cached.total);
+    }
+    return null;
   }
 
   @override
@@ -221,8 +279,17 @@ class OrdersRepositoryImpl implements OrdersRepository {
     required int offset,
     bool forceRefresh = false,
   }) async {
-    final cacheKey =
-        '${customerIdFilter ?? ""}_${statusFilter}_${paymentStatusFilter}_${warehouseFilter ?? ""}_${startDate?.millisecondsSinceEpoch ?? ""}_${endDate?.millisecondsSinceEpoch ?? ""}_${searchQuery.trim().toLowerCase()}_${limit}_$offset';
+    final cacheKey = _buildFilteredOrdersCacheKey(
+      customerIdFilter: customerIdFilter,
+      statusFilter: statusFilter,
+      paymentStatusFilter: paymentStatusFilter,
+      warehouseFilter: warehouseFilter,
+      startDate: startDate,
+      endDate: endDate,
+      searchQuery: searchQuery,
+      limit: limit,
+      offset: offset,
+    );
 
     if (!forceRefresh) {
       final cached = _ordersCache[cacheKey];
@@ -338,6 +405,9 @@ class OrdersRepositoryImpl implements OrdersRepository {
       final totalRecords = response.count;
       final orders = rawData.map((e) => OrderModel.fromJson(e)).toList();
 
+      if (_ordersCache.length >= _maxOrdersCacheEntries) {
+        _ordersCache.remove(_ordersCache.keys.first);
+      }
       _ordersCache[cacheKey] = _OrdersCacheEntry(
         orders: orders,
         total: totalRecords,
@@ -764,7 +834,8 @@ class OrdersRepositoryImpl implements OrdersRepository {
               'updated_at': DateTime.now().toUtc().toIso8601String(),
             })
             .eq('id', order.id);
-        _invalidateOrdersCache();
+        _updateOrderInCache(order.copyWith(status: newStatus));
+        _invalidateOrdersCache(order.id);
         return const Right(null);
       }
     } on PostgrestException catch (e, st) {
@@ -1221,7 +1292,7 @@ class OrdersRepositoryImpl implements OrdersRepository {
       );
 
       if (rpcResp != null && rpcResp['success'] == true) {
-        _invalidateOrdersCache();
+        _invalidateOrdersCache(orderId);
         return const Right(null);
       } else {
         final errorMsg =

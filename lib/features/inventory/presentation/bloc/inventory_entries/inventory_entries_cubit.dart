@@ -6,7 +6,7 @@ import 'package:inventory_store_app/features/inventory/domain/usecases/get_inven
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entries/inventory_entries_state.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 
-@injectable
+@lazySingleton
 class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   final GetInventoryEntriesUseCase getInventoryEntries;
   final GetActiveWarehousesUseCase getActiveWarehouses;
@@ -20,7 +20,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
   }) : super(InventoryEntriesInitial());
 
   Future<void> init() async {
-    // Zero-Shimmer Policy: Si ya existen entradas en memoria/caché,
+    // Zero-Shimmer Policy: Si ya existen entradas en memoria/cachÃ©,
     // revalidar en background sin vaciar el estado ni emitir InventoryEntriesLoading.
     if (state is InventoryEntriesLoaded) {
       final current = state as InventoryEntriesLoaded;
@@ -129,7 +129,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
         tag: 'InventoryEntriesCubit',
       );
 
-      // Si ya teníamos datos, preservarlos y solo desactivar el indicador de fondo
+      // Si ya tenÃ­amos datos, preservarlos y solo desactivar el indicador de fondo
       if (hasData) {
         emit(currentState.copyWith(isBackgroundLoading: false));
         return;
@@ -139,7 +139,7 @@ class InventoryEntriesCubit extends Cubit<InventoryEntriesState> {
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
           errStr.contains('failed host lookup')) {
-        emit(const InventoryEntriesError('Sin conexión a internet.'));
+        emit(const InventoryEntriesError('Sin conexiÃ³n a internet.'));
       } else {
         emit(const InventoryEntriesError('Error al cargar entradas.'));
       }

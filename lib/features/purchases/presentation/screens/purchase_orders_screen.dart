@@ -2,33 +2,32 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import 'package:inventory_store_app/core/services/logger_service.dart';
-import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
-import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:inventory_store_app/core/di/injection_container.dart';
+import 'package:inventory_store_app/core/services/logger_service.dart';
+import 'package:inventory_store_app/core/theme/app_colors.dart';
+import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
+import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
+import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
+import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
+import 'package:inventory_store_app/features/inventory/domain/entities/inventory_entry_item_entity.dart';
+import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
+import 'package:inventory_store_app/features/purchases/data/models/purchase_order_model.dart';
+import 'package:inventory_store_app/features/purchases/domain/entities/purchase_order_item_entity.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
+import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_cubit.dart';
 import 'package:inventory_store_app/features/purchases/presentation/bloc/purchase_orders/purchase_orders_state.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_card.dart';
 import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/po_detail_sheet.dart';
-import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_table_view.dart';
-import 'package:inventory_store_app/core/theme/app_colors.dart';
-import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
-import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
-import 'package:inventory_store_app/core/widgets/app_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
-import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
-import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
-import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
-import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
-import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_bento_kpi_bar.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_draft_banner.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_pagination_bar.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_sliver_list.dart';
+import 'package:inventory_store_app/features/purchases/presentation/widgets/purchase_orders/purchase_orders_view_model.dart';
 
 class PurchaseOrdersScreen extends StatefulWidget {
   final String? targetOrderId;
@@ -41,8 +40,7 @@ class PurchaseOrdersScreen extends StatefulWidget {
 
 class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   PurchaseOrdersCubit get cubit => context.read<PurchaseOrdersCubit>();
-  _PurchaseOrdersViewModel get viewModel =>
-      _PurchaseOrdersViewModel(cubit, cubit.state);
+
   final _searchCtrl = TextEditingController();
   final _searchFocusNode = FocusNode();
   final _screenFocusNode = FocusNode();
@@ -52,12 +50,12 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   PurchaseOrderModel? _selectedOrder;
   String? _pendingTargetOrderId;
   bool _isFetchingTargetOrder = false;
-  final Map<String, List<PurchaseOrderItemEntity>> _itemsCache = {};
-  static const int _maxCachedOrderItems = 20;
+  bool _isSideSheetOpen = false;
+
   late final ScrollController _listScrollController;
   final ValueNotifier<bool> _fabExtended = ValueNotifier<bool>(true);
 
-  // --- REGLA ESTRICTA DE AISLAMIENTO DE FOCO (FOCUS SHIELD) ---
+  // Focus Shield: aislar atajos si el usuario escribe en un campo editable
   bool get _isInputFieldFocused {
     if (_searchFocusNode.hasFocus) return true;
     final primaryFocus = FocusManager.instance.primaryFocus;
@@ -76,13 +74,14 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     _listScrollController.addListener(_onListScrolled);
     _pendingTargetOrderId = widget.targetOrderId;
     _checkDraft();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _screenFocusNode.requestFocus();
       final state = cubit.state;
+      // Stale-While-Revalidate: si ya hay datos cargados, no se borra la pantalla
       if (state is! PurchaseOrdersLoaded || state.orders.isEmpty) {
         cubit.init();
       } else {
-        // Revalidación silenciosa en background sin borrar la tabla (Stale-While-Revalidate)
         cubit.loadOrders(background: true);
       }
     });
@@ -136,18 +135,8 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
   }
 
   Future<List<PurchaseOrderItemEntity>> _loadOrderItems(String orderId) async {
-    if (_itemsCache.containsKey(orderId)) {
-      return _itemsCache[orderId]!;
-    }
     final res = await sl<FetchPurchaseOrderItemsUseCase>().call(orderId);
-    final items = res.fold((l) => <PurchaseOrderItemEntity>[], (r) => r);
-    if (items.isNotEmpty) {
-      if (_itemsCache.length >= _maxCachedOrderItems) {
-        _itemsCache.remove(_itemsCache.keys.first);
-      }
-      _itemsCache[orderId] = items;
-    }
-    return items;
+    return res.fold((l) => <PurchaseOrderItemEntity>[], (r) => r);
   }
 
   Future<void> _checkDraft() async {
@@ -187,10 +176,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     super.dispose();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+  KeyEventResult _handleKeyEvent(
+    FocusNode node,
+    KeyEvent event,
+    PurchaseOrdersViewModel viewModel,
+  ) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Si el usuario escribe en un campo editable (buscador, formulario), aislar atajos
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
@@ -204,7 +196,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
         HardwareKeyboard.instance.isMetaPressed;
     final key = event.logicalKey;
 
-    // Atajo Ctrl+K o Cmd+K (o '/' en desktop) para enfocar buscador instantáneamente
+    // Ctrl+K o Cmd+K (o '/') -> enfocar buscador
     if ((isControlOrMeta && key == LogicalKeyboardKey.keyK) ||
         key == LogicalKeyboardKey.slash) {
       _searchFocusNode.requestFocus();
@@ -215,7 +207,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Escape para desenfocar buscador, deseleccionar orden o limpiar búsqueda
+    // Escape -> desenfocar buscador, deseleccionar orden o limpiar búsqueda
     if (key == LogicalKeyboardKey.escape) {
       if (_searchFocusNode.hasFocus) {
         _searchFocusNode.unfocus();
@@ -233,7 +225,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       }
     }
 
-    // Atajo [N] -> Nueva orden de compra o continuar borrador
+    // Atajo [N] -> Nueva orden de compra
     if (key == LogicalKeyboardKey.keyN) {
       context.go('/purchase-orders/form');
       return KeyEventResult.handled;
@@ -241,7 +233,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
 
     // Atajo [R] -> Recargar órdenes de compra
     if (key == LogicalKeyboardKey.keyR) {
-      _itemsCache.clear();
       cubit.refresh();
       AppSnackbar.show(
         context,
@@ -283,7 +274,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       return KeyEventResult.handled;
     }
 
-    // Flechas arriba y abajo para navegar órdenes y [Enter] para abrir detalles
+    // Flechas arriba/abajo y Enter
     final filtered = viewModel.orders.cast<PurchaseOrderModel>();
     final displayOrders =
         (_selectedOrder != null &&
@@ -318,12 +309,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       if (key == LogicalKeyboardKey.enter ||
           key == LogicalKeyboardKey.numpadEnter) {
         final po = _selectedOrder ?? displayOrders.first;
-        final isTablet = MediaQuery.sizeOf(context).width >= 640;
-        if (isTablet) {
-          _openDesktopDetailSheet(po);
-        } else {
-          _showDetail(context, po);
-        }
+        _openDesktopDetailSheet(po);
         return KeyEventResult.handled;
       }
     }
@@ -331,19 +317,13 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     return KeyEventResult.ignored;
   }
 
-  void _showDetail(BuildContext context, PurchaseOrderModel po) {
-    _openDesktopDetailSheet(po);
-  }
-
-  bool _isSideSheetOpen = false;
-
   Future<void> _openDesktopDetailSheet(PurchaseOrderModel po) async {
     if (!mounted || _isSideSheetOpen) return;
     FocusManager.instance.primaryFocus?.unfocus();
     _isSideSheetOpen = true;
     _selectOrder(po, updateUrl: true);
 
-    final cubit = context.read<PurchaseOrdersCubit>();
+    final cubitInstance = context.read<PurchaseOrdersCubit>();
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
@@ -353,18 +333,15 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       barrierLabel: 'Cerrar detalle de compra',
       builder: (dialogCtx) {
         return BlocProvider.value(
-          value: cubit,
+          value: cubitInstance,
           child: PODetailSheet(
             po: po,
-            initialItems: _itemsCache[po.id],
             isDialog: AdaptiveDetailSheet.isSideSheet(dialogCtx),
-            onPaymentSuccess: () {
-              _itemsCache.remove(po.id);
-            },
+            onPaymentSuccess: () {},
             loadItems: () => _loadOrderItems(po.id),
             onReceive: () => _handleReceiveOrder(dialogCtx, po),
             onUpdateStatus: (status) async {
-              await viewModel.updateOrderStatus(po.id, status);
+              await cubitInstance.updateOrderStatus(po.id, status);
             },
           ),
         );
@@ -387,20 +364,16 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
       final targetPo = orders[foundIndex];
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          if (isTablet) {
-            _openDesktopDetailSheet(targetPo);
-          } else {
-            _showDetail(context, targetPo);
-          }
+          _openDesktopDetailSheet(targetPo);
         }
       });
     } else {
       _pendingTargetOrderId = null;
-      _fetchAndSelectOrder(targetId, isTablet);
+      _fetchAndSelectOrder(targetId);
     }
   }
 
-  Future<void> _fetchAndSelectOrder(String targetId, bool isTablet) async {
+  Future<void> _fetchAndSelectOrder(String targetId) async {
     if (_isFetchingTargetOrder) return;
     _isFetchingTargetOrder = true;
     try {
@@ -419,11 +392,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
             final loadedPo = PurchaseOrderModel.fromMap(map);
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
-                if (isTablet) {
-                  _openDesktopDetailSheet(loadedPo);
-                } else {
-                  _showDetail(context, loadedPo);
-                }
+                _openDesktopDetailSheet(loadedPo);
               }
             });
           }
@@ -489,9 +458,6 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     if (!context.mounted) return;
 
     if (received == true) {
-      _itemsCache.remove(po.id);
-      // Si la recepción se guardó con éxito:
-      // En móvil, si había un bottom sheet abierto, lo cerramos para ver la lista con el nuevo estado
       Navigator.of(
         context,
         rootNavigator: true,
@@ -501,878 +467,348 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
     }
   }
 
-  Widget _buildPaginationSliver(
-    _PurchaseOrdersViewModel viewModel,
-    BuildContext context,
-  ) {
-    if (viewModel.isLoading || viewModel.orders.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox(height: 24));
-    }
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.03),
-          ),
-          child: AdminPageBlocks(
-            currentPage: viewModel.currentPage,
-            totalPages: viewModel.totalPages,
-            onPageChanged: (p) => viewModel.setPage(p),
-            totalItems: viewModel.totalCount,
-            itemsPerPage: viewModel.pageSize,
-            availableItemsPerPage: const [10, 20, 24, 50, 100],
-            onItemsPerPageChanged: (newSize) => viewModel.setPageSize(newSize),
-            itemName: 'órdenes',
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListOrTableSliver({
-    required _PurchaseOrdersViewModel viewModel,
-    required List<PurchaseOrderModel> displayOrders,
-    required List<PurchaseOrderModel> filtered,
-    required bool isTablet,
-    required BuildContext context,
-    required PurchaseOrdersCubit cubit,
-  }) {
-    final hasCachedOrders = filtered.isNotEmpty;
-    if (viewModel.isLoading && !hasCachedOrders) {
-      if (_isTableView && isTablet) {
-        return const SliverToBoxAdapter(child: AppTableShimmer());
-      }
-      return SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => const Padding(
-            padding: EdgeInsets.only(bottom: 10),
-            child: AppShimmer(
-              width: double.infinity,
-              height: 90,
-              borderRadius: 16,
-            ),
-          ),
-          childCount: 5,
-        ),
-      );
-    }
-
-    if (filtered.isEmpty) {
-      return const SliverFillRemaining(
-        hasScrollBody: false,
-        child: AppEmptyState(
-          icon: Icons.shopping_cart_outlined,
-          title: 'Sin Resultados',
-          message: 'Sin resultados para los filtros aplicados',
-        ),
-      );
-    }
-
-    if (_isTableView && isTablet) {
-      return SliverToBoxAdapter(
-        child: PurchaseOrdersTableView(
-          key: ValueKey(
-            'table_${viewModel.statusFilter}_${viewModel.currentPage}',
-          ),
-          orders: displayOrders,
-          selectedOrder: _selectedOrder,
-          onSelectOrder: (po) {
-            if (isTablet) {
-              _openDesktopDetailSheet(po);
-            } else {
-              _showDetail(context, po);
-            }
-          },
-          onRefresh: () {
-            _itemsCache.clear();
-            cubit.refresh();
-          },
-        ),
-      );
-    }
-
-    if (isTablet) {
-      return SliverGrid(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 440,
-          mainAxisExtent: 180,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final po = displayOrders[index];
-          final isSel = _selectedOrder?.id == po.id;
-          return RepaintBoundary(
-            child: POCard(
-              po: po,
-              isSelected: isSel,
-              onTap: () {
-                _openDesktopDetailSheet(po);
-              },
-            ),
-          );
-        }, childCount: displayOrders.length),
-      );
-    }
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final po = displayOrders[index];
-        final isSel = isTablet && _selectedOrder?.id == po.id;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: RepaintBoundary(
-            child: POCard(
-              po: po,
-              isSelected: isSel,
-              onTap: () {
-                _showDetail(context, po);
-              },
-            ),
-          ),
-        );
-      }, childCount: displayOrders.length),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
 
-    return AdminLayout(
-      title: 'Órdenes de Compra',
-      floatingActionButton:
-          isDesktopOrTablet
-              ? null
-              : ValueListenableBuilder<bool>(
-                valueListenable: _fabExtended,
-                builder: (context, isExtended, _) {
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    transitionBuilder:
-                        (child, animation) =>
-                            ScaleTransition(scale: animation, child: child),
-                    child:
-                        isExtended
-                            ? FloatingActionButton.extended(
-                              key: const ValueKey('fab_ext'),
-                              heroTag: 'po_new_fab',
-                              onPressed:
-                                  () => context.go('/purchase-orders/form'),
-                              backgroundColor:
-                                  _hasDraft
-                                      ? const Color(0xFFF59E0B)
-                                      : AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              icon: Icon(
-                                _hasDraft
-                                    ? Icons.edit_note_rounded
-                                    : Icons.add_shopping_cart_rounded,
-                              ),
-                              label: Text(
-                                _hasDraft ? 'Borrador' : 'Nueva Orden',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
+    return BlocConsumer<PurchaseOrdersCubit, PurchaseOrdersState>(
+      buildWhen:
+          (previous, current) =>
+              current is PurchaseOrdersLoaded ||
+              current is PurchaseOrdersLoading ||
+              current is PurchaseOrdersError,
+      listener: (context, state) {
+        if (state is PurchaseOrdersLoaded && _pendingTargetOrderId != null) {
+          _resolveTargetOrder(
+            state.orders.cast<PurchaseOrderModel>(),
+            isDesktopOrTablet,
+          );
+        }
+      },
+      builder: (context, state) {
+        final viewModel = PurchaseOrdersViewModel(cubit, state);
+
+        if (viewModel.errorMessage.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            AppSnackbar.show(
+              context,
+              message: viewModel.errorMessage,
+              type: SnackbarType.error,
+            );
+            viewModel.clearError();
+          });
+        }
+
+        final filtered = viewModel.orders.cast<PurchaseOrderModel>();
+
+        // Sincronizar selección ordinaria
+        if (_pendingTargetOrderId == null) {
+          if (filtered.isNotEmpty) {
+            if (_selectedOrder != null) {
+              final index = filtered.indexWhere(
+                (o) => o.id == _selectedOrder!.id,
+              );
+              if (index != -1) {
+                _selectedOrder = filtered[index];
+              }
+            }
+          } else {
+            _selectedOrder = null;
+          }
+        }
+
+        final displayOrders =
+            (_selectedOrder != null &&
+                    !filtered.any((o) => o.id == _selectedOrder!.id))
+                ? [_selectedOrder!, ...filtered]
+                : filtered;
+
+        return AdminLayout(
+          title: 'Órdenes de Compra',
+          floatingActionButton:
+              isDesktopOrTablet
+                  ? null
+                  : ValueListenableBuilder<bool>(
+                    valueListenable: _fabExtended,
+                    builder: (context, isExtended, _) {
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        transitionBuilder:
+                            (child, animation) =>
+                                ScaleTransition(scale: animation, child: child),
+                        child:
+                            isExtended
+                                ? FloatingActionButton.extended(
+                                  key: const ValueKey('fab_ext'),
+                                  heroTag: 'po_new_fab',
+                                  onPressed:
+                                      () => context.go('/purchase-orders/form'),
+                                  backgroundColor:
+                                      _hasDraft
+                                          ? const Color(0xFFF59E0B)
+                                          : AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  icon: Icon(
+                                    _hasDraft
+                                        ? Icons.edit_note_rounded
+                                        : Icons.add_shopping_cart_rounded,
+                                  ),
+                                  label: Text(
+                                    _hasDraft ? 'Borrador' : 'Nueva Orden',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                )
+                                : FloatingActionButton(
+                                  key: const ValueKey('fab_compact'),
+                                  heroTag: 'po_new_fab',
+                                  onPressed:
+                                      () => context.go('/purchase-orders/form'),
+                                  backgroundColor:
+                                      _hasDraft
+                                          ? const Color(0xFFF59E0B)
+                                          : AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Icon(
+                                    _hasDraft
+                                        ? Icons.edit_note_rounded
+                                        : Icons.add_shopping_cart_rounded,
+                                  ),
                                 ),
-                              ),
-                            )
-                            : FloatingActionButton(
-                              key: const ValueKey('fab_compact'),
-                              heroTag: 'po_new_fab',
-                              onPressed:
-                                  () => context.go('/purchase-orders/form'),
-                              backgroundColor:
-                                  _hasDraft
-                                      ? const Color(0xFFF59E0B)
-                                      : AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Icon(
-                                _hasDraft
-                                    ? Icons.edit_note_rounded
-                                    : Icons.add_shopping_cart_rounded,
-                              ),
-                            ),
-                  );
-                },
-              ),
-      body: Focus(
-        focusNode: _screenFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleKeyEvent,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isTablet = constraints.maxWidth >= 640;
-
-            return BlocConsumer<PurchaseOrdersCubit, PurchaseOrdersState>(
-              buildWhen:
-                  (previous, current) =>
-                      current is PurchaseOrdersLoaded ||
-                      current is PurchaseOrdersLoading ||
-                      current is PurchaseOrdersError,
-              listener: (context, state) {
-                if (state is PurchaseOrdersLoaded &&
-                    _pendingTargetOrderId != null) {
-                  _resolveTargetOrder(
-                    state.orders.cast<PurchaseOrderModel>(),
-                    isTablet,
-                  );
-                }
-              },
-              builder: (context, state) {
-                final viewModel = _PurchaseOrdersViewModel(
-                  context.read<PurchaseOrdersCubit>(),
-                  state,
-                );
-                if (viewModel.errorMessage.isNotEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    AppSnackbar.show(
-                      context,
-                      message: viewModel.errorMessage,
-                      type: SnackbarType.error,
-                    );
-                    viewModel.clearError();
-                  });
-                }
-
-                final filtered = viewModel.orders.cast<PurchaseOrderModel>();
-                final totalAmount = viewModel.totalAmountFiltered;
-                final pendingCount = viewModel.pendingCountFiltered;
-                final totalDebt = viewModel.totalDebtFiltered;
-
-                // Sincronizar selección ordinaria SOLO si no hay una orden objetivo pendiente de resolver
-                if (_pendingTargetOrderId == null) {
-                  if (filtered.isNotEmpty) {
-                    if (_selectedOrder != null) {
-                      final index = filtered.indexWhere(
-                        (o) => o.id == _selectedOrder!.id,
                       );
-                      if (index != -1) {
-                        _selectedOrder = filtered[index];
-                      }
-                      // Si no está en filtered (es foránea o filtrada), SE PRESERVA intacta en _selectedOrder!
-                    }
-                  } else {
-                    _selectedOrder = null;
-                  }
-                }
+                    },
+                  ),
+          body: Focus(
+            focusNode: _screenFocusNode,
+            autofocus: true,
+            onKeyEvent:
+                (node, event) => _handleKeyEvent(node, event, viewModel),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isTablet = constraints.maxWidth >= 640;
 
-                // Si hay una orden foránea seleccionada (ej. Deep Link desde otra página),
-                // se fija arriba para que siempre aparezca visible y seleccionada en el panel izquierdo
-                final displayOrders =
-                    (_selectedOrder != null &&
-                            !filtered.any((o) => o.id == _selectedOrder!.id))
-                        ? [_selectedOrder!, ...filtered]
-                        : filtered;
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async {
+                    await cubit.refresh();
+                  },
+                  child: CustomScrollView(
+                    controller: _listScrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      // Barra sutil de revalidación en background (sin shimmer ni parpadeos)
+                      if (viewModel.isBackgroundLoading)
+                        const SliverToBoxAdapter(
+                          child: LinearProgressIndicator(
+                            color: AppColors.teal,
+                            minHeight: 2,
+                          ),
+                        ),
 
-                final listContent = Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh: () async {
-                          _itemsCache.clear();
-                          await cubit.refresh();
-                        },
-                        child: CustomScrollView(
-                          controller: _listScrollController,
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                            if (viewModel.isBackgroundLoading)
-                              const SliverToBoxAdapter(
-                                child: LinearProgressIndicator(
-                                  color: AppColors.teal,
-                                  minHeight: 2,
-                                ),
-                              ),
-
-                            // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
-                            SliverToBoxAdapter(
-                              child: AdminPageHeader(
-                                title: 'Órdenes de Compra',
-                                subtitle:
-                                    'Gestiona pedidos a proveedores, recepción de mercancía y cuentas por pagar.',
-                                isDesktop: isDesktopOrTablet,
-                                actions: [
-                                  AdminHeaderButton.primary(
-                                    label:
-                                        _hasDraft
-                                            ? 'Continuar Borrador'
-                                            : 'Nueva Orden',
-                                    icon:
-                                        _hasDraft
-                                            ? Icons.edit_note_rounded
-                                            : Icons.add_shopping_cart_rounded,
-                                    tooltip:
-                                        _hasDraft
-                                            ? 'Continuar orden de compra (Atajo: N)'
-                                            : 'Nueva orden de compra (Atajo: N)',
-                                    onPressed:
-                                        () =>
-                                            context.go('/purchase-orders/form'),
-                                  ),
-                                ],
-                              ),
+                      // Cabecera ejecutiva Stripe / Linear
+                      SliverToBoxAdapter(
+                        child: AdminPageHeader(
+                          title: 'Órdenes de Compra',
+                          subtitle:
+                              'Gestiona pedidos a proveedores, recepción de mercancía y cuentas por pagar.',
+                          isDesktop: isDesktopOrTablet,
+                          actions: [
+                            AdminHeaderButton.primary(
+                              label:
+                                  _hasDraft
+                                      ? 'Continuar Borrador'
+                                      : 'Nueva Orden',
+                              icon:
+                                  _hasDraft
+                                      ? Icons.edit_note_rounded
+                                      : Icons.add_shopping_cart_rounded,
+                              tooltip:
+                                  _hasDraft
+                                      ? 'Continuar orden de compra (Atajo: N)'
+                                      : 'Nueva orden de compra (Atajo: N)',
+                              onPressed:
+                                  () => context.go('/purchase-orders/form'),
                             ),
-
-                            // ── Borrador ──────────────────────────────────────────────
-                            if (_hasDraft)
-                              SliverToBoxAdapter(
-                                child: Container(
-                                  margin: const EdgeInsets.fromLTRB(
-                                    16,
-                                    14,
-                                    16,
-                                    0,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    border: Border.all(
-                                      color: AppColors.warning.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.edit_document,
-                                        color: AppColors.warning,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Expanded(
-                                        child: Text(
-                                          'Tienes un borrador de compra en progreso.',
-                                          style: TextStyle(
-                                            color: AppColors.warning,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                      FilledButton.tonal(
-                                        onPressed: () {
-                                          context.go('/purchase-orders/form');
-                                        },
-                                        style: FilledButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                          backgroundColor: AppColors.warning
-                                              .withValues(alpha: 0.2),
-                                          foregroundColor: AppColors.warning,
-                                        ),
-                                        child: const Text('Continuar'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                            // ── 1. BENTO KPI BAR PARA COMPRAS ─────────────────────────
-                            SliverToBoxAdapter(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  0,
-                                ),
-                                child: _PurchaseOrdersBentoKpiBar(
-                                  orderCount: viewModel.orders.length,
-                                  totalRecords: viewModel.totalCount,
-                                  totalAmount: totalAmount,
-                                  pendingCount: pendingCount,
-                                  totalDebt: totalDebt,
-                                  isDesktop: isDesktopOrTablet,
-                                ),
-                              ),
-                            ),
-
-                            // ── 2. TOOLBAR PRO UNIFICADO (Buscador, Filtros, Vista, Refresh) ─
-                            SliverToBoxAdapter(
-                              child: AdminProToolbar(
-                                isDesktop: constraints.maxWidth >= 1024,
-                                isLoading:
-                                    viewModel.isLoading ||
-                                    viewModel.isBackgroundLoading,
-                                searchController: _searchCtrl,
-                                searchFocusNode: _searchFocusNode,
-                                searchHint:
-                                    'Buscar por proveedor, documento o ID...',
-                                onSearchChanged: (v) {
-                                  _debounce?.cancel();
-                                  _debounce = Timer(
-                                    const Duration(milliseconds: 300),
-                                    () => viewModel.setSearchText(v),
-                                  );
-                                },
-                                onClearSearch: () {
-                                  _searchCtrl.clear();
-                                  viewModel.setSearchText('');
-                                },
-                                filterGroups: [
-                                  AdminFilterGroup<String>(
-                                    title: 'Estado',
-                                    icon: Icons.filter_list_rounded,
-                                    selected: viewModel.statusFilter,
-                                    defaultValue: 'Todos',
-                                    displayType: AdminFilterDisplayType.chips,
-                                    onSelected: viewModel.setStatusFilter,
-                                    options: [
-                                      const AdminFilterOption(
-                                        value: 'Todos',
-                                        label: 'Todos',
-                                        icon: Icons.list_alt_rounded,
-                                      ),
-                                      const AdminFilterOption(
-                                        value: 'PENDING',
-                                        label: 'Pendientes',
-                                        icon: Icons.hourglass_top_rounded,
-                                        color: AppColors.warningDark,
-                                      ),
-                                      const AdminFilterOption(
-                                        value: 'SENT',
-                                        label: 'Enviados',
-                                        icon: Icons.send_rounded,
-                                        color: Color(0xFF1D4ED8),
-                                      ),
-                                      AdminFilterOption(
-                                        value: 'PARTIAL',
-                                        label: 'Parciales',
-                                        icon: Icons.pie_chart_rounded,
-                                        color: Colors.amber.shade900,
-                                      ),
-                                      const AdminFilterOption(
-                                        value: 'RECEIVED',
-                                        label: 'Recibidos',
-                                        icon: Icons.check_circle_rounded,
-                                        color: AppColors.tealDark,
-                                      ),
-                                      const AdminFilterOption(
-                                        value: 'CANCELLED',
-                                        label: 'Cancelados',
-                                        icon: Icons.cancel_rounded,
-                                        color: AppColors.error,
-                                      ),
-                                    ],
-                                  ),
-                                  AdminFilterGroup<String>(
-                                    title: 'Almacén',
-                                    icon: Icons.storefront_rounded,
-                                    selected: viewModel.warehouseFilter,
-                                    defaultValue: 'Todos',
-                                    onSelected: viewModel.setWarehouseFilter,
-                                    options: [
-                                      for (final w
-                                          in viewModel.availableWarehouses)
-                                        AdminFilterOption<String>(
-                                          value: w,
-                                          label:
-                                              (w == 'TODOS' || w == 'Todos')
-                                                  ? 'Todos'
-                                                  : w,
-                                          icon: Icons.storefront_rounded,
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                                // Fecha: filtro en desktop y sección dentro del sheet móvil
-                                mobileExtraFilters: [
-                                  DateFilterCalendar(
-                                    height: 40,
-                                    borderRadius: BorderRadius.circular(10),
-                                    dateRange: viewModel.dateRange,
-                                    onDateRangeSelected: (picked) {
-                                      viewModel.setDateRange(picked);
-                                    },
-                                    onClear: () {
-                                      viewModel.setDateRange(null);
-                                    },
-                                  ),
-                                ],
-                                activeFiltersCount:
-                                    (viewModel.statusFilter != 'Todos'
-                                        ? 1
-                                        : 0) +
-                                    (viewModel.warehouseFilter != 'Todos' &&
-                                            viewModel.warehouseFilter != 'TODOS'
-                                        ? 1
-                                        : 0) +
-                                    (viewModel.dateRange != null ? 1 : 0),
-                                onClearFilters: () {
-                                  viewModel.setStatusFilter('Todos');
-                                  viewModel.setWarehouseFilter('Todos');
-                                  viewModel.setDateRange(null);
-                                },
-                                viewToggleConfig: AdminProViewToggleConfig(
-                                  isTableView: _isTableView,
-                                  onToggleTableView:
-                                      (val) =>
-                                          setState(() => _isTableView = val),
-                                ),
-                                onRefresh: () {
-                                  _itemsCache.clear();
-                                  cubit.refresh();
-                                },
-                              ),
-                            ),
-
-                            // ── Lista / Tabla de Órdenes en Slivers ─────────────────
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                              sliver: _buildListOrTableSliver(
-                                viewModel: viewModel,
-                                displayOrders: displayOrders,
-                                filtered: filtered,
-                                isTablet: isTablet,
-                                context: context,
-                                cubit: cubit,
-                              ),
-                            ),
-
-                            // ── Paginación Fluida al Pie del Scroll ──────────────────
-                            _buildPaginationSliver(viewModel, context),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Banner de alerta para borrador en curso
+                      if (_hasDraft)
+                        const SliverToBoxAdapter(
+                          child: PurchaseOrdersDraftBanner(),
+                        ),
+
+                      // Bento KPI Bar con totales computados en tiempo O(1)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: PurchaseOrdersBentoKpiBar(
+                            orderCount: viewModel.orders.length,
+                            totalRecords: viewModel.totalCount,
+                            totalAmount: viewModel.totalAmountFiltered,
+                            pendingCount: viewModel.pendingCountFiltered,
+                            totalDebt: viewModel.totalDebtFiltered,
+                            isDesktop: isDesktopOrTablet,
+                          ),
+                        ),
+                      ),
+
+                      // Toolbar Pro Unificado (Buscador, Filtros, Vista, Refresh)
+                      SliverToBoxAdapter(
+                        child: AdminProToolbar(
+                          isDesktop: constraints.maxWidth >= 1024,
+                          isLoading:
+                              viewModel.isLoading ||
+                              viewModel.isBackgroundLoading,
+                          searchController: _searchCtrl,
+                          searchFocusNode: _searchFocusNode,
+                          searchHint: 'Buscar por proveedor, documento o ID...',
+                          onSearchChanged: (v) {
+                            _debounce?.cancel();
+                            _debounce = Timer(
+                              const Duration(milliseconds: 300),
+                              () => viewModel.setSearchText(v),
+                            );
+                          },
+                          onClearSearch: () {
+                            _searchCtrl.clear();
+                            viewModel.setSearchText('');
+                          },
+                          filterGroups: [
+                            AdminFilterGroup<String>(
+                              title: 'Estado',
+                              icon: Icons.filter_list_rounded,
+                              selected: viewModel.statusFilter,
+                              defaultValue: 'Todos',
+                              displayType: AdminFilterDisplayType.chips,
+                              onSelected: viewModel.setStatusFilter,
+                              options: [
+                                const AdminFilterOption(
+                                  value: 'Todos',
+                                  label: 'Todos',
+                                  icon: Icons.list_alt_rounded,
+                                ),
+                                const AdminFilterOption(
+                                  value: 'PENDING',
+                                  label: 'Pendientes',
+                                  icon: Icons.hourglass_top_rounded,
+                                  color: AppColors.warningDark,
+                                ),
+                                const AdminFilterOption(
+                                  value: 'SENT',
+                                  label: 'Enviados',
+                                  icon: Icons.send_rounded,
+                                  color: Color(0xFF1D4ED8),
+                                ),
+                                AdminFilterOption(
+                                  value: 'PARTIAL',
+                                  label: 'Parciales',
+                                  icon: Icons.pie_chart_rounded,
+                                  color: Colors.amber.shade900,
+                                ),
+                                const AdminFilterOption(
+                                  value: 'RECEIVED',
+                                  label: 'Recibidos',
+                                  icon: Icons.check_circle_rounded,
+                                  color: AppColors.tealDark,
+                                ),
+                                const AdminFilterOption(
+                                  value: 'CANCELLED',
+                                  label: 'Cancelados',
+                                  icon: Icons.cancel_rounded,
+                                  color: AppColors.error,
+                                ),
+                              ],
+                            ),
+                            AdminFilterGroup<String>(
+                              title: 'Almacén',
+                              icon: Icons.storefront_rounded,
+                              selected: viewModel.warehouseFilter,
+                              defaultValue: 'Todos',
+                              onSelected: viewModel.setWarehouseFilter,
+                              options: [
+                                for (final w in viewModel.availableWarehouses)
+                                  AdminFilterOption<String>(
+                                    value: w,
+                                    label:
+                                        (w == 'TODOS' || w == 'Todos')
+                                            ? 'Todos'
+                                            : w,
+                                    icon: Icons.storefront_rounded,
+                                  ),
+                              ],
+                            ),
+                          ],
+                          mobileExtraFilters: [
+                            DateFilterCalendar(
+                              height: 40,
+                              borderRadius: BorderRadius.circular(10),
+                              dateRange: viewModel.dateRange,
+                              onDateRangeSelected: (picked) {
+                                viewModel.setDateRange(picked);
+                              },
+                              onClear: () {
+                                viewModel.setDateRange(null);
+                              },
+                            ),
+                          ],
+                          activeFiltersCount:
+                              (viewModel.statusFilter != 'Todos' ? 1 : 0) +
+                              (viewModel.warehouseFilter != 'Todos' &&
+                                      viewModel.warehouseFilter != 'TODOS'
+                                  ? 1
+                                  : 0) +
+                              (viewModel.dateRange != null ? 1 : 0),
+                          onClearFilters: () {
+                            viewModel.setStatusFilter('Todos');
+                            viewModel.setWarehouseFilter('Todos');
+                            viewModel.setDateRange(null);
+                          },
+                          viewToggleConfig: AdminProViewToggleConfig(
+                            isTableView: _isTableView,
+                            onToggleTableView:
+                                (val) => setState(() => _isTableView = val),
+                          ),
+                          onRefresh: () {
+                            cubit.refresh();
+                          },
+                        ),
+                      ),
+
+                      // Lista / Tabla de Órdenes en Slivers
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        sliver: PurchaseOrdersSliverList(
+                          viewModel: viewModel,
+                          displayOrders: displayOrders,
+                          filteredOrders: filtered,
+                          selectedOrder: _selectedOrder,
+                          isTablet: isTablet,
+                          isTableView: _isTableView,
+                          onSelectOrder: _openDesktopDetailSheet,
+                          onRefresh: () => cubit.refresh(),
+                        ),
+                      ),
+
+                      // Paginación Fluida al Pie del Scroll
+                      PurchaseOrdersPaginationBar(viewModel: viewModel),
+                    ],
+                  ),
                 );
-
-                return listContent;
               },
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bento KPI Bar para Órdenes de Compra (Estilo Stripe / Linear)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PurchaseOrdersBentoKpiBar extends StatelessWidget {
-  final int orderCount;
-  final int totalRecords;
-  final double totalAmount;
-  final int pendingCount;
-  final double totalDebt;
-  final bool isDesktop;
-
-  const _PurchaseOrdersBentoKpiBar({
-    required this.orderCount,
-    required this.totalRecords,
-    required this.totalAmount,
-    required this.pendingCount,
-    required this.totalDebt,
-    required this.isDesktop,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminKpiMetricsBar(
-      isDesktop: isDesktop,
-      padding: EdgeInsets.zero,
-      items: [
-        AdminKpiItem(
-          title: 'Total Órdenes',
-          value: totalRecords > 0 ? '$totalRecords' : '$orderCount',
-          subtitle: 'Registradas',
-          icon: Icons.receipt_long_rounded,
-          accentColor: AppColors.tealDark,
-          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
-          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor: const Color(0xFF99F6E4),
-          glowColor: const Color(0x2E0D9488),
-        ),
-        AdminKpiItem(
-          title: 'Monto Compras',
-          value: 'S/ ${totalAmount.toStringAsFixed(2)}',
-          subtitle: 'Acumulado',
-          icon: Icons.payments_rounded,
-          accentColor: AppColors.successDark,
-          gradientColors: const [Colors.white, Color(0xFFECFDF5)],
-          iconGradient: const [Color(0xFF10B981), Color(0xFF059669)],
-          borderColor: const Color(0xFFA7F3D0),
-          glowColor: const Color(0x2E10B981),
-        ),
-        AdminKpiItem(
-          title: 'Por Recibir / Pend.',
-          value: '$pendingCount',
-          subtitle: pendingCount > 0 ? 'Pendientes' : 'Al día',
-          icon:
-              pendingCount > 0
-                  ? Icons.pending_actions_rounded
-                  : Icons.check_circle_outline_rounded,
-          accentColor:
-              pendingCount > 0 ? AppColors.warningDark : AppColors.successDark,
-          gradientColors: [
-            Colors.white,
-            pendingCount > 0
-                ? const Color(0xFFFFFBEB)
-                : const Color(0xFFECFDF5),
-          ],
-          iconGradient:
-              pendingCount > 0
-                  ? const [Color(0xFFF59E0B), Color(0xFFD97706)]
-                  : const [Color(0xFF10B981), Color(0xFF059669)],
-          borderColor:
-              pendingCount > 0
-                  ? const Color(0xFFFDE68A)
-                  : const Color(0xFFA7F3D0),
-          glowColor:
-              pendingCount > 0
-                  ? const Color(0x2EF59E0B)
-                  : const Color(0x2E10B981),
-        ),
-        AdminKpiItem(
-          title: 'Saldo por Pagar',
-          value: 'S/ ${totalDebt.toStringAsFixed(2)}',
-          subtitle: totalDebt > 0 ? 'Cuentas pendientes' : 'Sin deudas',
-          icon: Icons.account_balance_wallet_rounded,
-          accentColor: totalDebt > 0 ? AppColors.accent : AppColors.tealDark,
-          gradientColors: [
-            Colors.white,
-            totalDebt > 0 ? const Color(0xFFFFF1F2) : const Color(0xFFF0FDFA),
-          ],
-          iconGradient:
-              totalDebt > 0
-                  ? const [Color(0xFFF43F5E), Color(0xFFE11D48)]
-                  : const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor:
-              totalDebt > 0 ? const Color(0xFFFECDD3) : const Color(0xFF99F6E4),
-          glowColor:
-              totalDebt > 0 ? const Color(0x2EF43F5E) : const Color(0x2E0D9488),
-          valueColor: totalDebt > 0 ? AppColors.accent : AppColors.textPrimary,
-        ),
-      ],
-    );
-  }
-}
-
-class _PurchaseOrdersViewModel {
-  final PurchaseOrdersCubit cubit;
-  final PurchaseOrdersState state;
-  _PurchaseOrdersViewModel(this.cubit, this.state);
-
-  String get errorMessage {
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).message;
-    }
-    return '';
-  }
-
-  void clearError() => cubit.clearError();
-
-  bool get isLoading =>
-      (state is PurchaseOrdersLoading &&
-          (state as PurchaseOrdersLoading).currentOrders.isEmpty) ||
-      state is PurchaseOrdersInitial;
-
-  bool get isBackgroundLoading =>
-      state is PurchaseOrdersLoading &&
-      (state as PurchaseOrdersLoading).currentOrders.isNotEmpty;
-
-  List<dynamic> get orders {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).orders;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).currentOrders;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).currentOrders;
-    }
-    return [];
-  }
-
-  int get totalCount {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).totalCount;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).totalCount;
-    }
-    return orders.length;
-  }
-
-  String get searchText {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).searchText;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).searchText;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).searchText;
-    }
-    return '';
-  }
-
-  String get statusFilter {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).statusFilter;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).statusFilter;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).statusFilter;
-    }
-    return 'Todos';
-  }
-
-  String get warehouseFilter {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).warehouseFilter;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).warehouseFilter;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).warehouseFilter;
-    }
-    return 'Todos';
-  }
-
-  List<String> get availableWarehouses {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).availableWarehouses;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).availableWarehouses;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).availableWarehouses;
-    }
-    return const ['Todos'];
-  }
-
-  DateTimeRange? get dateRange {
-    DateTime? start;
-    DateTime? end;
-    if (state is PurchaseOrdersLoaded) {
-      start = (state as PurchaseOrdersLoaded).startDate;
-      end = (state as PurchaseOrdersLoaded).endDate;
-    } else if (state is PurchaseOrdersLoading) {
-      start = (state as PurchaseOrdersLoading).startDate;
-      end = (state as PurchaseOrdersLoading).endDate;
-    } else if (state is PurchaseOrdersError) {
-      start = (state as PurchaseOrdersError).startDate;
-      end = (state as PurchaseOrdersError).endDate;
-    }
-    if (start != null && end != null) {
-      return DateTimeRange(start: start, end: end);
-    }
-    return null;
-  }
-
-  int get currentPage {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).currentPage;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).currentPage;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).currentPage;
-    }
-    return 0;
-  }
-
-  int get totalPages {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).totalPages;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).totalPages;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).totalPages;
-    }
-    return 1;
-  }
-
-  int get pageSize {
-    if (state is PurchaseOrdersLoaded) {
-      return (state as PurchaseOrdersLoaded).pageSize;
-    }
-    if (state is PurchaseOrdersLoading) {
-      return (state as PurchaseOrdersLoading).pageSize;
-    }
-    if (state is PurchaseOrdersError) {
-      return (state as PurchaseOrdersError).pageSize;
-    }
-    return PurchaseOrdersState.pageSize;
-  }
-
-  double get totalAmountFiltered {
-    double total = 0;
-    for (final o in orders) {
-      total += (o.totalAmount ?? 0.0) as double;
-    }
-    return total;
-  }
-
-  int get pendingCountFiltered {
-    int count = 0;
-    for (final o in orders) {
-      if (o.status == 'PENDING') count++;
-    }
-    return count;
-  }
-
-  double get totalDebtFiltered {
-    double total = 0;
-    for (final o in orders) {
-      if (o.status != 'CANCELLED') {
-        final amount = (o.totalAmount ?? 0.0) as num;
-        final paid = (o.amountPaid ?? 0.0) as num;
-        final debt = (amount - paid).clamp(0.0, double.infinity);
-        total += debt;
-      }
-    }
-    return total;
-  }
-
-  void loadOrders({bool reset = false}) => cubit.loadOrders(refresh: reset);
-  void setSearchText(String v) => cubit.setSearchText(v);
-  void setStatusFilter(String v) => cubit.setStatusFilter(v);
-  void setWarehouseFilter(String v) => cubit.setWarehouseFilter(v);
-  void setDateRange(DateTimeRange? v) => cubit.setDateRange(v?.start, v?.end);
-  void setPage(int p) => cubit.loadOrders(page: p);
-  void setPageSize(int s) => cubit.setPageSize(s);
-  Future<List<dynamic>> loadItemsForOrder(String id) async {
-    final result = await sl<FetchPurchaseOrderItemsUseCase>().call(id);
-    return result.fold((l) => [], (r) => r);
-  }
-
-  Future<void> updateOrderStatus(String id, String status) async {
-    await cubit.updateOrderStatus(id, status);
   }
 }

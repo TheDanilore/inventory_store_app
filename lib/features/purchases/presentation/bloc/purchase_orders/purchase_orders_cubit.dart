@@ -219,19 +219,21 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
   }
 
   void setDateRange(DateTime? start, DateTime? end) {
-    // Force set the dates using a direct update since our logic uses ??
-    // We can clear it by setting them inside the function
+    // Preservar la data previa para evitar parpadeos de shimmer (Stale-While-Revalidate)
     final currentState = state;
     if (currentState is PurchaseOrdersLoaded) {
       emit(
         PurchaseOrdersLoading(
-          currentOrders: [],
+          currentOrders: currentState.orders,
           searchText: currentState.searchText,
           statusFilter: currentState.statusFilter,
+          warehouseFilter: currentState.warehouseFilter,
+          availableWarehouses: currentState.availableWarehouses,
           startDate: start,
           endDate: end,
           currentPage: 0,
           totalCount: currentState.totalCount,
+          pageSize: currentState.pageSize,
         ),
       );
     }

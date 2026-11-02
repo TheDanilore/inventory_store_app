@@ -69,7 +69,7 @@ abstract class PosRepository {
   Future<Either<Failure, ({OrderModel order, List<OrderItemModel> items})>>
   fetchOrderForReceipt(String orderId);
 
-  /// Obtiene las ventas más recientes realizadas en el POS para mostrar en el Drawer o en PosSalesView.
+  /// Obtiene las ventas más recientes realizadas en el POS para mostrar en el Drawer.
   /// Soporta paginación por desplazamiento (offset) y filtrado en servidor por cliente/código.
   Future<Either<Failure, List<OrderModel>>> fetchRecentOrders({
     int limit = 20,

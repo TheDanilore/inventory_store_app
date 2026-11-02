@@ -32,6 +32,20 @@ abstract class OrdersRepository {
     bool forceRefresh = false,
   });
 
+  /// Obtiene de forma síncrona los pedidos cacheados en memoria L1 si están vigentes.
+  /// Garantiza renderizado Frame 0 (Zero-Shimmer) sin llamadas de red previas.
+  ({List<OrderEntity> orders, int total})? getCachedFilteredOrders({
+    String? customerIdFilter,
+    required String statusFilter,
+    required String paymentStatusFilter,
+    String? warehouseFilter,
+    DateTime? startDate,
+    DateTime? endDate,
+    required String searchQuery,
+    required int limit,
+    required int offset,
+  });
+
   Future<Either<Failure, OrderEntity>> getOrderById(String orderId);
   Future<Either<Failure, List<OrderItemEntity>>> getOrderItems(String orderId);
   OrderEntity? getCachedOrder(String orderId);

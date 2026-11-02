@@ -911,7 +911,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i13.CustomersStatsCubit>(
       () => _i13.CustomersStatsCubit(gh<_i1019.GetGlobalStatsUseCase>()),
     );
-    gh.factory<_i138.InventoryEntriesCubit>(
+    gh.lazySingleton<_i138.InventoryEntriesCubit>(
       () => _i138.InventoryEntriesCubit(
         getInventoryEntries: gh<_i94.GetInventoryEntriesUseCase>(),
         getActiveWarehouses: gh<_i945.GetActiveWarehousesUseCase>(),
