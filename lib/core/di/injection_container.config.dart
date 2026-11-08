@@ -76,7 +76,7 @@ import '../../features/catalog/domain/repositories/ingredients_repository.dart'
 import '../../features/catalog/domain/repositories/products_repository.dart'
     as _i570;
 import '../../features/catalog/domain/usecases/add_product_review_usecase.dart'
-    as _i289;
+    as _i290;
 import '../../features/catalog/domain/usecases/catalog_attribute_mutations_uc.dart'
     as _i382;
 import '../../features/catalog/domain/usecases/catalog_brand_mutations_uc.dart'
@@ -508,6 +508,7 @@ import '../../features/purchases/presentation/bloc/supplier_credits/supplier_cre
     as _i54;
 import '../../features/purchases/presentation/bloc/suppliers/suppliers_cubit.dart'
     as _i431;
+import '../../features/roles/data/cache/roles_l1_cache.dart' as _i288;
 import '../../features/roles/data/repositories_impl/roles_repository_impl.dart'
     as _i337;
 import '../../features/roles/domain/repositories/roles_repository.dart'
@@ -526,7 +527,7 @@ import '../../features/users/domain/usecases/get_global_users_count_usecase.dart
 import '../../features/users/domain/usecases/get_user_by_id_usecase.dart'
     as _i342;
 import '../../features/users/domain/usecases/get_user_relations_usecase.dart'
-    as _i288;
+    as _i289;
 import '../../features/users/domain/usecases/get_users_usecase.dart' as _i499;
 import '../../features/users/domain/usecases/update_user_usecase.dart' as _i90;
 import '../../features/users/presentation/bloc/user_detail/user_detail_cubit.dart'
@@ -572,6 +573,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i751.OrdersCacheManager>(
       () => _i751.OrdersCacheManager(),
     );
+    gh.lazySingleton<_i288.RolesL1Cache>(() => _i288.RolesL1Cache());
     gh.lazySingleton<_i728.WishlistRepository>(
       () => _i243.WishlistRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
@@ -610,9 +612,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i561.AccountMovementsRepository>(
       () => _i802.AccountMovementsRepositoryImpl(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i1024.RolesRepository>(
-      () => _i337.RolesRepositoryImpl(gh<_i454.SupabaseClient>()),
     );
     gh.factory<_i862.TransferFundsUseCase>(
       () => _i862.TransferFundsUseCase(
@@ -758,6 +757,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i480.SyncCartUseCase>(
       () => _i480.SyncCartUseCase(gh<_i322.CartRepository>()),
+    );
+    gh.lazySingleton<_i1024.RolesRepository>(
+      () => _i337.RolesRepositoryImpl(
+        gh<_i454.SupabaseClient>(),
+        gh<_i288.RolesL1Cache>(),
+      ),
     );
     gh.factory<_i761.CustomerCreditMovementsCubit>(
       () => _i761.CustomerCreditMovementsCubit(
@@ -955,8 +960,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i342.GetUserByIdUseCase>(
       () => _i342.GetUserByIdUseCase(gh<_i476.UsersRepository>()),
     );
-    gh.factory<_i288.GetUserRelationsUseCase>(
-      () => _i288.GetUserRelationsUseCase(gh<_i476.UsersRepository>()),
+    gh.factory<_i289.GetUserRelationsUseCase>(
+      () => _i289.GetUserRelationsUseCase(gh<_i476.UsersRepository>()),
     );
     gh.factory<_i499.GetUsersUseCase>(
       () => _i499.GetUsersUseCase(gh<_i476.UsersRepository>()),
@@ -1452,8 +1457,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i839.ToggleWishlistUseCase>(
       () => _i839.ToggleWishlistUseCase(gh<_i570.ProductsRepository>()),
     );
-    gh.factory<_i289.AddProductReviewUseCase>(
-      () => _i289.AddProductReviewUseCase(gh<_i570.ProductsRepository>()),
+    gh.factory<_i290.AddProductReviewUseCase>(
+      () => _i290.AddProductReviewUseCase(gh<_i570.ProductsRepository>()),
     );
     gh.factory<_i987.CheckCustomerPurchaseUseCase>(
       () => _i987.CheckCustomerPurchaseUseCase(gh<_i570.ProductsRepository>()),
@@ -1742,7 +1747,7 @@ extension GetItInjectableX on _i174.GetIt {
         getProfileId: gh<_i927.GetCurrentProfileIdUseCase>(),
         exportProductPdf: gh<_i967.ExportProductPdfUseCase>(),
         checkPurchase: gh<_i987.CheckCustomerPurchaseUseCase>(),
-        addReview: gh<_i289.AddProductReviewUseCase>(),
+        addReview: gh<_i290.AddProductReviewUseCase>(),
       ),
     );
     gh.lazySingleton<_i1067.CatalogFormMutationsUC>(

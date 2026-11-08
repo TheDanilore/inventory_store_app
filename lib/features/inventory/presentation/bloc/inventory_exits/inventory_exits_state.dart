@@ -56,12 +56,14 @@ class InventoryExitsState extends Equatable {
     bool clearDateRange = false,
   }) {
     final newExits = exits ?? this.exits;
-    final newTotalCost = exits != null
-        ? newExits.fold<double>(0.0, (s, e) => s + e.totalCost)
-        : (totalCost ?? this.totalCost);
-    final newTotalUnits = exits != null
-        ? newExits.fold<int>(0, (s, e) => s + e.itemCount)
-        : (totalUnits ?? this.totalUnits);
+    final newTotalCost =
+        exits != null
+            ? newExits.fold<double>(0.0, (s, e) => s + e.totalCost)
+            : (totalCost ?? this.totalCost);
+    final newTotalUnits =
+        exits != null
+            ? newExits.fold<int>(0, (s, e) => s + e.itemCount)
+            : (totalUnits ?? this.totalUnits);
 
     return InventoryExitsState(
       exits: newExits,

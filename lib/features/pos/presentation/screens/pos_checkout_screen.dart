@@ -12,21 +12,19 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/app_co
 import 'package:inventory_store_app/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_cubit.dart';
 import 'package:inventory_store_app/features/cart/presentation/bloc/cart_state.dart';
-import 'package:inventory_store_app/features/catalog/domain/repositories/products_repository.dart';
 import 'package:inventory_store_app/features/orders/presentation/widgets/admin/orders/order_receipt_export_sheet.dart';
+import 'package:inventory_store_app/features/pos/domain/repositories/pos_repository.dart';
 import 'package:inventory_store_app/features/pos/domain/utils/pos_calculator_utils.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_cubit.dart';
 import 'package:inventory_store_app/features/pos/presentation/bloc/pos/pos_state.dart';
 import 'package:inventory_store_app/features/pos/presentation/services/pos_barcode_scanner_service.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_cart_items_section.dart';
+import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_checkout_summary_block.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_client_header_bar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_credit_warning_card.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_custom_discount_card.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_dialogs.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_payment_and_config_section.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_processing_overlay.dart';
 import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_sticky_action_bar.dart';
-import 'package:inventory_store_app/features/pos/presentation/widgets/pos_checkout/pos_total_summary_section.dart';
 
 class PosCheckoutScreen extends StatefulWidget {
   final VoidCallback? onSaleCompleted;
@@ -72,11 +70,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
     _clienteCtrl.text = posCubit.state.selectedClientName ?? '';
     _puntosCtrl.text = posCubit.state.puntosAUsar.toString();
 
-    // SWR Pattern: Si ya hay almacenes o cuentas en memoria, o productos en el carrito,
-    // jamás mostrar shimmer obstructivo de pantalla completa.
+    // SWR Pattern (Zero-Shimmer Frame 0):
+    // Verificamos si los datos ya residen en memoria en PosCubit, en el repositorio o en el carrito.
+    final cachedInitial = sl<PosRepository>().getCachedInitialData();
     final hasCachedData =
         (posCubit.state.warehouses.isNotEmpty &&
             posCubit.state.accounts.isNotEmpty) ||
+        (cachedInitial != null && cachedInitial.warehouses.isNotEmpty) ||
         cartCubit.state.items.isNotEmpty;
 
     _isLoadingInitialData = !hasCachedData;
@@ -97,7 +97,10 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
   Future<void> _loadInitialData(PosCubit posCubit) async {
     try {
-      await posCubit.initPosData();
+      if (posCubit.state.warehouses.isEmpty ||
+          posCubit.state.accounts.isEmpty) {
+        await posCubit.initPosData();
+      }
       if (posCubit.state.selectedClientId != null) {
         await posCubit.fetchClientCredit(posCubit.state.selectedClientId!);
       }
@@ -106,8 +109,15 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           posCubit.state.selectedWarehouseId!,
         );
       }
+    } catch (e, st) {
+      LoggerService.e(
+        'Error cargando datos iniciales de checkout',
+        tag: 'PosCheckoutScreen',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
-      if (mounted) {
+      if (mounted && _isLoadingInitialData) {
         setState(() => _isLoadingInitialData = false);
       }
     }
@@ -171,8 +181,9 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
 
     if (variantIds.isEmpty) return;
 
-    final repo = sl<ProductsRepository>();
-    final res = await repo.fetchVariantStockByVariantIds(
+    // Respeto estricto a Clean Architecture: PosCubit orquesta la consulta de stock
+    final posCubit = context.read<PosCubit>();
+    final res = await posCubit.fetchVariantStocks(
       variantIds,
       warehouseId: warehouseId,
     );
@@ -467,10 +478,12 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       });
     }
 
-    // SWR Verification en build: Si hay datos en memoria en los BLoCs, NUNCA bloquear con Shimmer.
+    // Zero-Shimmer (Frame 0 SWR): Si hay datos en memoria en los BLoCs o repositorio, NUNCA bloquear con Shimmer.
+    final cachedInitial = sl<PosRepository>().getCachedInitialData();
     final hasDataInCache =
         (posCubit.state.warehouses.isNotEmpty &&
             posCubit.state.accounts.isNotEmpty) ||
+        (cachedInitial != null && cachedInitial.warehouses.isNotEmpty) ||
         cartCubit.state.items.isNotEmpty;
     final showShimmer = _isLoadingInitialData && !hasDataInCache;
 
@@ -616,11 +629,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
           ),
           actions: [
             BlocSelector<CartCubit, CartState, int>(
-              selector:
-                  (cart) => cart.items.values.fold<int>(
-                    0,
-                    (sum, i) => sum + i.quantity,
-                  ),
+              selector: (cart) => cart.totalQuantity,
               builder: (context, count) {
                 if (count == 0) return const SizedBox.shrink();
                 return Container(
@@ -758,10 +767,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                                       _isDiscountPercentageNotifier,
                                     ]),
                                     builder: (context, _) {
-                                      return _buildSummarySection(
-                                        pointsToSolesRatio,
-                                        earningRate,
-                                        isLoyaltyEnabled,
+                                      return PosCheckoutSummaryBlock(
+                                        ratio: pointsToSolesRatio,
+                                        earningRate: earningRate,
+                                        isLoyaltyEnabled: isLoyaltyEnabled,
+                                        discountCtrl: _descuentoCtrl,
+                                        isDiscountPercentageNotifier:
+                                            _isDiscountPercentageNotifier,
                                       );
                                     },
                                   ),
@@ -908,10 +920,13 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
                     _isDiscountPercentageNotifier,
                   ]),
                   builder: (context, _) {
-                    return _buildSummarySection(
-                      ratio,
-                      earningRate,
-                      isLoyaltyEnabled,
+                    return PosCheckoutSummaryBlock(
+                      ratio: ratio,
+                      earningRate: earningRate,
+                      isLoyaltyEnabled: isLoyaltyEnabled,
+                      discountCtrl: _descuentoCtrl,
+                      isDiscountPercentageNotifier:
+                          _isDiscountPercentageNotifier,
                     );
                   },
                 ),
@@ -952,14 +967,7 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
       builder: (context, posState) {
         final isCredito = posState.paymentMethod == 'CRÉDITO';
         return BlocSelector<CartCubit, CartState, (int, bool)>(
-          selector:
-              (cart) => (
-                cart.items.values.fold<int>(
-                  0,
-                  (sum, item) => sum + item.quantity,
-                ),
-                cart.items.isEmpty,
-              ),
+          selector: (cart) => (cart.totalQuantity, cart.items.isEmpty),
           builder: (context, cartTuple) {
             final (totalItems, isCartEmpty) = cartTuple;
             return PosClientHeaderBar(
@@ -978,106 +986,6 @@ class _PosCheckoutScreenState extends State<PosCheckoutScreen> {
               isCartEmpty: isCartEmpty,
               onClearCart: _onClearCart,
               showCajaHeader: false,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSummarySection(
-    double ratio,
-    double earningRate,
-    bool isLoyaltyEnabled,
-  ) {
-    return BlocBuilder<PosCubit, PosState>(
-      buildWhen:
-          (prev, curr) =>
-              prev.paymentMethod != curr.paymentMethod ||
-              prev.puntosAUsar != curr.puntosAUsar ||
-              prev.selectedClientId != curr.selectedClientId ||
-              prev.saldoActualCliente != curr.saldoActualCliente ||
-              prev.creditInfo != curr.creditInfo,
-      builder: (context, posState) {
-        return BlocBuilder<CartCubit, CartState>(
-          buildWhen: (prev, curr) => prev.totalAmount != curr.totalAmount,
-          builder: (context, cartState) {
-            final isCredito = posState.paymentMethod == 'CRÉDITO';
-            final puntosSeguros = PosCalculatorUtils.clampPointsValue(
-              posState.puntosAUsar,
-              posState,
-              cartState,
-              ratio,
-            );
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isCredito) ...[
-                  PosCreditWarningCard(
-                    clienteSeleccionado: posState.selectedClientId != null,
-                    creditActivo: PosCalculatorUtils.isCreditActivo(
-                      posState.creditInfo,
-                    ),
-                    creditDisponible: PosCalculatorUtils.getCreditDisponible(
-                      posState.creditInfo,
-                    ),
-                    totalFinal: PosCalculatorUtils.calcularTotalFinal(
-                      discountText: _descuentoCtrl.text,
-                      isDiscountPercentage: _isDiscountPercentageNotifier.value,
-                      pos: posState,
-                      cart: cartState,
-                      ratio: ratio,
-                    ),
-                    creditInfo: posState.creditInfo,
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                if (!isCredito) ...[
-                  PosCustomDiscountCard(
-                    discountController: _descuentoCtrl,
-                    isPercentageNotifier: _isDiscountPercentageNotifier,
-                    posState: posState,
-                    cartState: cartState,
-                    ratio: ratio,
-                    puntosSeguros: puntosSeguros,
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                PosTotalSummarySection(
-                  subtotalAntesDePuntos: cartState.totalAmount,
-                  puntosAplicables:
-                      isCredito || !isLoyaltyEnabled ? 0 : puntosSeguros,
-                  descuentoPuntos:
-                      isCredito || !isLoyaltyEnabled
-                          ? 0
-                          : puntosSeguros * ratio,
-                  isLoyaltyEnabled: isLoyaltyEnabled,
-                  descuentoExtra:
-                      isCredito
-                          ? 0
-                          : PosCalculatorUtils.getCustomDiscountAmount(
-                            discountText: _descuentoCtrl.text,
-                            isDiscountPercentage:
-                                _isDiscountPercentageNotifier.value,
-                            pos: posState,
-                            cart: cartState,
-                            ratio: ratio,
-                          ),
-                  totalFinal: PosCalculatorUtils.calcularTotalFinal(
-                    discountText: _descuentoCtrl.text,
-                    isDiscountPercentage: _isDiscountPercentageNotifier.value,
-                    pos: posState,
-                    cart: cartState,
-                    ratio: ratio,
-                  ),
-                  pointsToSolesRatio: ratio,
-                  earningRate: earningRate,
-                  isCredito: isCredito,
-                ),
-              ],
             );
           },
         );

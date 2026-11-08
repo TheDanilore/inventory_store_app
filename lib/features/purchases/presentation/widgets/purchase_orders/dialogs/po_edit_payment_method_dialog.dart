@@ -105,4 +105,3 @@ class _POEditPaymentMethodDialogState extends State<POEditPaymentMethodDialog> {
     );
   }
 }
-

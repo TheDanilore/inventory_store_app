@@ -24,7 +24,11 @@ class _RolesManagementViewState extends State<RolesManagementView> {
   @override
   void initState() {
     super.initState();
-    context.read<RolesCubit>().loadRolesAndPermissions();
+    // Zero-Shimmer: Solo si no hay datos en memoria se dispara la carga inicial
+    final cubit = context.read<RolesCubit>();
+    if (cubit.state.roles.isEmpty) {
+      cubit.loadRolesAndPermissions();
+    }
   }
 
   @override
@@ -182,7 +186,9 @@ class _RolesManagementViewState extends State<RolesManagementView> {
         }
       },
       builder: (context, state) {
-        if (state.isLoading || state.status == RolesStatus.initial) {
+        // Zero-Shimmer: Solo mostrar spinner si no existen datos previos en memoria
+        if ((state.isLoading || state.status == RolesStatus.initial) &&
+            state.roles.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 

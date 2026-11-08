@@ -73,7 +73,9 @@ class PODetailItemsList extends StatelessWidget {
                       value: progress.clamp(0.0, 1.0),
                       backgroundColor: AppColors.border,
                       color:
-                          isFullyReceived ? AppColors.success : AppColors.warning,
+                          isFullyReceived
+                              ? AppColors.success
+                              : AppColors.warning,
                       minHeight: 4,
                     ),
                   ),
@@ -84,7 +86,9 @@ class PODetailItemsList extends StatelessWidget {
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color:
-                          isFullyReceived ? AppColors.success : AppColors.warning,
+                          isFullyReceived
+                              ? AppColors.success
+                              : AppColors.warning,
                     ),
                   ),
                 ],

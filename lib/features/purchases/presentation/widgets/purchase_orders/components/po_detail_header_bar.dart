@@ -214,4 +214,3 @@ class PODetailHeaderBar extends StatelessWidget {
     );
   }
 }
-

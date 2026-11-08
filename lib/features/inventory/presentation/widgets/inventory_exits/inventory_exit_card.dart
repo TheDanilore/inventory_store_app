@@ -35,14 +35,16 @@ class _InventoryExitCardState extends State<InventoryExitCard> {
         curve: Curves.easeOut,
         transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
         decoration: BoxDecoration(
-          color: widget.isSelected
-              ? AppColors.danger.withValues(alpha: 0.05)
-              : AppColors.surface,
+          color:
+              widget.isSelected
+                  ? AppColors.danger.withValues(alpha: 0.05)
+                  : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: widget.isSelected
-                ? AppColors.danger.withValues(alpha: 0.5)
-                : _isHovered
+            color:
+                widget.isSelected
+                    ? AppColors.danger.withValues(alpha: 0.5)
+                    : _isHovered
                     ? AppColors.teal.withValues(alpha: 0.35)
                     : const Color(0xFFE2E8F0),
             width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
@@ -110,9 +112,9 @@ class _InventoryExitCardState extends State<InventoryExitCard> {
                           Text(
                             exitData.createdAt != null
                                 ? DateFormat(
-                                    'dd MMM yyyy - HH:mm',
-                                    'es',
-                                  ).format(exitData.createdAt!.toLocal())
+                                  'dd MMM yyyy - HH:mm',
+                                  'es',
+                                ).format(exitData.createdAt!.toLocal())
                                 : '—',
                             style: const TextStyle(
                               color: AppColors.textMuted,
@@ -189,4 +191,3 @@ class _Pill extends StatelessWidget {
     );
   }
 }
-

@@ -7,6 +7,7 @@ import 'package:inventory_store_app/features/app_config/presentation/bloc/system
 import 'package:inventory_store_app/features/main_navigation/data/datasources/inventory_alert_source_impl.dart';
 import 'package:inventory_store_app/features/main_navigation/domain/entities/inventory_alert_rules.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/bloc/notifications/notifications_cubit.dart';
+import 'package:inventory_store_app/features/roles/data/cache/roles_l1_cache.dart';
 import 'package:inventory_store_app/features/roles/data/repositories_impl/roles_repository_impl.dart';
 import 'package:inventory_store_app/features/roles/domain/repositories/roles_repository.dart';
 import 'package:inventory_store_app/features/roles/presentation/bloc/roles_cubit.dart';
@@ -32,9 +33,12 @@ void initDI([SharedPreferences? prefs]) {
   if (!sl.isRegistered<ThemeCubit>()) {
     sl.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
   }
+  if (!sl.isRegistered<RolesL1Cache>()) {
+    sl.registerLazySingleton<RolesL1Cache>(() => RolesL1Cache());
+  }
   if (!sl.isRegistered<RolesRepository>()) {
     sl.registerLazySingleton<RolesRepository>(
-      () => RolesRepositoryImpl(sl<SupabaseClient>()),
+      () => RolesRepositoryImpl(sl<SupabaseClient>(), sl<RolesL1Cache>()),
     );
   }
   if (!sl.isRegistered<RolesCubit>()) {

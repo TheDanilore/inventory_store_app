@@ -110,7 +110,8 @@ class PODetailSupplierCard extends StatelessWidget {
                       if (canEditPaymentMethod) ...[
                         const SizedBox(width: 4),
                         InkWell(
-                          onTap: isProcessingAction ? null : onEditPaymentMethod,
+                          onTap:
+                              isProcessingAction ? null : onEditPaymentMethod,
                           borderRadius: BorderRadius.circular(4),
                           child: const Padding(
                             padding: EdgeInsets.all(2.0),
@@ -220,4 +221,3 @@ class PODetailSupplierCard extends StatelessWidget {
     );
   }
 }
-

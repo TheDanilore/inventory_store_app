@@ -33,7 +33,8 @@ class InventoryExitsBentoKpiBar extends StatelessWidget {
           AdminKpiItem(
             title: 'Total Salidas',
             value: totalCount > 0 ? '$totalCount' : '$count',
-            subtitle: isFilteredByWarehouse ? 'En $warehouseName' : 'Registradas',
+            subtitle:
+                isFilteredByWarehouse ? 'En $warehouseName' : 'Registradas',
             icon: Icons.outbox_rounded,
             accentColor: AppColors.primary,
             gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
@@ -70,4 +71,3 @@ class InventoryExitsBentoKpiBar extends StatelessWidget {
     );
   }
 }
-

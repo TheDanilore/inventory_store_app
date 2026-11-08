@@ -32,6 +32,14 @@ class CartState extends Equatable {
 
   int get itemCount => items.length;
 
+  int get totalQuantity {
+    var count = 0;
+    for (final item in items.values) {
+      count += item.quantity;
+    }
+    return count;
+  }
+
   List<CartItemEntity> get sortedItems {
     final list = items.values.toList();
     list.sort((a, b) {

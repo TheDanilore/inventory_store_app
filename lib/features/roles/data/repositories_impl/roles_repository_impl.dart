@@ -4,6 +4,7 @@ import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/auth/domain/entities/permission_entity.dart';
+import 'package:inventory_store_app/features/roles/data/cache/roles_l1_cache.dart';
 import 'package:inventory_store_app/features/roles/domain/entities/role_with_permissions.dart';
 import 'package:inventory_store_app/features/roles/domain/repositories/roles_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,11 +12,30 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 @LazySingleton(as: RolesRepository)
 class RolesRepositoryImpl implements RolesRepository {
   final SupabaseClient _supabase;
+  final RolesL1Cache _cache;
 
-  RolesRepositoryImpl(this._supabase);
+  RolesRepositoryImpl(this._supabase, [RolesL1Cache? cache])
+    : _cache = cache ?? RolesL1Cache();
 
   @override
-  Future<Either<Failure, List<RoleWithPermissions>>> getRoles() async {
+  List<PermissionEntity>? get cachedPermissions => _cache.cachedPermissions;
+
+  @override
+  List<RoleWithPermissions>? get cachedRoles => _cache.cachedRoles;
+
+  @override
+  void invalidateRolesCache() {
+    _cache.invalidateRoles();
+  }
+
+  @override
+  Future<Either<Failure, List<RoleWithPermissions>>> getRoles({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cache.hasValidRoles) {
+      return Right(_cache.cachedRoles!);
+    }
+
     try {
       final data = await _supabase
           .from('roles')
@@ -44,7 +64,7 @@ class RolesRepositoryImpl implements RolesRepository {
         final createdAt =
             createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
 
-        // Parsear permisos
+        // Parsear códigos de permisos asociados
         final perms = <String>[];
         final rpList = item['role_permissions'] as List?;
         if (rpList != null) {
@@ -57,7 +77,7 @@ class RolesRepositoryImpl implements RolesRepository {
           }
         }
 
-        // Conteo de usuarios asignados
+        // Conteo de usuarios asignados al rol
         final urList = item['user_roles'] as List?;
         final userCount = urList?.length ?? 0;
 
@@ -73,6 +93,9 @@ class RolesRepositoryImpl implements RolesRepository {
         );
       }
 
+      // Guardar en caché L1
+      _cache.setRoles(roles);
+
       return Right(roles);
     } on PostgrestException catch (e, st) {
       LoggerService.e(
@@ -81,6 +104,10 @@ class RolesRepositoryImpl implements RolesRepository {
         error: e,
         stackTrace: st,
       );
+      // Fallback a caché stale si existe
+      if (_cache.cachedRoles != null && _cache.cachedRoles!.isNotEmpty) {
+        return Right(_cache.cachedRoles!);
+      }
       return Left(
         ServerFailure(message: 'Error al cargar roles: ${e.message}'),
       );
@@ -91,12 +118,21 @@ class RolesRepositoryImpl implements RolesRepository {
         error: e,
         stackTrace: st,
       );
+      if (_cache.cachedRoles != null && _cache.cachedRoles!.isNotEmpty) {
+        return Right(_cache.cachedRoles!);
+      }
       return Left(ServerFailure(message: 'Error inesperado: $e'));
     }
   }
 
   @override
-  Future<Either<Failure, List<PermissionEntity>>> getAllPermissions() async {
+  Future<Either<Failure, List<PermissionEntity>>> getAllPermissions({
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _cache.hasValidPermissions) {
+      return Right(_cache.cachedPermissions!);
+    }
+
     try {
       final data = await _supabase
           .from('permissions')
@@ -117,33 +153,37 @@ class RolesRepositoryImpl implements RolesRepository {
               .toList();
 
       if (list.isEmpty) {
-        // Fallback a catálogo en memoria si la tabla aún no se ha poblado
-        return Right(
-          AppPermissions.all.map((c) {
-            return PermissionEntity(
-              id: c,
-              code: c,
-              name: AppPermissions.getLabel(c),
-              module: AppPermissions.getModule(c),
-            );
-          }).toList(),
-        );
+        // Fallback a catálogo en memoria local si la tabla no contiene filas
+        final fallback = _buildLocalFallbackPermissions();
+        _cache.setPermissions(fallback);
+        return Right(fallback);
       }
 
+      _cache.setPermissions(list);
       return Right(list);
-    } catch (e) {
-      // Fallback seguro a constantes
-      return Right(
-        AppPermissions.all.map((c) {
-          return PermissionEntity(
-            id: c,
-            code: c,
-            name: AppPermissions.getLabel(c),
-            module: AppPermissions.getModule(c),
-          );
-        }).toList(),
+    } catch (e, st) {
+      LoggerService.w(
+        'Error al obtener permisos de Supabase, usando catálogo local',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
       );
+      final fallback =
+          _cache.cachedPermissions ?? _buildLocalFallbackPermissions();
+      _cache.setPermissions(fallback);
+      return Right(fallback);
     }
+  }
+
+  List<PermissionEntity> _buildLocalFallbackPermissions() {
+    return AppPermissions.all.map((c) {
+      return PermissionEntity(
+        id: c,
+        code: c,
+        name: AppPermissions.getLabel(c),
+        module: AppPermissions.getModule(c),
+      );
+    }).toList();
   }
 
   @override
@@ -174,6 +214,8 @@ class RolesRepositoryImpl implements RolesRepository {
         );
       }
 
+      _cache.invalidateRoles();
+
       final createdAtStr = inserted['created_at']?.toString();
       final createdAt =
           createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
@@ -188,14 +230,26 @@ class RolesRepositoryImpl implements RolesRepository {
           userCount: 0,
         ),
       );
-    } on PostgrestException catch (e) {
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error PostgREST en createRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       if (e.message.contains('unique') || e.code == '23505') {
         return Left(
           ServerFailure(message: 'Ya existe un rol con ese identificador.'),
         );
       }
       return Left(ServerFailure(message: 'Error al crear rol: ${e.message}'));
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en createRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error al crear rol: $e'));
     }
   }
@@ -225,6 +279,8 @@ class RolesRepositoryImpl implements RolesRepository {
         await syncRolePermissions(roleId: id, permissionCodes: permissionCodes);
       }
 
+      _cache.invalidateRoles();
+
       final createdAtStr = updated['created_at']?.toString();
       final createdAt =
           createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
@@ -238,11 +294,23 @@ class RolesRepositoryImpl implements RolesRepository {
           permissions: permissionCodes ?? [],
         ),
       );
-    } on PostgrestException catch (e) {
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error PostgREST en updateRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return Left(
         ServerFailure(message: 'Error al actualizar rol: ${e.message}'),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en updateRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error al actualizar rol: $e'));
     }
   }
@@ -253,36 +321,78 @@ class RolesRepositoryImpl implements RolesRepository {
     required List<String> permissionCodes,
   }) async {
     try {
-      // 1. Eliminar asignaciones actuales
-      await _supabase.from('role_permissions').delete().eq('role_id', roleId);
-
-      if (permissionCodes.isEmpty) {
+      // 1. Intento transaccional atómico vía RPC en Supabase
+      try {
+        await _supabase.rpc(
+          'sync_role_permissions_atomic',
+          params: {'p_role_id': roleId, 'p_permission_codes': permissionCodes},
+        );
+        _cache.invalidateRoles();
         return const Right(null);
+      } on PostgrestException catch (rpcError) {
+        // Si el RPC no existe aún en la base de datos (código 42883 o PGRST202), ejecutamos fallback controlado
+        if (rpcError.code == '42883' ||
+            rpcError.code == 'PGRST202' ||
+            rpcError.message.contains('function') ||
+            rpcError.message.contains('not found')) {
+          LoggerService.w(
+            'RPC sync_role_permissions_atomic no encontrado, usando fallback seguro',
+            tag: 'RolesRepositoryImpl',
+          );
+          return await _syncRolePermissionsFallback(roleId, permissionCodes);
+        }
+        rethrow;
       }
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error PostgREST en syncRolePermissions',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(
+        ServerFailure(message: 'Error al sincronizar permisos: ${e.message}'),
+      );
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en syncRolePermissions',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
+      return Left(ServerFailure(message: 'Error al sincronizar permisos: $e'));
+    }
+  }
 
-      // 2. Resolver IDs de los códigos de permisos
+  /// Fallback controlado cuando el RPC aún no está creado en PostgreSQL
+  Future<Either<Failure, void>> _syncRolePermissionsFallback(
+    String roleId,
+    List<String> permissionCodes,
+  ) async {
+    // 1. Resolver IDs antes de borrar para minimizar ventana de vulnerabilidad
+    List<dynamic> inserts = [];
+    if (permissionCodes.isNotEmpty) {
       final permsData = await _supabase
           .from('permissions')
           .select('id, code')
           .inFilter('code', permissionCodes);
 
-      final inserts =
+      inserts =
           (permsData as List).map((p) {
             return {'role_id': roleId, 'permission_id': p['id']};
           }).toList();
-
-      if (inserts.isNotEmpty) {
-        await _supabase.from('role_permissions').insert(inserts);
-      }
-
-      return const Right(null);
-    } on PostgrestException catch (e) {
-      return Left(
-        ServerFailure(message: 'Error al sincronizar permisos: ${e.message}'),
-      );
-    } catch (e) {
-      return Left(ServerFailure(message: 'Error al sincronizar permisos: $e'));
     }
+
+    // 2. Eliminar asignaciones actuales
+    await _supabase.from('role_permissions').delete().eq('role_id', roleId);
+
+    // 3. Insertar nuevas
+    if (inserts.isNotEmpty) {
+      await _supabase.from('role_permissions').insert(inserts);
+    }
+
+    _cache.invalidateRoles();
+    return const Right(null);
   }
 
   @override
@@ -307,12 +417,25 @@ class RolesRepositoryImpl implements RolesRepository {
       }
 
       await _supabase.from('roles').delete().eq('id', id);
+      _cache.invalidateRoles();
       return const Right(null);
-    } on PostgrestException catch (e) {
+    } on PostgrestException catch (e, st) {
+      LoggerService.e(
+        'Error PostgREST en deleteRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return Left(
         ServerFailure(message: 'Error al eliminar rol: ${e.message}'),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LoggerService.e(
+        'Error inesperado en deleteRole',
+        tag: 'RolesRepositoryImpl',
+        error: e,
+        stackTrace: st,
+      );
       return Left(ServerFailure(message: 'Error al eliminar rol: $e'));
     }
   }

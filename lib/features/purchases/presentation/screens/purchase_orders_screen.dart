@@ -336,8 +336,7 @@ class _PurchaseOrdersScreenState extends State<PurchaseOrdersScreen> {
           value: cubitInstance,
           child: PODetailSheet(
             po: po,
-            initialItems:
-                sl<FetchPurchaseOrderItemsUseCase>().getCached(po.id),
+            initialItems: sl<FetchPurchaseOrderItemsUseCase>().getCached(po.id),
             isDialog: AdaptiveDetailSheet.isSideSheet(dialogCtx),
             onPaymentSuccess: () {},
             loadItems: () => _loadOrderItems(po.id),

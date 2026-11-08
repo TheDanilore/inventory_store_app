@@ -51,7 +51,11 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
         final warehouses = ['Todos', ...whList.map((w) => w.name)];
         emit(state.copyWith(availableWarehouses: warehouses));
       } catch (e, st) {
-        developer.log('Error al cargar almacenes activos', error: e, stackTrace: st);
+        developer.log(
+          'Error al cargar almacenes activos',
+          error: e,
+          stackTrace: st,
+        );
       }
     }
 
@@ -105,7 +109,11 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
         ),
       );
     } catch (e, st) {
-      developer.log('Error al cargar salidas de inventario', error: e, stackTrace: st);
+      developer.log(
+        'Error al cargar salidas de inventario',
+        error: e,
+        stackTrace: st,
+      );
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -190,65 +198,71 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
 
     try {
       final itemsList = await getItemsUseCase.call(exitId);
-      final parsed = itemsList.map((r) {
-        final prod = r['products'] as Map<String, dynamic>?;
-        final variant = r['product_variants'] as Map<String, dynamic>?;
-        final variantId = r['variant_id'] as String?;
+      final parsed =
+          itemsList.map((r) {
+            final prod = r['products'] as Map<String, dynamic>?;
+            final variant = r['product_variants'] as Map<String, dynamic>?;
+            final variantId = r['variant_id'] as String?;
 
-        final vavList =
-            variant?['variant_attribute_values'] as List<dynamic>? ?? [];
-        final List<String> attrValues = [];
-        for (var vav in vavList) {
-          final av = vav['attribute_values'] as Map<String, dynamic>?;
-          if (av != null && av['value'] != null) {
-            attrValues.add(av['value'].toString());
-          }
-        }
-        final attrsText = attrValues.join(' · ');
-        final bool usesBatches = prod?['uses_batches'] == true;
+            final vavList =
+                variant?['variant_attribute_values'] as List<dynamic>? ?? [];
+            final List<String> attrValues = [];
+            for (var vav in vavList) {
+              final av = vav['attribute_values'] as Map<String, dynamic>?;
+              if (av != null && av['value'] != null) {
+                attrValues.add(av['value'].toString());
+              }
+            }
+            final attrsText = attrValues.join(' · ');
+            final bool usesBatches = prod?['uses_batches'] == true;
 
-        String? finalImageUrl;
-        final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
-        if (imagesList.isNotEmpty) {
-          final variantImage = imagesList
-              .cast<Map<String, dynamic>>()
-              .firstWhere(
-                (img) => img['variant_id'] == variantId,
-                orElse: () => <String, dynamic>{},
-              );
-          if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
-            finalImageUrl = variantImage['image_url'] as String;
-          } else {
-            final mainImage = imagesList
-                .cast<Map<String, dynamic>>()
-                .firstWhere(
-                  (img) => img['is_main'] == true,
-                  orElse: () => imagesList.first as Map<String, dynamic>,
-                );
-            finalImageUrl = mainImage['image_url'] as String?;
-          }
-        }
+            String? finalImageUrl;
+            final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
+            if (imagesList.isNotEmpty) {
+              final variantImage = imagesList
+                  .cast<Map<String, dynamic>>()
+                  .firstWhere(
+                    (img) => img['variant_id'] == variantId,
+                    orElse: () => <String, dynamic>{},
+                  );
+              if (variantImage.isNotEmpty &&
+                  variantImage['image_url'] != null) {
+                finalImageUrl = variantImage['image_url'] as String;
+              } else {
+                final mainImage = imagesList
+                    .cast<Map<String, dynamic>>()
+                    .firstWhere(
+                      (img) => img['is_main'] == true,
+                      orElse: () => imagesList.first as Map<String, dynamic>,
+                    );
+                finalImageUrl = mainImage['image_url'] as String?;
+              }
+            }
 
-        return InventoryExitItemModel(
-          id: r['id'] as String? ?? '',
-          exitId: exitId,
-          productId: prod?['id'] as String? ?? '',
-          variantId: variantId ?? '',
-          productName: prod?['name'] as String? ?? '—',
-          variantAttrs: attrsText.isNotEmpty ? attrsText : '',
-          quantity: (r['quantity'] as num).toDouble(),
-          unitCost: (r['unit_cost'] as num).toDouble(),
-          batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-          usesBatches: usesBatches,
-          imageUrl: finalImageUrl,
-          sku: variant?['sku'] as String?,
-        );
-      }).toList();
+            return InventoryExitItemModel(
+              id: r['id'] as String? ?? '',
+              exitId: exitId,
+              productId: prod?['id'] as String? ?? '',
+              variantId: variantId ?? '',
+              productName: prod?['name'] as String? ?? '—',
+              variantAttrs: attrsText.isNotEmpty ? attrsText : '',
+              quantity: (r['quantity'] as num).toDouble(),
+              unitCost: (r['unit_cost'] as num).toDouble(),
+              batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
+              usesBatches: usesBatches,
+              imageUrl: finalImageUrl,
+              sku: variant?['sku'] as String?,
+            );
+          }).toList();
 
       _exitItemsCache[exitId] = parsed;
       return parsed;
     } catch (e, st) {
-      developer.log('Error loading exit items for $exitId', error: e, stackTrace: st);
+      developer.log(
+        'Error loading exit items for $exitId',
+        error: e,
+        stackTrace: st,
+      );
       return [];
     }
   }

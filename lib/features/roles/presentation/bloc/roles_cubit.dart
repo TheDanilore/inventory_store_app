@@ -7,33 +7,56 @@ import 'package:inventory_store_app/features/roles/presentation/bloc/roles_state
 class RolesCubit extends Cubit<RolesState> {
   final RolesRepository _rolesRepository;
 
-  RolesCubit(this._rolesRepository) : super(const RolesState());
+  RolesCubit(this._rolesRepository)
+    : super(
+        _rolesRepository.cachedRoles != null &&
+                _rolesRepository.cachedRoles!.isNotEmpty &&
+                _rolesRepository.cachedPermissions != null &&
+                _rolesRepository.cachedPermissions!.isNotEmpty
+            ? RolesState(
+              status: RolesStatus.loaded,
+              roles: _rolesRepository.cachedRoles!,
+              allPermissions: _rolesRepository.cachedPermissions!,
+            )
+            : const RolesState(),
+      );
 
-  Future<void> loadRolesAndPermissions() async {
-    emit(state.copyWith(status: RolesStatus.loading, clearMessages: true));
+  Future<void> loadRolesAndPermissions({bool forceRefresh = false}) async {
+    // Zero-Shimmer: Solo emitir loading si no hay datos en memoria
+    if (state.roles.isEmpty || forceRefresh) {
+      emit(state.copyWith(status: RolesStatus.loading, clearMessages: true));
+    }
 
-    final permsRes = await _rolesRepository.getAllPermissions();
-    final rolesRes = await _rolesRepository.getRoles();
+    final permsRes = await _rolesRepository.getAllPermissions(
+      forceRefresh: forceRefresh,
+    );
+    final rolesRes = await _rolesRepository.getRoles(
+      forceRefresh: forceRefresh,
+    );
 
     permsRes.fold(
       (failure) {
-        emit(
-          state.copyWith(
-            status: RolesStatus.error,
-            errorMessage: failure.message,
-          ),
-        );
+        if (state.roles.isEmpty) {
+          emit(
+            state.copyWith(
+              status: RolesStatus.error,
+              errorMessage: failure.message,
+            ),
+          );
+        }
       },
       (permissions) {
         rolesRes.fold(
           (failure) {
-            emit(
-              state.copyWith(
-                status: RolesStatus.error,
-                allPermissions: permissions,
-                errorMessage: failure.message,
-              ),
-            );
+            if (state.roles.isEmpty) {
+              emit(
+                state.copyWith(
+                  status: RolesStatus.error,
+                  allPermissions: permissions,
+                  errorMessage: failure.message,
+                ),
+              );
+            }
           },
           (roles) {
             emit(
