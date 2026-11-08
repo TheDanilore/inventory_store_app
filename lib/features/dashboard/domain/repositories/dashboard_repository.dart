@@ -41,8 +41,6 @@ abstract class DashboardRepository {
   });
 
   /// Clientes con créditos vigentes y tiempo que se demoran en pagar
-  Future<Either<Failure, List<CustomerCreditAgingEntity>>> getActiveCreditsAging({
-    int limit = 5,
-    bool forceRefresh = false,
-  });
+  Future<Either<Failure, List<CustomerCreditAgingEntity>>>
+  getActiveCreditsAging({int limit = 5, bool forceRefresh = false});
 }

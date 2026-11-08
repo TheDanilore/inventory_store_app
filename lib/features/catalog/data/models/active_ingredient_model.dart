@@ -19,9 +19,10 @@ class ActiveIngredientModel {
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'].toString())
-          : null,
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.tryParse(json['created_at'].toString())
+              : null,
     );
   }
 

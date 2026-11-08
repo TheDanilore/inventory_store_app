@@ -768,9 +768,17 @@ class CustomersRepositoryImpl implements CustomersRepository {
   }
 
   @override
-  Future<List<CustomerEntity>> getTopCustomers(int limit) async {
-    // 1. Frame 0: Devolver inmediatamente si el caché está en memoria y vigente
-    if (_topCustomersCache != null && _topCustomersCacheTime != null) {
+  Future<List<CustomerEntity>> getTopCustomers(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final bool hasDateFilter = startDate != null || endDate != null;
+
+    // 1. Frame 0: Devolver inmediatamente si el caché está en memoria y vigente (solo si no hay filtro de fechas)
+    if (!hasDateFilter &&
+        _topCustomersCache != null &&
+        _topCustomersCacheTime != null) {
       final isFresh =
           DateTime.now().difference(_topCustomersCacheTime!) <
           _topCustomersCacheTtl;
@@ -779,67 +787,84 @@ class CustomersRepositoryImpl implements CustomersRepository {
       }
     }
 
-    try {
-      final res = await _supabase.rpc(
-        'get_top_customers_rpc',
-        params: {'p_limit': limit},
-      );
-      if (res != null && res is List) {
-        final list =
-            res.map<CustomerEntity>((row) {
-              final totalRev =
-                  (row['total_revenue'] ??
-                          row['totalRevenue'] ??
-                          row['total_spent'] as num?)
-                      ?.toDouble() ??
-                  0.0;
-              final orderCount =
-                  (row['order_count'] ?? row['orderCount'] as num?)?.toInt() ??
-                  0;
-              return CustomerEntity(
-                id: row['id'] as String,
-                fullName: row['full_name'] as String? ?? 'Cliente',
-                phone: row['phone'] as String?,
-                documentNumber: row['document_number'] as String?,
-                documentType: row['document_type'] as String?,
-                avatarUrl: row['avatar_url'] as String?,
-                walletBalance:
-                    (row['wallet_balance'] as num?)?.toDouble() ?? 0.0,
-                isActive: row['is_active'] as bool? ?? true,
-                createdAt:
-                    row['created_at'] != null
-                        ? DateTime.tryParse(row['created_at'].toString())
-                        : null,
-                totalRevenue: totalRev,
-                orderCount: orderCount,
-              );
-            }).toList();
+    if (!hasDateFilter) {
+      try {
+        final res = await _supabase.rpc(
+          'get_top_customers_rpc',
+          params: {'p_limit': limit},
+        );
+        if (res != null && res is List) {
+          final list =
+              res.map<CustomerEntity>((row) {
+                final totalRev =
+                    (row['total_revenue'] ??
+                            row['totalRevenue'] ??
+                            row['total_spent'] as num?)
+                        ?.toDouble() ??
+                    0.0;
+                final orderCount =
+                    (row['order_count'] ?? row['orderCount'] as num?)
+                        ?.toInt() ??
+                    0;
+                return CustomerEntity(
+                  id: row['id'] as String,
+                  fullName: row['full_name'] as String? ?? 'Cliente',
+                  phone: row['phone'] as String?,
+                  documentNumber: row['document_number'] as String?,
+                  documentType: row['document_type'] as String?,
+                  avatarUrl: row['avatar_url'] as String?,
+                  walletBalance:
+                      (row['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+                  isActive: row['is_active'] as bool? ?? true,
+                  createdAt:
+                      row['created_at'] != null
+                          ? DateTime.tryParse(row['created_at'].toString())
+                          : null,
+                  totalRevenue: totalRev,
+                  orderCount: orderCount,
+                );
+              }).toList();
 
-        _topCustomersCache = list;
-        _topCustomersCacheTime = DateTime.now();
-        return list;
-      }
-    } catch (rpcErr) {
-      LoggerService.w(
-        'RPC get_top_customers_rpc no disponible o falló, usando fallback cliente: $rpcErr',
-      );
-      if (_topCustomersCache != null && _topCustomersCache!.isNotEmpty) {
-        return _topCustomersCache!;
+          _topCustomersCache = list;
+          _topCustomersCacheTime = DateTime.now();
+          return list;
+        }
+      } catch (rpcErr) {
+        LoggerService.w(
+          'RPC get_top_customers_rpc no disponible o falló, usando fallback cliente: $rpcErr',
+        );
+        if (_topCustomersCache != null && _topCustomersCache!.isNotEmpty) {
+          return _topCustomersCache!;
+        }
       }
     }
 
     try {
-      final ordersRes = await _supabase
+      var ordersQuery = _supabase
           .from('orders')
-          .select('customer_id, total_amount')
-          .eq('status', 'COMPLETED')
-          .limit(1500);
+          .select('customer_id, total_amount, created_at')
+          .eq('status', 'COMPLETED');
+
+      if (startDate != null) {
+        ordersQuery = ordersQuery.gte(
+          'created_at',
+          startDate.toUtc().toIso8601String(),
+        );
+      }
+      if (endDate != null) {
+        ordersQuery = ordersQuery.lte(
+          'created_at',
+          endDate.toUtc().toIso8601String(),
+        );
+      }
+
+      final ordersRes = await ordersQuery.limit(3000);
 
       final revMap = <String, double>{};
       final countMap = <String, int>{};
       for (var row in ordersRes) {
         final cid = row['customer_id'] as String?;
-        if (cid != null) {
+        if (cid != null && cid.trim().isNotEmpty) {
           revMap[cid] =
               (revMap[cid] ?? 0.0) +
               ((row['total_amount'] as num?)?.toDouble() ?? 0.0);

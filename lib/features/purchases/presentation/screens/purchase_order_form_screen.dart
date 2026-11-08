@@ -623,7 +623,8 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                               onWarehouseChanged:
                                   (v) => cubit.updateField(warehouseId: v),
                               onPickDueDate:
-                                  () => _pickDueDate(context, formLoaded.dueDate),
+                                  () =>
+                                      _pickDueDate(context, formLoaded.dueDate),
                               onClearDueDate: () => cubit.clearDueDate(),
                             ),
                             const SizedBox(height: 24),
@@ -641,8 +642,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                               creditWarningMessage:
                                   formLoaded.creditWarningMessage,
                               onCurrencyChanged:
-                                  (code, rate) =>
-                                      cubit.setCurrency(code, rate),
+                                  (code, rate) => cubit.setCurrency(code, rate),
                               onPaymentModeChanged: (v) {
                                 cubit.updateField(paymentMode: v);
                                 if (v == 'CRÉDITO') {
@@ -675,50 +675,46 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                             ),
                           ];
 
-                          Widget buildProducts(bool isDesktop) =>
-                              RepaintBoundary(
-                                child: POFormProductsSection(
-                                  items: formLoaded.items,
-                                  isDesktop: isDesktop,
-                                  isEditing: formLoaded.isEditing,
-                                  currencyCode: formLoaded.currencyCode,
-                                  exchangeRate: formLoaded.exchangeRate,
-                                  onRemoveItem: (index) {
-                                    final item = formLoaded.items[index];
-                                    cubit.removeItem(
-                                      item.productId,
-                                      item.variantId,
-                                    );
-                                  },
-                                  onUpdateQuantity: (index, quantity) {
-                                    final item = formLoaded.items[index];
-                                    cubit.updateItemQuantity(
-                                      item.productId,
-                                      item.variantId,
-                                      quantity,
-                                    );
-                                  },
-                                  onUpdateCost: (index, cost) {
-                                    final item = formLoaded.items[index];
-                                    cubit.updateItemCost(
-                                      item.productId,
-                                      item.variantId,
-                                      cost,
-                                    );
-                                  },
-                                  onAddNewRow:
-                                      () => _showAddProductSheet(
-                                        context,
-                                        formLoaded,
-                                      ),
-                                  onScanBarcode:
-                                      () => _scanAndAddProduct(
-                                        context,
-                                        formLoaded,
-                                      ),
-                                  onClearDraft: _handleClearDraft,
-                                ),
-                              );
+                          Widget buildProducts(
+                            bool isDesktop,
+                          ) => RepaintBoundary(
+                            child: POFormProductsSection(
+                              items: formLoaded.items,
+                              isDesktop: isDesktop,
+                              isEditing: formLoaded.isEditing,
+                              currencyCode: formLoaded.currencyCode,
+                              exchangeRate: formLoaded.exchangeRate,
+                              onRemoveItem: (index) {
+                                final item = formLoaded.items[index];
+                                cubit.removeItem(
+                                  item.productId,
+                                  item.variantId,
+                                );
+                              },
+                              onUpdateQuantity: (index, quantity) {
+                                final item = formLoaded.items[index];
+                                cubit.updateItemQuantity(
+                                  item.productId,
+                                  item.variantId,
+                                  quantity,
+                                );
+                              },
+                              onUpdateCost: (index, cost) {
+                                final item = formLoaded.items[index];
+                                cubit.updateItemCost(
+                                  item.productId,
+                                  item.variantId,
+                                  cost,
+                                );
+                              },
+                              onAddNewRow:
+                                  () =>
+                                      _showAddProductSheet(context, formLoaded),
+                              onScanBarcode:
+                                  () => _scanAndAddProduct(context, formLoaded),
+                              onClearDraft: _handleClearDraft,
+                            ),
+                          );
 
                           final stickySaveBar = POFormStickySaveBar(
                             isEditing: formLoaded.isEditing,

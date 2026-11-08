@@ -10,7 +10,15 @@ class GetTopCustomersUC {
 
   GetTopCustomersUC(this.repository);
 
-  Future<Either<Failure, List<CustomerEntity>>> call(int limit) async {
-    return await repository.getTopCustomers(limit);
+  Future<Either<Failure, List<CustomerEntity>>> call(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    return await repository.getTopCustomers(
+      limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 }

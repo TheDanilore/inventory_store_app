@@ -528,10 +528,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                             ),
                             const SizedBox(height: 16),
                             if (widget.purchaseOrderId == null) ...[
-                              EntryFormFinanceCard(
-                                state: state,
-                                cubit: cubit,
-                              ),
+                              EntryFormFinanceCard(state: state, cubit: cubit),
                               const SizedBox(height: 16),
                             ],
                             EntryFormDocumentCard(
@@ -543,34 +540,32 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                             ),
                           ];
 
-                          Widget buildProducts(bool isDesktop) =>
-                              RepaintBoundary(
-                                child: EntryFormProductsSection(
-                                  isDesktop: isDesktop,
-                                  purchaseOrderId: widget.purchaseOrderId,
-                                  onAddNewRow: () => _showAddProductSheet(context),
-                                  onScanBarcode: () => _scanAndAddProduct(context),
-                                  onClearDraft: _handleClearDraft,
-                                  onEditBatch:
-                                      (index, item) => EntryBatchEditDialog.show(
-                                        context,
-                                        itemIndex: index,
-                                        item: item,
-                                        cubit: cubit,
-                                      ),
-                                  onRemoveItem:
-                                      (index) => _removeItemWithUndo(
-                                        cubit,
-                                        index,
-                                      ),
-                                  onUpdateQuantity:
-                                      (index, qty) =>
-                                          cubit.updateItemQuantity(index, qty),
-                                  onUpdateCost:
-                                      (index, cost) =>
-                                          cubit.updateItemCost(index, cost),
-                                ),
-                              );
+                          Widget buildProducts(
+                            bool isDesktop,
+                          ) => RepaintBoundary(
+                            child: EntryFormProductsSection(
+                              isDesktop: isDesktop,
+                              purchaseOrderId: widget.purchaseOrderId,
+                              onAddNewRow: () => _showAddProductSheet(context),
+                              onScanBarcode: () => _scanAndAddProduct(context),
+                              onClearDraft: _handleClearDraft,
+                              onEditBatch:
+                                  (index, item) => EntryBatchEditDialog.show(
+                                    context,
+                                    itemIndex: index,
+                                    item: item,
+                                    cubit: cubit,
+                                  ),
+                              onRemoveItem:
+                                  (index) => _removeItemWithUndo(cubit, index),
+                              onUpdateQuantity:
+                                  (index, qty) =>
+                                      cubit.updateItemQuantity(index, qty),
+                              onUpdateCost:
+                                  (index, cost) =>
+                                      cubit.updateItemCost(index, cost),
+                            ),
+                          );
 
                           if (isWide) {
                             return Row(

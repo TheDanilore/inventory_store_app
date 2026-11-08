@@ -238,9 +238,7 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     }
   }
 
-  Future<void> _revalidateCatalogsSilently({
-    String? prefillWarehouseId,
-  }) async {
+  Future<void> _revalidateCatalogsSilently({String? prefillWarehouseId}) async {
     try {
       final futures = await Future.wait([
         getActiveWarehouses.call(),
@@ -254,7 +252,10 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final warehouses = futures[0] as List<WarehouseEntity>;
       final suppliersResult =
           futures[1] as Either<Failure, List<SupplierEntity>>;
-      final suppliers = suppliersResult.fold((l) => <SupplierEntity>[], (r) => r);
+      final suppliers = suppliersResult.fold(
+        (l) => <SupplierEntity>[],
+        (r) => r,
+      );
       final rawAccounts = futures[2] as List<FinancialAccountEntity>;
       final accounts = rawAccounts.where((a) => a.isActive).toList();
       final activeShiftsByAccount = futures[3] as Map<String, String>;

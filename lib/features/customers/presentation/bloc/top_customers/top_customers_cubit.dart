@@ -10,13 +10,22 @@ class TopCustomersCubit extends Cubit<TopCustomersState> {
   TopCustomersCubit(this._getTopCustomersUseCase)
     : super(TopCustomersInitial());
 
-  Future<void> loadTopCustomers([int limit = 5, bool silent = false]) async {
+  Future<void> loadTopCustomers([
+    int limit = 5,
+    bool silent = false,
+    DateTime? startDate,
+    DateTime? endDate,
+  ]) async {
     // Si ya contamos con top clientes previos en memoria, no forzamos Shimmer en la UI
     if (state is! TopCustomersLoaded && !silent) {
       emit(TopCustomersLoading());
     }
     try {
-      final top = await _getTopCustomersUseCase(limit);
+      final top = await _getTopCustomersUseCase(
+        limit,
+        startDate: startDate,
+        endDate: endDate,
+      );
       emit(TopCustomersLoaded(top));
     } catch (e) {
       if (state is! TopCustomersLoaded) {

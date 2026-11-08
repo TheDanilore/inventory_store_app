@@ -48,5 +48,9 @@ abstract class LoyaltyRepository {
     required String description,
   });
 
-  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(int limit);
+  Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  });
 }

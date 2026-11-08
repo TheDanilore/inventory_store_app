@@ -43,12 +43,41 @@ class _DashboardStagnantProductsTableState
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imageUrl != null && imageUrl.trim().isNotEmpty
-          ? CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+      child:
+          imageUrl != null && imageUrl.trim().isNotEmpty
+              ? CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder:
+                    (context, url) => Container(
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF8FAFC),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: size * 0.45,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                errorWidget:
+                    (context, url, error) => Container(
+                      color:
+                          isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: size * 0.45,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+              )
+              : Container(
+                color:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.inventory_2_outlined,
@@ -56,25 +85,6 @@ class _DashboardStagnantProductsTableState
                   color: const Color(0xFF94A3B8),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.inventory_2_outlined,
-                  size: size * 0.45,
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-            )
-          : Container(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.inventory_2_outlined,
-                size: size * 0.45,
-                color: const Color(0xFF94A3B8),
-              ),
-            ),
     );
   }
 
@@ -105,15 +115,16 @@ class _DashboardStagnantProductsTableState
               color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
               width: 1.2,
             ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            boxShadow:
+                isDark
+                    ? []
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +150,9 @@ class _DashboardStagnantProductsTableState
                             ),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: const Color(0xFFF97316).withValues(alpha: 0.28),
+                              color: const Color(
+                                0xFFF97316,
+                              ).withValues(alpha: 0.28),
                             ),
                           ),
                           child: const Icon(
@@ -161,9 +174,10 @@ class _DashboardStagnantProductsTableState
                                       style: TextStyle(
                                         fontSize: isMobile ? 15 : 16,
                                         fontWeight: FontWeight.w700,
-                                        color: isDark
-                                            ? const Color(0xFFF8FAFC)
-                                            : const Color(0xFF0F172A),
+                                        color:
+                                            isDark
+                                                ? const Color(0xFFF8FAFC)
+                                                : const Color(0xFF0F172A),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -198,9 +212,10 @@ class _DashboardStagnantProductsTableState
                                 'Artículos estancados y capital inmovilizado',
                                 style: TextStyle(
                                   fontSize: isMobile ? 11 : 12,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -245,14 +260,16 @@ class _DashboardStagnantProductsTableState
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF7C2D12).withValues(alpha: 0.15)
-                        : const Color(0xFFFFFBEB),
+                    color:
+                        isDark
+                            ? const Color(0xFF7C2D12).withValues(alpha: 0.15)
+                            : const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF9A3412).withValues(alpha: 0.3)
-                          : const Color(0xFFFDE68A),
+                      color:
+                          isDark
+                              ? const Color(0xFF9A3412).withValues(alpha: 0.3)
+                              : const Color(0xFFFDE68A),
                       width: 0.8,
                     ),
                   ),
@@ -270,9 +287,10 @@ class _DashboardStagnantProductsTableState
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? const Color(0xFFFDE68A)
-                                : const Color(0xFF92400E),
+                            color:
+                                isDark
+                                    ? const Color(0xFFFDE68A)
+                                    : const Color(0xFF92400E),
                           ),
                         ),
                       ),
@@ -281,9 +299,10 @@ class _DashboardStagnantProductsTableState
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? const Color(0xFFCBD5E1)
-                              : const Color(0xFF78716C),
+                          color:
+                              isDark
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF78716C),
                         ),
                       ),
                     ],
@@ -450,13 +469,17 @@ class _DashboardStagnantProductsTableState
               borderRadius: BorderRadius.circular(10),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: isHovered
-                      ? (isDark
-                          ? const Color(0xFF334155).withValues(alpha: 0.4)
-                          : const Color(0xFFF1F5F9))
-                      : Colors.transparent,
+                  color:
+                      isHovered
+                          ? (isDark
+                              ? const Color(0xFF334155).withValues(alpha: 0.4)
+                              : const Color(0xFFF1F5F9))
+                          : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -492,9 +515,10 @@ class _DashboardStagnantProductsTableState
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? const Color(0xFFF8FAFC)
-                                        : const Color(0xFF0F172A),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFF8FAFC)
+                                            : const Color(0xFF0F172A),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -504,9 +528,10 @@ class _DashboardStagnantProductsTableState
                                   p.category,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : const Color(0xFF64748B),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -526,9 +551,10 @@ class _DashboardStagnantProductsTableState
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFE2E8F0)
-                              : const Color(0xFF334155),
+                          color:
+                              isDark
+                                  ? const Color(0xFFE2E8F0)
+                                  : const Color(0xFF334155),
                         ),
                       ),
                     ),
@@ -541,9 +567,10 @@ class _DashboardStagnantProductsTableState
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFF97316)
-                              : const Color(0xFFEA580C),
+                          color:
+                              isDark
+                                  ? const Color(0xFFF97316)
+                                  : const Color(0xFFEA580C),
                         ),
                       ),
                     ),
@@ -560,9 +587,7 @@ class _DashboardStagnantProductsTableState
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF7ED),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: const Color(0xFFFFEDD5),
-                            ),
+                            border: Border.all(color: const Color(0xFFFFEDD5)),
                           ),
                           child: Text(
                             p.daysWithoutSale >= 60 || p.lastSaleDate == null
@@ -593,112 +618,119 @@ class _DashboardStagnantProductsTableState
     bool isDark,
   ) {
     return Column(
-      children: products.map((p) {
-        return InkWell(
-          onTap: () => context.push('/products'),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+      children:
+          products.map((p) {
+            return InkWell(
+              onTap: () => context.push('/products'),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-                width: 0.8,
-              ),
-            ),
-            child: Row(
-              children: [
-                _buildProductThumbnail(
-                  imageUrl: p.imageUrl,
-                  size: 40,
-                  isDark: isDark,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                    width: 0.8,
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p.name,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFF8FAFC)
-                              : const Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
+                child: Row(
+                  children: [
+                    _buildProductThumbnail(
+                      imageUrl: p.imageUrl,
+                      size: 40,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Stock: ${p.currentStock} u.',
+                            p.name,
                             style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  isDark
+                                      ? const Color(0xFFF8FAFC)
+                                      : const Color(0xFF0F172A),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '•',
-                            style: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFF64748B)
-                                  : const Color(0xFFCBD5E1),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'S/ ${p.tiedUpCapital.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: isDark
-                                  ? const Color(0xFFF97316)
-                                  : const Color(0xFFEA580C),
-                            ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Text(
+                                'Stock: ${p.currentStock} u.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '•',
+                                style: TextStyle(
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF64748B)
+                                          : const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'S/ ${p.tiedUpCapital.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFF97316)
+                                          : const Color(0xFFEA580C),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFFFFEDD5),
                     ),
-                  ),
-                  child: Text(
-                    p.daysWithoutSale >= 60 || p.lastSaleDate == null
-                        ? 'Inmóvil'
-                        : '${p.daysWithoutSale}d',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFFC2410C),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFFFEDD5)),
+                      ),
+                      child: Text(
+                        p.daysWithoutSale >= 60 || p.lastSaleDate == null
+                            ? 'Inmóvil'
+                            : '${p.daysWithoutSale}d',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFC2410C),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+              ),
+            );
+          }).toList(),
     );
   }
 }

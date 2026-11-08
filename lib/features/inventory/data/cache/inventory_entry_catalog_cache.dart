@@ -69,4 +69,3 @@ class InventoryEntryCatalogCache {
     _cached = null;
   }
 }
-

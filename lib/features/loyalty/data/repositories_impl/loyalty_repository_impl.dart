@@ -313,28 +313,140 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
 
   @override
   Future<Either<Failure, List<CustomerEntity>>> getTopCustomers(
-    int limit,
-  ) async {
-    try {
-      final response = await _supabase.rpc(
-        'get_top_customers',
-        params: {'p_limit': limit},
-      );
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final bool hasDateFilter = startDate != null || endDate != null;
 
-      final customers =
-          List<Map<String, dynamic>>.from(response).map((p) {
+    // 1. Si no hay filtros de fecha, intentar RPC rápido
+    if (!hasDateFilter) {
+      try {
+        final response = await _supabase.rpc(
+          'get_top_customers_rpc',
+          params: {'p_limit': limit},
+        );
+
+        if (response != null && response is List && response.isNotEmpty) {
+          final customers =
+              response.map<CustomerEntity>((p) {
+                return CustomerEntity(
+                  id: p['id'] as String,
+                  fullName: p['full_name'] as String? ?? 'Desconocido',
+                  phone: p['phone'] as String?,
+                  documentNumber: p['document_number'] as String?,
+                  documentType: p['document_type'] as String?,
+                  avatarUrl: p['avatar_url'] as String?,
+                  isActive: p['is_active'] as bool? ?? true,
+                  walletBalance:
+                      (p['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+                  createdAt:
+                      p['created_at'] != null
+                          ? DateTime.tryParse(p['created_at'].toString())
+                          : null,
+                  totalRevenue:
+                      ((p['total_revenue'] ?? p['total_spent']) as num?)
+                          ?.toDouble() ??
+                      0.0,
+                  orderCount: (p['order_count'] as num?)?.toInt() ?? 0,
+                );
+              }).toList();
+
+          return right(customers);
+        }
+      } catch (rpcErr) {
+        developer.log(
+          'get_top_customers_rpc no disponible o falló en LoyaltyRepo, usando fallback resiliente: $rpcErr',
+        );
+      }
+    }
+
+    // 2. Fallback resiliente consultando directamente 'orders' y perfiles
+    try {
+      var ordersQuery = _supabase
+          .from('orders')
+          .select('customer_id, total_amount, created_at')
+          .eq('status', 'COMPLETED');
+
+      if (startDate != null) {
+        ordersQuery = ordersQuery.gte(
+          'created_at',
+          startDate.toUtc().toIso8601String(),
+        );
+      }
+      if (endDate != null) {
+        ordersQuery = ordersQuery.lte(
+          'created_at',
+          endDate.toUtc().toIso8601String(),
+        );
+      }
+
+      final ordersRes = await ordersQuery.limit(3000);
+      final revMap = <String, double>{};
+      final countMap = <String, int>{};
+
+      for (final row in (ordersRes as List)) {
+        final cid = row['customer_id'] as String?;
+        if (cid != null && cid.trim().isNotEmpty) {
+          final amt = (row['total_amount'] as num?)?.toDouble() ?? 0.0;
+          revMap[cid] = (revMap[cid] ?? 0.0) + amt;
+          countMap[cid] = (countMap[cid] ?? 0) + 1;
+        }
+      }
+
+      if (revMap.isEmpty) {
+        return right([]);
+      }
+
+      final sortedEntries =
+          revMap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      final topIds = sortedEntries.take(limit).map((e) => e.key).toList();
+
+      if (topIds.isEmpty) {
+        return right([]);
+      }
+
+      dynamic profilesRes;
+      try {
+        profilesRes = await _supabase
+            .from('profiles_with_email')
+            .select(
+              'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
+            )
+            .inFilter('id', topIds);
+      } catch (_) {
+        profilesRes = await _supabase
+            .from('profiles')
+            .select(
+              'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
+            )
+            .inFilter('id', topIds);
+      }
+
+      final list =
+          (profilesRes as List).map<CustomerEntity>((json) {
+            final cid = json['id'] as String;
             return CustomerEntity(
-              id: p['id'],
-              fullName: p['full_name'] ?? 'Desconocido',
-              avatarUrl: p['avatar_url'],
-              isActive: p['is_active'] ?? true,
-              walletBalance: p['wallet_balance'] ?? 0,
-              createdAt: DateTime.parse(p['created_at']),
-              totalRevenue: (p['total_revenue'] as num).toDouble(),
+              id: cid,
+              fullName: json['full_name'] as String? ?? 'Cliente',
+              phone: json['phone'] as String?,
+              documentNumber: json['document_number'] as String?,
+              documentType: json['document_type'] as String?,
+              avatarUrl: json['avatar_url'] as String?,
+              walletBalance:
+                  (json['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+              isActive: json['is_active'] as bool? ?? true,
+              createdAt:
+                  json['created_at'] != null
+                      ? DateTime.tryParse(json['created_at'].toString())
+                      : null,
+              totalRevenue: revMap[cid] ?? 0.0,
+              orderCount: countMap[cid] ?? 0,
             );
           }).toList();
 
-      return right(customers);
+      list.sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue));
+      return right(list);
     } catch (e, st) {
       return _handleError(e, st);
     }

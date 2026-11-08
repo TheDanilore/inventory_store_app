@@ -292,9 +292,7 @@ class DashboardBentoGrid extends StatelessWidget {
           displayMode: TopCustomersDisplayMode.desktop,
         ),
       if (hasActiveCredits)
-        DashboardActiveCreditsCard(
-          activeCredits: state.activeCredits,
-        ),
+        DashboardActiveCreditsCard(activeCredits: state.activeCredits),
       if (hasBatches) ExpiringBatchesCard(batches: state.criticalBatches),
     ];
 

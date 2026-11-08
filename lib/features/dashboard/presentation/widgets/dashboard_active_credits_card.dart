@@ -139,15 +139,16 @@ class _DashboardActiveCreditsCardState
               color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
               width: 1.2,
             ),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+            boxShadow:
+                isDark
+                    ? []
+                    : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +174,9 @@ class _DashboardActiveCreditsCardState
                             ),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFF6366F1,
+                              ).withValues(alpha: 0.3),
                             ),
                           ),
                           child: const Icon(
@@ -195,9 +198,10 @@ class _DashboardActiveCreditsCardState
                                       style: TextStyle(
                                         fontSize: isMobile ? 15 : 16,
                                         fontWeight: FontWeight.w700,
-                                        color: isDark
-                                            ? const Color(0xFFF8FAFC)
-                                            : const Color(0xFF0F172A),
+                                        color:
+                                            isDark
+                                                ? const Color(0xFFF8FAFC)
+                                                : const Color(0xFF0F172A),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -232,9 +236,10 @@ class _DashboardActiveCreditsCardState
                                 'Deudas vigentes y tiempo promedio de pago',
                                 style: TextStyle(
                                   fontSize: isMobile ? 11 : 12,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -279,14 +284,16 @@ class _DashboardActiveCreditsCardState
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF312E81).withValues(alpha: 0.2)
-                        : const Color(0xFFEEF2FF),
+                    color:
+                        isDark
+                            ? const Color(0xFF312E81).withValues(alpha: 0.2)
+                            : const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF4338CA).withValues(alpha: 0.3)
-                          : const Color(0xFFC7D2FE),
+                      color:
+                          isDark
+                              ? const Color(0xFF4338CA).withValues(alpha: 0.3)
+                              : const Color(0xFFC7D2FE),
                       width: 0.8,
                     ),
                   ),
@@ -304,9 +311,10 @@ class _DashboardActiveCreditsCardState
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? const Color(0xFFC7D2FE)
-                                : const Color(0xFF3730A3),
+                            color:
+                                isDark
+                                    ? const Color(0xFFC7D2FE)
+                                    : const Color(0xFF3730A3),
                           ),
                         ),
                       ),
@@ -315,9 +323,10 @@ class _DashboardActiveCreditsCardState
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? const Color(0xFFCBD5E1)
-                              : const Color(0xFF6366F1),
+                          color:
+                              isDark
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF6366F1),
                         ),
                       ),
                     ],
@@ -494,13 +503,17 @@ class _DashboardActiveCreditsCardState
               borderRadius: BorderRadius.circular(10),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: isHovered
-                      ? (isDark
-                          ? const Color(0xFF334155).withValues(alpha: 0.4)
-                          : const Color(0xFFF1F5F9))
-                      : Colors.transparent,
+                  color:
+                      isHovered
+                          ? (isDark
+                              ? const Color(0xFF334155).withValues(alpha: 0.4)
+                              : const Color(0xFFF1F5F9))
+                          : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -533,9 +546,10 @@ class _DashboardActiveCreditsCardState
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark
-                                        ? const Color(0xFFF8FAFC)
-                                        : const Color(0xFF0F172A),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFF8FAFC)
+                                            : const Color(0xFF0F172A),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -547,9 +561,10 @@ class _DashboardActiveCreditsCardState
                                       'Cliente Registrado',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : const Color(0xFF64748B),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFF94A3B8)
+                                            : const Color(0xFF64748B),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -581,9 +596,10 @@ class _DashboardActiveCreditsCardState
                               child: LinearProgressIndicator(
                                 value: c.usagePercent,
                                 minHeight: 3,
-                                backgroundColor: isDark
-                                    ? const Color(0xFF334155)
-                                    : const Color(0xFFE2E8F0),
+                                backgroundColor:
+                                    isDark
+                                        ? const Color(0xFF334155)
+                                        : const Color(0xFFE2E8F0),
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   c.usagePercent > 0.85
                                       ? const Color(0xFFDC2626)
@@ -615,9 +631,10 @@ class _DashboardActiveCreditsCardState
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF1F5F9),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF1E293B)
+                                      : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
@@ -636,9 +653,10 @@ class _DashboardActiveCreditsCardState
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? const Color(0xFFE2E8F0)
-                                        : const Color(0xFF334155),
+                                    color:
+                                        isDark
+                                            ? const Color(0xFFE2E8F0)
+                                            : const Color(0xFF334155),
                                   ),
                                 ),
                               ],
@@ -679,125 +697,132 @@ class _DashboardActiveCreditsCardState
     bool isDark,
   ) {
     return Column(
-      children: credits.asMap().entries.map((entry) {
-        final c = entry.value;
+      children:
+          credits.asMap().entries.map((entry) {
+            final c = entry.value;
 
-        return InkWell(
-          onTap: () {
-            context.push(
-              '/customer-credit-movements/${c.creditId}',
-              extra: {
-                'customerName': c.customerName,
-                'currentDebt': c.currentDebt,
-                'creditLimit': c.creditLimit,
-                'customerId': c.customerId,
+            return InkWell(
+              onTap: () {
+                context.push(
+                  '/customer-credit-movements/${c.creditId}',
+                  extra: {
+                    'customerName': c.customerName,
+                    'currentDebt': c.currentDebt,
+                    'creditLimit': c.creditLimit,
+                    'customerId': c.customerId,
+                  },
+                );
               },
-            );
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
-                width: 0.8,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+                    width: 0.8,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _buildAvatar(c.customerName, isDark),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                c.customerName,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFFF8FAFC)
+                                          : const Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                c.currentDebtAgingLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildRiskBadge(c.riskLevel),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Deuda pendiente:',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                            Text(
+                              'S/ ${c.currentDebt.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFDC2626),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Demora promedio:',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                color: Color(0xFF94A3B8),
+                              ),
+                            ),
+                            Text(
+                              c.totalPaymentsCount == 0
+                                  ? 'Sin pagos previos'
+                                  : '~${c.averagePaymentDays.round()} días',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    isDark
+                                        ? const Color(0xFFE2E8F0)
+                                        : const Color(0xFF334155),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _buildAvatar(c.customerName, isDark),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.customerName,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? const Color(0xFFF8FAFC)
-                                  : const Color(0xFF0F172A),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            c.currentDebtAgingLabel,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildRiskBadge(c.riskLevel),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Deuda pendiente:',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        Text(
-                          'S/ ${c.currentDebt.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFDC2626),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'Demora promedio:',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                        Text(
-                          c.totalPaymentsCount == 0
-                              ? 'Sin pagos previos'
-                              : '~${c.averagePaymentDays.round()} días',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? const Color(0xFFE2E8F0)
-                                : const Color(0xFF334155),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+            );
+          }).toList(),
     );
   }
 }

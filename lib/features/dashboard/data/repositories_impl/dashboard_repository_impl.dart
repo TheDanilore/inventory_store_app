@@ -793,17 +793,20 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .eq('is_active', true);
 
       final products = List<Map<String, dynamic>>.from(response);
-      final List<({
-        String id,
-        String name,
-        String category,
-        String? imageUrl,
-        int stock,
-        double unitCost,
-        double salePrice,
-        double tiedUpCapital,
-        DateTime createdAt,
-      })> inStockProducts = [];
+      final List<
+        ({
+          String id,
+          String name,
+          String category,
+          String? imageUrl,
+          int stock,
+          double unitCost,
+          double salePrice,
+          double tiedUpCapital,
+          DateTime createdAt,
+        })
+      >
+      inStockProducts = [];
 
       for (final p in products) {
         final prodId = p['id']?.toString() ?? '';
@@ -818,19 +821,24 @@ class DashboardRepositoryImpl implements DashboardRepository {
         String? imageUrl;
         final prodImgs = p['product_images'] as List<dynamic>? ?? [];
         if (prodImgs.isNotEmpty) {
-          final mainImg = prodImgs.firstWhere(
-            (img) => (img as Map<String, dynamic>)['is_main'] == true,
-            orElse: () => prodImgs.first,
-          ) as Map<String, dynamic>?;
+          final mainImg =
+              prodImgs.firstWhere(
+                    (img) => (img as Map<String, dynamic>)['is_main'] == true,
+                    orElse: () => prodImgs.first,
+                  )
+                  as Map<String, dynamic>?;
           imageUrl = mainImg?['image_url'] as String?;
         }
 
         final batches = List<Map<String, dynamic>>.from(
           p['warehouse_stock_batches'] ?? [],
         );
-        final filteredBatches = warehouseId == null
-            ? batches
-            : batches.where((b) => b['warehouse_id'] == warehouseId).toList();
+        final filteredBatches =
+            warehouseId == null
+                ? batches
+                : batches
+                    .where((b) => b['warehouse_id'] == warehouseId)
+                    .toList();
 
         final totalStock = filteredBatches.fold<int>(
           0,
@@ -847,7 +855,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
         if (variants.isNotEmpty) {
           final activeVariants =
               variants.where((v) => v['is_active'] == true).toList();
-          final targetList = activeVariants.isNotEmpty ? activeVariants : variants;
+          final targetList =
+              activeVariants.isNotEmpty ? activeVariants : variants;
           double costSum = 0.0;
           double priceSum = 0.0;
           for (final v in targetList) {
@@ -860,9 +869,11 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
         final valuationRate = avgCost > 0 ? avgCost : avgPrice;
         final tiedUpCapital = totalStock * valuationRate;
-        final createdAt = p['created_at'] != null
-            ? (DateTime.tryParse(p['created_at'].toString()) ?? DateTime.now())
-            : DateTime.now();
+        final createdAt =
+            p['created_at'] != null
+                ? (DateTime.tryParse(p['created_at'].toString()) ??
+                    DateTime.now())
+                : DateTime.now();
 
         inStockProducts.add((
           id: prodId,
@@ -918,22 +929,25 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
       for (final p in inStockProducts) {
         final lastSale = lastSaleDates[p.id];
-        final daysWithoutSale = lastSale != null
-            ? now.difference(lastSale).inDays
-            : now.difference(p.createdAt).inDays;
+        final daysWithoutSale =
+            lastSale != null
+                ? now.difference(lastSale).inDays
+                : now.difference(p.createdAt).inDays;
 
-        stagnantEntities.add(StagnantProductEntity(
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          imageUrl: p.imageUrl,
-          currentStock: p.stock,
-          unitCost: p.unitCost,
-          salePrice: p.salePrice,
-          tiedUpCapital: p.tiedUpCapital,
-          daysWithoutSale: daysWithoutSale < 0 ? 0 : daysWithoutSale,
-          lastSaleDate: lastSale,
-        ));
+        stagnantEntities.add(
+          StagnantProductEntity(
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            imageUrl: p.imageUrl,
+            currentStock: p.stock,
+            unitCost: p.unitCost,
+            salePrice: p.salePrice,
+            tiedUpCapital: p.tiedUpCapital,
+            daysWithoutSale: daysWithoutSale < 0 ? 0 : daysWithoutSale,
+            lastSaleDate: lastSale,
+          ),
+        );
       }
 
       // 3. Ordenar priorizando capital inmovilizado y mayor tiempo sin salir
@@ -975,10 +989,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   @override
-  Future<Either<Failure, List<CustomerCreditAgingEntity>>> getActiveCreditsAging({
-    int limit = 5,
-    bool forceRefresh = false,
-  }) async {
+  Future<Either<Failure, List<CustomerCreditAgingEntity>>>
+  getActiveCreditsAging({int limit = 5, bool forceRefresh = false}) async {
     final cacheKey = '$limit';
 
     if (!forceRefresh &&
@@ -1036,7 +1048,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
           .inFilter('customer_credit_id', creditIds)
           .order('created_at', ascending: true);
 
-      final movements = List<Map<String, dynamic>>.from(movementsResponse as List);
+      final movements = List<Map<String, dynamic>>.from(
+        movementsResponse as List,
+      );
       final Map<String, List<Map<String, dynamic>>> movementsByCreditId = {};
       for (final m in movements) {
         final cid = m['customer_credit_id']?.toString() ?? '';
@@ -1054,9 +1068,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
         final creditLimit = (row['credit_limit'] as num?)?.toDouble() ?? 0.0;
         final currentDebt = (row['current_debt'] as num?)?.toDouble() ?? 0.0;
         final isActive = row['is_active'] as bool? ?? true;
-        final creditCreatedAt = row['created_at'] != null
-            ? DateTime.tryParse(row['created_at'].toString())
-            : null;
+        final creditCreatedAt =
+            row['created_at'] != null
+                ? DateTime.tryParse(row['created_at'].toString())
+                : null;
 
         final profile = row['profiles'] as Map<String, dynamic>? ?? {};
         final customerName = profile['full_name']?.toString() ?? 'Cliente';
@@ -1064,12 +1079,14 @@ class DashboardRepositoryImpl implements DashboardRepository {
         final customerDocument = profile['document_number']?.toString();
 
         final accountMovements = movementsByCreditId[creditId] ?? [];
-        final charges = accountMovements
-            .where((m) => m['movement_type'] == 'CHARGE')
-            .toList();
-        final payments = accountMovements
-            .where((m) => m['movement_type'] == 'PAYMENT')
-            .toList();
+        final charges =
+            accountMovements
+                .where((m) => m['movement_type'] == 'CHARGE')
+                .toList();
+        final payments =
+            accountMovements
+                .where((m) => m['movement_type'] == 'PAYMENT')
+                .toList();
 
         // Última fecha de cargo (cuando se le dio el crédito)
         DateTime? lastChargeDate;
@@ -1087,9 +1104,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
         }
 
         // Antigüedad de la deuda vigente en días
-        final daysWithDebt = lastChargeDate != null
-            ? now.difference(lastChargeDate).inDays.clamp(0, 9999)
-            : 0;
+        final daysWithDebt =
+            lastChargeDate != null
+                ? now.difference(lastChargeDate).inDays.clamp(0, 9999)
+                : 0;
 
         // Cálculo de cuánto se demoran en pagar (Promedio histórico de demora)
         final paymentDelays = <int>[];
@@ -1117,25 +1135,28 @@ class DashboardRepositoryImpl implements DashboardRepository {
           }
         }
 
-        final averagePaymentDays = paymentDelays.isNotEmpty
-            ? paymentDelays.reduce((a, b) => a + b) / paymentDelays.length
-            : (payments.isNotEmpty ? 1.0 : 0.0);
+        final averagePaymentDays =
+            paymentDelays.isNotEmpty
+                ? paymentDelays.reduce((a, b) => a + b) / paymentDelays.length
+                : (payments.isNotEmpty ? 1.0 : 0.0);
 
-        resultList.add(CustomerCreditAgingEntity(
-          creditId: creditId,
-          customerId: profileId,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          customerDocument: customerDocument,
-          creditLimit: creditLimit,
-          currentDebt: currentDebt,
-          isActive: isActive,
-          daysWithDebt: daysWithDebt,
-          averagePaymentDays: averagePaymentDays,
-          totalPaymentsCount: payments.length,
-          lastChargeDate: lastChargeDate,
-          lastPaymentDate: lastPaymentDate,
-        ));
+        resultList.add(
+          CustomerCreditAgingEntity(
+            creditId: creditId,
+            customerId: profileId,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            customerDocument: customerDocument,
+            creditLimit: creditLimit,
+            currentDebt: currentDebt,
+            isActive: isActive,
+            daysWithDebt: daysWithDebt,
+            averagePaymentDays: averagePaymentDays,
+            totalPaymentsCount: payments.length,
+            lastChargeDate: lastChargeDate,
+            lastPaymentDate: lastPaymentDate,
+          ),
+        );
       }
 
       // Ordenar por mayor deuda y luego por mayor antigüedad de mora

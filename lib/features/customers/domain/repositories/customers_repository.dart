@@ -49,7 +49,11 @@ abstract class CustomersRepository {
 
   // Stats y KPI
   Future<Map<String, dynamic>> getGlobalStats();
-  Future<List<CustomerEntity>> getTopCustomers(int limit);
+  Future<List<CustomerEntity>> getTopCustomers(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  });
 
   // Detail Extras
   Future<List<RecentOrderEntity>> getCustomerRecentOrders(String customerId);

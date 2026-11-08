@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers/loyalty_top_customers_cubit.dart';
+import 'package:inventory_store_app/features/loyalty/presentation/bloc/top_customers/loyalty_top_customers_state.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/top_customers/animated_entrance.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/top_customers/glass_roulette_dialog.dart';
 import 'package:inventory_store_app/features/loyalty/presentation/widgets/top_customers/premium_customer_card.dart';
@@ -64,6 +65,120 @@ class _TopCustomersScreenState extends State<TopCustomersScreen> {
     );
   }
 
+  Future<void> _openMonthPicker(BuildContext context) async {
+    final cubit = context.read<LoyaltyTopCustomersCubit>();
+    int selectedYear = cubit.state.customMonth?.year ?? DateTime.now().year;
+    int? pickedMonth;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Seleccionar Mes',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left_rounded),
+                        onPressed: () => setDialogState(() => selectedYear--),
+                      ),
+                      Text(
+                        '$selectedYear',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right_rounded),
+                        onPressed: () => setDialogState(() => selectedYear++),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 300,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(12, (index) {
+                    final monthNumber = index + 1;
+                    const monthNames = [
+                      'Ene',
+                      'Feb',
+                      'Mar',
+                      'Abr',
+                      'May',
+                      'Jun',
+                      'Jul',
+                      'Ago',
+                      'Set',
+                      'Oct',
+                      'Nov',
+                      'Dic',
+                    ];
+                    final isCurrentMonth =
+                        cubit.state.customMonth != null &&
+                        cubit.state.customMonth!.year == selectedYear &&
+                        cubit.state.customMonth!.month == monthNumber;
+
+                    return InkWell(
+                      onTap: () {
+                        pickedMonth = monthNumber;
+                        Navigator.of(context).pop();
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 65,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color:
+                              isCurrentMonth
+                                  ? AppColors.primary
+                                  : Theme.of(context)
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          monthNames[index],
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isCurrentMonth ? Colors.white : null,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (pickedMonth != null) {
+      cubit.setPeriod(
+        TopCustomersPeriod.customMonth,
+        customMonth: DateTime(selectedYear, pickedMonth!, 1),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<LoyaltyTopCustomersCubit>().state;
@@ -87,6 +202,7 @@ class _TopCustomersScreenState extends State<TopCustomersScreen> {
                       child: _Header(
                         wide: wide,
                         limit: state.limit,
+                        periodLabel: state.periodLabel,
                         loading: state.isLoading,
                         onSpin: _openRoulette,
                       ),
@@ -95,11 +211,21 @@ class _TopCustomersScreenState extends State<TopCustomersScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                      child: _LimitPills(
+                      child: _FilterToolbar(
+                        selectedPeriod: state.period,
+                        periodLabel: state.periodLabel,
                         limits: _limits,
-                        selected: state.limit,
+                        selectedLimit: state.limit,
                         enabled: !state.isLoading,
-                        onSelected: cubit.setLimit,
+                        onPeriodSelected: (p) {
+                          if (p == TopCustomersPeriod.customMonth) {
+                            _openMonthPicker(context);
+                          } else {
+                            cubit.setPeriod(p);
+                          }
+                        },
+                        onLimitSelected: cubit.setLimit,
+                        onPickMonth: () => _openMonthPicker(context),
                       ),
                     ),
                   ),
@@ -148,12 +274,14 @@ class _TopCustomersScreenState extends State<TopCustomersScreen> {
 class _Header extends StatelessWidget {
   final bool wide;
   final int limit;
+  final String periodLabel;
   final bool loading;
   final VoidCallback onSpin;
 
   const _Header({
     required this.wide,
     required this.limit,
+    required this.periodLabel,
     required this.loading,
     required this.onSpin,
   });
@@ -165,12 +293,37 @@ class _Header extends StatelessWidget {
     final title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Top Clientes',
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                'Top Clientes',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                periodLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
@@ -212,58 +365,184 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _LimitPills extends StatelessWidget {
+class _FilterToolbar extends StatelessWidget {
+  final TopCustomersPeriod selectedPeriod;
+  final String periodLabel;
   final List<int> limits;
-  final int selected;
+  final int selectedLimit;
   final bool enabled;
-  final ValueChanged<int> onSelected;
+  final ValueChanged<TopCustomersPeriod> onPeriodSelected;
+  final ValueChanged<int> onLimitSelected;
+  final VoidCallback onPickMonth;
 
-  const _LimitPills({
+  const _FilterToolbar({
+    required this.selectedPeriod,
+    required this.periodLabel,
     required this.limits,
-    required this.selected,
+    required this.selectedLimit,
     required this.enabled,
-    required this.onSelected,
+    required this.onPeriodSelected,
+    required this.onLimitSelected,
+    required this.onPickMonth,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final v in limits)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                showCheckmark: false,
-                label: Text('Top $v'),
-                selected: selected == v,
-                onSelected: enabled ? (_) => onSelected(v) : null,
-                labelStyle: TextStyle(
-                  fontWeight: selected == v ? FontWeight.w800 : FontWeight.w600,
-                  color:
-                      selected == v
-                          ? Colors.white
-                          : theme.colorScheme.onSurfaceVariant,
-                ),
-                selectedColor: AppColors.primary,
-                backgroundColor: theme.colorScheme.surface,
-                side: BorderSide(
-                  color:
-                      selected == v
-                          ? AppColors.primary
-                          : theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.5,
+    final isDark = theme.brightness == Brightness.dark;
+
+    final periodPills = [
+      (TopCustomersPeriod.thisMonth, '📅 Este Mes'),
+      (TopCustomersPeriod.thisYear, '📆 Anual (${DateTime.now().year})'),
+      (TopCustomersPeriod.allTime, '⭐ Histórico'),
+      (
+        TopCustomersPeriod.customMonth,
+        selectedPeriod == TopCustomersPeriod.customMonth
+            ? '🗓️ $periodLabel'
+            : '🗓️ Elegir Mes...',
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Fila 1: Filtro Temporal (Período)
+        Row(
+          children: [
+            Text(
+              'PERÍODO:',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color:
+                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children:
+                      periodPills.map((item) {
+                        final isSelected = selectedPeriod == item.$1;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            showCheckmark: false,
+                            label: Text(item.$2),
+                            selected: isSelected,
+                            onSelected:
+                                enabled
+                                    ? (_) => onPeriodSelected(item.$1)
+                                    : null,
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF334155)),
+                            ),
+                            selectedColor: const Color(0xFF4F46E5),
+                            backgroundColor:
+                                isDark
+                                    ? const Color(0xFF1E293B)
+                                    : const Color(0xFFF1F5F9),
+                            side: BorderSide(
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF4F46E5)
+                                      : (isDark
+                                          ? AppColors.darkBorder
+                                          : const Color(0xFFE2E8F0)),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                        );
+                      }).toList(),
                 ),
               ),
             ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Fila 2: Tamaño de ranking (Top N)
+        Row(
+          children: [
+            Text(
+              'CANTIDAD:',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color:
+                    isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children:
+                      limits.map((v) {
+                        final isSelected = selectedLimit == v;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            showCheckmark: false,
+                            label: Text('Top $v'),
+                            selected: isSelected,
+                            onSelected:
+                                enabled ? (_) => onLimitSelected(v) : null,
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                              color:
+                                  isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF334155)),
+                            ),
+                            selectedColor: AppColors.primary,
+                            backgroundColor:
+                                isDark
+                                    ? const Color(0xFF1E293B)
+                                    : const Color(0xFFF1F5F9),
+                            side: BorderSide(
+                              color:
+                                  isSelected
+                                      ? AppColors.primary
+                                      : (isDark
+                                          ? AppColors.darkBorder
+                                          : const Color(0xFFE2E8F0)),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

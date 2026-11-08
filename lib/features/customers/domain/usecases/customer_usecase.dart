@@ -53,8 +53,16 @@ class GetTopCustomersUseCase {
 
   GetTopCustomersUseCase(this.repository);
 
-  Future<List<CustomerEntity>> call(int limit) {
-    return repository.getTopCustomers(limit);
+  Future<List<CustomerEntity>> call(
+    int limit, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    return repository.getTopCustomers(
+      limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
   }
 }
 

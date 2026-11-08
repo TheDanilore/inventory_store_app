@@ -254,12 +254,13 @@ class ProductsCatalogRemoteDataSource {
             .or('sku.ilike.%$clean%,barcode.ilike.%$clean%')
             .limit(20);
 
-        final extraProductIds = (variantMatches as List)
-            .map((v) => v['product_id'] as String?)
-            .where((id) => id != null && !existingIds.contains(id))
-            .cast<String>()
-            .toSet()
-            .toList();
+        final extraProductIds =
+            (variantMatches as List)
+                .map((v) => v['product_id'] as String?)
+                .where((id) => id != null && !existingIds.contains(id))
+                .cast<String>()
+                .toSet()
+                .toList();
 
         if (extraProductIds.isNotEmpty) {
           final extraProducts = await _supabase

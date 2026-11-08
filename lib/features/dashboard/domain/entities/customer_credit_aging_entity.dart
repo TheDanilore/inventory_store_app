@@ -10,8 +10,10 @@ class CustomerCreditAgingEntity extends Equatable {
   final double creditLimit;
   final double currentDebt;
   final bool isActive;
-  final int daysWithDebt; // Días que lleva la deuda vigente desde el cargo más reciente
-  final double averagePaymentDays; // Tiempo promedio que se demora en pagar históricamente
+  final int
+  daysWithDebt; // Días que lleva la deuda vigente desde el cargo más reciente
+  final double
+  averagePaymentDays; // Tiempo promedio que se demora en pagar históricamente
   final int totalPaymentsCount; // Cantidad de pagos históricos realizados
   final DateTime? lastChargeDate;
   final DateTime? lastPaymentDate;

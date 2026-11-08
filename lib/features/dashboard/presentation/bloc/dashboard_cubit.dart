@@ -95,9 +95,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           warehouseId: activeWarehouseId,
           forceRefresh: forceRefresh,
         ),
-        dashboardRepository.getActiveCreditsAging(
-          forceRefresh: forceRefresh,
-        ),
+        dashboardRepository.getActiveCreditsAging(forceRefresh: forceRefresh),
       ]);
 
       final inventoryResult =

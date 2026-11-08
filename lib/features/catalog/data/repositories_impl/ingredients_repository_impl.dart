@@ -234,8 +234,7 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
         if (hasQuery) {
           query = query.ilike('name', '%$cleanQuery%');
         }
-        response =
-            await query.order('name').range(offset, offset + limit - 1);
+        response = await query.order('name').range(offset, offset + limit - 1);
       } on PostgrestException catch (e) {
         if (e.message.contains('created_at') &&
             e.message.contains('does not exist')) {
@@ -245,8 +244,9 @@ class IngredientsRepositoryImpl implements IngredientsRepository {
           if (hasQuery) {
             fallbackQuery = fallbackQuery.ilike('name', '%$cleanQuery%');
           }
-          response =
-              await fallbackQuery.order('name').range(offset, offset + limit - 1);
+          response = await fallbackQuery
+              .order('name')
+              .range(offset, offset + limit - 1);
         } else {
           rethrow;
         }
