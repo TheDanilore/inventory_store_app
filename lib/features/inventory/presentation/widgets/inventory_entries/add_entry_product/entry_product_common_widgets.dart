@@ -52,6 +52,44 @@ class EntrySearchHint extends StatelessWidget {
   }
 }
 
+class EntryNoSearchResults extends StatelessWidget {
+  final String term;
+  const EntryNoSearchResults({super.key, required this.term});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 36),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.textMuted.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.search_off_rounded,
+              color: AppColors.textSecondary,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No se encontraron productos para "$term"',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class EntryAddedBanner extends StatelessWidget {
   final String name;
   const EntryAddedBanner({super.key, required this.name});

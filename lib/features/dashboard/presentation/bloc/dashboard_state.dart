@@ -1,9 +1,11 @@
 import 'package:equatable/equatable.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/customer_credit_aging_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/stagnant_product_entity.dart';
 
 abstract class DashboardState extends Equatable {
   const DashboardState();
@@ -25,6 +27,8 @@ class DashboardLoaded extends DashboardState {
   final SalesOverview? overview;
   final List<Map<String, dynamic>> criticalBatches;
   final List<CustomerEntity> topCustomers;
+  final List<StagnantProductEntity> stagnantProducts;
+  final List<CustomerCreditAgingEntity> activeCredits;
   final SalesTimeFilter salesFilter;
   final DateTime? customStartDate;
   final DateTime? customEndDate;
@@ -39,6 +43,8 @@ class DashboardLoaded extends DashboardState {
     this.overview,
     required this.criticalBatches,
     this.topCustomers = const [],
+    this.stagnantProducts = const [],
+    this.activeCredits = const [],
     required this.salesFilter,
     this.customStartDate,
     this.customEndDate,
@@ -55,6 +61,8 @@ class DashboardLoaded extends DashboardState {
     bool clearOverview = false,
     List<Map<String, dynamic>>? criticalBatches,
     List<CustomerEntity>? topCustomers,
+    List<StagnantProductEntity>? stagnantProducts,
+    List<CustomerCreditAgingEntity>? activeCredits,
     SalesTimeFilter? salesFilter,
     DateTime? customStartDate,
     DateTime? customEndDate,
@@ -70,6 +78,8 @@ class DashboardLoaded extends DashboardState {
       overview: clearOverview ? null : (overview ?? this.overview),
       criticalBatches: criticalBatches ?? this.criticalBatches,
       topCustomers: topCustomers ?? this.topCustomers,
+      stagnantProducts: stagnantProducts ?? this.stagnantProducts,
+      activeCredits: activeCredits ?? this.activeCredits,
       salesFilter: salesFilter ?? this.salesFilter,
       customStartDate: customStartDate ?? this.customStartDate,
       customEndDate: customEndDate ?? this.customEndDate,
@@ -93,6 +103,8 @@ class DashboardLoaded extends DashboardState {
     overview,
     criticalBatches,
     topCustomers,
+    stagnantProducts,
+    activeCredits,
     salesFilter,
     customStartDate,
     customEndDate,

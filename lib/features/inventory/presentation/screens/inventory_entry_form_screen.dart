@@ -417,8 +417,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                   prev.paymentMode != curr.paymentMode ||
                   prev.documentType != curr.documentType ||
                   prev.documentDate != curr.documentDate ||
-                  prev.selectedAccountId != curr.selectedAccountId ||
-                  prev.items != curr.items,
+                  prev.selectedAccountId != curr.selectedAccountId,
           builder: (context, state) {
             final cubit = context.read<InventoryEntryFormCubit>();
             final screenTitle =
@@ -521,6 +520,58 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                         builder: (context, constraints) {
                           final isWide = constraints.maxWidth >= 900;
 
+                          final metadataCards = <Widget>[
+                            EntryFormMainDataCard(
+                              state: state,
+                              cubit: cubit,
+                              prefillSupplierName: widget.prefillSupplierName,
+                            ),
+                            const SizedBox(height: 16),
+                            if (widget.purchaseOrderId == null) ...[
+                              EntryFormFinanceCard(
+                                state: state,
+                                cubit: cubit,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            EntryFormDocumentCard(
+                              state: state,
+                              cubit: cubit,
+                              documentNumberCtrl: _documentNumberCtrl,
+                              notesCtrl: _notesCtrl,
+                              onPickDate: () => _pickDocumentDate(context),
+                            ),
+                          ];
+
+                          Widget buildProducts(bool isDesktop) =>
+                              RepaintBoundary(
+                                child: EntryFormProductsSection(
+                                  isDesktop: isDesktop,
+                                  purchaseOrderId: widget.purchaseOrderId,
+                                  onAddNewRow: () => _showAddProductSheet(context),
+                                  onScanBarcode: () => _scanAndAddProduct(context),
+                                  onClearDraft: _handleClearDraft,
+                                  onEditBatch:
+                                      (index, item) => EntryBatchEditDialog.show(
+                                        context,
+                                        itemIndex: index,
+                                        item: item,
+                                        cubit: cubit,
+                                      ),
+                                  onRemoveItem:
+                                      (index) => _removeItemWithUndo(
+                                        cubit,
+                                        index,
+                                      ),
+                                  onUpdateQuantity:
+                                      (index, qty) =>
+                                          cubit.updateItemQuantity(index, qty),
+                                  onUpdateCost:
+                                      (index, cost) =>
+                                          cubit.updateItemCost(index, cost),
+                                ),
+                              );
+
                           if (isWide) {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,33 +592,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
-                                        children: [
-                                          EntryFormMainDataCard(
-                                            state: state,
-                                            cubit: cubit,
-                                            prefillSupplierName:
-                                                widget.prefillSupplierName,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          if (widget.purchaseOrderId ==
-                                              null) ...[
-                                            EntryFormFinanceCard(
-                                              state: state,
-                                              cubit: cubit,
-                                            ),
-                                            const SizedBox(height: 16),
-                                          ],
-                                          EntryFormDocumentCard(
-                                            state: state,
-                                            cubit: cubit,
-                                            documentNumberCtrl:
-                                                _documentNumberCtrl,
-                                            notesCtrl: _notesCtrl,
-                                            onPickDate:
-                                                () =>
-                                                    _pickDocumentDate(context),
-                                          ),
-                                        ],
+                                        children: metadataCards,
                                       ),
                                     ),
                                   ),
@@ -580,44 +605,7 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                       Expanded(
                                         child: SingleChildScrollView(
                                           padding: const EdgeInsets.all(24.0),
-                                          child: EntryFormProductsSection(
-                                            isDesktop: true,
-                                            purchaseOrderId:
-                                                widget.purchaseOrderId,
-                                            onAddNewRow:
-                                                () => _showAddProductSheet(
-                                                  context,
-                                                ),
-                                            onScanBarcode:
-                                                () =>
-                                                    _scanAndAddProduct(context),
-                                            onClearDraft: _handleClearDraft,
-                                            onEditBatch:
-                                                (index, item) =>
-                                                    EntryBatchEditDialog.show(
-                                                      context,
-                                                      itemIndex: index,
-                                                      item: item,
-                                                      cubit: cubit,
-                                                    ),
-                                            onRemoveItem:
-                                                (index) => _removeItemWithUndo(
-                                                  cubit,
-                                                  index,
-                                                ),
-                                            onUpdateQuantity:
-                                                (index, qty) =>
-                                                    cubit.updateItemQuantity(
-                                                      index,
-                                                      qty,
-                                                    ),
-                                            onUpdateCost:
-                                                (index, cost) =>
-                                                    cubit.updateItemCost(
-                                                      index,
-                                                      cost,
-                                                    ),
-                                          ),
+                                          child: buildProducts(true),
                                         ),
                                       ),
                                       EntryFormStickySaveBar(
@@ -640,57 +628,9 @@ class _InventoryEntryFormScreenState extends State<InventoryEntryFormScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      EntryFormMainDataCard(
-                                        state: state,
-                                        cubit: cubit,
-                                        prefillSupplierName:
-                                            widget.prefillSupplierName,
-                                      ),
+                                      ...metadataCards,
                                       const SizedBox(height: 16),
-                                      if (widget.purchaseOrderId == null) ...[
-                                        EntryFormFinanceCard(
-                                          state: state,
-                                          cubit: cubit,
-                                        ),
-                                        const SizedBox(height: 16),
-                                      ],
-                                      EntryFormDocumentCard(
-                                        state: state,
-                                        cubit: cubit,
-                                        documentNumberCtrl: _documentNumberCtrl,
-                                        notesCtrl: _notesCtrl,
-                                        onPickDate:
-                                            () => _pickDocumentDate(context),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      EntryFormProductsSection(
-                                        isDesktop: false,
-                                        purchaseOrderId: widget.purchaseOrderId,
-                                        onAddNewRow:
-                                            () => _showAddProductSheet(context),
-                                        onScanBarcode:
-                                            () => _scanAndAddProduct(context),
-                                        onClearDraft: _handleClearDraft,
-                                        onEditBatch:
-                                            (index, item) =>
-                                                EntryBatchEditDialog.show(
-                                                  context,
-                                                  itemIndex: index,
-                                                  item: item,
-                                                  cubit: cubit,
-                                                ),
-                                        onRemoveItem:
-                                            (index) => _removeItemWithUndo(
-                                              cubit,
-                                              index,
-                                            ),
-                                        onUpdateQuantity:
-                                            (index, qty) => cubit
-                                                .updateItemQuantity(index, qty),
-                                        onUpdateCost:
-                                            (index, cost) => cubit
-                                                .updateItemCost(index, cost),
-                                      ),
+                                      buildProducts(false),
                                       const SizedBox(height: 24),
                                     ],
                                   ),

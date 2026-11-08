@@ -27,11 +27,13 @@ import 'package:inventory_store_app/features/dashboard/presentation/widgets/dash
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_admin_goal_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_bento_grid.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_executive_subheader.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_active_credits_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_best_sellers_table.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_health_summary_bar.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_kpis_section.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_sales_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_skeleton.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_stagnant_products_table.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/expiring_batches_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_command_palette.dart';
@@ -63,7 +65,9 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
     'kpi_strip',
     'profit_spline',
     'best_sellers',
+    'stagnant_products',
     'customer_segments',
+    'active_credits',
     'weekly_activity',
     'radial_goal',
     'expiring_batches',
@@ -94,7 +98,11 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
       final list = prefs.getStringList(_prefsKey);
       if (list != null && list.isNotEmpty && mounted) {
         setState(() {
-          _visibleWidgets = list.where((id) => id != 'ai_assistant').toSet();
+          final loaded = list.where((id) => id != 'ai_assistant').toSet();
+          // Asegurar que los widgets nuevos clave estén presentes por defecto
+          loaded.add('stagnant_products');
+          loaded.add('active_credits');
+          _visibleWidgets = loaded;
         });
       }
     } catch (e, st) {
@@ -138,7 +146,9 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
         'kpi_strip',
         'profit_spline',
         'best_sellers',
+        'stagnant_products',
         'customer_segments',
+        'active_credits',
         'weekly_activity',
         'radial_goal',
         'expiring_batches',
@@ -605,6 +615,12 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           displayMode: TopCustomersDisplayMode.mobile,
         ).animate().fadeIn(delay: 220.ms, duration: 450.ms),
 
+      if (_visibleWidgets.contains('active_credits') &&
+          (canViewSales || canViewInventory))
+        DashboardActiveCreditsCard(
+          activeCredits: state.activeCredits,
+        ).animate().fadeIn(delay: 230.ms, duration: 450.ms),
+
       if (_visibleWidgets.contains('weekly_activity') &&
           state.overview != null &&
           canViewSales)
@@ -624,6 +640,11 @@ class _DashboardScreenContentState extends State<_DashboardScreenContent> {
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
         ).animate().fadeIn(delay: 280.ms, duration: 450.ms),
+
+      if (_visibleWidgets.contains('stagnant_products') && canViewInventory)
+        DashboardStagnantProductsTable(
+          stagnantProducts: state.stagnantProducts,
+        ).animate().fadeIn(delay: 290.ms, duration: 450.ms),
 
       if (_visibleWidgets.contains('expiring_batches') && canViewInventory)
         ExpiringBatchesCard(

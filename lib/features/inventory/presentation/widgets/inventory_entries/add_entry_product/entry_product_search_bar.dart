@@ -15,6 +15,9 @@ class EntryProductSearchBar extends StatefulWidget {
   final bool autofocus;
   final ValueChanged<ProductModel> onProductSelected;
   final ValueChanged<ProductVariantModel?> onVariantSelected;
+  final ValueChanged<String>? onQueryChanged;
+  final ValueChanged<bool>? onLoadingChanged;
+  final ValueChanged<bool>? onNoResultsChanged;
 
   const EntryProductSearchBar({
     super.key,
@@ -22,6 +25,9 @@ class EntryProductSearchBar extends StatefulWidget {
     this.autofocus = true,
     required this.onProductSelected,
     required this.onVariantSelected,
+    this.onQueryChanged,
+    this.onLoadingChanged,
+    this.onNoResultsChanged,
   });
 
   @override
@@ -31,6 +37,8 @@ class EntryProductSearchBar extends StatefulWidget {
 class _EntryProductSearchBarState extends State<EntryProductSearchBar> {
   Timer? _debounceTimer;
   Completer<Iterable<ProductModel>>? _searchCompleter;
+  bool _isSearching = false;
+  String _lastReportedQuery = '';
 
   @override
   void dispose() {
@@ -50,8 +58,13 @@ class _EntryProductSearchBarState extends State<EntryProductSearchBar> {
       _searchCompleter!.complete(const Iterable<ProductModel>.empty());
     }
 
+    if (!_isSearching) {
+      setState(() => _isSearching = true);
+      widget.onLoadingChanged?.call(true);
+    }
+
     _searchCompleter = Completer<Iterable<ProductModel>>();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () async {
       if (!mounted) {
         if (!_searchCompleter!.isCompleted) {
           _searchCompleter!.complete(const Iterable<ProductModel>.empty());
@@ -64,9 +77,19 @@ class _EntryProductSearchBarState extends State<EntryProductSearchBar> {
         if (!_searchCompleter!.isCompleted) {
           _searchCompleter!.complete(results);
         }
+        if (mounted) {
+          setState(() => _isSearching = false);
+          widget.onLoadingChanged?.call(false);
+          widget.onNoResultsChanged?.call(results.isEmpty);
+        }
       } catch (_) {
         if (!_searchCompleter!.isCompleted) {
           _searchCompleter!.complete(const Iterable<ProductModel>.empty());
+        }
+        if (mounted) {
+          setState(() => _isSearching = false);
+          widget.onLoadingChanged?.call(false);
+          widget.onNoResultsChanged?.call(true);
         }
       }
     });
@@ -86,12 +109,25 @@ class _EntryProductSearchBarState extends State<EntryProductSearchBar> {
           displayStringForOption: (p) => p.name,
           optionsBuilder: (textEditingValue) {
             final text = textEditingValue.text.trim();
+            if (text != _lastReportedQuery) {
+              _lastReportedQuery = text;
+              widget.onQueryChanged?.call(text);
+            }
             if (text.isEmpty) {
+              if (_isSearching) {
+                setState(() => _isSearching = false);
+              }
+              widget.onLoadingChanged?.call(false);
+              widget.onNoResultsChanged?.call(false);
               return const Iterable<ProductModel>.empty();
             }
             return _debouncedSearch(context, text);
           },
-          onSelected: widget.onProductSelected,
+          onSelected: (p) {
+            widget.onQueryChanged?.call('');
+            widget.onNoResultsChanged?.call(false);
+            widget.onProductSelected(p);
+          },
           fieldViewBuilder: (
             context,
             textEditingController,
@@ -105,35 +141,69 @@ class _EntryProductSearchBarState extends State<EntryProductSearchBar> {
               textInputAction: TextInputAction.search,
               style: textTheme.bodyLarge,
               decoration: entryInputDecoration(
-                hint: 'Buscar producto...',
+                hint: 'Buscar por nombre, SKU o código...',
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: AppColors.textMuted,
                 ),
-                suffixIcon: IconButton(
-                  icon: const Icon(
-                    Icons.qr_code_scanner_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  tooltip: 'Escanear código (QR / Barras)',
-                  splashRadius: 18,
-                  onPressed: () async {
-                    final res = await PosCameraScannerDialog.show(
-                      context,
-                      warehouseId: widget.warehouseId,
-                    );
-                    if (res != null && mounted) {
-                      widget.onProductSelected(
-                        ProductModel.fromEntity(res.product),
-                      );
-                      if (res.variant != null) {
-                        widget.onVariantSelected(
-                          ProductVariantModel.fromEntity(res.variant!),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isSearching)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      )
+                    else if (textEditingController.text.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.textSecondary,
+                          size: 18,
+                        ),
+                        tooltip: 'Limpiar búsqueda',
+                        splashRadius: 18,
+                        onPressed: () {
+                          textEditingController.clear();
+                          _lastReportedQuery = '';
+                          widget.onQueryChanged?.call('');
+                          widget.onNoResultsChanged?.call(false);
+                          setState(() {});
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      tooltip: 'Escanear código (QR / Barras)',
+                      splashRadius: 18,
+                      onPressed: () async {
+                        final res = await PosCameraScannerDialog.show(
+                          context,
+                          warehouseId: widget.warehouseId,
                         );
-                      }
-                    }
-                  },
+                        if (res != null && mounted) {
+                          widget.onProductSelected(
+                            ProductModel.fromEntity(res.product),
+                          );
+                          if (res.variant != null) {
+                            widget.onVariantSelected(
+                              ProductVariantModel.fromEntity(res.variant!),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ),
             );

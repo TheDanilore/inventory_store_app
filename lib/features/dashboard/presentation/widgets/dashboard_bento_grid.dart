@@ -5,8 +5,10 @@ import 'package:inventory_store_app/core/constants/app_permissions.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/permission_guard.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/bloc/dashboard_state.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_active_credits_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_sales_cards.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_best_sellers_table.dart';
+import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_stagnant_products_table.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/top_customers_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/expiring_batches_card.dart';
 import 'package:inventory_store_app/features/dashboard/presentation/widgets/dashboard_admin_goal_card.dart';
@@ -50,10 +52,15 @@ class DashboardBentoGrid extends StatelessWidget {
         (context.isAdmin || canViewSales);
     final hasBestSellers =
         visibleWidgets.contains('best_sellers') && canViewSales;
+    final hasStagnant =
+        visibleWidgets.contains('stagnant_products') && canViewInventory;
     final hasCustomers =
         visibleWidgets.contains('customer_segments') &&
         state.topCustomers.isNotEmpty &&
         canViewSales;
+    final hasActiveCredits =
+        visibleWidgets.contains('active_credits') &&
+        (canViewSales || canViewInventory);
     final hasBatches =
         visibleWidgets.contains('expiring_batches') && canViewInventory;
 
@@ -61,7 +68,9 @@ class DashboardBentoGrid extends StatelessWidget {
         hasWeekly ||
         hasGoal ||
         hasBestSellers ||
+        hasStagnant ||
         hasCustomers ||
+        hasActiveCredits ||
         hasBatches;
   }
 
@@ -249,13 +258,18 @@ class DashboardBentoGrid extends StatelessWidget {
       );
     }
 
-    // ── NIVEL 2: OPERACIONES, ROTACIÓN Y FEFO (SIMETRÍA 1:1) ───────────────
+    // ── NIVEL 2: OPERACIONES, ROTACIÓN, CRÉDITOS Y FEFO ───────────────
     final hasBestSellers =
         visibleWidgets.contains('best_sellers') && canViewSales;
+    final hasStagnant =
+        visibleWidgets.contains('stagnant_products') && canViewInventory;
     final hasCustomers =
         visibleWidgets.contains('customer_segments') &&
         state.topCustomers.isNotEmpty &&
         canViewSales;
+    final hasActiveCredits =
+        visibleWidgets.contains('active_credits') &&
+        (canViewSales || canViewInventory);
     final hasBatches =
         visibleWidgets.contains('expiring_batches') && canViewInventory;
 
@@ -265,6 +279,10 @@ class DashboardBentoGrid extends StatelessWidget {
           bestSellers: state.sales.bestSellers,
           criticalBatches: state.criticalBatches,
         ),
+      if (hasStagnant)
+        DashboardStagnantProductsTable(
+          stagnantProducts: state.stagnantProducts,
+        ),
     ];
 
     final rightLevel2 = <Widget>[
@@ -272,6 +290,10 @@ class DashboardBentoGrid extends StatelessWidget {
         TopCustomersCard(
           customers: state.topCustomers,
           displayMode: TopCustomersDisplayMode.desktop,
+        ),
+      if (hasActiveCredits)
+        DashboardActiveCreditsCard(
+          activeCredits: state.activeCredits,
         ),
       if (hasBatches) ExpiringBatchesCard(batches: state.criticalBatches),
     ];

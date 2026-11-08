@@ -610,6 +610,123 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                         builder: (context, constraints) {
                           final isWide = constraints.maxWidth >= 900;
 
+                          final headerAndPaymentSections = <Widget>[
+                            POFormHeaderSection(
+                              suppliers: formLoaded.suppliers,
+                              warehouses: formLoaded.warehouses,
+                              selectedSupplierId: formLoaded.selectedSupplierId,
+                              selectedWarehouseId:
+                                  formLoaded.selectedWarehouseId,
+                              dueDate: formLoaded.dueDate,
+                              onSupplierChanged:
+                                  (v) => cubit.updateField(supplierId: v),
+                              onWarehouseChanged:
+                                  (v) => cubit.updateField(warehouseId: v),
+                              onPickDueDate:
+                                  () => _pickDueDate(context, formLoaded.dueDate),
+                              onClearDueDate: () => cubit.clearDueDate(),
+                            ),
+                            const SizedBox(height: 24),
+                            POFormPaymentSection(
+                              isEditing: formLoaded.isEditing,
+                              paymentMode: formLoaded.paymentMode,
+                              paymentStatus: formLoaded.paymentStatus,
+                              selectedAccountId: formLoaded.selectedAccountId,
+                              accounts: formLoaded.accounts,
+                              activeShiftsByAccount:
+                                  formLoaded.activeShiftsByAccount,
+                              totalAmount: formLoaded.totalAmount,
+                              currencyCode: formLoaded.currencyCode,
+                              exchangeRate: formLoaded.exchangeRate,
+                              creditWarningMessage:
+                                  formLoaded.creditWarningMessage,
+                              onCurrencyChanged:
+                                  (code, rate) =>
+                                      cubit.setCurrency(code, rate),
+                              onPaymentModeChanged: (v) {
+                                cubit.updateField(paymentMode: v);
+                                if (v == 'CRÉDITO') {
+                                  cubit.updateField(
+                                    paymentStatus: 'PENDING',
+                                    accountId: null,
+                                  );
+                                }
+                              },
+                              onPaymentStatusChanged:
+                                  (v) => cubit.updateField(paymentStatus: v),
+                              onAccountChanged:
+                                  (v) => cubit.updateField(accountId: v),
+                            ),
+                            const SizedBox(height: 24),
+                            POFormDocumentSection(
+                              documentType: formLoaded.documentType,
+                              documentNumberCtrl: _documentNumberCtrl,
+                              documentDate: formLoaded.documentDate,
+                              notesCtrl: _notesCtrl,
+                              onDocumentTypeChanged:
+                                  (v) => cubit.updateField(documentType: v),
+                              onPickDocumentDate:
+                                  () => _pickDocumentDate(
+                                    context,
+                                    formLoaded.documentDate,
+                                  ),
+                              onClearDocumentDate:
+                                  () => cubit.clearDocumentDate(),
+                            ),
+                          ];
+
+                          Widget buildProducts(bool isDesktop) =>
+                              RepaintBoundary(
+                                child: POFormProductsSection(
+                                  items: formLoaded.items,
+                                  isDesktop: isDesktop,
+                                  isEditing: formLoaded.isEditing,
+                                  currencyCode: formLoaded.currencyCode,
+                                  exchangeRate: formLoaded.exchangeRate,
+                                  onRemoveItem: (index) {
+                                    final item = formLoaded.items[index];
+                                    cubit.removeItem(
+                                      item.productId,
+                                      item.variantId,
+                                    );
+                                  },
+                                  onUpdateQuantity: (index, quantity) {
+                                    final item = formLoaded.items[index];
+                                    cubit.updateItemQuantity(
+                                      item.productId,
+                                      item.variantId,
+                                      quantity,
+                                    );
+                                  },
+                                  onUpdateCost: (index, cost) {
+                                    final item = formLoaded.items[index];
+                                    cubit.updateItemCost(
+                                      item.productId,
+                                      item.variantId,
+                                      cost,
+                                    );
+                                  },
+                                  onAddNewRow:
+                                      () => _showAddProductSheet(
+                                        context,
+                                        formLoaded,
+                                      ),
+                                  onScanBarcode:
+                                      () => _scanAndAddProduct(
+                                        context,
+                                        formLoaded,
+                                      ),
+                                  onClearDraft: _handleClearDraft,
+                                ),
+                              );
+
+                          final stickySaveBar = POFormStickySaveBar(
+                            isEditing: formLoaded.isEditing,
+                            isSaving: formLoaded.isSaving,
+                            isValid: formLoaded.isValid,
+                            onSave: () => _handleSave(formLoaded),
+                          );
+
                           if (isWide) {
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,93 +745,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     child: SingleChildScrollView(
                                       padding: const EdgeInsets.all(24.0),
                                       child: Column(
-                                        children: [
-                                          POFormHeaderSection(
-                                            suppliers: formLoaded.suppliers,
-                                            warehouses: formLoaded.warehouses,
-                                            selectedSupplierId:
-                                                formLoaded.selectedSupplierId,
-                                            selectedWarehouseId:
-                                                formLoaded.selectedWarehouseId,
-                                            dueDate: formLoaded.dueDate,
-                                            onSupplierChanged:
-                                                (v) => cubit.updateField(
-                                                  supplierId: v,
-                                                ),
-                                            onWarehouseChanged:
-                                                (v) => cubit.updateField(
-                                                  warehouseId: v,
-                                                ),
-                                            onPickDueDate:
-                                                () => _pickDueDate(
-                                                  context,
-                                                  formLoaded.dueDate,
-                                                ),
-                                            onClearDueDate:
-                                                () => cubit.clearDueDate(),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          POFormPaymentSection(
-                                            isEditing: formLoaded.isEditing,
-                                            paymentMode: formLoaded.paymentMode,
-                                            paymentStatus:
-                                                formLoaded.paymentStatus,
-                                            selectedAccountId:
-                                                formLoaded.selectedAccountId,
-                                            accounts: formLoaded.accounts,
-                                            activeShiftsByAccount:
-                                                formLoaded
-                                                    .activeShiftsByAccount,
-                                            totalAmount: formLoaded.totalAmount,
-                                            currencyCode:
-                                                formLoaded.currencyCode,
-                                            exchangeRate:
-                                                formLoaded.exchangeRate,
-                                            creditWarningMessage:
-                                                formLoaded.creditWarningMessage,
-                                            onCurrencyChanged:
-                                                (code, rate) => cubit
-                                                    .setCurrency(code, rate),
-                                            onPaymentModeChanged: (v) {
-                                              cubit.updateField(paymentMode: v);
-                                              if (v == 'CRÉDITO') {
-                                                cubit.updateField(
-                                                  paymentStatus: 'PENDING',
-                                                  accountId: null,
-                                                );
-                                              }
-                                            },
-                                            onPaymentStatusChanged:
-                                                (v) => cubit.updateField(
-                                                  paymentStatus: v,
-                                                ),
-                                            onAccountChanged:
-                                                (v) => cubit.updateField(
-                                                  accountId: v,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          POFormDocumentSection(
-                                            documentType:
-                                                formLoaded.documentType,
-                                            documentNumberCtrl:
-                                                _documentNumberCtrl,
-                                            documentDate:
-                                                formLoaded.documentDate,
-                                            notesCtrl: _notesCtrl,
-                                            onDocumentTypeChanged:
-                                                (v) => cubit.updateField(
-                                                  documentType: v,
-                                                ),
-                                            onPickDocumentDate:
-                                                () => _pickDocumentDate(
-                                                  context,
-                                                  formLoaded.documentDate,
-                                                ),
-                                            onClearDocumentDate:
-                                                () => cubit.clearDocumentDate(),
-                                          ),
-                                        ],
+                                        children: headerAndPaymentSections,
                                       ),
                                     ),
                                   ),
@@ -727,63 +758,10 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                       Expanded(
                                         child: SingleChildScrollView(
                                           padding: const EdgeInsets.all(24.0),
-                                          child: POFormProductsSection(
-                                            items: formLoaded.items,
-                                            isDesktop: true,
-                                            isEditing: formLoaded.isEditing,
-                                            currencyCode:
-                                                formLoaded.currencyCode,
-                                            exchangeRate:
-                                                formLoaded.exchangeRate,
-                                            onRemoveItem: (index) {
-                                              final item =
-                                                  formLoaded.items[index];
-                                              cubit.removeItem(
-                                                item.productId,
-                                                item.variantId,
-                                              );
-                                            },
-                                            onUpdateQuantity: (
-                                              index,
-                                              quantity,
-                                            ) {
-                                              final item =
-                                                  formLoaded.items[index];
-                                              cubit.updateItemQuantity(
-                                                item.productId,
-                                                item.variantId,
-                                                quantity,
-                                              );
-                                            },
-                                            onUpdateCost: (index, cost) {
-                                              final item =
-                                                  formLoaded.items[index];
-                                              cubit.updateItemCost(
-                                                item.productId,
-                                                item.variantId,
-                                                cost,
-                                              );
-                                            },
-                                            onAddNewRow:
-                                                () => _showAddProductSheet(
-                                                  context,
-                                                  formLoaded,
-                                                ),
-                                            onScanBarcode:
-                                                () => _scanAndAddProduct(
-                                                  context,
-                                                  formLoaded,
-                                                ),
-                                            onClearDraft: _handleClearDraft,
-                                          ),
+                                          child: buildProducts(true),
                                         ),
                                       ),
-                                      POFormStickySaveBar(
-                                        isEditing: formLoaded.isEditing,
-                                        isSaving: formLoaded.isSaving,
-                                        isValid: formLoaded.isValid,
-                                        onSave: () => _handleSave(formLoaded),
-                                      ),
+                                      stickySaveBar,
                                     ],
                                   ),
                                 ),
@@ -801,136 +779,15 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      POFormHeaderSection(
-                                        suppliers: formLoaded.suppliers,
-                                        warehouses: formLoaded.warehouses,
-                                        selectedSupplierId:
-                                            formLoaded.selectedSupplierId,
-                                        selectedWarehouseId:
-                                            formLoaded.selectedWarehouseId,
-                                        dueDate: formLoaded.dueDate,
-                                        onSupplierChanged:
-                                            (v) => cubit.updateField(
-                                              supplierId: v,
-                                            ),
-                                        onWarehouseChanged:
-                                            (v) => cubit.updateField(
-                                              warehouseId: v,
-                                            ),
-                                        onPickDueDate:
-                                            () => _pickDueDate(
-                                              context,
-                                              formLoaded.dueDate,
-                                            ),
-                                        onClearDueDate:
-                                            () => cubit.clearDueDate(),
-                                      ),
+                                      ...headerAndPaymentSections,
                                       const SizedBox(height: 16),
-                                      POFormProductsSection(
-                                        items: formLoaded.items,
-                                        isDesktop: false,
-                                        isEditing: formLoaded.isEditing,
-                                        currencyCode: formLoaded.currencyCode,
-                                        exchangeRate: formLoaded.exchangeRate,
-                                        onRemoveItem: (index) {
-                                          final item = formLoaded.items[index];
-                                          cubit.removeItem(
-                                            item.productId,
-                                            item.variantId,
-                                          );
-                                        },
-                                        onUpdateQuantity: (index, quantity) {
-                                          final item = formLoaded.items[index];
-                                          cubit.updateItemQuantity(
-                                            item.productId,
-                                            item.variantId,
-                                            quantity,
-                                          );
-                                        },
-                                        onUpdateCost: (index, cost) {
-                                          final item = formLoaded.items[index];
-                                          cubit.updateItemCost(
-                                            item.productId,
-                                            item.variantId,
-                                            cost,
-                                          );
-                                        },
-                                        onAddNewRow:
-                                            () => _showAddProductSheet(
-                                              context,
-                                              formLoaded,
-                                            ),
-                                        onScanBarcode:
-                                            () => _scanAndAddProduct(
-                                              context,
-                                              formLoaded,
-                                            ),
-                                        onClearDraft: _handleClearDraft,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      POFormPaymentSection(
-                                        isEditing: formLoaded.isEditing,
-                                        paymentMode: formLoaded.paymentMode,
-                                        paymentStatus: formLoaded.paymentStatus,
-                                        selectedAccountId:
-                                            formLoaded.selectedAccountId,
-                                        accounts: formLoaded.accounts,
-                                        activeShiftsByAccount:
-                                            formLoaded.activeShiftsByAccount,
-                                        totalAmount: formLoaded.totalAmount,
-                                        currencyCode: formLoaded.currencyCode,
-                                        exchangeRate: formLoaded.exchangeRate,
-                                        creditWarningMessage:
-                                            formLoaded.creditWarningMessage,
-                                        onCurrencyChanged:
-                                            (code, rate) =>
-                                                cubit.setCurrency(code, rate),
-                                        onPaymentModeChanged: (v) {
-                                          cubit.updateField(paymentMode: v);
-                                          if (v == 'CRÉDITO') {
-                                            cubit.updateField(
-                                              paymentStatus: 'PENDING',
-                                              accountId: null,
-                                            );
-                                          }
-                                        },
-                                        onPaymentStatusChanged:
-                                            (v) => cubit.updateField(
-                                              paymentStatus: v,
-                                            ),
-                                        onAccountChanged:
-                                            (v) =>
-                                                cubit.updateField(accountId: v),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      POFormDocumentSection(
-                                        documentType: formLoaded.documentType,
-                                        documentNumberCtrl: _documentNumberCtrl,
-                                        documentDate: formLoaded.documentDate,
-                                        notesCtrl: _notesCtrl,
-                                        onDocumentTypeChanged:
-                                            (v) => cubit.updateField(
-                                              documentType: v,
-                                            ),
-                                        onPickDocumentDate:
-                                            () => _pickDocumentDate(
-                                              context,
-                                              formLoaded.documentDate,
-                                            ),
-                                        onClearDocumentDate:
-                                            () => cubit.clearDocumentDate(),
-                                      ),
+                                      buildProducts(false),
                                       const SizedBox(height: 24),
                                     ],
                                   ),
                                 ),
                               ),
-                              POFormStickySaveBar(
-                                isEditing: formLoaded.isEditing,
-                                isSaving: formLoaded.isSaving,
-                                isValid: formLoaded.isValid,
-                                onSave: () => _handleSave(formLoaded),
-                              ),
+                              stickySaveBar,
                             ],
                           );
                         },

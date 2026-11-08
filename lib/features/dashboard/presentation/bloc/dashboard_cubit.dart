@@ -5,10 +5,12 @@ import 'package:inventory_store_app/core/errors/failure.dart';
 import 'package:inventory_store_app/core/services/logger_service.dart';
 import 'package:inventory_store_app/features/customers/domain/entities/customer_entity.dart';
 import 'package:inventory_store_app/features/customers/domain/usecases/customer_usecase.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/customer_credit_aging_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/stagnant_product_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/repositories/dashboard_repository.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_critical_batches_usecase.dart';
 import 'package:inventory_store_app/features/dashboard/domain/usecases/get_inventory_metrics_usecase.dart';
@@ -89,6 +91,13 @@ class DashboardCubit extends Cubit<DashboardState> {
           activeEndDate,
           warehouseId: activeWarehouseId,
         ),
+        dashboardRepository.getStagnantProducts(
+          warehouseId: activeWarehouseId,
+          forceRefresh: forceRefresh,
+        ),
+        dashboardRepository.getActiveCreditsAging(
+          forceRefresh: forceRefresh,
+        ),
       ]);
 
       final inventoryResult =
@@ -98,6 +107,10 @@ class DashboardCubit extends Cubit<DashboardState> {
           results[2] as Either<Failure, List<Map<String, dynamic>>>;
       final topCustomers = results[3] as List<CustomerEntity>;
       final overviewResult = results[4] as Either<Failure, SalesOverview>;
+      final stagnantResult =
+          results[5] as Either<Failure, List<StagnantProductEntity>>;
+      final creditsAgingResult =
+          results[6] as Either<Failure, List<CustomerCreditAgingEntity>>;
 
       if (hasExistingData) {
         // Enfoque Stale-While-Revalidate: si ya hay datos previos en pantalla,
@@ -137,6 +150,22 @@ class DashboardCubit extends Cubit<DashboardState> {
         final finalTopCustomers =
             topCustomers.isNotEmpty ? topCustomers : currentState.topCustomers;
 
+        final stagnant = stagnantResult.getOrElse((failure) {
+          LoggerService.w(
+            'Fallo al actualizar productos sin rotación en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.stagnantProducts;
+        });
+
+        final credits = creditsAgingResult.getOrElse((failure) {
+          LoggerService.w(
+            'Fallo al actualizar créditos vigentes en background: ${failure.message}',
+            tag: 'DASHBOARD_CUBIT',
+          );
+          return currentState.activeCredits;
+        });
+
         emit(
           DashboardLoaded(
             inventory: inventory,
@@ -144,6 +173,8 @@ class DashboardCubit extends Cubit<DashboardState> {
             overview: overview,
             criticalBatches: batches,
             topCustomers: finalTopCustomers,
+            stagnantProducts: stagnant,
+            activeCredits: credits,
             salesFilter: activeFilter,
             customStartDate: activeStartDate,
             customEndDate: activeEndDate,
@@ -164,6 +195,9 @@ class DashboardCubit extends Cubit<DashboardState> {
                 batchesResult.fold(
                   (failure) => emit(DashboardError(failure.message)),
                   (batches) {
+                    final stagnant = stagnantResult.getOrElse((_) => []);
+                    final credits = creditsAgingResult.getOrElse((_) => []);
+
                     emit(
                       DashboardLoaded(
                         inventory: inventory,
@@ -176,6 +210,8 @@ class DashboardCubit extends Cubit<DashboardState> {
                         ),
                         criticalBatches: batches,
                         topCustomers: topCustomers,
+                        stagnantProducts: stagnant,
+                        activeCredits: credits,
                         salesFilter: activeFilter,
                         customStartDate: activeStartDate,
                         customEndDate: activeEndDate,
@@ -304,6 +340,10 @@ class DashboardCubit extends Cubit<DashboardState> {
             activeEndDate,
             warehouseId: warehouseId,
           ),
+          dashboardRepository.getStagnantProducts(
+            warehouseId: warehouseId,
+            forceRefresh: true,
+          ),
         ]);
 
         final inventoryResult =
@@ -312,6 +352,8 @@ class DashboardCubit extends Cubit<DashboardState> {
         final batchesResult =
             results[2] as Either<Failure, List<Map<String, dynamic>>>;
         final overviewResult = results[3] as Either<Failure, SalesOverview>;
+        final stagnantResult =
+            results[4] as Either<Failure, List<StagnantProductEntity>>;
 
         final inventory = inventoryResult.getOrElse(
           (_) => currentState.inventory,
@@ -324,6 +366,9 @@ class DashboardCubit extends Cubit<DashboardState> {
           (_) => null,
           (o) => o,
         );
+        final stagnant = stagnantResult.getOrElse(
+          (_) => currentState.stagnantProducts,
+        );
 
         emit(
           currentState.copyWith(
@@ -335,6 +380,7 @@ class DashboardCubit extends Cubit<DashboardState> {
             overview: overview,
             clearOverview: overview == null,
             criticalBatches: batches,
+            stagnantProducts: stagnant,
             isSalesLoading: false,
             isBackgroundLoading: false,
           ),

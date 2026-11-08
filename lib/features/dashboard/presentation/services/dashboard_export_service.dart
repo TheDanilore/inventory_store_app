@@ -277,6 +277,77 @@ class DashboardExportService {
         ]);
       }
     }
+    writeRow([]);
+
+    // ── 7. PRODUCTOS SIN ROTACIÓN (STOCK ESTANCADO) ──────────────────────────
+    writeRow(['PRODUCTOS SIN ROTACIÓN Y CAPITAL INMOVILIZADO']);
+    writeRow([
+      'Producto',
+      'Categoría',
+      'Stock Disponible',
+      'Capital Inmovilizado',
+      'Días sin Rotación',
+      'Diagnóstico',
+    ]);
+    final stagnant = state.stagnantProducts;
+    if (stagnant.isEmpty) {
+      writeRow([
+        '-',
+        '-',
+        '0 unid.',
+        'S/ 0.00',
+        '0 días',
+        'Inventario con rotación activa',
+      ]);
+    } else {
+      for (final p in stagnant) {
+        writeRow([
+          p.name,
+          p.category,
+          '${p.currentStock} unid.',
+          currencyFmt.format(p.tiedUpCapital),
+          p.formattedDaysWithoutSale,
+          p.statusLabel,
+        ]);
+      }
+    }
+    writeRow([]);
+
+    // ── 8. CLIENTES CON CRÉDITOS VIGENTES Y COBRANZAS ────────────────────────
+    writeRow(['CLIENTES CON CRÉDITOS VIGENTES Y TIEMPO DE COBRANZA']);
+    writeRow([
+      'Cliente',
+      'Documento/Teléfono',
+      'Deuda Vigente',
+      'Límite de Crédito',
+      'Antigüedad de Deuda',
+      'Demora Promedio en Pagar',
+      'Semáforo de Riesgo',
+    ]);
+    final credits = state.activeCredits;
+    if (credits.isEmpty) {
+      writeRow([
+        '-',
+        '-',
+        'S/ 0.00',
+        'S/ 0.00',
+        '0 días',
+        'Sin créditos pendientes',
+        'Cartera al día',
+      ]);
+    } else {
+      for (final c in credits) {
+        writeRow([
+          c.customerName,
+          c.customerDocument ?? c.customerPhone ?? '-',
+          currencyFmt.format(c.currentDebt),
+          c.creditLimit > 0 ? currencyFmt.format(c.creditLimit) : 'Sin límite',
+          c.currentDebtAgingLabel,
+          c.paymentSpeedLabel,
+          c.riskLevel,
+        ]);
+      }
+    }
 
     return buffer.toString();
   }

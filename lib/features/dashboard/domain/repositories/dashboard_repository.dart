@@ -1,9 +1,11 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:inventory_store_app/core/errors/failure.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/customer_credit_aging_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/inventory_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_metrics_entity.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_overview.dart';
 import 'package:inventory_store_app/features/dashboard/domain/entities/sales_time_filter.dart';
+import 'package:inventory_store_app/features/dashboard/domain/entities/stagnant_product_entity.dart';
 
 abstract class DashboardRepository {
   Future<Either<Failure, InventoryMetricsEntity>> getInventoryMetrics({
@@ -29,5 +31,18 @@ abstract class DashboardRepository {
     int limit = 15,
     bool forceRefresh = false,
     String? warehouseId,
+  });
+
+  /// Productos sin rotación o que no salen (estancados) con capital inmovilizado
+  Future<Either<Failure, List<StagnantProductEntity>>> getStagnantProducts({
+    String? warehouseId,
+    int limit = 5,
+    bool forceRefresh = false,
+  });
+
+  /// Clientes con créditos vigentes y tiempo que se demoran en pagar
+  Future<Either<Failure, List<CustomerCreditAgingEntity>>> getActiveCreditsAging({
+    int limit = 5,
+    bool forceRefresh = false,
   });
 }

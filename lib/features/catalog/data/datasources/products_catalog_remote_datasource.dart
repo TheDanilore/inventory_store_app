@@ -229,16 +229,56 @@ class ProductsCatalogRemoteDataSource {
   }
 
   Future<List<Map<String, dynamic>>> searchProductsForEntry(String term) async {
+    final clean = term.trim();
+    if (clean.isEmpty) return const [];
+
     final res = await _supabase
         .from('products')
         .select(
-          'id, name, uses_batches, product_images!left(image_url), product_variants(id, product_id, sku, unit_cost, sale_price, is_active)',
+          'id, name, uses_batches, product_images(image_url, is_main), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, is_active)',
         )
         .eq('is_active', true)
-        .ilike('name', '%$term%')
-        .eq('product_images.is_main', true)
+        .ilike('name', '%$clean%')
+        .order('name', ascending: true)
         .limit(20);
-    return List<Map<String, dynamic>>.from(res);
+
+    final list = List<Map<String, dynamic>>.from(res);
+
+    if (list.length < 20) {
+      final existingIds = list.map((p) => p['id'] as String).toSet();
+      try {
+        final variantMatches = await _supabase
+            .from('product_variants')
+            .select('product_id')
+            .eq('is_active', true)
+            .or('sku.ilike.%$clean%,barcode.ilike.%$clean%')
+            .limit(20);
+
+        final extraProductIds = (variantMatches as List)
+            .map((v) => v['product_id'] as String?)
+            .where((id) => id != null && !existingIds.contains(id))
+            .cast<String>()
+            .toSet()
+            .toList();
+
+        if (extraProductIds.isNotEmpty) {
+          final extraProducts = await _supabase
+              .from('products')
+              .select(
+                'id, name, uses_batches, product_images(image_url, is_main), product_variants(id, product_id, sku, barcode, unit_cost, sale_price, is_active)',
+              )
+              .eq('is_active', true)
+              .inFilter('id', extraProductIds)
+              .limit(20 - list.length);
+
+          list.addAll(List<Map<String, dynamic>>.from(extraProducts));
+        }
+      } catch (_) {
+        // Fallback silencioso si falla la búsqueda secundaria por variante
+      }
+    }
+
+    return list;
   }
 
   Future<void> setProductActive(String productId, bool isActive) async {

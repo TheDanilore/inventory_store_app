@@ -99,6 +99,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
   String? _lastHandledError;
   String? _lastAddedName;
   int _addedCount = 0;
+  String _searchQuery = '';
+  bool _isSearchLoading = false;
+  bool _hasNoSearchResults = false;
 
   late final AddEntryProductCubit _cubit;
 
@@ -151,6 +154,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
       _lastHandledError = null;
       _batchCtrl.clear();
       _expiryDate = null;
+      _searchQuery = '';
+      _isSearchLoading = false;
+      _hasNoSearchResults = false;
       if (val != null) {
         final cost = _effectiveCost(variant: autoSelectedVariant, product: val);
         _costCtrl.text = cost.toStringAsFixed(2);
@@ -274,6 +280,9 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
         _lastHandledError = null;
         _lastAddedName = item.productName;
         _addedCount++;
+        _searchQuery = '';
+        _isSearchLoading = false;
+        _hasNoSearchResults = false;
       });
       return;
     }
@@ -530,8 +539,29 @@ class _AddEntryProductSheetState extends State<AddEntryProductSheet> {
             autofocus: widget.initialProduct == null,
             onProductSelected: _onProductChanged,
             onVariantSelected: _onVariantChanged,
+            onQueryChanged: (q) {
+              setState(() {
+                _searchQuery = q;
+                if (q.isEmpty) {
+                  _hasNoSearchResults = false;
+                }
+              });
+            },
+            onLoadingChanged: (loading) {
+              if (_isSearchLoading != loading) {
+                setState(() => _isSearchLoading = loading);
+              }
+            },
+            onNoResultsChanged: (noResults) {
+              if (_hasNoSearchResults != noResults) {
+                setState(() => _hasNoSearchResults = noResults);
+              }
+            },
           ),
-          const EntrySearchHint(),
+          if (_searchQuery.isEmpty)
+            const EntrySearchHint()
+          else if (_hasNoSearchResults && !_isSearchLoading)
+            EntryNoSearchResults(term: _searchQuery),
         ] else ...[
           EntrySelectedProductCard(
             name: product.name,

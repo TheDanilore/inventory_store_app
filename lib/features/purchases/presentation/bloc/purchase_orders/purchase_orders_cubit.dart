@@ -125,20 +125,22 @@ class PurchaseOrdersCubit extends Cubit<PurchaseOrdersState> {
       currentPageSize = pageSize ?? PurchaseOrdersState.pageSize;
     }
 
-    emit(
-      PurchaseOrdersLoading(
-        currentOrders: currentOrders,
-        searchText: currentSearchText,
-        statusFilter: currentStatusFilter,
-        warehouseFilter: currentWarehouseFilter,
-        availableWarehouses: currentAvailableWarehouses,
-        startDate: currentStartDate,
-        endDate: currentEndDate,
-        currentPage: currentPage,
-        totalCount: currentTotalCount,
-        pageSize: currentPageSize,
-      ),
-    );
+    if (!background) {
+      emit(
+        PurchaseOrdersLoading(
+          currentOrders: currentOrders,
+          searchText: currentSearchText,
+          statusFilter: currentStatusFilter,
+          warehouseFilter: currentWarehouseFilter,
+          availableWarehouses: currentAvailableWarehouses,
+          startDate: currentStartDate,
+          endDate: currentEndDate,
+          currentPage: currentPage,
+          totalCount: currentTotalCount,
+          pageSize: currentPageSize,
+        ),
+      );
+    }
 
     final whParam =
         (currentWarehouseFilter == 'Todos' || currentWarehouseFilter == 'TODOS')

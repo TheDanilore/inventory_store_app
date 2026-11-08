@@ -40,12 +40,28 @@ class DashboardWidgetsCatalog {
       previewMockup: DashboardBestSellersMockup(),
     ),
     DashboardWidgetItem(
+      id: 'stagnant_products',
+      title: 'Productos sin Rotación (Huesos)',
+      description:
+          'Artículos con stock disponible sin ventas registradas y capital congelado.',
+      categoryTag: '#Inventario',
+      previewMockup: DashboardStagnantProductsMockup(),
+    ),
+    DashboardWidgetItem(
       id: 'customer_segments',
       title: 'Segmentación de Clientes',
       description:
           'Canales de compradores principales (Minoristas, Distribuidores y Mayoristas).',
       categoryTag: '#Estrategia',
       previewMockup: DashboardCustomersMockup(),
+    ),
+    DashboardWidgetItem(
+      id: 'active_credits',
+      title: 'Créditos Vigentes y Cobranzas',
+      description:
+          'Clientes con deuda activa, antigüedad de mora y tiempo promedio en pagar.',
+      categoryTag: '#Finanzas',
+      previewMockup: DashboardActiveCreditsMockup(),
     ),
     DashboardWidgetItem(
       id: 'weekly_activity',

@@ -497,3 +497,91 @@ class DashboardExpiringBatchesMockup extends StatelessWidget {
     );
   }
 }
+
+/// Micro-mockup vectorial para productos sin rotación
+class DashboardStagnantProductsMockup extends StatelessWidget {
+  const DashboardStagnantProductsMockup({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? const Color(0xFF431407).withValues(alpha: 0.4)
+                : const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              isDark
+                  ? const Color(0xFF9A3412).withValues(alpha: 0.6)
+                  : const Color(0xFFFFEDD5),
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color:
+                isDark
+                    ? const Color(0xFF7C2D12).withValues(alpha: 0.6)
+                    : const Color(0xFFFFEDD5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.pause_circle_outline_rounded,
+            size: 22,
+            color: isDark ? const Color(0xFFFB923C) : const Color(0xFFEA580C),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Micro-mockup vectorial para clientes con créditos vigentes
+class DashboardActiveCreditsMockup extends StatelessWidget {
+  const DashboardActiveCreditsMockup({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? const Color(0xFF312E81).withValues(alpha: 0.4)
+                : const Color(0xFFEEF2FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              isDark
+                  ? const Color(0xFF4338CA).withValues(alpha: 0.6)
+                  : const Color(0xFFC7D2FE),
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color:
+                isDark
+                    ? const Color(0xFF3730A3).withValues(alpha: 0.6)
+                    : const Color(0xFFE0E7FF),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.account_balance_wallet_rounded,
+            size: 22,
+            color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -27,7 +27,7 @@ class InventoryRoutes {
             state.uri.queryParameters['selectedId'] ??
             state.uri.queryParameters['entryId'];
         return BlocProvider.value(
-          value: sl<InventoryEntriesCubit>()..init(),
+          value: sl<InventoryEntriesCubit>(),
           child: InventoryEntriesScreen(targetEntryId: entryId),
         );
       },

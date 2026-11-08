@@ -18,6 +18,7 @@ import 'package:inventory_store_app/features/financial/domain/usecases/get_finan
 import 'package:inventory_store_app/features/inventory/domain/usecases/create_inventory_entry_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_open_cash_shifts_usecase.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/get_purchase_order_by_id_usecase.dart';
+import 'package:inventory_store_app/features/inventory/data/cache/inventory_entry_catalog_cache.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_entry_form/inventory_entry_form_state.dart';
 import 'package:inventory_store_app/features/purchases/domain/usecases/fetch_purchase_order_items_usecase.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -70,14 +71,73 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
     final isSameContext = state.purchaseOrderId == purchaseOrderId;
 
     if (hasCachedCatalogs && isSameContext) {
-      // Revalidación silenciosa de turnos sin borrar ni bloquear la UI
       await refreshCashShifts();
       return;
     }
 
+    // 1. HIDRATACIÓN INSTANTÁNEA DESDE CACHÉ L1 EN MEMORIA (0ms, Zero-Shimmer)
+    final l1Cache = InventoryEntryCatalogCache.instance.getCached();
+    if (l1Cache != null) {
+      String? initialWarehouseId =
+          prefillWarehouseId ?? state.selectedWarehouseId;
+      if (initialWarehouseId == null && l1Cache.warehouses.length == 1) {
+        initialWarehouseId = l1Cache.warehouses.first.id;
+      }
+
+      String? initialAccountId = state.selectedAccountId;
+      if (initialAccountId == null && l1Cache.accounts.isNotEmpty) {
+        final cashAccount = l1Cache.accounts.firstWhere(
+          (a) => a.type.toUpperCase() == 'CAJA',
+          orElse: () => l1Cache.accounts.first,
+        );
+        initialAccountId = cashAccount.id;
+      }
+
+      final initialActiveShiftId =
+          initialAccountId != null
+              ? l1Cache.activeShiftsByAccount[initialAccountId]
+              : null;
+
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: '',
+          purchaseOrderId: purchaseOrderId,
+          warehouses: l1Cache.warehouses,
+          suppliers: l1Cache.suppliers,
+          accounts: l1Cache.accounts,
+          activeShiftsByAccount: l1Cache.activeShiftsByAccount,
+          selectedWarehouseId: initialWarehouseId,
+          selectedAccountId: initialAccountId,
+          activeShiftId: initialActiveShiftId,
+          selectedSupplierId: prefillSupplierId ?? state.selectedSupplierId,
+          documentType: prefillDocumentType ?? state.documentType,
+          documentNumber: prefillDocumentNumber ?? state.documentNumber,
+          documentDate: prefillDocumentDate ?? state.documentDate,
+        ),
+      );
+
+      // Cargar orden o borrador inmediatamente
+      if (purchaseOrderId != null && purchaseOrderId.isNotEmpty) {
+        await _loadFromPurchaseOrder(purchaseOrderId);
+        if (prefillItems != null && prefillItems.isNotEmpty) {
+          emit(state.copyWith(items: List.from(prefillItems)));
+        }
+      } else if (prefillItems != null && prefillItems.isNotEmpty) {
+        emit(state.copyWith(items: List.from(prefillItems)));
+      } else {
+        await _loadDraft();
+      }
+
+      // Revalidar en segundo plano sin interrumpir ni mostrar spinner
+      _revalidateCatalogsSilently(prefillWarehouseId: prefillWarehouseId);
+      return;
+    }
+
+    // 2. Cold Start absoluto (solo en primera apertura de la app)
     emit(
       state.copyWith(
-        isLoading: !hasCachedCatalogs,
+        isLoading: true,
         errorMessage: '',
         purchaseOrderId: purchaseOrderId,
         selectedSupplierId: prefillSupplierId ?? state.selectedSupplierId,
@@ -112,6 +172,13 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       final accounts = rawAccounts.where((a) => a.isActive).toList();
 
       final activeShiftsByAccount = futures[3] as Map<String, String>;
+
+      InventoryEntryCatalogCache.instance.put(
+        warehouses: warehouses,
+        suppliers: suppliers,
+        accounts: accounts,
+        activeShiftsByAccount: activeShiftsByAccount,
+      );
 
       // ── auto-select warehouse if only one ────────────────────────────────
       String? initialWarehouseId =
@@ -168,6 +235,54 @@ class InventoryEntryFormCubit extends Cubit<InventoryEntryFormState> {
       emit(state.copyWith(errorMessage: 'Error cargando datos: $e'));
     } finally {
       emit(state.copyWith(isLoading: false));
+    }
+  }
+
+  Future<void> _revalidateCatalogsSilently({
+    String? prefillWarehouseId,
+  }) async {
+    try {
+      final futures = await Future.wait([
+        getActiveWarehouses.call(),
+        getActiveSuppliers.call(),
+        getActiveAccounts.call(page: 0, pageSize: 100),
+        getOpenCashShifts.call(),
+      ]);
+
+      if (isClosed) return;
+
+      final warehouses = futures[0] as List<WarehouseEntity>;
+      final suppliersResult =
+          futures[1] as Either<Failure, List<SupplierEntity>>;
+      final suppliers = suppliersResult.fold((l) => <SupplierEntity>[], (r) => r);
+      final rawAccounts = futures[2] as List<FinancialAccountEntity>;
+      final accounts = rawAccounts.where((a) => a.isActive).toList();
+      final activeShiftsByAccount = futures[3] as Map<String, String>;
+
+      InventoryEntryCatalogCache.instance.put(
+        warehouses: warehouses,
+        suppliers: suppliers,
+        accounts: accounts,
+        activeShiftsByAccount: activeShiftsByAccount,
+      );
+
+      final shiftId =
+          state.selectedAccountId != null
+              ? activeShiftsByAccount[state.selectedAccountId]
+              : null;
+
+      emit(
+        state.copyWith(
+          warehouses: warehouses,
+          suppliers: suppliers,
+          accounts: accounts,
+          activeShiftsByAccount: activeShiftsByAccount,
+          activeShiftId: shiftId,
+          clearActiveShiftId: shiftId == null,
+        ),
+      );
+    } catch (_) {
+      // Silencioso en background
     }
   }
 
