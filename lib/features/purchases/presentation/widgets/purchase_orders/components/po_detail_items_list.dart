@@ -48,55 +48,60 @@ class PODetailItemsList extends StatelessWidget {
       );
     }
 
-    return Column(
-      children: List.generate(items!.length, (index) {
-        final item = items![index];
-        final isFullyReceived = item.fullyReceived;
-        final progress =
-            item.quantityOrdered > 0
-                ? item.quantityReceived / item.quantityOrdered
-                : 0.0;
+    return RepaintBoundary(
+      child: Column(
+        children: List.generate(items!.length, (index) {
+          final item = items![index];
+          final isFullyReceived = item.fullyReceived;
+          final progress =
+              item.quantityOrdered > 0
+                  ? item.quantityReceived / item.quantityOrdered
+                  : 0.0;
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ProductItemCard(
-            imageUrl: item.imageUrl,
-            productName: item.productName ?? '—',
-            variantLabel: item.variantAttrs,
-            progressWidget: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress.clamp(0.0, 1.0),
-                    backgroundColor: AppColors.border,
-                    color:
-                        isFullyReceived ? AppColors.success : AppColors.warning,
-                    minHeight: 4,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ProductItemCard(
+              imageUrl: item.imageUrl,
+              productName: item.productName ?? '—',
+              variantLabel: item.variantAttrs,
+              progressWidget: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      backgroundColor: AppColors.border,
+                      color:
+                          isFullyReceived ? AppColors.success : AppColors.warning,
+                      minHeight: 4,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color:
-                        isFullyReceived ? AppColors.success : AppColors.warning,
+                  const SizedBox(height: 3),
+                  Text(
+                    'Recibido: ${item.quantityReceived.toInt()} / ${item.quantityOrdered.toInt()}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isFullyReceived ? AppColors.success : AppColors.warning,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              trailing: ItemPriceColumnTrailing(
+                quantityText: '${item.quantityOrdered.toInt()} uds.',
+                unitCostText: 'S/ ${item.unitCost.toStringAsFixed(2)} c/u',
+                subtotalText: 'S/ ${item.subtotal.toStringAsFixed(2)}',
+              ),
+              animationDelay:
+                  hasCachedItems
+                      ? Duration.zero
+                      : Duration(milliseconds: 25 * (index > 8 ? 8 : index)),
             ),
-            trailing: ItemPriceColumnTrailing(
-              quantityText: '${item.quantityOrdered.toInt()} uds.',
-              unitCostText: 'S/ ${item.unitCost.toStringAsFixed(2)} c/u',
-              subtotalText: 'S/ ${item.subtotal.toStringAsFixed(2)}',
-            ),
-            animationDelay: Duration(milliseconds: 40 * index),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 }

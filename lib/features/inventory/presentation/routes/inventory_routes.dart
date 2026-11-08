@@ -91,11 +91,15 @@ class InventoryRoutes {
     ),
     GoRoute(
       path: '/inventory-exits',
-      builder:
-          (context, state) => BlocProvider(
-            create: (_) => sl<InventoryExitsCubit>()..initLoad(),
-            child: const InventoryExitsScreen(),
-          ),
+      builder: (context, state) {
+        final exitId =
+            state.uri.queryParameters['selectedId'] ??
+            state.uri.queryParameters['exitId'];
+        return BlocProvider.value(
+          value: sl<InventoryExitsCubit>(),
+          child: InventoryExitsScreen(targetExitId: exitId),
+        );
+      },
     ),
     GoRoute(
       path: '/inventory',

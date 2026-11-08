@@ -49,6 +49,11 @@ class PurchaseOrdersRepositoryImpl implements PurchaseOrdersRepository {
     return null;
   }
 
+  @override
+  List<PurchaseOrderItemEntity>? getCachedOrderItems(String poId) {
+    return _itemsCache[poId];
+  }
+
   void _invalidateOrdersCache() {
     _ordersCache.clear();
   }

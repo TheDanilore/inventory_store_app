@@ -3,27 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_header.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:inventory_store_app/core/di/injection_container.dart';
 import 'package:inventory_store_app/core/theme/app_colors.dart';
 import 'package:inventory_store_app/core/widgets/admin_page_blocks.dart';
-import 'package:inventory_store_app/core/widgets/admin_kpi_metrics_bar.dart';
 import 'package:inventory_store_app/core/widgets/app_empty_state.dart';
 import 'package:inventory_store_app/core/widgets/app_snackbar.dart';
 import 'package:inventory_store_app/core/widgets/app_table_shimmer.dart';
 import 'package:inventory_store_app/core/widgets/date_filter_calendar.dart';
 import 'package:inventory_store_app/core/widgets/admin_pro_toolbar.dart';
 import 'package:inventory_store_app/core/widgets/adaptive_detail_sheet.dart';
-import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 import 'package:inventory_store_app/features/inventory/data/utils/inventory_exits_pdf_generator.dart';
 import 'package:inventory_store_app/features/inventory/domain/entities/inventory_exit_entity.dart';
-import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_cubit.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_state.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_card.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exit_detail_sheet.dart';
+import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exits_bento_kpi_bar.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/inventory_exits/inventory_exits_table_view.dart';
 import 'package:inventory_store_app/features/inventory/presentation/widgets/kardex/kardex_skeleton.dart';
 import 'package:inventory_store_app/features/main_navigation/presentation/widgets/admin_layout.dart';
@@ -60,7 +57,15 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         _screenFocusNode.requestFocus();
         final cubit = context.read<InventoryExitsCubit>();
         _searchCtrl.text = cubit.state.searchQuery;
-        cubit.initLoad();
+
+        // Zero-Shimmer (Stale-While-Revalidate):
+        // Si ya existen datos en memoria L1, se muestran en Frame 0 sin skeleton
+        // y se revalidan silenciosamente en background.
+        if (cubit.state.exits.isEmpty) {
+          cubit.initLoad();
+        } else {
+          cubit.initLoad(forceRefresh: false);
+        }
       }
     });
   }
@@ -159,7 +164,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    // Si el usuario escribe en un campo editable, aislar atajos globales
     if (_isInputFieldFocused) {
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         _searchFocusNode.unfocus();
@@ -268,6 +272,8 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final drawerWidth = screenWidth >= 1440 ? 660.0 : 610.0;
 
+    final cubit = context.read<InventoryExitsCubit>();
+
     await AdaptiveDetailSheet.show<void>(
       context,
       desktopWidth: drawerWidth,
@@ -276,7 +282,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         return InventoryExitDetailSheet(
           exitData: exit,
           isBottomSheet: !AdaptiveDetailSheet.isSideSheet(dialogContext),
-          loadItems: () => _loadItems(exit),
+          loadItems: () => cubit.loadExitItems(exit.id),
         );
       },
     );
@@ -284,64 +290,6 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     if (mounted && _isTableView) {
       _selectExit(null, updateUrl: true);
     }
-  }
-
-  Future<List<InventoryExitItemModel>> _loadItems(
-    InventoryExitEntity exitData,
-  ) async {
-    final getItemsUseCase = sl<GetExitItemsUseCase>();
-    final itemsList = await getItemsUseCase.call(exitData.id);
-    return itemsList.map((r) {
-      final prod = r['products'] as Map<String, dynamic>?;
-      final variant = r['product_variants'] as Map<String, dynamic>?;
-      final variantId = r['variant_id'] as String?;
-
-      final vavList =
-          variant?['variant_attribute_values'] as List<dynamic>? ?? [];
-      final List<String> attrValues = [];
-      for (var vav in vavList) {
-        final av = vav['attribute_values'] as Map<String, dynamic>?;
-        if (av != null && av['value'] != null) {
-          attrValues.add(av['value'].toString());
-        }
-      }
-      final attrsText = attrValues.join(' · ');
-
-      final bool usesBatches = prod?['uses_batches'] == true;
-
-      String? finalImageUrl;
-      final imagesList = prod?['product_images'] as List<dynamic>? ?? [];
-      if (imagesList.isNotEmpty) {
-        final variantImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-          (img) => img['variant_id'] == variantId,
-          orElse: () => <String, dynamic>{},
-        );
-        if (variantImage.isNotEmpty && variantImage['image_url'] != null) {
-          finalImageUrl = variantImage['image_url'] as String;
-        } else {
-          final mainImage = imagesList.cast<Map<String, dynamic>>().firstWhere(
-            (img) => img['is_main'] == true,
-            orElse: () => imagesList.first as Map<String, dynamic>,
-          );
-          finalImageUrl = mainImage['image_url'] as String?;
-        }
-      }
-
-      return InventoryExitItemModel(
-        id: r['id'] as String? ?? '',
-        exitId: exitData.id,
-        productId: prod?['id'] as String? ?? '',
-        variantId: variantId ?? '',
-        productName: prod?['name'] as String? ?? '—',
-        variantAttrs: attrsText.isNotEmpty ? attrsText : '',
-        quantity: (r['quantity'] as num).toDouble(),
-        unitCost: (r['unit_cost'] as num).toDouble(),
-        batchNumber: r['batch_number'] as String? ?? 'DEFAULT',
-        usesBatches: usesBatches,
-        imageUrl: finalImageUrl,
-        sku: variant?['sku'] as String?,
-      );
-    }).toList();
   }
 
   void _showDetailBottomSheet(
@@ -354,8 +302,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktopOrTablet = MediaQuery.sizeOf(context).width >= 640;
+    final cubit = context.read<InventoryExitsCubit>();
 
-    return BlocConsumer<InventoryExitsCubit, InventoryExitsState>(
+    return BlocListener<InventoryExitsCubit, InventoryExitsState>(
       listener: (context, state) {
         if (state.errorMessage != null && !state.isLoading) {
           AppSnackbar.show(
@@ -368,284 +317,365 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
           _resolveTargetExit(state.exits, isDesktopOrTablet);
         }
       },
-      builder: (context, state) {
-        final cubit = context.read<InventoryExitsCubit>();
-
-        final double totalCost = state.exits.fold<double>(
-          0,
-          (s, e) => s + e.totalCost,
-        );
-        final int totalUnits = state.exits.fold<int>(
-          0,
-          (s, e) => s + e.itemCount,
-        );
-
-        return AdminLayout(
-          title: 'Salidas de Inventario',
-          onSettingsSelected: (val) {
-            if (val != 'pdf') return;
-            if (state.exits.isNotEmpty) {
-              final startDate = state.startDate;
-              final endDate = state.endDate;
-              final selectedRange =
-                  (startDate != null && endDate != null)
-                      ? DateTimeRange(start: startDate, end: endDate)
-                      : null;
-              InventoryExitsPdfGenerator.shareReport(
-                exits: state.exits,
-                dateRange: selectedRange,
-              );
-            }
-          },
-          actions: const [],
-          floatingActionButton:
-              !isDesktopOrTablet
-                  ? FloatingActionButton.extended(
-                    onPressed: _onNewExit,
-                    icon: Icon(
-                      _hasDraft
-                          ? Icons.edit_note_rounded
-                          : Icons.remove_circle_outline_rounded,
-                    ),
-                    label: Text(
-                      _hasDraft ? 'Borrador' : 'Nueva Salida',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    backgroundColor:
-                        _hasDraft ? const Color(0xFFF59E0B) : AppColors.danger,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  )
-                  : null,
-
-          body: Focus(
-            focusNode: _screenFocusNode,
-            autofocus: true,
-            onKeyEvent: _handleKeyEvent,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth >= 640;
-
-                // Si es tablet y la salida seleccionada ya no existe en la lista filtrada, deseleccionar
-                if (isTablet && _selectedExit != null && !_isTableView) {
-                  final exists = state.exits.any(
-                    (e) => e.id == _selectedExit!.id,
-                  );
-                  if (!exists && state.exits.isNotEmpty) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() => _selectedExit = null);
-                      }
-                    });
-                  }
-                }
-
-                return RefreshIndicator(
-                  color: AppColors.danger,
-                  onRefresh: () => cubit.loadExits(isRefresh: true),
-                  child: CustomScrollView(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR (ARRIBA DE MÉTRICAS) ──
-                      SliverToBoxAdapter(
-                        child: AdminPageHeader(
-                          title: 'Salidas de Inventario',
-                          subtitle: 'Gestiona las salidas de inventario',
-                          isDesktop: isDesktopOrTablet,
-                          actions: [
-                            AdminHeaderButton.primary(
-                              label:
-                                  _hasDraft
-                                      ? 'Continuar Borrador'
-                                      : 'Nueva Salida',
-                              icon:
-                                  _hasDraft
-                                      ? Icons.edit_note_rounded
-                                      : Icons.remove_circle_outline_rounded,
-                              tooltip:
-                                  _hasDraft
-                                      ? 'Continuar salida (Atajo: N)'
-                                      : 'Nueva salida (Atajo: N)',
-                              onPressed:
-                                  () => context.go('/inventory-exits/form'),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ── 1. Aviso de Borrador ──────────────────────────────
-                      if (_hasDraft)
-                        SliverToBoxAdapter(
-                          child: Container(
-                            margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.1),
-                              border: Border.all(
-                                color: AppColors.warning.withValues(alpha: 0.3),
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.edit_document,
-                                  color: AppColors.warning,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
-                                  child: Text(
-                                    'Tienes un borrador de salida en progreso.',
-                                    style: TextStyle(
-                                      color: AppColors.warning,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                FilledButton.tonal(
-                                  onPressed: () {
-                                    context.go('/inventory-exits/form');
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    visualDensity: VisualDensity.compact,
-                                    backgroundColor: AppColors.warning
-                                        .withValues(alpha: 0.2),
-                                    foregroundColor: AppColors.warning,
-                                  ),
-                                  child: const Text('Continuar'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                      // ── 2. Bento KPI Ribbon ───────────────────────────────
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          child: _InventoryExitsBentoKpiBar(
-                            count: state.exits.length,
-                            totalCount: state.totalRecords,
-                            totalCost: totalCost,
-                            totalUnits: totalUnits,
-                            warehouseName: state.warehouseFilter,
-                            isDesktop: isTablet,
-                          ),
-                        ),
-                      ),
-
-                      // ── 3. Toolbar Pro Unificado (Buscador, Almacén, Fecha, Vista, Refresh, CTA) ──
-                      SliverToBoxAdapter(
-                        child: AdminProToolbar(
-                          isDesktop: constraints.maxWidth >= 1024,
-                          searchController: _searchCtrl,
-                          searchFocusNode: _searchFocusNode,
-                          searchHint: 'Buscar motivo o notas... [/]',
-                          onSearchChanged: (v) {
-                            _searchDebounce?.cancel();
-                            _searchDebounce = Timer(
-                              const Duration(milliseconds: 300),
-                              () {
-                                if (mounted) {
-                                  cubit.updateSearch(v);
-                                }
-                              },
-                            );
-                          },
-                          onClearSearch: () {
-                            _searchDebounce?.cancel();
-                            _searchCtrl.clear();
-                            cubit.updateSearch('');
-                          },
-                          filterGroups: [
-                            AdminFilterGroup<String>(
-                              title: 'Almacén',
-                              icon: Icons.storefront_rounded,
-                              selected: state.warehouseFilter,
-                              defaultValue: 'Todos',
-                              onSelected: cubit.updateWarehouse,
-                              options: [
-                                for (final w in state.availableWarehouses)
-                                  AdminFilterOption<String>(
-                                    value: w,
-                                    label:
-                                        (w == 'TODOS' || w == 'Todos')
-                                            ? 'Todos'
-                                            : w,
-                                    icon: Icons.storefront_rounded,
-                                  ),
-                              ],
-                            ),
-                          ],
-                          mobileExtraFilters: [
-                            DateFilterCalendar(
-                              height: 40,
-                              borderRadius: BorderRadius.circular(10),
-                              dateRange:
-                                  state.startDate != null &&
-                                          state.endDate != null
-                                      ? DateTimeRange(
-                                        start: state.startDate!,
-                                        end: state.endDate!,
-                                      )
-                                      : null,
-                              onDateRangeSelected: (picked) {
-                                cubit.updateDateRange(picked.start, picked.end);
-                              },
-                              onClear: () => cubit.updateDateRange(null, null),
-                            ),
-                          ],
-                          activeFiltersCount:
-                              (state.startDate != null && state.endDate != null
-                                  ? 1
-                                  : 0) +
-                              (state.warehouseFilter != 'Todos' &&
-                                      state.warehouseFilter != 'TODOS'
-                                  ? 1
-                                  : 0),
-                          onClearFilters: () => cubit.clearFilters(),
-                          viewToggleConfig: AdminProViewToggleConfig(
-                            isTableView: _isTableView,
-                            onToggleTableView:
-                                (val) => setState(() => _isTableView = val),
-                          ),
-                          onRefresh: () => cubit.loadExits(isRefresh: true),
-                        ),
-                      ),
-
-                      // ── 5. Contenido Principal: Tabla Pro o Split/Cards ───
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: _buildListOrTableSliver(
-                          context: context,
-                          state: state,
-                          cubit: cubit,
-                          isTablet: isTablet,
-                        ),
-                      ),
-
-                      // ── 6. Paginación Fluida al Pie del Scroll ────────────
-                      _buildPaginationSliver(context, state, cubit),
-                    ],
+      child: AdminLayout(
+        title: 'Salidas de Inventario',
+        onSettingsSelected: (val) {
+          if (val != 'pdf') return;
+          final state = cubit.state;
+          if (state.exits.isNotEmpty) {
+            final startDate = state.startDate;
+            final endDate = state.endDate;
+            final selectedRange =
+                (startDate != null && endDate != null)
+                    ? DateTimeRange(start: startDate, end: endDate)
+                    : null;
+            InventoryExitsPdfGenerator.shareReport(
+              exits: state.exits,
+              dateRange: selectedRange,
+            );
+          }
+        },
+        actions: const [],
+        floatingActionButton:
+            !isDesktopOrTablet
+                ? FloatingActionButton.extended(
+                  onPressed: _onNewExit,
+                  icon: Icon(
+                    _hasDraft
+                        ? Icons.edit_note_rounded
+                        : Icons.remove_circle_outline_rounded,
                   ),
-                );
-              },
-            ),
+                  label: Text(
+                    _hasDraft ? 'Borrador' : 'Nueva Salida',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor:
+                      _hasDraft ? const Color(0xFFF59E0B) : AppColors.danger,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                )
+                : null,
+        body: Focus(
+          focusNode: _screenFocusNode,
+          autofocus: true,
+          onKeyEvent: _handleKeyEvent,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 640;
+
+              return RefreshIndicator(
+                color: AppColors.danger,
+                onRefresh: () => cubit.loadExits(isRefresh: true),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // ── 0. CABECERA EJECUTIVA STRIPE / LINEAR ──
+                    SliverToBoxAdapter(
+                      child: AdminPageHeader(
+                        title: 'Salidas de Inventario',
+                        subtitle: 'Gestiona las salidas de inventario',
+                        isDesktop: isDesktopOrTablet,
+                        actions: [
+                          AdminHeaderButton.primary(
+                            label:
+                                _hasDraft
+                                    ? 'Continuar Borrador'
+                                    : 'Nueva Salida',
+                            icon:
+                                _hasDraft
+                                    ? Icons.edit_note_rounded
+                                    : Icons.remove_circle_outline_rounded,
+                            tooltip:
+                                _hasDraft
+                                    ? 'Continuar salida (Atajo: N)'
+                                    : 'Nueva salida (Atajo: N)',
+                            onPressed:
+                                () => context.go('/inventory-exits/form'),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ── 1. Aviso de Borrador ──────────────────────────────
+                    if (_hasDraft)
+                      SliverToBoxAdapter(
+                        child: Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.warning.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: AppColors.warning,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'Tienes un borrador de salida en progreso.',
+                                  style: TextStyle(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              FilledButton.tonal(
+                                onPressed: () {
+                                  context.go('/inventory-exits/form');
+                                },
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: AppColors.warning.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  foregroundColor: AppColors.warning,
+                                ),
+                                child: const Text('Continuar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // ── 2. Bento KPI Ribbon Aislado con BlocSelector (O(1)) ──
+                    BlocSelector<
+                      InventoryExitsCubit,
+                      InventoryExitsState,
+                      ({
+                        int count,
+                        int totalCount,
+                        double totalCost,
+                        int totalUnits,
+                        String warehouseName,
+                      })
+                    >(
+                      selector:
+                          (s) => (
+                            count: s.exits.length,
+                            totalCount: s.totalRecords,
+                            totalCost: s.totalCost,
+                            totalUnits: s.totalUnits,
+                            warehouseName: s.warehouseFilter,
+                          ),
+                      builder: (context, data) {
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            child: InventoryExitsBentoKpiBar(
+                              count: data.count,
+                              totalCount: data.totalCount,
+                              totalCost: data.totalCost,
+                              totalUnits: data.totalUnits,
+                              warehouseName: data.warehouseName,
+                              isDesktop: isTablet,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ── 3. Toolbar Pro Unificado Aislado ──────────────────
+                    BlocSelector<
+                      InventoryExitsCubit,
+                      InventoryExitsState,
+                      ({
+                        String warehouseFilter,
+                        List<String> availableWarehouses,
+                        DateTime? startDate,
+                        DateTime? endDate,
+                      })
+                    >(
+                      selector:
+                          (s) => (
+                            warehouseFilter: s.warehouseFilter,
+                            availableWarehouses: s.availableWarehouses,
+                            startDate: s.startDate,
+                            endDate: s.endDate,
+                          ),
+                      builder: (context, filters) {
+                        return SliverToBoxAdapter(
+                          child: AdminProToolbar(
+                            isDesktop: constraints.maxWidth >= 1024,
+                            searchController: _searchCtrl,
+                            searchFocusNode: _searchFocusNode,
+                            searchHint: 'Buscar motivo o notas... [/]',
+                            onSearchChanged: (v) {
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(
+                                const Duration(milliseconds: 300),
+                                () {
+                                  if (mounted) {
+                                    cubit.updateSearch(v);
+                                  }
+                                },
+                              );
+                            },
+                            onClearSearch: () {
+                              _searchDebounce?.cancel();
+                              _searchCtrl.clear();
+                              cubit.updateSearch('');
+                            },
+                            filterGroups: [
+                              AdminFilterGroup<String>(
+                                title: 'Almacén',
+                                icon: Icons.storefront_rounded,
+                                selected: filters.warehouseFilter,
+                                defaultValue: 'Todos',
+                                onSelected: cubit.updateWarehouse,
+                                options: [
+                                  for (final w in filters.availableWarehouses)
+                                    AdminFilterOption<String>(
+                                      value: w,
+                                      label:
+                                          (w == 'TODOS' || w == 'Todos')
+                                              ? 'Todos'
+                                              : w,
+                                      icon: Icons.storefront_rounded,
+                                    ),
+                                ],
+                              ),
+                            ],
+                            mobileExtraFilters: [
+                              DateFilterCalendar(
+                                height: 40,
+                                borderRadius: BorderRadius.circular(10),
+                                dateRange:
+                                    filters.startDate != null &&
+                                            filters.endDate != null
+                                        ? DateTimeRange(
+                                          start: filters.startDate!,
+                                          end: filters.endDate!,
+                                        )
+                                        : null,
+                                onDateRangeSelected: (picked) {
+                                  cubit.updateDateRange(
+                                    picked.start,
+                                    picked.end,
+                                  );
+                                },
+                                onClear:
+                                    () => cubit.updateDateRange(null, null),
+                              ),
+                            ],
+                            activeFiltersCount:
+                                (filters.startDate != null &&
+                                        filters.endDate != null
+                                    ? 1
+                                    : 0) +
+                                (filters.warehouseFilter != 'Todos' &&
+                                        filters.warehouseFilter != 'TODOS'
+                                    ? 1
+                                    : 0),
+                            onClearFilters: () => cubit.clearFilters(),
+                            viewToggleConfig: AdminProViewToggleConfig(
+                              isTableView: _isTableView,
+                              onToggleTableView:
+                                  (val) => setState(() => _isTableView = val),
+                            ),
+                            onRefresh: () => cubit.loadExits(isRefresh: true),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // ── 4. Contenido Principal (Zero-Shimmer SWR) ─────────
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver:
+                          BlocBuilder<InventoryExitsCubit, InventoryExitsState>(
+                            buildWhen:
+                                (prev, curr) =>
+                                    prev.exits != curr.exits ||
+                                    prev.isLoading != curr.isLoading ||
+                                    prev.currentPage != curr.currentPage,
+                            builder: (context, state) {
+                              return _buildListOrTableSliver(
+                                context: context,
+                                state: state,
+                                cubit: cubit,
+                                isTablet: isTablet,
+                              );
+                            },
+                          ),
+                    ),
+
+                    // ── 5. Paginación Fluida Aislada ──────────────────────
+                    BlocSelector<
+                      InventoryExitsCubit,
+                      InventoryExitsState,
+                      ({
+                        int currentPage,
+                        int totalPages,
+                        int totalRecords,
+                        bool isLoading,
+                        bool hasExits,
+                      })
+                    >(
+                      selector:
+                          (s) => (
+                            currentPage: s.currentPage,
+                            totalPages: s.totalPages,
+                            totalRecords: s.totalRecords,
+                            isLoading: s.isLoading,
+                            hasExits: s.exits.isNotEmpty,
+                          ),
+                      builder: (context, pData) {
+                        if (pData.isLoading || !pData.hasExits) {
+                          return const SliverToBoxAdapter(
+                            child: SizedBox(height: 24),
+                          );
+                        }
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: AppColors.border),
+                                boxShadow: AppColors.cardShadow(opacity: 0.03),
+                              ),
+                              child: AdminPageBlocks(
+                                currentPage: pData.currentPage,
+                                totalPages: pData.totalPages,
+                                onPageChanged: (page) => cubit.changePage(page),
+                                totalItems: pData.totalRecords,
+                                itemName: 'salidas',
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -655,6 +685,9 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
     required InventoryExitsCubit cubit,
     required bool isTablet,
   }) {
+    // Zero-Shimmer Policy:
+    // Solo muestra Shimmer si es carga en frío Y no hay salidas en memoria L1.
+    // Si ya hay salidas en memoria, se muestran de inmediato en Frame 0.
     if (state.isLoading && state.exits.isEmpty) {
       if (_isTableView && isTablet) {
         return const SliverToBoxAdapter(child: AppTableShimmer());
@@ -700,7 +733,7 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         ),
         delegate: SliverChildBuilderDelegate((context, i) {
           final exit = state.exits[i];
-          return _ExitCard(
+          return InventoryExitCard(
             exitData: exit,
             isSelected: _selectedExit?.id == exit.id,
             onTap: () => _openDesktopDetailSheet(exit),
@@ -714,302 +747,13 @@ class _InventoryExitsScreenState extends State<InventoryExitsScreen> {
         final exit = state.exits[i];
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: _ExitCard(
+          child: InventoryExitCard(
             exitData: exit,
             isSelected: false,
             onTap: () => _showDetailBottomSheet(context, exit),
           ),
         );
       }, childCount: state.exits.length),
-    );
-  }
-
-  Widget _buildPaginationSliver(
-    BuildContext context,
-    InventoryExitsState state,
-    InventoryExitsCubit cubit,
-  ) {
-    if (state.isLoading || state.exits.isEmpty) {
-      return const SliverToBoxAdapter(child: SizedBox(height: 24));
-    }
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-            boxShadow: AppColors.cardShadow(opacity: 0.03),
-          ),
-          child: AdminPageBlocks(
-            currentPage: state.currentPage,
-            totalPages: state.totalPages,
-            onPageChanged: (page) => cubit.changePage(page),
-            totalItems: state.totalRecords,
-            itemName: 'salidas',
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// BENTO KPI BAR
-// ══════════════════════════════════════════════════════════════════════════════
-
-class _InventoryExitsBentoKpiBar extends StatelessWidget {
-  final int count;
-  final int totalCount;
-  final double totalCost;
-  final int totalUnits;
-  final String warehouseName;
-  final bool isDesktop;
-
-  const _InventoryExitsBentoKpiBar({
-    required this.count,
-    required this.totalCount,
-    required this.totalCost,
-    required this.totalUnits,
-    required this.warehouseName,
-    required this.isDesktop,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isFilteredByWarehouse =
-        warehouseName != 'Todos' && warehouseName != 'TODOS';
-
-    return AdminKpiMetricsBar(
-      isDesktop: isDesktop,
-      padding: EdgeInsets.zero,
-      items: [
-        AdminKpiItem(
-          title: 'Total Salidas',
-          value: totalCount > 0 ? '$totalCount' : '$count',
-          subtitle: isFilteredByWarehouse ? 'En $warehouseName' : 'Registradas',
-          icon: Icons.outbox_rounded,
-          accentColor: AppColors.primary,
-          gradientColors: const [Colors.white, Color(0xFFF8FAFC)],
-          iconGradient: const [Color(0xFF334155), Color(0xFF1E293B)],
-          borderColor: const Color(0xFFE2E8F0),
-          glowColor: const Color(0x1F0F172A),
-        ),
-        AdminKpiItem(
-          title: 'Costo Total Salidas',
-          value: 'S/ ${totalCost.toStringAsFixed(2)}',
-          subtitle: 'Costo acumulado',
-          icon: Icons.payments_rounded,
-          accentColor: AppColors.dangerDark,
-          gradientColors: const [Colors.white, Color(0xFFFEF2F2)],
-          iconGradient: const [Color(0xFFEF4444), Color(0xFFDC2626)],
-          borderColor: const Color(0xFFFECACA),
-          glowColor: const Color(0x2EEF4444),
-          valueColor: AppColors.dangerDark,
-          isAlert: true,
-        ),
-        AdminKpiItem(
-          title: 'Unidades Despachadas',
-          value: '$totalUnits uds.',
-          subtitle: 'Despachadas',
-          icon: Icons.inventory_2_rounded,
-          accentColor: AppColors.tealDark,
-          gradientColors: const [Colors.white, Color(0xFFF0FDFA)],
-          iconGradient: const [Color(0xFF0D9488), Color(0xFF0F766E)],
-          borderColor: const Color(0xFF99F6E4),
-          glowColor: const Color(0x2E0D9488),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExitCard extends StatefulWidget {
-  final InventoryExitEntity exitData;
-  final VoidCallback onTap;
-  final bool isSelected;
-
-  const _ExitCard({
-    required this.exitData,
-    required this.onTap,
-    this.isSelected = false,
-  });
-
-  @override
-  State<_ExitCard> createState() => _ExitCardState();
-}
-
-class _ExitCardState extends State<_ExitCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final exitData = widget.exitData;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
-        decoration: BoxDecoration(
-          color:
-              widget.isSelected
-                  ? AppColors.danger.withValues(alpha: 0.05)
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color:
-                widget.isSelected
-                    ? AppColors.danger.withValues(alpha: 0.5)
-                    : _isHovered
-                    ? AppColors.teal.withValues(alpha: 0.35)
-                    : const Color(0xFFE2E8F0),
-            width: (widget.isSelected || _isHovered) ? 1.5 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: widget.isSelected ? 0.08 : (_isHovered ? 0.06 : 0.025),
-              ),
-              blurRadius: (widget.isSelected || _isHovered) ? 14 : 8,
-              offset: Offset(0, (widget.isSelected || _isHovered) ? 4 : 2),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          exitData.reason ?? 'Sin motivo especificado',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _Pill(
-                        icon: Icons.warehouse_rounded,
-                        label: exitData.warehouseName ?? 'Almacén Central',
-                        color: AppColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${exitData.itemCount} ${exitData.itemCount == 1 ? "producto" : "productos"}',
-                            style: const TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            exitData.createdAt != null
-                                ? DateFormat(
-                                  'dd MMM yyyy - HH:mm',
-                                  'es',
-                                ).format(exitData.createdAt!.toLocal())
-                                : '—',
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'COSTO TOTAL',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          Text(
-                            'S/ ${exitData.totalCost.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 16,
-                              color: AppColors.dangerDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
-
-  const _Pill({required this.icon, required this.label, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? AppColors.textSecondary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 10, color: c),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: c,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

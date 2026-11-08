@@ -1192,7 +1192,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i749.RegisterCreditPaymentUseCase>(),
       ),
     );
-    gh.factory<_i378.InventoryExitsCubit>(
+    gh.lazySingleton<_i378.InventoryExitsCubit>(
       () => _i378.InventoryExitsCubit(
         getExitsUseCase: gh<_i136.GetInventoryExitsUseCase>(),
         getItemsUseCase: gh<_i441.GetExitItemsUseCase>(),

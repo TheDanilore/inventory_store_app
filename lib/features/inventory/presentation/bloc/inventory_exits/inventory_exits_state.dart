@@ -16,6 +16,9 @@ class InventoryExitsState extends Equatable {
   final DateTime? startDate;
   final DateTime? endDate;
 
+  final double totalCost;
+  final int totalUnits;
+
   const InventoryExitsState({
     this.exits = const [],
     this.isLoading = false,
@@ -28,6 +31,8 @@ class InventoryExitsState extends Equatable {
     this.availableWarehouses = const ['Todos'],
     this.startDate,
     this.endDate,
+    this.totalCost = 0.0,
+    this.totalUnits = 0,
   });
 
   int get totalPages =>
@@ -45,11 +50,21 @@ class InventoryExitsState extends Equatable {
     List<String>? availableWarehouses,
     DateTime? startDate,
     DateTime? endDate,
+    double? totalCost,
+    int? totalUnits,
     bool clearErrorMessage = false,
     bool clearDateRange = false,
   }) {
+    final newExits = exits ?? this.exits;
+    final newTotalCost = exits != null
+        ? newExits.fold<double>(0.0, (s, e) => s + e.totalCost)
+        : (totalCost ?? this.totalCost);
+    final newTotalUnits = exits != null
+        ? newExits.fold<int>(0, (s, e) => s + e.itemCount)
+        : (totalUnits ?? this.totalUnits);
+
     return InventoryExitsState(
-      exits: exits ?? this.exits,
+      exits: newExits,
       isLoading: isLoading ?? this.isLoading,
       errorMessage:
           clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
@@ -61,6 +76,8 @@ class InventoryExitsState extends Equatable {
       availableWarehouses: availableWarehouses ?? this.availableWarehouses,
       startDate: clearDateRange ? null : (startDate ?? this.startDate),
       endDate: clearDateRange ? null : (endDate ?? this.endDate),
+      totalCost: newTotalCost,
+      totalUnits: newTotalUnits,
     );
   }
 
@@ -77,5 +94,7 @@ class InventoryExitsState extends Equatable {
     availableWarehouses,
     startDate,
     endDate,
+    totalCost,
+    totalUnits,
   ];
 }

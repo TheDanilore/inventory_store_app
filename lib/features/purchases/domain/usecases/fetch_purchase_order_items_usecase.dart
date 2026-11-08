@@ -16,4 +16,8 @@ class FetchPurchaseOrderItemsUseCase {
   }) {
     return repository.fetchOrderItems(poId, forceRefresh: forceRefresh);
   }
+
+  /// Retorno síncrono desde la memoria L1 (0ms) para Zero-Shimmer (Frame-0).
+  List<PurchaseOrderItemEntity>? getCached(String poId) =>
+      repository.getCachedOrderItems(poId);
 }

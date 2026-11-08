@@ -88,6 +88,9 @@ abstract class PurchaseOrdersRepository {
 
   Map<String, dynamic>? getCachedFormCatalogs();
 
+  /// Obtiene los ítems cacheados en memoria L1 (0ms) para renderizado Zero-Shimmer Frame-0.
+  List<PurchaseOrderItemEntity>? getCachedOrderItems(String poId);
+
   Future<Either<Failure, Map<String, dynamic>?>> getSupplierCredit(
     String supplierId,
   );

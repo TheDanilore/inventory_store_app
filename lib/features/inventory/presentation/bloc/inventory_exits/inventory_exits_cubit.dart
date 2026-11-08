@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:inventory_store_app/core/di/injection_container.dart';
@@ -5,18 +6,17 @@ import 'package:inventory_store_app/features/inventory/domain/entities/inventory
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_active_warehouses_usecase.dart';
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_inventory_exits_usecase.dart';
 import 'package:inventory_store_app/features/inventory/presentation/bloc/inventory_exits/inventory_exits_state.dart';
-
 import 'package:inventory_store_app/features/inventory/domain/usecases/get_exit_items_usecase.dart';
 import 'package:inventory_store_app/features/inventory/data/models/inventory_exit_item_model.dart';
 
-@injectable
+@lazySingleton
 class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   final GetInventoryExitsUseCase getExitsUseCase;
   final GetExitItemsUseCase getItemsUseCase;
   final GetActiveWarehousesUseCase getActiveWarehouses;
 
-  // ── Caché de Estado en Memoria (Zero-Shimmer Policy) ──────────────────────
-  static InventoryExitsState? _lastState;
+  // Cache L1 en memoria para detalles de salidas ya consultadas (evita roundtrips repetidos)
+  final Map<String, List<InventoryExitItemModel>> _exitItemsCache = {};
 
   InventoryExitsCubit({
     required this.getExitsUseCase,
@@ -24,38 +24,42 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
     GetActiveWarehousesUseCase? getActiveWarehouses,
   }) : getActiveWarehouses =
            getActiveWarehouses ?? sl<GetActiveWarehousesUseCase>(),
-       super(_lastState ?? const InventoryExitsState());
+       super(const InventoryExitsState());
 
-  @override
-  void onChange(Change<InventoryExitsState> change) {
-    super.onChange(change);
-    _lastState = change.nextState;
-  }
-
-  /// Invalida la caché del listado en memoria para forzar recarga en frío.
+  /// Invalida la caché del listado en memoria y recarga en caliente.
   static void invalidateCache() {
-    _lastState = null;
+    if (sl.isRegistered<InventoryExitsCubit>()) {
+      sl<InventoryExitsCubit>()._onCacheInvalidated();
+    }
   }
 
-  Future<void> initLoad() async {
-    final hasCachedExits = state.exits.isNotEmpty;
+  void _onCacheInvalidated() {
+    _exitItemsCache.clear();
+    loadExits(isRefresh: true, isSilent: false);
+  }
 
+  /// Carga inicial con garantía Zero-Shimmer (Stale-While-Revalidate).
+  /// Si ya existen datos en memoria, se muestran de inmediato en Frame 0 (0ms)
+  /// y se revalida en background sin activar shimmer ni spinner.
+  Future<void> initLoad({bool forceRefresh = false}) async {
+    final hasCachedData = state.exits.isNotEmpty;
+
+    // Carga perezosa de almacenes solo una vez
     if (state.availableWarehouses.length <= 1) {
-      List<String> warehouses = ['Todos'];
       try {
         final whList = await getActiveWarehouses.call();
-        warehouses.addAll(whList.map((w) => w.name).toList());
+        final warehouses = ['Todos', ...whList.map((w) => w.name)];
         emit(state.copyWith(availableWarehouses: warehouses));
-      } catch (_) {}
+      } catch (e, st) {
+        developer.log('Error al cargar almacenes activos', error: e, stackTrace: st);
+      }
     }
 
-    if (hasCachedExits) {
-      // Política Zero-Shimmer (Stale-While-Revalidate):
-      // Si ya existen datos en memoria, se muestran de inmediato sin activar
-      // isLoading ni disparar el Shimmer. Se revalida en background de forma silenciosa.
+    if (hasCachedData && !forceRefresh) {
+      // Política Zero-Shimmer (SWR): Datos presentes -> Revalidación silenciosa en background
       await loadExits(isRefresh: false, isSilent: true);
     } else {
-      await loadExits(isRefresh: true);
+      await loadExits(isRefresh: true, isSilent: false);
     }
   }
 
@@ -100,7 +104,8 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
           isLoading: false,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      developer.log('Error al cargar salidas de inventario', error: e, stackTrace: st);
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('socketexception') ||
           errStr.contains('clientexception') ||
@@ -144,6 +149,7 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
   }
 
   void updateSearch(String query) {
+    if (state.searchQuery == query) return;
     emit(state.copyWith(searchQuery: query));
     loadExits(isRefresh: true);
   }
@@ -176,10 +182,15 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
     loadExits(isRefresh: true);
   }
 
+  /// Carga los items de una salida con caché L1 en memoria (0ms en reapertura).
   Future<List<InventoryExitItemModel>> loadExitItems(String exitId) async {
+    if (_exitItemsCache.containsKey(exitId)) {
+      return _exitItemsCache[exitId]!;
+    }
+
     try {
       final itemsList = await getItemsUseCase.call(exitId);
-      return itemsList.map((r) {
+      final parsed = itemsList.map((r) {
         final prod = r['products'] as Map<String, dynamic>?;
         final variant = r['product_variants'] as Map<String, dynamic>?;
         final variantId = r['variant_id'] as String?;
@@ -194,7 +205,6 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
           }
         }
         final attrsText = attrValues.join(' · ');
-
         final bool usesBatches = prod?['uses_batches'] == true;
 
         String? finalImageUrl;
@@ -234,7 +244,11 @@ class InventoryExitsCubit extends Cubit<InventoryExitsState> {
           sku: variant?['sku'] as String?,
         );
       }).toList();
-    } catch (e) {
+
+      _exitItemsCache[exitId] = parsed;
+      return parsed;
+    } catch (e, st) {
+      developer.log('Error loading exit items for $exitId', error: e, stackTrace: st);
       return [];
     }
   }
