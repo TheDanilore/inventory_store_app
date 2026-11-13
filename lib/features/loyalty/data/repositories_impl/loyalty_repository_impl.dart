@@ -409,11 +409,19 @@ class LoyaltyRepositoryImpl implements LoyaltyRepository {
       dynamic profilesRes;
       try {
         profilesRes = await _supabase
-            .from('profiles_with_email')
+            .from('customers')
             .select(
-              'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
+              'id, full_name, phone, document_number, document_type, wallet_balance, is_active, created_at',
             )
             .inFilter('id', topIds);
+        if ((profilesRes as List).isEmpty) {
+          profilesRes = await _supabase
+              .from('profiles')
+              .select(
+                'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
+              )
+              .inFilter('id', topIds);
+        }
       } catch (_) {
         profilesRes = await _supabase
             .from('profiles')

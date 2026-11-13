@@ -1007,7 +1007,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
             .from('customer_credits')
             .select('''
               id, profile_id, credit_limit, current_debt, is_active, created_at, updated_at,
-              profiles!customer_credits_profile_id_fkey!inner ( id, full_name, phone, document_number, document_type )
+              profiles:customers!customer_credits_customer_record_id_fkey!inner ( id, full_name, phone, document_number, document_type )
             ''')
             .eq('is_active', true)
             .gt('current_debt', 0)

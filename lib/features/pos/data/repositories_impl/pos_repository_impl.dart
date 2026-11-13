@@ -50,9 +50,9 @@ class PosRepositoryImpl implements PosRepository {
 
     final profile =
         await _supabase
-            .from('profiles_with_email')
-            .select('id, role')
+            .rpc('get_profiles_with_email')
             .eq('auth_user_id', user.id)
+            .select('id, role')
             .maybeSingle();
 
     if (profile != null) {

@@ -80,7 +80,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
         is_active,
         created_at,
         updated_at,
-        profiles!customer_credits_profile_id_fkey!inner ( id, full_name, phone, document_number, document_type )
+        profiles:customers!customer_credits_customer_record_id_fkey!inner ( id, full_name, phone, document_number, document_type )
       ''';
 
       var queryBuilder = _supabase
@@ -151,7 +151,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
             is_active,
             created_at,
             updated_at,
-            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+            profiles:customers!customer_credits_customer_record_id_fkey ( id, full_name, phone, document_number, document_type )
           ''')
               .eq('profile_id', customerId)
               .maybeSingle();
@@ -218,7 +218,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
             is_active,
             created_at,
             updated_at,
-            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+            profiles:customers!customer_credits_customer_record_id_fkey ( id, full_name, phone, document_number, document_type )
           ''')
               .eq('profile_id', customerId)
               .single();
@@ -264,7 +264,7 @@ class CustomerCreditsRepositoryImpl implements CustomerCreditsRepository {
             is_active,
             created_at,
             updated_at,
-            profiles!customer_credits_profile_id_fkey ( id, full_name, phone, document_number, document_type )
+            profiles:customers!customer_credits_customer_record_id_fkey ( id, full_name, phone, document_number, document_type )
           ''')
               .eq('id', creditId)
               .single();

@@ -152,12 +152,7 @@ class UsersRepositoryImpl implements UsersRepository {
     }
 
     try {
-      var query = _supabase
-          .from('profiles_with_email')
-          .select(
-            'id, full_name, email, phone, role, is_active, '
-            'document_type, document_number, wallet_balance, created_at',
-          );
+      var query = _supabase.rpc('get_profiles_with_email');
 
       if (role == 'staff' || role == 'all' || role.isEmpty) {
         query = query.neq('role', 'customer').neq('role', 'cliente');
@@ -180,6 +175,10 @@ class UsersRepositoryImpl implements UsersRepository {
       final end = start + pageSize - 1;
 
       final response = await query
+          .select(
+            'id, full_name, email, phone, role, is_active, '
+            'document_type, document_number, wallet_balance, created_at',
+          )
           .order('created_at', ascending: false)
           .range(start, end)
           .count(CountOption.exact);
@@ -244,12 +243,7 @@ class UsersRepositoryImpl implements UsersRepository {
     required bool onlyActive,
   }) async {
     try {
-      var query = _supabase
-          .from('profiles_with_email')
-          .select(
-            'id, full_name, email, phone, role, is_active, '
-            'document_type, document_number, wallet_balance, created_at',
-          );
+      var query = _supabase.rpc('get_profiles_with_email');
 
       if (role == 'staff' || role == 'all' || role.isEmpty) {
         query = query.neq('role', 'customer').neq('role', 'cliente');
@@ -268,7 +262,12 @@ class UsersRepositoryImpl implements UsersRepository {
         );
       }
 
-      final response = await query.order('created_at', ascending: false);
+      final response = await query
+          .select(
+            'id, full_name, email, phone, role, is_active, '
+            'document_type, document_number, wallet_balance, created_at',
+          )
+          .order('created_at', ascending: false);
 
       final List<UserEntity> rawUsers =
           (response as List)
@@ -315,9 +314,7 @@ class UsersRepositoryImpl implements UsersRepository {
     required String role,
   }) async {
     try {
-      var query = _supabase
-          .from('profiles_with_email')
-          .count(CountOption.exact);
+      var query = _supabase.rpc('get_profiles_with_email');
 
       if (role == 'staff' || role == 'all' || role.isEmpty) {
         query = query.neq('role', 'customer').neq('role', 'cliente');
@@ -325,8 +322,8 @@ class UsersRepositoryImpl implements UsersRepository {
         query = query.eq('role', role);
       }
 
-      final count = await query;
-      return Right(count);
+      final response = await query.count(CountOption.exact);
+      return Right(response.count);
     } on PostgrestException catch (e, st) {
       developer.log(
         '🔴 [UsersRepo] PostgrestException en getGlobalUsersCount (role=$role): $e',
@@ -355,12 +352,12 @@ class UsersRepositoryImpl implements UsersRepository {
     try {
       final response =
           await _supabase
-              .from('profiles_with_email')
+              .rpc('get_profiles_with_email')
+              .eq('id', id)
               .select(
                 'id, full_name, email, phone, role, is_active, '
                 'document_type, document_number, wallet_balance, created_at',
               )
-              .eq('id', id)
               .single();
 
       final user = UserModel.fromJson(response);

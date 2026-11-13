@@ -56,12 +56,10 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
     try {
       dynamic queryBuilder = _supabase
-          .from('profiles_with_email')
+          .from('customers')
           .select(
-            'id, full_name, email, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_profile_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
+            'id, full_name, email, phone, document_number, document_type, avatar_url, is_active, wallet_balance, created_at, customer_credits:customer_credits!customer_credits_customer_record_id_fkey${showOnlyWithDebt ? "!inner" : ""}(id, current_debt, credit_limit, is_active)',
           );
-
-      queryBuilder = queryBuilder.eq('role', 'customer');
 
       if (query != null && query.isNotEmpty) {
         queryBuilder = queryBuilder.or(
@@ -87,14 +85,14 @@ class CustomersRepositoryImpl implements CustomersRepository {
       // Traer agregados de órdenes completadas y conteo de ubicaciones concurrentemente
       final ordersFuture = _supabase
           .from('orders')
-          .select('customer_id, total_amount')
+          .select('customer_record_id, total_amount')
           .eq('status', 'COMPLETED')
-          .inFilter('customer_id', cIds);
+          .inFilter('customer_record_id', cIds);
 
       final locFuture = _supabase
           .from('customer_locations')
-          .select('profile_id')
-          .inFilter('profile_id', cIds);
+          .select('customer_record_id')
+          .inFilter('customer_record_id', cIds);
 
       final queryResults = await Future.wait([
         ordersFuture,
@@ -111,7 +109,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
       final locCounts = <String, int>{};
       for (var row in locRes) {
-        final pid = row['profile_id'] as String?;
+        final pid = row['customer_record_id'] as String?;
         if (pid != null) {
           locCounts[pid] = (locCounts[pid] ?? 0) + 1;
         }
@@ -190,7 +188,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
     try {
       final res =
           await _supabase
-              .from('profiles_with_email')
+              .from('customers')
               .select()
               .eq('id', customerId)
               .single();
@@ -198,14 +196,14 @@ class CustomersRepositoryImpl implements CustomersRepository {
       final ordersRes = await _supabase
           .from('orders')
           .select('total_amount')
-          .eq('customer_id', customerId)
+          .eq('customer_record_id', customerId)
           .eq('status', 'COMPLETED');
 
       final creditRes =
           await _supabase
               .from('customer_credits')
               .select('current_debt, credit_limit')
-              .eq('profile_id', customerId)
+              .eq('customer_record_id', customerId)
               .maybeSingle();
 
       double totalSpent = 0.0;
@@ -225,7 +223,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
         final locRes = await _supabase
             .from('customer_locations')
             .select('id')
-            .eq('profile_id', customerId);
+            .eq('customer_record_id', customerId);
         locCount = (locRes as List).length;
       } catch (_) {}
 
@@ -710,9 +708,8 @@ class CustomersRepositoryImpl implements CustomersRepository {
 
     try {
       final profilesRes = await _supabase
-          .from('profiles_with_email')
-          .select('is_active')
-          .eq('role', 'customer');
+          .from('customers')
+          .select('is_active');
 
       final activeCount =
           profilesRes.where((p) => p['is_active'] == true).length;
@@ -879,7 +876,7 @@ class CustomersRepositoryImpl implements CustomersRepository {
       if (topIds.isEmpty) return [];
 
       final topProfilesRes = await _supabase
-          .from('profiles_with_email')
+          .from('customers')
           .select(
             'id, full_name, phone, document_number, document_type, avatar_url, wallet_balance, is_active, created_at',
           )
