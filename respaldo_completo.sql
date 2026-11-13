@@ -5396,6 +5396,63 @@ $$;
 ALTER FUNCTION "public"."rpc_record_expense"("payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid" DEFAULT NULL::"uuid", "p_unit_code" "text" DEFAULT 'NIU'::"text", "p_quantity" numeric DEFAULT 1) RETURNS numeric
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_price numeric(14,4);
+    v_var record;
+BEGIN
+    -- 1. Lista de precios explícita (si aplica y está vigente)
+    IF p_price_list_id IS NOT NULL THEN
+        SELECT pli.price INTO v_price
+        FROM public.price_list_items pli
+        JOIN public.price_lists pl ON pl.id = pli.price_list_id
+        WHERE pli.price_list_id = p_price_list_id
+          AND pli.variant_id = p_variant_id
+          AND pli.unit_code = p_unit_code
+          AND pli.min_quantity <= p_quantity
+          AND pl.is_active = true
+          AND (pl.valid_from IS NULL OR pl.valid_from <= now())
+          AND (pl.valid_to IS NULL OR pl.valid_to >= now())
+        ORDER BY pli.min_quantity DESC
+        LIMIT 1;
+
+        IF v_price IS NOT NULL THEN RETURN v_price; END IF;
+    END IF;
+
+    -- 2. Precio específico por unidad de conversión (ej. Caja)
+    SELECT sale_price INTO v_price
+    FROM public.product_unit_conversions
+    WHERE variant_id = p_variant_id
+      AND unit_code = p_unit_code
+      AND is_active = true
+      AND sale_price IS NOT NULL
+    LIMIT 1;
+
+    IF v_price IS NOT NULL THEN RETURN v_price; END IF;
+
+    -- 3. Precio mayorista / base de la variante
+    SELECT sale_price, wholesale_price, wholesale_min_quantity
+    INTO v_var
+    FROM public.product_variants
+    WHERE id = p_variant_id;
+
+    IF v_var.wholesale_price IS NOT NULL
+       AND v_var.wholesale_min_quantity IS NOT NULL
+       AND p_quantity >= v_var.wholesale_min_quantity THEN
+        RETURN v_var.wholesale_price;
+    END IF;
+
+    RETURN COALESCE(v_var.sale_price, 0);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid", "p_unit_code" "text", "p_quantity" numeric) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'auth'
@@ -6196,6 +6253,34 @@ $$;
 ALTER FUNCTION "public"."trg_auto_create_counter_cash_account"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_check_journal_entry_lines_balanced"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_entry_id uuid := COALESCE(NEW.journal_entry_id, OLD.journal_entry_id);
+    v_status text;
+    v_debit numeric;
+    v_credit numeric;
+BEGIN
+    SELECT status INTO v_status FROM public.journal_entries WHERE id = v_entry_id;
+    IF v_status = 'POSTED' THEN
+        SELECT COALESCE(SUM(debit), 0), COALESCE(SUM(credit), 0)
+        INTO v_debit, v_credit
+        FROM public.journal_entry_lines
+        WHERE journal_entry_id = v_entry_id;
+
+        IF v_debit <= 0 OR ABS(v_debit - v_credit) > 0.01 THEN
+            RAISE EXCEPTION 'Asiento contable % descuadrado al confirmar: Debe (%) <> Haber (%)', v_entry_id, v_debit, v_credit;
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_check_journal_entry_lines_balanced"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_compute_base_amounts"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -6234,15 +6319,20 @@ CREATE OR REPLACE FUNCTION "public"."trg_journal_balanced_and_period"() RETURNS 
 DECLARE
     v_debit numeric;
     v_credit numeric;
+    v_period_id uuid;
     v_period_status text;
 BEGIN
-    SELECT status INTO v_period_status
+    SELECT id, status INTO v_period_id, v_period_status
     FROM public.accounting_periods
     WHERE year = EXTRACT(YEAR FROM NEW.entry_date)::int
       AND month = EXTRACT(MONTH FROM NEW.entry_date)::int;
 
     IF v_period_status = 'CLOSED' THEN
         RAISE EXCEPTION 'El periodo contable %-% está CERRADO.', EXTRACT(YEAR FROM NEW.entry_date), EXTRACT(MONTH FROM NEW.entry_date);
+    END IF;
+
+    IF NEW.period_id IS NULL AND v_period_id IS NOT NULL THEN
+        NEW.period_id := v_period_id;
     END IF;
 
     IF NEW.status = 'POSTED' AND (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM 'POSTED') THEN
@@ -6262,6 +6352,19 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_journal_balanced_and_period"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_set_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_set_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_sync_customer_record_id"() RETURNS "trigger"
@@ -6298,6 +6401,29 @@ $$;
 ALTER FUNCTION "public"."trg_sync_customer_record_id"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_sync_order_payment_method"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF NEW.payment_method_code IS NULL AND NEW.payment_method IS NOT NULL THEN
+        NEW.payment_method_code := CASE
+            WHEN upper(trim(NEW.payment_method)) IN ('EFECTIVO', 'CASH') THEN 'EFECTIVO'
+            WHEN upper(trim(NEW.payment_method)) = 'YAPE' THEN 'YAPE'
+            WHEN upper(trim(NEW.payment_method)) = 'PLIN' THEN 'PLIN'
+            WHEN upper(trim(NEW.payment_method)) IN ('TARJETA', 'CARD') THEN 'TARJETA'
+            WHEN upper(trim(NEW.payment_method)) IN ('TRANSFERENCIA', 'TRANSFER') THEN 'TRANSFERENCIA'
+            WHEN upper(trim(NEW.payment_method)) IN ('CREDITO', 'CRÉDITO', 'CREDIT') THEN 'CREDITO'
+            ELSE 'EFECTIVO'
+        END;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_sync_order_payment_method"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -6321,6 +6447,33 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_sync_warehouse_variant_qty"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_wh_id uuid := COALESCE(NEW.warehouse_id, OLD.warehouse_id);
+    v_var_id uuid := COALESCE(NEW.variant_id, OLD.variant_id);
+    v_sum numeric(14,4);
+BEGIN
+    SELECT COALESCE(SUM(available_quantity), 0)
+    INTO v_sum
+    FROM public.warehouse_stock_batches
+    WHERE warehouse_id = v_wh_id AND variant_id = v_var_id;
+
+    INSERT INTO public.warehouse_variant_costs (warehouse_id, variant_id, total_quantity, updated_at)
+    VALUES (v_wh_id, v_var_id, v_sum, now())
+    ON CONFLICT (warehouse_id, variant_id)
+    DO UPDATE SET total_quantity = v_sum, updated_at = now();
+
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_sync_warehouse_variant_qty"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_track_order_status"() RETURNS "trigger"
@@ -6474,16 +6627,16 @@ CREATE TABLE IF NOT EXISTS "public"."account_movements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "account_id" "uuid" NOT NULL,
     "movement_type" "text" NOT NULL,
-    "amount" numeric NOT NULL,
+    "amount" numeric(14,2) NOT NULL,
     "description" "text" NOT NULL,
     "reference_type" "text",
     "reference_id" "uuid",
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "shift_id" "uuid",
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
-    "amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
     CONSTRAINT "account_movements_movement_type_check" CHECK (("movement_type" = ANY (ARRAY['INCOME'::"text", 'EXPENSE'::"text", 'TRANSFER_IN'::"text", 'TRANSFER_OUT'::"text", 'ADJUSTMENT'::"text"])))
 );
 
@@ -6508,15 +6661,32 @@ CREATE TABLE IF NOT EXISTS "public"."accounting_periods" (
 ALTER TABLE "public"."accounting_periods" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."accounting_posting_rule_lines" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "rule_id" "uuid" NOT NULL,
+    "line_order" integer DEFAULT 1 NOT NULL,
+    "account_code" "text" NOT NULL,
+    "side" "text" NOT NULL,
+    "amount_source" "text" NOT NULL,
+    "description_template" "text",
+    CONSTRAINT "accounting_posting_rule_lines_amount_source_check" CHECK (("amount_source" = ANY (ARRAY['TOTAL'::"text", 'SUBTOTAL'::"text", 'TAX'::"text", 'COGS'::"text", 'DISCOUNT'::"text"]))),
+    CONSTRAINT "accounting_posting_rule_lines_side_check" CHECK (("side" = ANY (ARRAY['DEBIT'::"text", 'CREDIT'::"text"])))
+);
+
+
+ALTER TABLE "public"."accounting_posting_rule_lines" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."accounting_posting_rules" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "event_code" "text" NOT NULL,
     "description" "text" NOT NULL,
-    "debit_account_code" "text" NOT NULL,
-    "credit_account_code" "text" NOT NULL,
+    "debit_account_code" "text",
+    "credit_account_code" "text",
     "tax_account_code" "text",
     "is_active" boolean DEFAULT true NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "accounting_posting_rules_mode_check" CHECK (((("debit_account_code" IS NOT NULL) AND ("credit_account_code" IS NOT NULL)) OR (("debit_account_code" IS NULL) AND ("credit_account_code" IS NULL))))
 );
 
 
@@ -6538,7 +6708,10 @@ ALTER TABLE "public"."active_ingredients" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."app_settings" (
     "key" "text" NOT NULL,
     "value" numeric NOT NULL,
-    "description" "text"
+    "description" "text",
+    "value_text" "text",
+    "value_type" "text" DEFAULT 'NUMERIC'::"text" NOT NULL,
+    CONSTRAINT "app_settings_value_type_check" CHECK (("value_type" = ANY (ARRAY['NUMERIC'::"text", 'TEXT'::"text", 'BOOLEAN'::"text", 'JSON'::"text"])))
 );
 
 
@@ -6626,10 +6799,10 @@ CREATE TABLE IF NOT EXISTS "public"."cart_items" (
     "cart_id" "uuid" NOT NULL,
     "product_id" "uuid" NOT NULL,
     "variant_id" "uuid",
-    "quantity" integer DEFAULT 1 NOT NULL,
+    "quantity" numeric(12,4) DEFAULT 1 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "is_selected" boolean DEFAULT true,
-    CONSTRAINT "cart_items_quantity_check" CHECK (("quantity" > 0))
+    CONSTRAINT "cart_items_quantity_check" CHECK (("quantity" > (0)::numeric))
 );
 
 
@@ -6643,10 +6816,10 @@ CREATE TABLE IF NOT EXISTS "public"."cash_shifts" (
     "closed_by" "uuid",
     "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "closed_at" timestamp with time zone,
-    "opening_amount" numeric DEFAULT 0.00 NOT NULL,
-    "expected_amount" numeric,
-    "actual_amount" numeric,
-    "difference_amount" numeric,
+    "opening_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "expected_amount" numeric(14,2),
+    "actual_amount" numeric(14,2),
+    "difference_amount" numeric(14,2),
     "status" "text" DEFAULT 'OPEN'::"text" NOT NULL,
     "notes" "text",
     CONSTRAINT "cash_shifts_status_check" CHECK (("status" = ANY (ARRAY['OPEN'::"text", 'CLOSED'::"text"])))
@@ -6666,7 +6839,7 @@ CREATE TABLE IF NOT EXISTS "public"."categories" (
     "updated_by" "uuid",
     "default_tax_affectation_type" "text" DEFAULT '10'::"text" NOT NULL,
     "default_tax_rate" numeric(5,2) DEFAULT 18.00 NOT NULL,
-    CONSTRAINT "categories_tax_affectation_check" CHECK (("default_tax_affectation_type" = ANY (ARRAY['10'::"text", '20'::"text", '21'::"text", '30'::"text", '40'::"text"])))
+    CONSTRAINT "categories_tax_affectation_check" CHECK (("default_tax_affectation_type" = ANY (ARRAY['10'::"text", '11'::"text", '12'::"text", '13'::"text", '14'::"text", '15'::"text", '16'::"text", '17'::"text", '20'::"text", '21'::"text", '30'::"text", '31'::"text", '32'::"text", '33'::"text", '34'::"text", '35'::"text", '36'::"text", '37'::"text", '40'::"text"])))
 );
 
 
@@ -6716,7 +6889,7 @@ CREATE TABLE IF NOT EXISTS "public"."customer_credit_movements" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "created_by" "uuid",
     CONSTRAINT "credit_movements_amount_check" CHECK (("amount" > (0)::numeric)),
-    CONSTRAINT "credit_movements_movement_type_check" CHECK (("movement_type" = ANY (ARRAY['CHARGE'::"text", 'PAYMENT'::"text"])))
+    CONSTRAINT "credit_movements_movement_type_check" CHECK (("movement_type" = ANY (ARRAY['CHARGE'::"text", 'PAYMENT'::"text", 'REFUND'::"text", 'ADJUSTMENT'::"text"])))
 );
 
 
@@ -6726,8 +6899,8 @@ ALTER TABLE "public"."customer_credit_movements" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."orders" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "customer_id" "uuid",
-    "total_amount" numeric DEFAULT 0 NOT NULL,
-    "total_profit" numeric DEFAULT 0 NOT NULL,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
+    "total_profit" numeric(14,2) DEFAULT 0 NOT NULL,
     "payment_method" "text" DEFAULT 'EFECTIVO'::"text" NOT NULL,
     "status" "text" DEFAULT 'COMPLETED'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
@@ -6736,35 +6909,49 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "points_earned" integer DEFAULT 0 NOT NULL,
     "customer_name" "text" DEFAULT ''::"text",
     "payment_status" "text" DEFAULT 'PAID'::"text" NOT NULL,
-    "amount_paid" numeric DEFAULT 0.00 NOT NULL,
+    "amount_paid" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "due_date" timestamp with time zone,
     "created_by" "uuid",
-    "discount_amount" numeric DEFAULT 0.00 NOT NULL,
+    "discount_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "document_type" "text" DEFAULT 'NINGUNO'::"text",
     "document_number" "text",
     "document_date" "date",
     "updated_by" "uuid",
     "updated_at" timestamp with time zone,
     "document_series" "text",
-    "tax_amount" numeric DEFAULT 0.00 NOT NULL,
-    "subtotal_amount" numeric DEFAULT 0.00 NOT NULL,
+    "tax_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "subtotal_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "customer_document_type" "text",
     "customer_document_number" "text",
     "customer_address" "text",
     "payment_reference" "text",
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
-    "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
-    "subtotal_amount_base" numeric DEFAULT 0.00 NOT NULL,
-    "tax_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "total_amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "subtotal_amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "tax_amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "customer_record_id" "uuid",
-    "electronic_document_id" "uuid",
-    CONSTRAINT "orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['NOTA_VENTA'::"text", 'BOLETA'::"text", 'FACTURA'::"text", 'TICKET'::"text", 'NOTA_CREDITO'::"text", 'NOTA_DEBITO'::"text", 'NINGUNO'::"text"]))),
+    "total_gravado" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "total_exonerado" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "total_inafecto" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "total_gratuito" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "icbper_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "detraction_code" "text",
+    "detraction_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    CONSTRAINT "orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['NOTA_VENTA'::"text", 'BOLETA'::"text", 'FACTURA'::"text", 'TICKET'::"text", 'NINGUNO'::"text"]))),
     CONSTRAINT "orders_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PAID'::"text", 'PENDING'::"text", 'PARTIAL'::"text"])))
 );
 
 
 ALTER TABLE "public"."orders" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."orders"."customer_id" IS 'TRANSICIÓN: FK legado hacia public.profiles; sincronizado vía trigger con customer_record_id.';
+
+
+
+COMMENT ON COLUMN "public"."orders"."customer_record_id" IS 'FK canónica hacia public.customers (usar en nuevos flujos).';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."profiles" (
@@ -6815,13 +7002,15 @@ ALTER VIEW "public"."customer_credit_movements_summary" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."customer_credits" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "profile_id" "uuid",
-    "credit_limit" numeric DEFAULT 0.00 NOT NULL,
-    "current_debt" numeric DEFAULT 0.00 NOT NULL,
+    "credit_limit" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "current_debt" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "created_by" "uuid",
     "customer_record_id" "uuid",
+    "credit_balance" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    CONSTRAINT "customer_credits_credit_balance_check" CHECK (("credit_balance" >= (0)::numeric)),
     CONSTRAINT "customer_credits_current_debt_check" CHECK (("current_debt" >= (0)::numeric)),
     CONSTRAINT "customer_credits_owner_check" CHECK ((("profile_id" IS NOT NULL) OR ("customer_record_id" IS NOT NULL)))
 );
@@ -6878,6 +7067,10 @@ CREATE TABLE IF NOT EXISTS "public"."customers" (
 ALTER TABLE "public"."customers" OWNER TO "postgres";
 
 
+COMMENT ON TABLE "public"."customers" IS 'Entidad canónica de clientes ERP (personas y empresas RUC/DNI). profile_id es opcional para clientes con cuenta en tienda online.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."daily_checkins" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "profile_id" "uuid" NOT NULL,
@@ -6889,6 +7082,54 @@ CREATE TABLE IF NOT EXISTS "public"."daily_checkins" (
 
 
 ALTER TABLE "public"."daily_checkins" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."dispatch_guide_items" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "dispatch_guide_id" "uuid" NOT NULL,
+    "variant_id" "uuid" NOT NULL,
+    "unit_code" "text" DEFAULT 'NIU'::"text" NOT NULL,
+    "quantity" numeric(12,4) NOT NULL,
+    "description" "text" NOT NULL,
+    "gross_weight_kg" numeric(12,3) DEFAULT 0.000,
+    CONSTRAINT "dispatch_guide_items_quantity_check" CHECK (("quantity" > (0)::numeric))
+);
+
+
+ALTER TABLE "public"."dispatch_guide_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."dispatch_guides" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "electronic_document_id" "uuid",
+    "transfer_id" "uuid",
+    "order_id" "uuid",
+    "series" "text" NOT NULL,
+    "correlative" "text" NOT NULL,
+    "issue_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "start_date" "date" DEFAULT CURRENT_DATE NOT NULL,
+    "transfer_reason_code" "text" DEFAULT '01'::"text" NOT NULL,
+    "transport_mode" "text" DEFAULT '02'::"text" NOT NULL,
+    "gross_weight_kg" numeric(12,3) DEFAULT 0.000 NOT NULL,
+    "packages_count" integer DEFAULT 1 NOT NULL,
+    "carrier_ruc" "text",
+    "carrier_name" "text",
+    "driver_document_number" "text",
+    "driver_license_number" "text",
+    "vehicle_plate" "text",
+    "origin_ubigeo" "text",
+    "origin_address" "text" NOT NULL,
+    "dest_ubigeo" "text",
+    "dest_address" "text" NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "dispatch_guides_reason_check" CHECK (("transfer_reason_code" = ANY (ARRAY['01'::"text", '02'::"text", '03'::"text", '04'::"text", '05'::"text", '06'::"text", '07'::"text", '08'::"text", '09'::"text", '13'::"text", '14'::"text", '17'::"text", '18'::"text"]))),
+    CONSTRAINT "dispatch_guides_source_check" CHECK ((("electronic_document_id" IS NOT NULL) OR ("transfer_id" IS NOT NULL) OR ("order_id" IS NOT NULL))),
+    CONSTRAINT "dispatch_guides_transport_mode_check" CHECK (("transport_mode" = ANY (ARRAY['01'::"text", '02'::"text"])))
+);
+
+
+ALTER TABLE "public"."dispatch_guides" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."document_series" (
@@ -6929,6 +7170,10 @@ CREATE TABLE IF NOT EXISTS "public"."electronic_documents" (
     "issue_date" timestamp with time zone DEFAULT "now"() NOT NULL,
     "customer_snapshot" "jsonb",
     "is_active" boolean DEFAULT true NOT NULL,
+    "reference_document_id" "uuid",
+    "reference_document_type" "text",
+    "reference_series" "text",
+    "reference_correlative" "text",
     CONSTRAINT "electronic_documents_check" CHECK ((("order_id" IS NOT NULL) OR ("sales_return_id" IS NOT NULL))),
     CONSTRAINT "electronic_documents_document_type_check" CHECK (("document_type" = ANY (ARRAY['BOLETA'::"text", 'FACTURA'::"text", 'NOTA_CREDITO'::"text", 'NOTA_DEBITO'::"text", 'GUIA_REMISION'::"text"]))),
     CONSTRAINT "electronic_documents_sunat_status_check" CHECK (("sunat_status" = ANY (ARRAY['PENDING'::"text", 'SENT'::"text", 'ACCEPTED'::"text", 'OBSERVED'::"text", 'REJECTED'::"text", 'VOIDED'::"text"])))
@@ -6980,11 +7225,11 @@ CREATE TABLE IF NOT EXISTS "public"."financial_accounts" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "name" "text" NOT NULL,
     "type" "text" NOT NULL,
-    "balance" numeric DEFAULT 0.00 NOT NULL,
+    "balance" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "warehouse_id" "uuid"
 );
 
@@ -7018,14 +7263,14 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_entries" (
     "document_type" "text" DEFAULT 'NINGUNO'::"text",
     "document_number" "text",
     "document_date" "date",
-    "total_amount" numeric DEFAULT 0 NOT NULL,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
     "payment_mode" "text",
     "account_id" "uuid",
     "shift_id" "uuid",
     "status" "text" DEFAULT 'COMPLETED'::"text",
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
-    "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    "total_amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "guide_number" "text",
     "received_at" timestamp with time zone DEFAULT "now"()
 );
@@ -7112,7 +7357,7 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_movements" (
     "notes" "text",
     "created_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
     "transfer_id" "uuid",
     "sales_return_id" "uuid"
@@ -7132,6 +7377,7 @@ CREATE TABLE IF NOT EXISTS "public"."journal_entries" (
     "status" "text" DEFAULT 'POSTED'::"text" NOT NULL,
     "created_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "period_id" "uuid",
     CONSTRAINT "journal_entries_status_check" CHECK (("status" = ANY (ARRAY['DRAFT'::"text", 'POSTED'::"text", 'VOIDED'::"text"])))
 );
 
@@ -7160,13 +7406,13 @@ CREATE TABLE IF NOT EXISTS "public"."order_items" (
     "order_id" "uuid" NOT NULL,
     "product_id" "uuid",
     "quantity" numeric(12,4) DEFAULT 1 NOT NULL,
-    "unit_cost" numeric NOT NULL,
-    "applied_price" numeric NOT NULL,
-    "net_profit" numeric NOT NULL,
+    "unit_cost" numeric(14,4) NOT NULL,
+    "applied_price" numeric(14,4) NOT NULL,
+    "net_profit" numeric(14,2) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "variant_id" "uuid" NOT NULL,
-    "applied_price_base" numeric DEFAULT 0.00 NOT NULL,
-    "unit_cost_base" numeric DEFAULT 0.00 NOT NULL,
+    "applied_price_base" numeric(14,4) DEFAULT 0.00 NOT NULL,
+    "unit_cost_base" numeric(14,4) DEFAULT 0.00 NOT NULL,
     "tax_affectation_type" "text" DEFAULT '10'::"text" NOT NULL,
     "discount_amount" numeric(12,2) DEFAULT 0.00 NOT NULL,
     "unit_value_without_tax" numeric(12,4) DEFAULT 0.0000 NOT NULL,
@@ -7175,10 +7421,11 @@ CREATE TABLE IF NOT EXISTS "public"."order_items" (
     "tax_amount_base" numeric(12,2) DEFAULT 0.00 NOT NULL,
     "unit_code" "text" DEFAULT 'NIU'::"text" NOT NULL,
     "conversion_factor" numeric(12,4) DEFAULT 1.0000 NOT NULL,
-    "quantity_base" numeric(14,4) DEFAULT 0 NOT NULL,
+    "quantity_base" numeric(14,4) GENERATED ALWAYS AS (("quantity" * "conversion_factor")) STORED,
+    "icbper_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
     CONSTRAINT "order_items_conversion_factor_check" CHECK (("conversion_factor" > (0)::numeric)),
     CONSTRAINT "order_items_quantity_positive" CHECK (("quantity" > (0)::numeric)),
-    CONSTRAINT "order_items_tax_affectation_check" CHECK (("tax_affectation_type" = ANY (ARRAY['10'::"text", '20'::"text", '21'::"text", '30'::"text", '40'::"text"])))
+    CONSTRAINT "order_items_tax_affectation_check" CHECK (("tax_affectation_type" = ANY (ARRAY['10'::"text", '11'::"text", '12'::"text", '13'::"text", '14'::"text", '15'::"text", '16'::"text", '17'::"text", '20'::"text", '21'::"text", '30'::"text", '31'::"text", '32'::"text", '33'::"text", '34'::"text", '35'::"text", '36'::"text", '37'::"text", '40'::"text"])))
 );
 
 
@@ -7191,15 +7438,15 @@ CREATE TABLE IF NOT EXISTS "public"."order_payments" (
     "account_id" "uuid",
     "shift_id" "uuid",
     "payment_method" "text" NOT NULL,
-    "amount" numeric(12,2) NOT NULL,
+    "amount" numeric(14,2) NOT NULL,
     "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
-    "amount_base" numeric(12,2) DEFAULT 0.00 NOT NULL,
+    "amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "reference_number" "text",
     "notes" "text",
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "payment_method_code" "text",
+    "payment_method_code" "text" DEFAULT 'EFECTIVO'::"text" NOT NULL,
     CONSTRAINT "order_payments_amount_check" CHECK (("amount" > (0)::numeric))
 );
 
@@ -7232,7 +7479,8 @@ CREATE OR REPLACE VIEW "public"."partner_credit_summary" WITH ("security_invoker
     "cc"."current_debt",
     GREATEST(("cc"."credit_limit" - "cc"."current_debt"), (0)::numeric) AS "available_credit",
     "cc"."is_active",
-    "cc"."customer_record_id"
+    "cc"."customer_record_id",
+    "cc"."credit_balance"
    FROM (("public"."customer_credits" "cc"
      LEFT JOIN "public"."customers" "c" ON (("c"."id" = "cc"."customer_record_id")))
      LEFT JOIN "public"."profiles" "p" ON (("p"."id" = "cc"."profile_id")));
@@ -7382,15 +7630,15 @@ CREATE TABLE IF NOT EXISTS "public"."product_variants" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "product_id" "uuid" NOT NULL,
     "sku" "text",
-    "sale_price" numeric,
+    "sale_price" numeric(14,4),
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "reorder_point" integer DEFAULT 3 NOT NULL,
-    "wholesale_price" numeric,
+    "wholesale_price" numeric(14,4),
     "wholesale_min_quantity" integer,
     "created_by" "uuid",
     "updated_by" "uuid",
-    "unit_cost" numeric DEFAULT 0 NOT NULL,
+    "unit_cost" numeric(14,4) DEFAULT 0 NOT NULL,
     "barcode" "text",
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "costing_method" "text" DEFAULT 'WEIGHTED_AVG'::"text" NOT NULL,
@@ -7469,7 +7717,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "tax_rate" numeric(5,2) DEFAULT 18.00 NOT NULL,
     "sunat_product_code" "text",
     CONSTRAINT "products_product_type_check" CHECK (("product_type" = ANY (ARRAY['good'::"text", 'service'::"text", 'digital'::"text"]))),
-    CONSTRAINT "products_tax_affectation_check" CHECK (("tax_affectation_type" = ANY (ARRAY['10'::"text", '20'::"text", '21'::"text", '30'::"text", '40'::"text"])))
+    CONSTRAINT "products_tax_affectation_check" CHECK (("tax_affectation_type" = ANY (ARRAY['10'::"text", '11'::"text", '12'::"text", '13'::"text", '14'::"text", '15'::"text", '16'::"text", '17'::"text", '20'::"text", '21'::"text", '30'::"text", '31'::"text", '32'::"text", '33'::"text", '34'::"text", '35'::"text", '36'::"text", '37'::"text", '40'::"text"])))
 );
 
 
@@ -7486,12 +7734,35 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_invoice_items" (
     "tax_affectation_type" "text" DEFAULT '10'::"text" NOT NULL,
     "tax_amount" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "subtotal" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "purchase_order_item_id" "uuid",
+    "inventory_entry_item_id" "uuid",
     CONSTRAINT "purchase_invoice_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
     CONSTRAINT "purchase_invoice_items_unit_cost_check" CHECK (("unit_cost" >= (0)::numeric))
 );
 
 
 ALTER TABLE "public"."purchase_invoice_items" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."purchase_invoice_payments" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "purchase_invoice_id" "uuid" NOT NULL,
+    "account_id" "uuid" NOT NULL,
+    "shift_id" "uuid",
+    "payment_method_code" "text" DEFAULT 'TRANSFERENCIA'::"text" NOT NULL,
+    "amount" numeric(14,2) NOT NULL,
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
+    "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
+    "amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
+    "reference_number" "text",
+    "paid_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "purchase_invoice_payments_amount_check" CHECK (("amount" > (0)::numeric))
+);
+
+
+ALTER TABLE "public"."purchase_invoice_payments" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."purchase_invoices" (
@@ -7549,27 +7820,26 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_orders" (
     "supplier_name" "text" DEFAULT ''::"text" NOT NULL,
     "warehouse_id" "uuid",
     "status" "text" DEFAULT 'PENDING'::"text" NOT NULL,
-    "total_amount" numeric DEFAULT 0 NOT NULL,
+    "total_amount" numeric(14,2) DEFAULT 0 NOT NULL,
     "payment_method" "text" DEFAULT 'EFECTIVO'::"text" NOT NULL,
     "payment_status" "text" DEFAULT 'PAID'::"text" NOT NULL,
-    "amount_paid" numeric DEFAULT 0 NOT NULL,
+    "amount_paid" numeric(14,2) DEFAULT 0 NOT NULL,
     "due_date" timestamp with time zone,
-    "discount_amount" numeric DEFAULT 0 NOT NULL,
+    "discount_amount" numeric(14,2) DEFAULT 0 NOT NULL,
     "document_type" "text" DEFAULT 'NINGUNO'::"text",
     "document_number" "text",
     "document_date" "date",
-    "tax_amount" numeric DEFAULT 0 NOT NULL,
+    "tax_amount" numeric(14,2) DEFAULT 0 NOT NULL,
     "notes" "text",
     "created_by" "uuid",
     "updated_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "currency_code" "text" DEFAULT 'PEN'::"text",
+    "currency_code" "text" DEFAULT 'PEN'::"text" NOT NULL,
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
     "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
     "subtotal_amount_base" numeric DEFAULT 0.00 NOT NULL,
     "tax_amount_base" numeric DEFAULT 0.00 NOT NULL,
-    CONSTRAINT "purchase_orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['FACTURA'::"text", 'BOLETA'::"text", 'GUIA_REMISION'::"text", 'TICKET'::"text", 'NINGUNO'::"text"]))),
     CONSTRAINT "purchase_orders_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PAID'::"text", 'PENDING'::"text", 'PARTIAL'::"text"]))),
     CONSTRAINT "purchase_orders_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'SENT'::"text", 'PARTIAL'::"text", 'RECEIVED'::"text", 'CANCELLED'::"text"])))
 );
@@ -7726,8 +7996,8 @@ ALTER TABLE "public"."supplier_credit_movements" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."supplier_credits" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "supplier_id" "uuid" NOT NULL,
-    "current_debt" numeric DEFAULT 0 NOT NULL,
-    "credit_limit" numeric DEFAULT 0 NOT NULL,
+    "current_debt" numeric(14,2) DEFAULT 0 NOT NULL,
+    "credit_limit" numeric(14,2) DEFAULT 0 NOT NULL,
     "payment_terms_days" integer DEFAULT 30 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
@@ -7821,12 +8091,14 @@ ALTER TABLE "public"."variant_attribute_values" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."wallet_movements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "profile_id" "uuid" NOT NULL,
+    "profile_id" "uuid",
     "order_id" "uuid",
     "points" integer NOT NULL,
     "movement_type" "text" NOT NULL,
     "description" "text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"()
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "customer_id" "uuid",
+    CONSTRAINT "wallet_movements_owner_check" CHECK ((("profile_id" IS NOT NULL) OR ("customer_id" IS NOT NULL)))
 );
 
 
@@ -7939,6 +8211,16 @@ ALTER TABLE ONLY "public"."accounting_periods"
 
 
 
+ALTER TABLE ONLY "public"."accounting_posting_rule_lines"
+    ADD CONSTRAINT "accounting_posting_rule_lines_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."accounting_posting_rule_lines"
+    ADD CONSTRAINT "accounting_posting_rule_lines_rule_id_line_order_key" UNIQUE ("rule_id", "line_order");
+
+
+
 ALTER TABLE ONLY "public"."accounting_posting_rules"
     ADD CONSTRAINT "accounting_posting_rules_event_code_key" UNIQUE ("event_code");
 
@@ -7996,6 +8278,11 @@ ALTER TABLE ONLY "public"."brands"
 
 ALTER TABLE ONLY "public"."brands"
     ADD CONSTRAINT "brands_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."business_info"
+    ADD CONSTRAINT "business_info_cash_mode_check" CHECK ((("cash_register_mode")::"text" = ANY ((ARRAY['COUNTER'::character varying, 'INDIVIDUAL'::character varying])::"text"[]))) NOT VALID;
 
 
 
@@ -8079,6 +8366,21 @@ ALTER TABLE ONLY "public"."daily_checkins"
 
 
 
+ALTER TABLE ONLY "public"."dispatch_guide_items"
+    ADD CONSTRAINT "dispatch_guide_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_series_correlative_key" UNIQUE ("series", "correlative");
+
+
+
 ALTER TABLE ONLY "public"."document_series"
     ADD CONSTRAINT "document_series_pkey" PRIMARY KEY ("id");
 
@@ -8119,6 +8421,11 @@ ALTER TABLE ONLY "public"."financial_accounts"
 
 
 
+ALTER TABLE "public"."financial_accounts"
+    ADD CONSTRAINT "financial_accounts_type_check" CHECK (("type" = ANY (ARRAY['CAJA'::"text", 'BANCO'::"text", 'BILLETERA_DIGITAL'::"text", 'OTRO'::"text"]))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."import_batches"
     ADD CONSTRAINT "import_batches_pkey" PRIMARY KEY ("batch_id");
 
@@ -8126,6 +8433,11 @@ ALTER TABLE ONLY "public"."import_batches"
 
 ALTER TABLE ONLY "public"."inventory_entries"
     ADD CONSTRAINT "inventory_entries_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."inventory_entries"
+    ADD CONSTRAINT "inventory_entries_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'COMPLETED'::"text", 'CANCELLED'::"text"]))) NOT VALID;
 
 
 
@@ -8141,6 +8453,11 @@ ALTER TABLE ONLY "public"."inventory_exit_items"
 
 ALTER TABLE ONLY "public"."inventory_exits"
     ADD CONSTRAINT "inventory_exits_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."inventory_exits"
+    ADD CONSTRAINT "inventory_exits_reason_check" CHECK (("reason" = ANY (ARRAY['DAMAGED'::"text", 'EXPIRED'::"text", 'THEFT'::"text", 'INTERNAL_USE'::"text", 'SAMPLE'::"text", 'ADJUSTMENT'::"text", 'OTHER'::"text", 'MERMA'::"text", 'VENCIMIENTO'::"text", 'CONSUMO_INTERNO'::"text", 'OTRO'::"text"]))) NOT VALID;
 
 
 
@@ -8184,8 +8501,23 @@ ALTER TABLE ONLY "public"."order_status_history"
 
 
 
+ALTER TABLE "public"."orders"
+    ADD CONSTRAINT "orders_amount_paid_coherence" CHECK ((("amount_paid" >= (0)::numeric) AND ("amount_paid" <= "total_amount"))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."orders"
+    ADD CONSTRAINT "orders_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'CONFIRMED'::"text", 'PROCESSING'::"text", 'SHIPPED'::"text", 'DELIVERED'::"text", 'COMPLETED'::"text", 'CANCELLED'::"text"]))) NOT VALID;
+
+
+
+ALTER TABLE "public"."orders"
+    ADD CONSTRAINT "orders_sunat_totals_coherence" CHECK ((((("total_gravado" + "total_exonerado") + "total_inafecto") = (0)::numeric) OR ("abs"((((((("total_gravado" + "total_exonerado") + "total_inafecto") + "tax_amount") + "icbper_amount") - "discount_amount") - "total_amount")) <= 0.05))) NOT VALID;
 
 
 
@@ -8289,6 +8621,11 @@ ALTER TABLE ONLY "public"."purchase_invoice_items"
 
 
 
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."purchase_invoices"
     ADD CONSTRAINT "purchase_invoices_pkey" PRIMARY KEY ("id");
 
@@ -8301,6 +8638,11 @@ ALTER TABLE ONLY "public"."purchase_invoices"
 
 ALTER TABLE ONLY "public"."purchase_order_items"
     ADD CONSTRAINT "purchase_order_items_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."purchase_orders"
+    ADD CONSTRAINT "purchase_orders_document_type_check" CHECK (("document_type" = ANY (ARRAY['FACTURA'::"text", 'BOLETA'::"text", 'RECIBO_HONORARIOS'::"text", 'NOTA_CREDITO'::"text", 'NOTA_DEBITO'::"text", 'GUIA_REMISION'::"text", 'NINGUNO'::"text", 'OTRO'::"text"]))) NOT VALID;
 
 
 
@@ -8419,6 +8761,11 @@ ALTER TABLE ONLY "public"."wallet_movements"
 
 
 
+ALTER TABLE "public"."wallet_movements"
+    ADD CONSTRAINT "wallet_movements_type_check" CHECK (("movement_type" = ANY (ARRAY['EARNED'::"text", 'REDEEMED'::"text", 'ADJUSTMENT'::"text", 'CHECKIN'::"text", 'EXPIRED'::"text", 'REFUND'::"text", 'BONUS'::"text"]))) NOT VALID;
+
+
+
 ALTER TABLE ONLY "public"."warehouse_stock_batches"
     ADD CONSTRAINT "warehouse_stock_batches_pkey" PRIMARY KEY ("id");
 
@@ -8446,6 +8793,11 @@ ALTER TABLE ONLY "public"."warehouse_variant_costs"
 
 ALTER TABLE ONLY "public"."warehouses"
     ADD CONSTRAINT "warehouses_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."warehouses"
+    ADD CONSTRAINT "warehouses_type_check" CHECK ((("type")::"text" = ANY ((ARRAY['STORE'::character varying, 'WAREHOUSE'::character varying, 'TIENDA'::character varying, 'ALMACEN'::character varying, 'PRINCIPAL'::character varying, 'SUCURSAL'::character varying])::"text"[]))) NOT VALID;
 
 
 
@@ -8574,6 +8926,26 @@ CREATE INDEX "idx_customers_full_name" ON "public"."customers" USING "btree" ("f
 
 
 
+CREATE INDEX "idx_dispatch_guide_items_guide_id" ON "public"."dispatch_guide_items" USING "btree" ("dispatch_guide_id");
+
+
+
+CREATE INDEX "idx_dispatch_guide_items_variant_id" ON "public"."dispatch_guide_items" USING "btree" ("variant_id");
+
+
+
+CREATE INDEX "idx_dispatch_guides_edoc_id" ON "public"."dispatch_guides" USING "btree" ("electronic_document_id");
+
+
+
+CREATE INDEX "idx_dispatch_guides_order_id" ON "public"."dispatch_guides" USING "btree" ("order_id");
+
+
+
+CREATE INDEX "idx_dispatch_guides_transfer_id" ON "public"."dispatch_guides" USING "btree" ("transfer_id");
+
+
+
 CREATE UNIQUE INDEX "idx_document_series_global_unique" ON "public"."document_series" USING "btree" ("document_type", "series") WHERE ("warehouse_id" IS NULL);
 
 
@@ -8591,6 +8963,10 @@ CREATE UNIQUE INDEX "idx_document_series_warehouse_unique" ON "public"."document
 
 
 CREATE INDEX "idx_edocs_order_id" ON "public"."electronic_documents" USING "btree" ("order_id");
+
+
+
+CREATE INDEX "idx_edocs_reference_doc_id" ON "public"."electronic_documents" USING "btree" ("reference_document_id");
 
 
 
@@ -8678,6 +9054,10 @@ CREATE INDEX "idx_inventory_movements_warehouse_id" ON "public"."inventory_movem
 
 
 
+CREATE INDEX "idx_journal_entries_period_id" ON "public"."journal_entries" USING "btree" ("period_id");
+
+
+
 CREATE INDEX "idx_journal_lines_account_code" ON "public"."journal_entry_lines" USING "btree" ("account_code");
 
 
@@ -8714,6 +9094,10 @@ CREATE INDEX "idx_order_status_history_order_id" ON "public"."order_status_histo
 
 
 
+CREATE INDEX "idx_orders_created_at_desc" ON "public"."orders" USING "btree" ("created_at" DESC);
+
+
+
 CREATE INDEX "idx_orders_created_by" ON "public"."orders" USING "btree" ("created_by");
 
 
@@ -8734,15 +9118,27 @@ CREATE UNIQUE INDEX "idx_orders_document_unique" ON "public"."orders" USING "btr
 
 
 
-CREATE INDEX "idx_orders_electronic_doc_id" ON "public"."orders" USING "btree" ("electronic_document_id");
-
-
-
 CREATE INDEX "idx_orders_warehouse_id" ON "public"."orders" USING "btree" ("warehouse_id");
 
 
 
 CREATE INDEX "idx_permissions_code" ON "public"."permissions" USING "btree" ("code");
+
+
+
+CREATE INDEX "idx_pi_payments_account_id" ON "public"."purchase_invoice_payments" USING "btree" ("account_id");
+
+
+
+CREATE INDEX "idx_pi_payments_invoice_id" ON "public"."purchase_invoice_payments" USING "btree" ("purchase_invoice_id");
+
+
+
+CREATE INDEX "idx_pii_entry_item_id" ON "public"."purchase_invoice_items" USING "btree" ("inventory_entry_item_id");
+
+
+
+CREATE INDEX "idx_pii_po_item_id" ON "public"."purchase_invoice_items" USING "btree" ("purchase_order_item_id");
 
 
 
@@ -8875,6 +9271,10 @@ CREATE INDEX "idx_user_warehouses_profile_id" ON "public"."user_warehouses" USIN
 
 
 CREATE INDEX "idx_user_warehouses_warehouse_id" ON "public"."user_warehouses" USING "btree" ("warehouse_id");
+
+
+
+CREATE INDEX "idx_wallet_movements_customer_id" ON "public"."wallet_movements" USING "btree" ("customer_id");
 
 
 
@@ -9150,11 +9550,31 @@ CREATE OR REPLACE TRIGGER "trg_customer_locations_sync_customer" BEFORE INSERT O
 
 
 
+CREATE OR REPLACE TRIGGER "trg_customers_updated_at" BEFORE UPDATE ON "public"."customers" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_electronic_documents_updated_at" BEFORE UPDATE ON "public"."electronic_documents" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_financial_accounts_updated_at" BEFORE UPDATE ON "public"."financial_accounts" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_journal_entries_validate" BEFORE INSERT OR UPDATE ON "public"."journal_entries" FOR EACH ROW EXECUTE FUNCTION "public"."trg_journal_balanced_and_period"();
 
 
 
+CREATE CONSTRAINT TRIGGER "trg_journal_lines_balanced_deferred" AFTER INSERT OR DELETE OR UPDATE ON "public"."journal_entry_lines" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."trg_check_journal_entry_lines_balanced"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_order_payments_compute_base" BEFORE INSERT OR UPDATE ON "public"."order_payments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_compute_base_amounts"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_order_payments_sync_method" BEFORE INSERT OR UPDATE ON "public"."order_payments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_order_payment_method"();
 
 
 
@@ -9170,7 +9590,31 @@ CREATE OR REPLACE TRIGGER "trg_orders_sync_customer" BEFORE INSERT OR UPDATE ON 
 
 
 
+CREATE OR REPLACE TRIGGER "trg_orders_updated_at" BEFORE UPDATE ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_price_lists_updated_at" BEFORE UPDATE ON "public"."price_lists" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_product_variants_updated_at" BEFORE UPDATE ON "public"."product_variants" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_products_updated_at" BEFORE UPDATE ON "public"."products" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_protect_system_roles" BEFORE DELETE OR UPDATE ON "public"."roles" FOR EACH ROW EXECUTE FUNCTION "public"."protect_system_roles"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_quotations_updated_at" BEFORE UPDATE ON "public"."quotations" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_suppliers_updated_at" BEFORE UPDATE ON "public"."suppliers" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
 
 
 
@@ -9179,6 +9623,14 @@ CREATE OR REPLACE TRIGGER "trg_warehouse_auto_cash_account" AFTER INSERT ON "pub
 
 
 CREATE OR REPLACE TRIGGER "trg_warehouse_sync_cash_account" AFTER UPDATE ON "public"."warehouses" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_warehouse_transfers_updated_at" BEFORE UPDATE ON "public"."warehouse_transfers" FOR EACH ROW EXECUTE FUNCTION "public"."trg_set_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_wsb_sync_variant_qty" AFTER INSERT OR DELETE OR UPDATE ON "public"."warehouse_stock_batches" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_warehouse_variant_qty"();
 
 
 
@@ -9193,12 +9645,27 @@ ALTER TABLE ONLY "public"."account_movements"
 
 
 ALTER TABLE ONLY "public"."account_movements"
+    ADD CONSTRAINT "account_movements_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
+
+
+
+ALTER TABLE ONLY "public"."account_movements"
     ADD CONSTRAINT "account_movements_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."cash_shifts"("id");
 
 
 
 ALTER TABLE ONLY "public"."accounting_periods"
     ADD CONSTRAINT "accounting_periods_closed_by_fkey" FOREIGN KEY ("closed_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."accounting_posting_rule_lines"
+    ADD CONSTRAINT "accounting_posting_rule_lines_account_code_fkey" FOREIGN KEY ("account_code") REFERENCES "public"."chart_of_accounts"("code");
+
+
+
+ALTER TABLE ONLY "public"."accounting_posting_rule_lines"
+    ADD CONSTRAINT "accounting_posting_rule_lines_rule_id_fkey" FOREIGN KEY ("rule_id") REFERENCES "public"."accounting_posting_rules"("id") ON DELETE CASCADE;
 
 
 
@@ -9337,6 +9804,41 @@ ALTER TABLE ONLY "public"."daily_checkins"
 
 
 
+ALTER TABLE ONLY "public"."dispatch_guide_items"
+    ADD CONSTRAINT "dispatch_guide_items_dispatch_guide_id_fkey" FOREIGN KEY ("dispatch_guide_id") REFERENCES "public"."dispatch_guides"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guide_items"
+    ADD CONSTRAINT "dispatch_guide_items_unit_code_fkey" FOREIGN KEY ("unit_code") REFERENCES "public"."units_of_measure"("code");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guide_items"
+    ADD CONSTRAINT "dispatch_guide_items_variant_id_fkey" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_electronic_document_id_fkey" FOREIGN KEY ("electronic_document_id") REFERENCES "public"."electronic_documents"("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id");
+
+
+
+ALTER TABLE ONLY "public"."dispatch_guides"
+    ADD CONSTRAINT "dispatch_guides_transfer_id_fkey" FOREIGN KEY ("transfer_id") REFERENCES "public"."warehouse_transfers"("id");
+
+
+
 ALTER TABLE ONLY "public"."document_series"
     ADD CONSTRAINT "document_series_warehouse_id_fkey" FOREIGN KEY ("warehouse_id") REFERENCES "public"."warehouses"("id") ON DELETE SET NULL;
 
@@ -9344,6 +9846,11 @@ ALTER TABLE ONLY "public"."document_series"
 
 ALTER TABLE ONLY "public"."electronic_documents"
     ADD CONSTRAINT "electronic_documents_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id");
+
+
+
+ALTER TABLE ONLY "public"."electronic_documents"
+    ADD CONSTRAINT "electronic_documents_reference_document_id_fkey" FOREIGN KEY ("reference_document_id") REFERENCES "public"."electronic_documents"("id");
 
 
 
@@ -9364,6 +9871,11 @@ ALTER TABLE ONLY "public"."expenses"
 
 ALTER TABLE ONLY "public"."expenses"
     ADD CONSTRAINT "expenses_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
 
 
 
@@ -9527,6 +10039,11 @@ ALTER TABLE ONLY "public"."journal_entries"
 
 
 
+ALTER TABLE ONLY "public"."journal_entries"
+    ADD CONSTRAINT "journal_entries_period_id_fkey" FOREIGN KEY ("period_id") REFERENCES "public"."accounting_periods"("id");
+
+
+
 ALTER TABLE ONLY "public"."journal_entry_lines"
     ADD CONSTRAINT "journal_entry_lines_account_code_fkey" FOREIGN KEY ("account_code") REFERENCES "public"."chart_of_accounts"("code");
 
@@ -9568,6 +10085,11 @@ ALTER TABLE ONLY "public"."order_payments"
 
 
 ALTER TABLE ONLY "public"."order_payments"
+    ADD CONSTRAINT "order_payments_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
+
+
+
+ALTER TABLE ONLY "public"."order_payments"
     ADD CONSTRAINT "order_payments_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE CASCADE;
 
 
@@ -9598,17 +10120,17 @@ ALTER TABLE ONLY "public"."orders"
 
 
 ALTER TABLE ONLY "public"."orders"
+    ADD CONSTRAINT "orders_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
+
+
+
+ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."profiles"("id");
 
 
 
 ALTER TABLE ONLY "public"."orders"
     ADD CONSTRAINT "orders_customer_record_id_fkey" FOREIGN KEY ("customer_record_id") REFERENCES "public"."customers"("id");
-
-
-
-ALTER TABLE ONLY "public"."orders"
-    ADD CONSTRAINT "orders_electronic_document_id_fkey" FOREIGN KEY ("electronic_document_id") REFERENCES "public"."electronic_documents"("id");
 
 
 
@@ -9758,7 +10280,17 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 ALTER TABLE ONLY "public"."purchase_invoice_items"
+    ADD CONSTRAINT "purchase_invoice_items_inventory_entry_item_id_fkey" FOREIGN KEY ("inventory_entry_item_id") REFERENCES "public"."inventory_entry_items"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_items"
     ADD CONSTRAINT "purchase_invoice_items_purchase_invoice_id_fkey" FOREIGN KEY ("purchase_invoice_id") REFERENCES "public"."purchase_invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_items"
+    ADD CONSTRAINT "purchase_invoice_items_purchase_order_item_id_fkey" FOREIGN KEY ("purchase_order_item_id") REFERENCES "public"."purchase_order_items"("id");
 
 
 
@@ -9767,8 +10299,38 @@ ALTER TABLE ONLY "public"."purchase_invoice_items"
 
 
 
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "public"."financial_accounts"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_payment_method_code_fkey" FOREIGN KEY ("payment_method_code") REFERENCES "public"."payment_methods"("code");
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_purchase_invoice_id_fkey" FOREIGN KEY ("purchase_invoice_id") REFERENCES "public"."purchase_invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoice_payments"
+    ADD CONSTRAINT "purchase_invoice_payments_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."cash_shifts"("id");
+
+
+
 ALTER TABLE ONLY "public"."purchase_invoices"
     ADD CONSTRAINT "purchase_invoices_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."purchase_invoices"
+    ADD CONSTRAINT "purchase_invoices_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
 
 
 
@@ -9844,6 +10406,11 @@ ALTER TABLE ONLY "public"."quotations"
 
 ALTER TABLE ONLY "public"."quotations"
     ADD CONSTRAINT "quotations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "public"."profiles"("id");
+
+
+
+ALTER TABLE ONLY "public"."quotations"
+    ADD CONSTRAINT "quotations_currency_code_fkey" FOREIGN KEY ("currency_code") REFERENCES "public"."currencies"("code") NOT VALID;
 
 
 
@@ -9989,6 +10556,11 @@ ALTER TABLE ONLY "public"."variant_attribute_values"
 
 ALTER TABLE ONLY "public"."variant_attribute_values"
     ADD CONSTRAINT "vav_variant_id_fkey" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."wallet_movements"
+    ADD CONSTRAINT "wallet_movements_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id");
 
 
 
@@ -10239,6 +10811,10 @@ CREATE POLICY "Gastos: Gestión por permiso" ON "public"."expenses" TO "authenti
 
 
 
+CREATE POLICY "Guías remisión: Gestión por permiso" ON "public"."dispatch_guides" TO "authenticated" USING (("public"."user_has_permission"('inventory.read'::"text") OR "public"."user_has_permission"('orders.read'::"text"))) WITH CHECK (("public"."user_has_permission"('inventory.manage'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
+
+
+
 CREATE POLICY "Historial estados orden: Lectura por permiso" ON "public"."order_status_history" FOR SELECT TO "authenticated" USING ("public"."user_has_permission"('orders.read'::"text"));
 
 
@@ -10302,6 +10878,10 @@ CREATE POLICY "Items entradas: Lectura por permiso" ON "public"."inventory_entry
 
 
 CREATE POLICY "Items factura compra: Gestión por permiso" ON "public"."purchase_invoice_items" TO "authenticated" USING (("public"."user_has_permission"('finance.read'::"text") OR "public"."user_has_permission"('inventory.read'::"text"))) WITH CHECK (("public"."user_has_permission"('finance.manage'::"text") OR "public"."user_has_permission"('inventory.manage'::"text")));
+
+
+
+CREATE POLICY "Items guía remisión: Gestión por permiso" ON "public"."dispatch_guide_items" TO "authenticated" USING (("public"."user_has_permission"('inventory.read'::"text") OR "public"."user_has_permission"('orders.read'::"text"))) WITH CHECK (("public"."user_has_permission"('inventory.manage'::"text") OR "public"."user_has_permission"('pos.sale'::"text")));
 
 
 
@@ -10433,6 +11013,14 @@ CREATE POLICY "Líneas asiento: Lectura por permiso" ON "public"."journal_entry_
 
 
 
+CREATE POLICY "Líneas reglas contables: Gestión por permiso" ON "public"."accounting_posting_rule_lines" TO "authenticated" USING ("public"."user_has_permission"('accounting.manage'::"text")) WITH CHECK ("public"."user_has_permission"('accounting.manage'::"text"));
+
+
+
+CREATE POLICY "Líneas reglas contables: Lectura por permiso" ON "public"."accounting_posting_rule_lines" FOR SELECT TO "authenticated" USING ("public"."user_has_permission"('accounting.read'::"text"));
+
+
+
 CREATE POLICY "Marcas: Gestión por permiso" ON "public"."brands" TO "authenticated" USING ("public"."user_has_permission"('brands.manage'::"text")) WITH CHECK ("public"."user_has_permission"('brands.manage'::"text"));
 
 
@@ -10474,6 +11062,10 @@ CREATE POLICY "PCGE: Gestión por permiso" ON "public"."chart_of_accounts" TO "a
 
 
 CREATE POLICY "PCGE: Lectura autenticada" ON "public"."chart_of_accounts" FOR SELECT TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "Pagos factura compra: Gestión por permiso" ON "public"."purchase_invoice_payments" TO "authenticated" USING ("public"."user_has_permission"('finance.read'::"text")) WITH CHECK ("public"."user_has_permission"('finance.manage'::"text"));
 
 
 
@@ -10656,6 +11248,9 @@ ALTER TABLE "public"."account_movements" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."accounting_periods" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."accounting_posting_rule_lines" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."accounting_posting_rules" ENABLE ROW LEVEL SECURITY;
 
 
@@ -10708,6 +11303,12 @@ ALTER TABLE "public"."customers" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."daily_checkins" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."dispatch_guide_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."dispatch_guides" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."document_series" ENABLE ROW LEVEL SECURITY;
@@ -10801,6 +11402,9 @@ ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."purchase_invoice_items" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."purchase_invoice_payments" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."purchase_invoices" ENABLE ROW LEVEL SECURITY;
@@ -11530,6 +12134,12 @@ GRANT ALL ON FUNCTION "public"."rpc_record_expense"("payload" "jsonb") TO "servi
 
 
 
+GRANT ALL ON FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid", "p_unit_code" "text", "p_quantity" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid", "p_unit_code" "text", "p_quantity" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."rpc_resolve_variant_price"("p_variant_id" "uuid", "p_price_list_id" "uuid", "p_unit_code" "text", "p_quantity" numeric) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."rpc_transfer_warehouse_stock"("payload" "jsonb") TO "service_role";
@@ -11679,6 +12289,12 @@ GRANT ALL ON FUNCTION "public"."trg_auto_create_counter_cash_account"() TO "serv
 
 
 
+GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trg_compute_base_amounts"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_compute_base_amounts"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_compute_base_amounts"() TO "service_role";
@@ -11691,15 +12307,33 @@ GRANT ALL ON FUNCTION "public"."trg_journal_balanced_and_period"() TO "service_r
 
 
 
+GRANT ALL ON FUNCTION "public"."trg_set_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_set_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_set_updated_at"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_method"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_method"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_method"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_variant_qty"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_variant_qty"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_sync_warehouse_variant_qty"() TO "service_role";
 
 
 
@@ -11786,6 +12420,12 @@ GRANT ALL ON TABLE "public"."account_movements" TO "service_role";
 GRANT ALL ON TABLE "public"."accounting_periods" TO "anon";
 GRANT ALL ON TABLE "public"."accounting_periods" TO "authenticated";
 GRANT ALL ON TABLE "public"."accounting_periods" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."accounting_posting_rule_lines" TO "anon";
+GRANT ALL ON TABLE "public"."accounting_posting_rule_lines" TO "authenticated";
+GRANT ALL ON TABLE "public"."accounting_posting_rule_lines" TO "service_role";
 
 
 
@@ -11912,6 +12552,18 @@ GRANT ALL ON TABLE "public"."customers" TO "service_role";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "anon";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "authenticated";
 GRANT ALL ON TABLE "public"."daily_checkins" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."dispatch_guide_items" TO "anon";
+GRANT ALL ON TABLE "public"."dispatch_guide_items" TO "authenticated";
+GRANT ALL ON TABLE "public"."dispatch_guide_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."dispatch_guides" TO "anon";
+GRANT ALL ON TABLE "public"."dispatch_guides" TO "authenticated";
+GRANT ALL ON TABLE "public"."dispatch_guides" TO "service_role";
 
 
 
@@ -12102,6 +12754,12 @@ GRANT ALL ON TABLE "public"."products" TO "service_role";
 GRANT ALL ON TABLE "public"."purchase_invoice_items" TO "anon";
 GRANT ALL ON TABLE "public"."purchase_invoice_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."purchase_invoice_items" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."purchase_invoice_payments" TO "anon";
+GRANT ALL ON TABLE "public"."purchase_invoice_payments" TO "authenticated";
+GRANT ALL ON TABLE "public"."purchase_invoice_payments" TO "service_role";
 
 
 
