@@ -91,6 +91,7 @@ class ProductFormState extends Equatable {
       'pos': true,
       'mercadolibre': true,
       'social': true,
+      'facebook_marketplace': false,
     },
     this.slug = '',
     this.seoTitle = '',

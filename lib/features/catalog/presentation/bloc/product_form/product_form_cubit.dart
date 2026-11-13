@@ -75,6 +75,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     'pos': true,
     'mercadolibre': true,
     'social': true,
+    'facebook_marketplace': false,
   };
   String _slug = '';
   String _seoTitle = '';
@@ -352,6 +353,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         'pos': rawCh['pos'] != false,
         'mercadolibre': rawCh['mercadolibre'] != false,
         'social': rawCh['social'] != false,
+        'facebook_marketplace': rawCh['facebook_marketplace'] == true,
       };
     } else {
       _salesChannels = const {
@@ -359,6 +361,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
         'pos': true,
         'mercadolibre': true,
         'social': true,
+        'facebook_marketplace': false,
       };
     }
     _slug = (d['slug'] as String?) ?? ProductFormSeoHelper.slugify(nombre);
@@ -418,6 +421,7 @@ class ProductFormCubit extends Cubit<ProductFormState> {
       'pos': true,
       'mercadolibre': true,
       'social': true,
+      'facebook_marketplace': false,
     };
     _slug = '';
     _seoTitle = '';
