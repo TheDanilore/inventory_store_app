@@ -1348,44 +1348,42 @@ ALTER FUNCTION "public"."get_customer_credits_stats_rpc"("p_search_query" "text"
 
 
 CREATE OR REPLACE FUNCTION "public"."get_customers_global_stats_rpc"() RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-    v_total_customers INT;
-    v_active_customers INT;
-    v_inactive_customers INT;
-    v_total_revenue NUMERIC;
-    v_total_debt NUMERIC;
-    v_debt_customers_count INT;
+    v_total int;
+    v_active int;
+    v_inactive int;
+    v_total_revenue numeric;
+    v_total_debt numeric;
+    v_debt_count int;
 BEGIN
-    SELECT COUNT(*),
-           COUNT(*) FILTER (WHERE p.is_active = true),
-           COUNT(*) FILTER (WHERE p.is_active = false)
-      INTO v_total_customers, v_active_customers, v_inactive_customers
-      FROM public.profiles p
-     WHERE NOT EXISTS (
-       SELECT 1 FROM public.user_roles ur
-       JOIN public.roles ro ON ro.id = ur.role_id
-       WHERE ur.profile_id = p.id AND ro.name IN ('admin', 'employee')
-     );
+    SELECT
+        COUNT(*),
+        COUNT(*) FILTER (WHERE is_active = true),
+        COUNT(*) FILTER (WHERE is_active = false)
+    INTO v_total, v_active, v_inactive
+    FROM public.customers;
 
     SELECT COALESCE(SUM(total_amount), 0)
-      INTO v_total_revenue
-      FROM public.orders
-     WHERE status = 'COMPLETED';
+    INTO v_total_revenue
+    FROM public.orders
+    WHERE status = 'COMPLETED';
 
-    SELECT COALESCE(SUM(current_debt), 0),
-           COUNT(*) FILTER (WHERE current_debt > 0)
-      INTO v_total_debt, v_debt_customers_count
-      FROM public.customer_credits;
+    SELECT
+        COALESCE(SUM(current_debt), 0),
+        COUNT(*) FILTER (WHERE current_debt > 0)
+    INTO v_total_debt, v_debt_count
+    FROM public.customer_credits;
 
     RETURN jsonb_build_object(
-        'totalCustomersCount', v_total_customers,
-        'activeCustomersCount', v_active_customers,
-        'inactiveCustomersCount', v_inactive_customers,
+        'totalCount', v_total,
+        'activeCount', v_active,
+        'inactiveCount', v_inactive,
         'totalRevenue', v_total_revenue,
         'totalDebt', v_total_debt,
-        'debtCustomersCount', v_debt_customers_count
+        'debtCustomersCount', v_debt_count
     );
 END;
 $$;
@@ -3039,7 +3037,11 @@ DECLARE
   v_total_amount numeric := COALESCE((payload->>'totalAmount')::numeric, 0.00);
   v_points_used int := COALESCE((payload->>'pointsUsed')::int, 0);
   v_points_earned int := COALESCE((payload->>'pointsEarned')::int, 0);
-  v_customer_id uuid;
+
+  v_raw_customer_id uuid;
+  v_customer_record_id uuid;
+  v_customer_profile_id uuid;
+
   v_account_id uuid;
   v_shift_id uuid;
   v_warehouse_id uuid := (payload->>'warehouseId')::uuid;
@@ -3109,7 +3111,20 @@ BEGIN
     RAISE EXCEPTION 'No cuenta con el permiso requerido para registrar ventas en el POS (pos.sale).' USING ERRCODE = '42501';
   END IF;
 
-  IF payload->>'customerId' IS NOT NULL AND payload->>'customerId' != '' THEN v_customer_id := (payload->>'customerId')::uuid; END IF;
+  -- Resolver customer_record_id (customers.id) y profile_id opcional
+  IF payload->>'customerId' IS NOT NULL AND payload->>'customerId' != '' THEN
+    v_raw_customer_id := (payload->>'customerId')::uuid;
+    SELECT id, profile_id INTO v_customer_record_id, v_customer_profile_id
+    FROM public.customers
+    WHERE id = v_raw_customer_id OR profile_id = v_raw_customer_id
+    LIMIT 1;
+
+    IF v_customer_record_id IS NULL THEN
+      -- Fallback si solo existiera en profiles
+      SELECT id INTO v_customer_profile_id FROM public.profiles WHERE id = v_raw_customer_id LIMIT 1;
+    END IF;
+  END IF;
+
   IF payload->>'accountId' IS NOT NULL AND payload->>'accountId' != '' THEN v_account_id := (payload->>'accountId')::uuid; END IF;
 
   IF payload ? 'payments' AND jsonb_array_length(payload->'payments') > 0 AND v_amount_paid = 0 THEN
@@ -3118,11 +3133,13 @@ BEGIN
     FROM jsonb_array_elements(payload->'payments') AS p;
   END IF;
 
-  IF NOT v_is_draft AND v_is_credit AND v_customer_id IS NOT NULL THEN
+  IF NOT v_is_draft AND v_is_credit AND (v_customer_record_id IS NOT NULL OR v_customer_profile_id IS NOT NULL) THEN
     SELECT id, current_debt, credit_limit, is_active
       INTO v_credit_id, v_current_debt, v_credit_limit, v_credit_active
     FROM public.customer_credits
-    WHERE profile_id = v_customer_id
+    WHERE (v_customer_record_id IS NOT NULL AND customer_record_id = v_customer_record_id)
+       OR (v_customer_profile_id IS NOT NULL AND profile_id = v_customer_profile_id)
+    LIMIT 1
     FOR UPDATE;
 
     IF NOT FOUND THEN
@@ -3193,14 +3210,14 @@ BEGIN
   v_order_status := CASE WHEN v_is_draft THEN 'PENDING' ELSE 'COMPLETED' END;
 
   INSERT INTO public.orders (
-    customer_id, customer_name, warehouse_id, total_amount, total_profit, discount_amount,
+    customer_id, customer_record_id, customer_name, warehouse_id, total_amount, total_profit, discount_amount,
     payment_method, payment_status, amount_paid, status, points_used, points_earned, created_by,
     document_type, document_series, document_number, document_date,
     tax_amount, subtotal_amount, payment_reference,
     customer_document_type, customer_document_number, customer_address,
     currency_code, exchange_rate, total_amount_base, subtotal_amount_base, tax_amount_base
   ) VALUES (
-    v_customer_id, NULLIF(payload->>'customerName', ''), v_warehouse_id, v_total_amount, v_total_profit,
+    v_customer_profile_id, v_customer_record_id, NULLIF(payload->>'customerName', ''), v_warehouse_id, v_total_amount, v_total_profit,
     COALESCE((payload->>'discountAmount')::numeric, 0.00),
     COALESCE(payload->>'paymentMethod', CASE WHEN payload ? 'payments' AND jsonb_array_length(payload->'payments') > 1 THEN 'MIXTO' ELSE 'EFECTIVO' END),
     COALESCE(payload->>'paymentStatus', CASE WHEN v_is_draft THEN 'PENDING' ELSE 'PAID' END),
@@ -3417,25 +3434,35 @@ BEGIN
       );
     END IF;
 
-    IF (v_points_earned > 0 OR v_points_used > 0) AND v_customer_id IS NOT NULL THEN
-      UPDATE public.profiles
-      SET wallet_balance = wallet_balance + v_points_earned - v_points_used
-      WHERE id = v_customer_id;
+    -- Actualización de puntos (en customers y en profiles si está vinculado)
+    IF (v_points_earned > 0 OR v_points_used > 0) AND (v_customer_record_id IS NOT NULL OR v_customer_profile_id IS NOT NULL) THEN
+      IF v_customer_record_id IS NOT NULL THEN
+        UPDATE public.customers
+        SET wallet_balance = GREATEST(wallet_balance + v_points_earned - v_points_used, 0)
+        WHERE id = v_customer_record_id;
+      END IF;
+
+      IF v_customer_profile_id IS NOT NULL THEN
+        UPDATE public.profiles
+        SET wallet_balance = GREATEST(wallet_balance + v_points_earned - v_points_used, 0)
+        WHERE id = v_customer_profile_id;
+      END IF;
 
       IF v_points_earned > 0 THEN
-        INSERT INTO public.wallet_movements (profile_id, order_id, points, movement_type, description)
-        VALUES (v_customer_id, v_order_id, v_points_earned, 'EARNED',
+        INSERT INTO public.wallet_movements (profile_id, customer_id, order_id, points, movement_type, description)
+        VALUES (v_customer_profile_id, v_customer_record_id, v_order_id, v_points_earned, 'EARNED',
           'Puntos ganados por Venta ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)));
       END IF;
 
       IF v_points_used > 0 THEN
-        INSERT INTO public.wallet_movements (profile_id, order_id, points, movement_type, description)
-        VALUES (v_customer_id, v_order_id, v_points_used, 'REDEEMED',
+        INSERT INTO public.wallet_movements (profile_id, customer_id, order_id, points, movement_type, description)
+        VALUES (v_customer_profile_id, v_customer_record_id, v_order_id, v_points_used, 'REDEEMED',
           'Puntos canjeados en Venta ' || COALESCE(v_doc_number, '#' || substring(v_order_id::text, 1, 8)));
       END IF;
     END IF;
 
-    IF v_is_credit AND v_customer_id IS NOT NULL AND (v_total_amount - v_amount_paid) > 0 THEN
+    -- Crédito a clientes
+    IF v_is_credit AND v_credit_id IS NOT NULL AND (v_total_amount - v_amount_paid) > 0 THEN
       UPDATE public.customer_credits
       SET current_debt = current_debt + (v_total_amount - v_amount_paid)
       WHERE id = v_credit_id;
@@ -3561,6 +3588,7 @@ ALTER FUNCTION "public"."reconcile_balances_report"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."register_credit_payment_rpc"("p_customer_id" "uuid", "p_credit_id" "uuid", "p_amount" numeric, "p_account_id" "uuid", "p_order_id" "uuid" DEFAULT NULL::"uuid", "p_notes" "text" DEFAULT 'Abono registrado a crédito'::"text", "p_shift_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
     v_remaining        NUMERIC := p_amount;
@@ -3574,9 +3602,10 @@ DECLARE
     v_shift_status     TEXT;
     v_current_debt     NUMERIC;
     v_new_debt         NUMERIC;
-    v_current_wallet   INT;
     v_now              TIMESTAMPTZ;
     v_created_by       UUID;
+    v_customer_record_id UUID;
+    v_customer_profile_id UUID;
 BEGIN
     v_now := NOW() AT TIME ZONE 'America/Lima';
 
@@ -3584,13 +3613,21 @@ BEGIN
         RAISE EXCEPTION 'El monto debe ser mayor a 0.';
     END IF;
 
-    -- 0. RESOLVER EL ID DE PERFIL DEL USUARIO AUTENTICADO (Para evitar error de foreign key en account_movements)
     SELECT id INTO v_created_by
       FROM public.profiles
      WHERE auth_user_id = auth.uid() OR id = auth.uid()
      LIMIT 1;
 
-    -- 1. BLINDAJE DE CAJA Y TURNOS
+    -- Resolver cliente (p_customer_id puede llegar como customers.id o profiles.id)
+    SELECT id, profile_id INTO v_customer_record_id, v_customer_profile_id
+      FROM public.customers
+     WHERE id = p_customer_id OR profile_id = p_customer_id
+     LIMIT 1;
+
+    IF v_customer_record_id IS NULL THEN
+        v_customer_profile_id := p_customer_id;
+    END IF;
+
     SELECT type, name INTO v_account
       FROM public.financial_accounts
      WHERE id = p_account_id;
@@ -3613,16 +3650,18 @@ BEGIN
         END IF;
     END IF;
 
-    -- 2. BLINDAJE CON FOR UPDATE Y ASIGNACIÓN A ÓRDENES
     FOR v_order IN
         SELECT id, total_amount, amount_paid, payment_status
           FROM public.orders
-         WHERE customer_id = p_customer_id
+         WHERE (
+                (v_customer_record_id IS NOT NULL AND customer_record_id = v_customer_record_id)
+                OR (v_customer_profile_id IS NOT NULL AND customer_id = v_customer_profile_id)
+               )
            AND (p_order_id IS NULL OR id = p_order_id)
            AND payment_status IN ('PENDING', 'PARTIAL')
            AND status = 'COMPLETED'
          ORDER BY created_at ASC
-         FOR UPDATE -- Bloqueo transaccional para concurrencia
+         FOR UPDATE
     LOOP
         EXIT WHEN v_remaining <= 0;
 
@@ -3639,7 +3678,6 @@ BEGIN
             v_points_earned := 0;
         END IF;
 
-        -- Actualizar orden
         UPDATE public.orders
            SET amount_paid   = v_new_paid,
                payment_status = v_new_status,
@@ -3647,51 +3685,21 @@ BEGIN
                updated_at    = v_now
          WHERE id = v_order.id;
 
-        -- Movimiento de crédito
         IF v_to_apply > 0 AND p_credit_id IS NOT NULL THEN
             INSERT INTO public.customer_credit_movements (
-                customer_credit_id,
-                order_id,
-                movement_type,
-                amount,
-                payment_method,
-                notes,
-                created_by,
-                created_at
+                customer_credit_id, order_id, movement_type, amount, payment_method, notes, created_by, created_at
             ) VALUES (
-                p_credit_id,
-                v_order.id,
-                'PAYMENT',
-                v_to_apply,
-                v_account.name,
-                p_notes,
-                v_created_by,
-                v_now
+                p_credit_id, v_order.id, 'PAYMENT', v_to_apply, v_account.name, p_notes, v_created_by, v_now
             );
         END IF;
 
-        -- Movimiento de caja/banco (Usando v_created_by para respetar account_movements_created_by_fkey)
         IF v_to_apply > 0 THEN
             INSERT INTO public.account_movements (
-                account_id,
-                movement_type,
-                amount,
-                description,
-                reference_type,
-                reference_id,
-                shift_id,
-                created_by,
-                created_at
+                account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by, created_at
             ) VALUES (
-                p_account_id,
-                'INCOME',
-                v_to_apply,
+                p_account_id, 'INCOME', v_to_apply,
                 'Cobro de crédito — Pedido #' || UPPER(SUBSTRING(v_order.id::text, 1, 8)),
-                'orders',
-                v_order.id,
-                p_shift_id,
-                v_created_by,
-                v_now
+                'orders', v_order.id, p_shift_id, v_created_by, v_now
             );
 
             UPDATE public.financial_accounts
@@ -3699,58 +3707,35 @@ BEGIN
              WHERE id = p_account_id;
         END IF;
 
-        -- Monedas de lealtad
         IF v_points_earned > 0 THEN
-            SELECT COALESCE(wallet_balance, 0)
-              INTO v_current_wallet
-              FROM public.profiles
-             WHERE id = p_customer_id
-             FOR UPDATE;
-             
-            UPDATE public.profiles
-               SET wallet_balance = v_current_wallet + v_points_earned
-             WHERE id = p_customer_id;
+            IF v_customer_record_id IS NOT NULL THEN
+                UPDATE public.customers
+                   SET wallet_balance = wallet_balance + v_points_earned
+                 WHERE id = v_customer_record_id;
+            END IF;
+
+            IF v_customer_profile_id IS NOT NULL THEN
+                UPDATE public.profiles
+                   SET wallet_balance = COALESCE(wallet_balance, 0) + v_points_earned
+                 WHERE id = v_customer_profile_id;
+            END IF;
 
             INSERT INTO public.wallet_movements (
-                profile_id,
-                order_id,
-                points,
-                movement_type,
-                description,
-                created_at
+                profile_id, customer_id, order_id, points, movement_type, description, created_at
             ) VALUES (
-                p_customer_id,
-                v_order.id,
-                v_points_earned,
-                'EARNED',
-                'Monedas ganadas al saldar pedido a crédito',
-                v_now
+                v_customer_profile_id, v_customer_record_id, v_order.id, v_points_earned,
+                'EARNED', 'Monedas ganadas al saldar pedido a crédito', v_now
             );
         END IF;
     END LOOP;
 
-    -- Si queda remanente no ligado a una orden (abono a cuenta global o deuda general)
     IF v_remaining > 0 THEN
         INSERT INTO public.account_movements (
-            account_id,
-            movement_type,
-            amount,
-            description,
-            reference_type,
-            reference_id,
-            shift_id,
-            created_by,
-            created_at
+            account_id, movement_type, amount, description, reference_type, reference_id, shift_id, created_by, created_at
         ) VALUES (
-            p_account_id,
-            'INCOME',
-            v_remaining,
+            p_account_id, 'INCOME', v_remaining,
             COALESCE(p_notes, 'Abono registrado a cuenta de crédito'),
-            'customer_credits',
-            p_credit_id,
-            p_shift_id,
-            v_created_by,
-            v_now
+            'customer_credits', p_credit_id, p_shift_id, v_created_by, v_now
         );
 
         UPDATE public.financial_accounts
@@ -3759,31 +3744,15 @@ BEGIN
 
         IF p_credit_id IS NOT NULL THEN
             INSERT INTO public.customer_credit_movements (
-                customer_credit_id,
-                order_id,
-                movement_type,
-                amount,
-                payment_method,
-                notes,
-                created_by,
-                created_at
+                customer_credit_id, order_id, movement_type, amount, payment_method, notes, created_by, created_at
             ) VALUES (
-                p_credit_id,
-                NULL,
-                'PAYMENT',
-                v_remaining,
-                v_account.name,
-                p_notes,
-                v_created_by,
-                v_now
+                p_credit_id, NULL, 'PAYMENT', v_remaining, v_account.name, p_notes, v_created_by, v_now
             );
         END IF;
     END IF;
 
-    -- 3. BLINDAJE DE DEUDA TOTAL (CUSTOMER CREDITS)
     IF p_credit_id IS NOT NULL THEN
-        SELECT current_debt
-          INTO v_current_debt
+        SELECT current_debt INTO v_current_debt
           FROM public.customer_credits
          WHERE id = p_credit_id
          FOR UPDATE;
@@ -3793,7 +3762,7 @@ BEGIN
                RAISE EXCEPTION 'El monto (S/%) sobrepasa la deuda pendiente (S/%)', p_amount, v_current_debt;
             END IF;
             v_new_debt := GREATEST(0, v_current_debt - p_amount);
-            
+
             UPDATE public.customer_credits
                SET current_debt = v_new_debt,
                    updated_at   = v_now
@@ -3802,16 +3771,16 @@ BEGIN
     END IF;
 
     RETURN jsonb_build_object(
-        'success',      true,
-        'amount_paid',  p_amount
+        'success', true,
+        'amount_paid', p_amount
     );
 
 EXCEPTION
     WHEN OTHERS THEN
         RETURN jsonb_build_object(
             'success', false,
-            'error',   SQLERRM,
-            'detail',  SQLSTATE
+            'error', SQLERRM,
+            'detail', SQLSTATE
         );
 END;
 $$;
@@ -5626,92 +5595,76 @@ CREATE OR REPLACE FUNCTION "public"."save_customer_full_profile_rpc"("p_customer
     SET "search_path" TO 'public', 'auth'
     AS $$
 DECLARE
-  v_admin_profile_id uuid;
-  v_target_profile_id uuid;
-  v_credit_id uuid;
-  v_current_wallet int;
+    v_actor_id uuid;
+    v_cust_id uuid;
+    v_profile_id uuid;
+    v_doc_type text := COALESCE(NULLIF(trim(p_document_type), ''), 'DNI');
+    v_doc_num text := NULLIF(trim(p_document_number), '');
+    v_cust_type text := CASE WHEN v_doc_type = 'RUC' THEN 'COMPANY' ELSE 'PERSON' END;
 BEGIN
-  SELECT id INTO v_admin_profile_id 
-  FROM profiles 
-  WHERE auth_user_id = auth.uid() OR id = auth.uid() 
-  LIMIT 1;
+    SELECT id INTO v_actor_id FROM public.profiles WHERE auth_user_id = auth.uid() LIMIT 1;
 
-  IF p_customer_id IS NOT NULL THEN
-    UPDATE profiles
-    SET 
-      full_name = p_full_name,
-      phone = NULLIF(TRIM(p_phone), ''),
-      document_number = NULLIF(TRIM(p_document_number), ''),
-      document_type = p_document_type,
-      is_active = p_is_active
-    WHERE id = p_customer_id;
-    
-    v_target_profile_id := p_customer_id;
-
-    IF p_wallet_delta <> 0 THEN
-      SELECT wallet_balance INTO v_current_wallet FROM profiles WHERE id = v_target_profile_id;
-      UPDATE profiles 
-      SET wallet_balance = COALESCE(v_current_wallet, 0) + p_wallet_delta 
-      WHERE id = v_target_profile_id;
-
-      INSERT INTO wallet_movements(profile_id, points, movement_type, description)
-      VALUES (
-        v_target_profile_id, 
-        p_wallet_delta, 
-        CASE WHEN p_wallet_delta > 0 THEN 'ADMIN_ADD' ELSE 'ADMIN_SUBTRACT' END,
-        'Ajuste manual administrativo'
-      );
+    IF p_customer_id IS NOT NULL THEN
+        -- Puede llegar customers.id o profiles.id
+        SELECT id, profile_id INTO v_cust_id, v_profile_id
+        FROM public.customers
+        WHERE id = p_customer_id OR profile_id = p_customer_id
+        LIMIT 1;
     END IF;
-  ELSE
-    INSERT INTO profiles (
-      full_name, 
-      phone, 
-      document_type, 
-      document_number, 
-      is_active, 
-      wallet_balance
-    )
-    VALUES (
-      p_full_name, 
-      NULLIF(TRIM(p_phone), ''), 
-      p_document_type, 
-      NULLIF(TRIM(p_document_number), ''), 
-      p_is_active, 
-      0
-    )
-    RETURNING id INTO v_target_profile_id;
-  END IF;
 
-  SELECT id INTO v_credit_id FROM customer_credits WHERE profile_id = v_target_profile_id;
+    IF v_cust_id IS NULL THEN
+        INSERT INTO public.customers (
+            customer_type, document_type, document_number, full_name, phone,
+            is_active, wallet_balance, created_by, updated_by
+        ) VALUES (
+            v_cust_type,
+            CASE WHEN v_doc_type IN ('DNI','RUC','CE','PASAPORTE') THEN v_doc_type ELSE 'OTRO' END,
+            v_doc_num,
+            COALESCE(NULLIF(trim(p_full_name), ''), 'Cliente'),
+            NULLIF(trim(p_phone), ''),
+            COALESCE(p_is_active, true),
+            GREATEST(COALESCE(p_wallet_delta, 0), 0),
+            v_actor_id,
+            v_actor_id
+        ) RETURNING id INTO v_cust_id;
+    ELSE
+        UPDATE public.customers
+        SET
+            customer_type = v_cust_type,
+            document_type = CASE WHEN v_doc_type IN ('DNI','RUC','CE','PASAPORTE') THEN v_doc_type ELSE 'OTRO' END,
+            document_number = v_doc_num,
+            full_name = COALESCE(NULLIF(trim(p_full_name), ''), full_name),
+            phone = NULLIF(trim(p_phone), ''),
+            is_active = COALESCE(p_is_active, is_active),
+            wallet_balance = GREATEST(wallet_balance + COALESCE(p_wallet_delta, 0), 0),
+            updated_by = v_actor_id,
+            updated_at = now()
+        WHERE id = v_cust_id;
+    END IF;
 
-  IF v_credit_id IS NOT NULL THEN
-    UPDATE customer_credits
-    SET 
-      credit_limit = COALESCE(p_credit_limit, 0.00),
-      is_active = p_has_credit,
-      updated_at = now()
-    WHERE id = v_credit_id;
-  ELSE
-    INSERT INTO customer_credits (
-      profile_id, 
-      credit_limit, 
-      current_debt, 
-      is_active, 
-      created_by
-    )
-    VALUES (
-      v_target_profile_id, 
-      COALESCE(p_credit_limit, 0.00), 
-      0.00, 
-      p_has_credit, 
-      v_admin_profile_id
+    -- Línea de crédito vinculada por customer_record_id (y profile_id si existe)
+    IF p_has_credit THEN
+        INSERT INTO public.customer_credits (
+            customer_record_id, profile_id, credit_limit, is_active, created_by
+        ) VALUES (
+            v_cust_id, v_profile_id, COALESCE(p_credit_limit, 0.00), true, v_actor_id
+        )
+        ON CONFLICT (customer_record_id)
+        DO UPDATE SET
+            credit_limit = COALESCE(p_credit_limit, public.customer_credits.credit_limit),
+            is_active = true,
+            updated_at = now();
+    ELSE
+        UPDATE public.customer_credits
+        SET is_active = false, updated_at = now()
+        WHERE customer_record_id = v_cust_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'customer_id', v_cust_id,
+        'profile_id', v_profile_id
     );
-  END IF;
-
-  RETURN jsonb_build_object(
-    'success', true,
-    'profile_id', v_target_profile_id
-  );
 END;
 $$;
 
@@ -6240,6 +6193,41 @@ $$;
 ALTER FUNCTION "public"."trg_auto_create_counter_cash_account"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."trg_check_installments_sum"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_order_id uuid := COALESCE(NEW.order_id, OLD.order_id);
+    v_sum_installments numeric;
+    v_order_total numeric;
+    v_order_paid numeric;
+    v_count int;
+BEGIN
+    SELECT COUNT(*), COALESCE(SUM(amount), 0)
+    INTO v_count, v_sum_installments
+    FROM public.order_installments
+    WHERE order_id = v_order_id AND status <> 'CANCELLED';
+
+    IF v_count > 0 THEN
+        SELECT total_amount, amount_paid
+        INTO v_order_total, v_order_paid
+        FROM public.orders
+        WHERE id = v_order_id;
+
+        IF ABS(v_sum_installments - (v_order_total - v_order_paid)) > 0.05
+           AND ABS(v_sum_installments - v_order_total) > 0.05 THEN
+            RAISE EXCEPTION 'La suma de cuotas (%) no cuadra con la orden % (Total: %, Pagado: %).',
+                v_sum_installments, v_order_id, v_order_total, v_order_paid;
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_check_installments_sum"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."trg_check_journal_entry_lines_balanced"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -6386,6 +6374,43 @@ $$;
 
 
 ALTER FUNCTION "public"."trg_sync_customer_record_id"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."trg_sync_order_payment_cache"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+    v_order_id uuid := COALESCE(NEW.order_id, OLD.order_id);
+    v_paid numeric(14,2);
+    v_total numeric(14,2);
+BEGIN
+    SELECT COALESCE(SUM(amount_base), 0)
+    INTO v_paid
+    FROM public.order_payments
+    WHERE order_id = v_order_id;
+
+    SELECT total_amount_base INTO v_total FROM public.orders WHERE id = v_order_id;
+    IF v_total IS NULL OR v_total = 0 THEN
+        SELECT total_amount INTO v_total FROM public.orders WHERE id = v_order_id;
+    END IF;
+
+    UPDATE public.orders
+    SET
+        amount_paid = v_paid,
+        payment_status = CASE
+            WHEN v_paid <= 0 THEN 'PENDING'
+            WHEN v_paid < COALESCE(v_total, 0) THEN 'PARTIAL'
+            ELSE 'PAID'
+        END
+    WHERE id = v_order_id;
+
+    RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."trg_sync_order_payment_cache"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."trg_sync_warehouse_status_to_cash_account"() RETURNS "trigger"
@@ -7039,6 +7064,7 @@ CREATE TABLE IF NOT EXISTS "public"."customers" (
     "updated_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "avatar_url" "text",
     CONSTRAINT "customers_customer_type_check" CHECK (("customer_type" = ANY (ARRAY['PERSON'::"text", 'COMPANY'::"text"]))),
     CONSTRAINT "customers_document_type_check" CHECK (("document_type" = ANY (ARRAY['DNI'::"text", 'RUC'::"text", 'CE'::"text", 'PASAPORTE'::"text", 'OTRO'::"text"])))
 );
@@ -7097,9 +7123,9 @@ CREATE TABLE IF NOT EXISTS "public"."dispatch_guides" (
     "driver_document_number" "text",
     "driver_license_number" "text",
     "vehicle_plate" "text",
-    "origin_ubigeo" "text",
+    "origin_ubigeo" "text" DEFAULT '150101'::"text" NOT NULL,
     "origin_address" "text" NOT NULL,
-    "dest_ubigeo" "text",
+    "dest_ubigeo" "text" DEFAULT '150101'::"text" NOT NULL,
     "dest_address" "text" NOT NULL,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
@@ -7111,7 +7137,8 @@ CREATE TABLE IF NOT EXISTS "public"."dispatch_guides" (
     "recipient_name" "text",
     CONSTRAINT "dispatch_guides_reason_check" CHECK (("transfer_reason_code" = ANY (ARRAY['01'::"text", '02'::"text", '03'::"text", '04'::"text", '05'::"text", '06'::"text", '07'::"text", '08'::"text", '09'::"text", '13'::"text", '14'::"text", '17'::"text", '18'::"text"]))),
     CONSTRAINT "dispatch_guides_source_check" CHECK ((("electronic_document_id" IS NOT NULL) OR ("transfer_id" IS NOT NULL) OR ("order_id" IS NOT NULL))),
-    CONSTRAINT "dispatch_guides_transport_mode_check" CHECK (("transport_mode" = ANY (ARRAY['01'::"text", '02'::"text"])))
+    CONSTRAINT "dispatch_guides_transport_mode_check" CHECK (("transport_mode" = ANY (ARRAY['01'::"text", '02'::"text"]))),
+    CONSTRAINT "dispatch_guides_ubigeo_format_check" CHECK ((("origin_ubigeo" ~ '^[0-9]{6}$'::"text") AND ("dest_ubigeo" ~ '^[0-9]{6}$'::"text")))
 );
 
 
@@ -7179,6 +7206,7 @@ CREATE TABLE IF NOT EXISTS "public"."exchange_rates" (
     "source" "text" DEFAULT 'SUNAT'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "exchange_rates_buy_rate_check" CHECK (("buy_rate" > (0)::numeric)),
+    CONSTRAINT "exchange_rates_buy_sell_check" CHECK ((("buy_rate" > (0)::numeric) AND ("sell_rate" >= "buy_rate"))),
     CONSTRAINT "exchange_rates_sell_rate_check" CHECK (("sell_rate" > (0)::numeric))
 );
 
@@ -7217,6 +7245,7 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
     "created_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "expenses_amount_check" CHECK (("amount" > (0)::numeric)),
+    CONSTRAINT "expenses_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "expenses_status_check" CHECK (("status" = ANY (ARRAY['PAID'::"text", 'CANCELLED'::"text"])))
 );
 
@@ -7275,7 +7304,8 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_entries" (
     "exchange_rate" numeric(12,4) DEFAULT 1.0000 NOT NULL,
     "total_amount_base" numeric(14,2) DEFAULT 0.00 NOT NULL,
     "guide_number" "text",
-    "received_at" timestamp with time zone DEFAULT "now"()
+    "received_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "inventory_entries_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric))
 );
 
 
@@ -7354,8 +7384,8 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_movements" (
     "quantity" numeric NOT NULL,
     "previous_stock" numeric NOT NULL,
     "new_stock" numeric NOT NULL,
-    "unit_cost" numeric,
-    "total_cost" numeric,
+    "unit_cost" numeric(14,4),
+    "total_cost" numeric(14,2),
     "reason" "text" NOT NULL,
     "notes" "text",
     "created_by" "uuid" NOT NULL,
@@ -7415,7 +7445,7 @@ CREATE TABLE IF NOT EXISTS "public"."order_installments" (
     "paid_at" timestamp with time zone,
     CONSTRAINT "order_installments_amount_check" CHECK (("amount" > (0)::numeric)),
     CONSTRAINT "order_installments_installment_number_check" CHECK (("installment_number" > 0)),
-    CONSTRAINT "order_installments_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'PAID'::"text", 'OVERDUE'::"text"])))
+    CONSTRAINT "order_installments_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'PAID'::"text", 'CANCELLED'::"text"])))
 );
 
 
@@ -7558,9 +7588,9 @@ CREATE TABLE IF NOT EXISTS "public"."physical_inventory_items" (
     "variant_id" "uuid" NOT NULL,
     "batch_number" "text",
     "expiry_date" "date",
-    "system_quantity" numeric NOT NULL,
-    "counted_quantity" numeric,
-    "difference" numeric,
+    "system_quantity" numeric(14,4) NOT NULL,
+    "counted_quantity" numeric(14,4),
+    "difference" numeric(14,4),
     "unit_cost" numeric,
     "total_difference_cost" numeric,
     "notes" "text",
@@ -7599,7 +7629,8 @@ CREATE TABLE IF NOT EXISTS "public"."price_lists" (
     "valid_to" timestamp with time zone,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "price_lists_dates_check" CHECK ((("valid_to" IS NULL) OR ("valid_from" IS NULL) OR ("valid_to" > "valid_from")))
 );
 
 
@@ -7781,6 +7812,7 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_invoice_payments" (
     "paid_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "pi_payments_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "purchase_invoice_payments_amount_check" CHECK (("amount" > (0)::numeric))
 );
 
@@ -7808,6 +7840,7 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_invoices" (
     "created_by" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "purchase_invoices_document_type_check" CHECK (("document_type" = ANY (ARRAY['FACTURA'::"text", 'BOLETA'::"text", 'RECIBO_HONORARIOS'::"text", 'NOTA_CREDITO'::"text", 'OTRO'::"text"]))),
+    CONSTRAINT "purchase_invoices_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "purchase_invoices_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PENDING'::"text", 'PARTIAL'::"text", 'PAID'::"text", 'CANCELLED'::"text"])))
 );
 
@@ -7823,11 +7856,11 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_order_items" (
     "quantity_ordered" numeric NOT NULL,
     "quantity_received" numeric DEFAULT 0 NOT NULL,
     "unit_cost" numeric(14,4) NOT NULL,
-    "net_cost" numeric DEFAULT 0 NOT NULL,
+    "net_cost" numeric(14,4) DEFAULT 0 NOT NULL,
     "batch_number" "text" DEFAULT 'DEFAULT'::"text",
     "expiry_date" "date",
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "subtotal" numeric DEFAULT 0,
+    "subtotal" numeric(14,2) DEFAULT 0,
     "unit_cost_base" numeric DEFAULT 0.00 NOT NULL,
     CONSTRAINT "purchase_order_items_quantity_ordered_check" CHECK (("quantity_ordered" > (0)::numeric)),
     CONSTRAINT "purchase_order_items_unit_cost_check" CHECK (("unit_cost" >= (0)::numeric))
@@ -7863,6 +7896,7 @@ CREATE TABLE IF NOT EXISTS "public"."purchase_orders" (
     "total_amount_base" numeric DEFAULT 0.00 NOT NULL,
     "subtotal_amount_base" numeric DEFAULT 0.00 NOT NULL,
     "tax_amount_base" numeric DEFAULT 0.00 NOT NULL,
+    CONSTRAINT "purchase_orders_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "purchase_orders_payment_status_check" CHECK (("payment_status" = ANY (ARRAY['PAID'::"text", 'PENDING'::"text", 'PARTIAL'::"text"]))),
     CONSTRAINT "purchase_orders_status_check" CHECK (("status" = ANY (ARRAY['PENDING'::"text", 'SENT'::"text", 'PARTIAL'::"text", 'RECEIVED'::"text", 'CANCELLED'::"text"])))
 );
@@ -7882,7 +7916,9 @@ CREATE TABLE IF NOT EXISTS "public"."quotation_items" (
     "tax_affectation_type" "text" DEFAULT '10'::"text" NOT NULL,
     "tax_amount" numeric(12,2) DEFAULT 0.00 NOT NULL,
     "subtotal" numeric(12,2) DEFAULT 0.00 NOT NULL,
+    "tax_rate" numeric(5,2) DEFAULT 18.00 NOT NULL,
     CONSTRAINT "quotation_items_quantity_check" CHECK (("quantity" > (0)::numeric)),
+    CONSTRAINT "quotation_items_tax_rate_check" CHECK ((("tax_rate" >= (0)::numeric) AND ("tax_rate" <= (100)::numeric))),
     CONSTRAINT "quotation_items_unit_price_check" CHECK (("unit_price" >= (0)::numeric))
 );
 
@@ -7912,6 +7948,7 @@ CREATE TABLE IF NOT EXISTS "public"."quotations" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "customer_record_id" "uuid",
+    CONSTRAINT "quotations_exchange_rate_pos" CHECK (("exchange_rate" > (0)::numeric)),
     CONSTRAINT "quotations_status_check" CHECK (("status" = ANY (ARRAY['DRAFT'::"text", 'SENT'::"text", 'ACCEPTED'::"text", 'REJECTED'::"text", 'EXPIRED'::"text", 'CONVERTED'::"text"])))
 );
 
@@ -7926,12 +7963,10 @@ COMMENT ON COLUMN "public"."quotations"."customer_id" IS 'TRANSICIÓN: FK legado
 CREATE TABLE IF NOT EXISTS "public"."raffle_tickets" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "raffle_id" "uuid" NOT NULL,
-    "customer_id" "uuid",
-    "profile_id" "uuid",
+    "customer_id" "uuid" NOT NULL,
     "ticket_number" "text" NOT NULL,
     "order_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "raffle_tickets_check" CHECK ((("customer_id" IS NOT NULL) OR ("profile_id" IS NOT NULL)))
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
 
@@ -7950,6 +7985,7 @@ CREATE TABLE IF NOT EXISTS "public"."raffles" (
     "status" "text" DEFAULT 'DRAFT'::"text" NOT NULL,
     "winner_customer_id" "uuid",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "raffles_dates_check" CHECK ((("start_date" < "end_date") AND ("end_date" <= "draw_date"))),
     CONSTRAINT "raffles_status_check" CHECK (("status" = ANY (ARRAY['DRAFT'::"text", 'ACTIVE'::"text", 'DRAWN'::"text", 'CANCELLED'::"text"]))),
     CONSTRAINT "raffles_ticket_points_cost_check" CHECK (("ticket_points_cost" >= 0))
 );
@@ -8069,6 +8105,10 @@ CREATE TABLE IF NOT EXISTS "public"."sunat_daily_summary_items" (
 ALTER TABLE "public"."sunat_daily_summary_items" OWNER TO "postgres";
 
 
+COMMENT ON COLUMN "public"."sunat_daily_summary_items"."condition_code" IS 'Catálogo 19 SUNAT: 1=Adicionar, 2=Modificar, 3=Anular.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."supplier_credit_movements" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "supplier_credit_id" "uuid" NOT NULL,
@@ -8174,6 +8214,24 @@ CREATE TABLE IF NOT EXISTS "public"."user_warehouses" (
 
 
 ALTER TABLE "public"."user_warehouses" OWNER TO "postgres";
+
+
+CREATE OR REPLACE VIEW "public"."v_order_installments_status" WITH ("security_invoker"='true') AS
+ SELECT "id",
+    "order_id",
+    "installment_number",
+    "due_date",
+    "amount",
+        CASE
+            WHEN (("status" = 'PENDING'::"text") AND ("due_date" < CURRENT_DATE)) THEN 'OVERDUE'::"text"
+            ELSE "status"
+        END AS "effective_status",
+    "status" AS "stored_status",
+    "paid_at"
+   FROM "public"."order_installments";
+
+
+ALTER VIEW "public"."v_order_installments_status" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."variant_attribute_values" (
@@ -8503,12 +8561,12 @@ ALTER TABLE ONLY "public"."electronic_documents"
 
 
 ALTER TABLE ONLY "public"."exchange_rates"
-    ADD CONSTRAINT "exchange_rates_currency_code_rate_date_key" UNIQUE ("currency_code", "rate_date");
+    ADD CONSTRAINT "exchange_rates_pkey" PRIMARY KEY ("id");
 
 
 
 ALTER TABLE ONLY "public"."exchange_rates"
-    ADD CONSTRAINT "exchange_rates_pkey" PRIMARY KEY ("id");
+    ADD CONSTRAINT "exchange_rates_unique_source" UNIQUE ("currency_code", "rate_date", "source");
 
 
 
@@ -8519,6 +8577,11 @@ ALTER TABLE ONLY "public"."expense_categories"
 
 ALTER TABLE ONLY "public"."expense_categories"
     ADD CONSTRAINT "expense_categories_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."expenses"
+    ADD CONSTRAINT "expenses_document_type_check" CHECK ((("document_type" IS NULL) OR ("document_type" = ANY (ARRAY['FACTURA'::"text", 'BOLETA'::"text", 'RECIBO_HONORARIOS'::"text", 'TICKET'::"text", 'NOTA_VENTA'::"text", 'NINGUNO'::"text", 'OTRO'::"text"])))) NOT VALID;
 
 
 
@@ -8643,7 +8706,7 @@ ALTER TABLE "public"."orders"
 
 
 ALTER TABLE "public"."orders"
-    ADD CONSTRAINT "orders_sunat_totals_coherence" CHECK ((((("total_gravado" + "total_exonerado") + "total_inafecto") = (0)::numeric) OR ("abs"((((((("total_gravado" + "total_exonerado") + "total_inafecto") + "tax_amount") + "icbper_amount") - "discount_amount") - "total_amount")) <= 0.05))) NOT VALID;
+    ADD CONSTRAINT "orders_sunat_totals_coherence" CHECK ((((("total_gravado" + "total_exonerado") + "total_inafecto") = (0)::numeric) OR ("abs"(((((((("total_gravado" + "total_exonerado") + "total_inafecto") + "tax_amount") + "icbper_amount") + "shipping_cost") - "discount_amount") - "total_amount")) <= 0.05))) NOT VALID;
 
 
 
@@ -9759,7 +9822,15 @@ CREATE CONSTRAINT TRIGGER "trg_journal_lines_balanced_deferred" AFTER INSERT OR 
 
 
 
+CREATE CONSTRAINT TRIGGER "trg_order_installments_sum_deferred" AFTER INSERT OR DELETE OR UPDATE ON "public"."order_installments" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION "public"."trg_check_installments_sum"();
+
+
+
 CREATE OR REPLACE TRIGGER "trg_order_payments_compute_base" BEFORE INSERT OR UPDATE ON "public"."order_payments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_compute_base_amounts"();
+
+
+
+CREATE OR REPLACE TRIGGER "trg_order_payments_sync_cache" AFTER INSERT OR DELETE OR UPDATE ON "public"."order_payments" FOR EACH ROW EXECUTE FUNCTION "public"."trg_sync_order_payment_cache"();
 
 
 
@@ -10650,11 +10721,6 @@ ALTER TABLE ONLY "public"."raffle_tickets"
 
 
 ALTER TABLE ONLY "public"."raffle_tickets"
-    ADD CONSTRAINT "raffle_tickets_profile_id_fkey" FOREIGN KEY ("profile_id") REFERENCES "public"."profiles"("id");
-
-
-
-ALTER TABLE ONLY "public"."raffle_tickets"
     ADD CONSTRAINT "raffle_tickets_raffle_id_fkey" FOREIGN KEY ("raffle_id") REFERENCES "public"."raffles"("id") ON DELETE CASCADE;
 
 
@@ -11432,9 +11498,10 @@ CREATE POLICY "Sorteos: Lectura autenticada" ON "public"."raffles" FOR SELECT TO
 
 
 
-CREATE POLICY "Tickets sorteo: Lectura propia o permiso" ON "public"."raffle_tickets" FOR SELECT TO "authenticated" USING ((("profile_id" IN ( SELECT "profiles"."id"
-   FROM "public"."profiles"
-  WHERE ("profiles"."auth_user_id" = "auth"."uid"()))) OR "public"."user_has_permission"('customers.read'::"text")));
+CREATE POLICY "Tickets sorteo: Lectura propia o permiso" ON "public"."raffle_tickets" FOR SELECT TO "authenticated" USING ((("customer_id" IN ( SELECT "c"."id"
+   FROM ("public"."customers" "c"
+     JOIN "public"."profiles" "p" ON (("p"."id" = "c"."profile_id")))
+  WHERE ("p"."auth_user_id" = "auth"."uid"()))) OR "public"."user_has_permission"('customers.read'::"text")));
 
 
 
@@ -12582,6 +12649,12 @@ GRANT ALL ON FUNCTION "public"."trg_auto_create_counter_cash_account"() TO "serv
 
 
 
+GRANT ALL ON FUNCTION "public"."trg_check_installments_sum"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_check_installments_sum"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_check_installments_sum"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_check_journal_entry_lines_balanced"() TO "service_role";
@@ -12609,6 +12682,12 @@ GRANT ALL ON FUNCTION "public"."trg_set_updated_at"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "anon";
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."trg_sync_customer_record_id"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_cache"() TO "anon";
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_cache"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."trg_sync_order_payment_cache"() TO "service_role";
 
 
 
@@ -13185,6 +13264,12 @@ GRANT ALL ON TABLE "public"."user_effective_permissions" TO "service_role";
 GRANT ALL ON TABLE "public"."user_warehouses" TO "anon";
 GRANT ALL ON TABLE "public"."user_warehouses" TO "authenticated";
 GRANT ALL ON TABLE "public"."user_warehouses" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."v_order_installments_status" TO "anon";
+GRANT ALL ON TABLE "public"."v_order_installments_status" TO "authenticated";
+GRANT ALL ON TABLE "public"."v_order_installments_status" TO "service_role";
 
 
 
